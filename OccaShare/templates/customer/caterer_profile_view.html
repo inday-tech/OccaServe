@@ -1380,8 +1380,8 @@
         </div>
         <div class="storefront-hero-body" style="padding: 1.5rem 2rem; position: relative; min-height: 120px;">
             <div class="storefront-logo-box" style="position: absolute; top: -50px; left: 2rem; width: 110px; height: 110px; border-radius: 16px; border: 4px solid #fff; background: #fff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 2;">
-                {% if caterer.user and caterer.user.profile_image_url %}
-                <img src="{{ caterer.user.profile_image_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                {% if caterer.logo_url or (caterer.user and caterer.user.profile_image_url) %}
+                <img src="{{ caterer.logo_url or caterer.user.profile_image_url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="{{ caterer.business_name }}">
                 {% else %}
                 <img src="https://ui-avatars.com/api/?name={{ caterer.business_name|urlencode }}&background=f1f5f9&color=FF7B54" style="width: 100%; height: 100%; object-fit: cover;">
                 {% endif %}
@@ -1397,6 +1397,9 @@
                     </h1>
                     
                     <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; font-size: 0.88rem; color: var(--hub-slate-600);">
+                        {% if caterer.business_type %}
+                        <span style="font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--hub-slate-100);">{{ caterer.business_type }}</span>
+                        {% endif %}
                         <span style="font-weight: 800; color: #b45309; display: flex; align-items: center; gap: 4px; background: #fef3c7; padding: 3px 8px; border-radius: 6px;">
                             <i class="fas fa-star"></i> {{ "%.1f"|format(caterer.rating or 0) }} 
                             <span style="color: #d97706; font-size: 0.75rem;">({{ reviews|length }} Reviews)</span>
@@ -2339,7 +2342,7 @@
                     {% endif %}
 
                     {% set soc = caterer.scheduling_rules.get('social_links', {}) if caterer.scheduling_rules else {} %}
-                    {% if (soc.get('facebook') and soc.get('facebook')|trim) or (soc.get('instagram') and soc.get('instagram')|trim) %}
+                    {% if (soc.get('facebook') and soc.get('facebook')|trim) or (soc.get('instagram') and soc.get('instagram')|trim) or (soc.get('website') and soc.get('website')|trim) %}
                     <div style="margin-bottom: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
                         {% if soc.get('facebook') and soc.get('facebook')|trim %}
                         {% set fb_link = soc.get('facebook')|trim %}
@@ -2351,6 +2354,11 @@
                         {% if not ig_link.startswith('http') and not ig_link.startswith('@') %}{% set ig_link = 'https://instagram.com/' ~ ig_link %}
                         {% elif ig_link.startswith('@') %}{% set ig_link = 'https://instagram.com/' ~ ig_link[1:] %}{% endif %}
                         <a href="{{ ig_link }}" target="_blank" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(228, 64, 95, 0.1); color: #E4405F; border-radius: 100px; font-size: 0.85rem; font-weight: 700; text-decoration: none; transition: background 0.2s;"><i class="fab fa-instagram"></i> Instagram</a>
+                        {% endif %}
+                        {% if soc.get('website') and soc.get('website')|trim %}
+                        {% set website_link = soc.get('website')|trim %}
+                        {% if not website_link.startswith('http') %}{% set website_link = 'https://' ~ website_link %}{% endif %}
+                        <a href="{{ website_link }}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: #f1f5f9; color: #334155; border-radius: 100px; font-size: 0.85rem; font-weight: 700; text-decoration: none; transition: background 0.2s;"><i class="fas fa-globe"></i> Website</a>
                         {% endif %}
                     </div>
                     {% endif %}

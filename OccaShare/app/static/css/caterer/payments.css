@@ -1554,3 +1554,174 @@
     margin-top: 0.15rem;
     color: #d97706;
 }
+
+/* Keep the page compact and let the numbers carry the information. */
+.payments-wrapper {
+    gap: 1.15rem;
+    padding-bottom: 1.5rem;
+}
+
+.payments-wrapper .pay-stat-icon-wrapper,
+.payments-wrapper .pay-empty-icon,
+.payments-wrapper .pay-title-group h1 > i,
+.payments-wrapper .section-headline h2 > i,
+.payments-wrapper .pay-card-header-left h3 > i,
+.payments-wrapper .badge-pstatus > i {
+    display: none;
+}
+
+.period-select-custom,
+.pay-select-filter {
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.pay-filter-pair {
+    display: flex;
+    gap: 0.65rem;
+}
+
+.pay-select-filter {
+    min-width: 0;
+}
+
+.pay-card-header-left h3 {
+    gap: 0;
+}
+
+.pay-card-header-left p {
+    margin-top: 2px;
+}
+
+.section-headline {
+    margin-bottom: 0.35rem;
+}
+
+.pay-stat-box {
+    padding: 1rem 1.15rem;
+}
+
+.pay-page-numbers {
+    min-width: 0;
+    max-width: min(50vw, 360px);
+    overflow-x: auto;
+    flex: 0 1 auto;
+    scrollbar-width: thin;
+}
+
+.payments-wrapper .page-num-btn {
+    flex: 0 0 34px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+    .pay-toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+    }
+
+    .pay-toolbar .pay-search-input {
+        grid-column: 1 / -1;
+    }
+
+    .pay-filter-pair {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+        gap: 0.5rem;
+    }
+
+    .pay-filter-pair .pay-select-filter {
+        width: 100%;
+        padding: 0.5rem 1.55rem 0.5rem 0.55rem;
+        font-size: 0.74rem;
+        background-position: right 0.45rem center;
+    }
+}
+
+@media (max-width: 480px) {
+    .payments-wrapper {
+        gap: 0.9rem;
+        padding-bottom: 1rem;
+    }
+
+    .pay-kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+
+    .pay-stat-box {
+        min-width: 0;
+        padding: 0.75rem 0.7rem;
+    }
+
+    .pay-stat-title {
+        font-size: 0.64rem;
+        letter-spacing: 0.02em;
+    }
+
+    .pay-stat-number {
+        font-size: clamp(0.95rem, 4.4vw, 1.15rem);
+        overflow-wrap: anywhere;
+    }
+
+    .pay-stat-sub {
+        font-size: 0.64rem;
+    }
+
+    .pay-title-group h1 {
+        font-size: 1.2rem;
+    }
+
+    .pay-pagination {
+        align-items: center;
+        gap: 0.55rem;
+    }
+
+    .pay-card-header {
+        padding: 0.85rem 0.9rem;
+    }
+
+    .pay-card-header-left h3 {
+        font-size: 0.98rem;
+    }
+
+    .pay-card-header-left p {
+        font-size: 0.74rem;
+    }
+
+    .table-container {
+        padding: 0 0.65rem 0.75rem;
+    }
+
+    .premium-table thead tr th,
+    .premium-cell {
+        padding: 0.65rem 0.6rem;
+    }
+
+    .pay-pagination-btns {
+        display: flex;
+        gap: 0.35rem;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .pay-page-numbers {
+        max-width: calc(100vw - 150px);
+    }
+
+    .pay-page-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        padding: 0.45rem 0.6rem;
+    }
+}

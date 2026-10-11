@@ -16,12 +16,12 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <div class="overview-header-banner">
         <div class="overview-header-text">
-            <h1><i class="fas fa-chart-pie" style="color: var(--primary-color, #ff7b54);"></i> Business Overview</h1>
-            <p>Monitor your catering business performance, bookings, revenue trends, packages, and customer feedback.</p>
+            <h1>Business Overview</h1>
+            <p>Bookings, revenue, package performance, and customer feedback.</p>
         </div>
 
         <div class="filter-wrapper">
-            <span class="filter-label"><i class="fas fa-calendar-alt"></i> Timeframe:</span>
+            <span class="filter-label">Timeframe</span>
             <form method="GET" action="/caterer/business-summary" id="timeframeForm" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <select name="timeframe" id="timeframeSelect" class="timeframe-select-custom" onchange="handleTimeframeChange(this)">
                     <option value="today" {% if timeframe == 'today' %}selected{% endif %}>Today</option>
@@ -51,9 +51,6 @@
         <div class="kpi-card accent-primary">
             <div class="kpi-header">
                 <span class="kpi-title">Total Bookings</span>
-                <div class="kpi-icon" style="background: rgba(255, 123, 84, 0.12); color: var(--primary-color, #ff7b54);">
-                    <i class="fas fa-book-open"></i>
-                </div>
             </div>
             <div class="kpi-value">{{ total_bookings }}</div>
             <div class="kpi-subtext">Received in selected timeframe</div>
@@ -63,9 +60,6 @@
         <div class="kpi-card accent-blue">
             <div class="kpi-header">
                 <span class="kpi-title">Upcoming Events</span>
-                <div class="kpi-icon" style="background: #f0f9ff; color: #0284c7;">
-                    <i class="fas fa-calendar-check"></i>
-                </div>
             </div>
             <div class="kpi-value">{{ upcoming_events_count }}</div>
             <div class="kpi-subtext">Confirmed upcoming bookings</div>
@@ -75,9 +69,6 @@
         <div class="kpi-card accent-emerald">
             <div class="kpi-header">
                 <span class="kpi-title">Completed Events</span>
-                <div class="kpi-icon" style="background: #ecfdf5; color: #10b981;">
-                    <i class="fas fa-flag-checkered"></i>
-                </div>
             </div>
             <div class="kpi-value">{{ completed_events_count }}</div>
             <div class="kpi-subtext">Fulfilled events in timeframe</div>
@@ -87,9 +78,6 @@
         <div class="kpi-card accent-amber">
             <div class="kpi-header">
                 <span class="kpi-title">Pending Bookings</span>
-                <div class="kpi-icon" style="background: #fffbeb; color: #f59e0b;">
-                    <i class="fas fa-hourglass-half"></i>
-                </div>
             </div>
             <div class="kpi-value">{{ pending_bookings_count }}</div>
             <div class="kpi-subtext">Awaiting action or verification</div>
@@ -99,100 +87,38 @@
     <!-- 5. Total Booking Value (Featured Highlight Card) -->
     <div class="kpi-featured-card">
         <div class="kpi-featured-left">
-            <span class="kpi-featured-title">Total Booking Value</span>
-            <div class="kpi-featured-value">₱{{ "{:,.2f}".format(total_revenue) }}</div>
-            <span class="kpi-featured-sub">Gross contract value of all active bookings in the selected timeframe</span>
-        </div>
-        <div class="kpi-featured-right">
-            <div class="kpi-featured-icon">
-                <i class="fas fa-coins"></i>
+            <div class="kpi-featured-label">
+                <span class="kpi-featured-title">Total Booking Value</span>
+                <button type="button" class="kpi-help" data-help="Combined contract value of non-cancelled bookings in the selected timeframe." title="Combined contract value of non-cancelled bookings in the selected timeframe." aria-label="Total booking value includes non-cancelled bookings in the selected timeframe.">i</button>
             </div>
+            <div class="kpi-featured-value">₱{{ "{:,.2f}".format(total_revenue) }}</div>
         </div>
     </div>
 
     <!-- ─────────────────────────────────────────────────────────── -->
-    <!-- 3. BOOKING OVERVIEW & REVENUE PERFORMANCE (2 COLUMNS)       -->
+    <!-- 3. REVENUE PERFORMANCE                                     -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="dashboard-grid-2col">
-
-        <!-- A. BOOKING OVERVIEW (STATUS DISTRIBUTION) -->
+    <div class="revenue-performance-grid">
         <div class="section-card">
             <div class="section-header">
                 <div class="section-header-text">
-                    <h3><i class="fas fa-stream" style="color: var(--primary-color, #ff7b54);"></i> Booking Overview</h3>
-                    <p>Current distribution of bookings across operational stages.</p>
-                </div>
-            </div>
-            <div class="section-body">
-                <div class="status-distribution-grid">
-                    <!-- Pending / Inquiries -->
-                    <div class="status-tile" style="border-top: 3px solid #f59e0b;">
-                        <i class="fas fa-hourglass-start status-tile-icon" style="color: #d97706;"></i>
-                        <div class="status-tile-count" style="color: #b45309;">{{ status_counts.pending }}</div>
-                        <div class="status-tile-label">Pending / Inquiries</div>
-                    </div>
-
-                    <!-- Awaiting Payment -->
-                    <div class="status-tile" style="border-top: 3px solid #0284c7;">
-                        <i class="fas fa-receipt status-tile-icon" style="color: #0284c7;"></i>
-                        <div class="status-tile-count" style="color: #0369a1;">{{ status_counts.awaiting }}</div>
-                        <div class="status-tile-label">Awaiting Payment</div>
-                    </div>
-
-                    <!-- Confirmed -->
-                    <div class="status-tile" style="border-top: 3px solid #10b981;">
-                        <i class="fas fa-check-circle status-tile-icon" style="color: #10b981;"></i>
-                        <div class="status-tile-count" style="color: #047857;">{{ status_counts.confirmed }}</div>
-                        <div class="status-tile-label">Confirmed</div>
-                    </div>
-
-                    <!-- In Preparation -->
-                    <div class="status-tile" style="border-top: 3px solid #8b5cf6;">
-                        <i class="fas fa-utensils status-tile-icon" style="color: #8b5cf6;"></i>
-                        <div class="status-tile-count" style="color: #6d28d9;">{{ status_counts.preparing }}</div>
-                        <div class="status-tile-label">In Preparation</div>
-                    </div>
-
-                    <!-- Completed -->
-                    <div class="status-tile" style="border-top: 3px solid #16a34a;">
-                        <i class="fas fa-calendar-check status-tile-icon" style="color: #16a34a;"></i>
-                        <div class="status-tile-count" style="color: #15803d;">{{ status_counts.completed }}</div>
-                        <div class="status-tile-label">Completed</div>
-                    </div>
-
-                    <!-- Cancelled -->
-                    <div class="status-tile" style="border-top: 3px solid #ef4444;">
-                        <i class="fas fa-times-circle status-tile-icon" style="color: #ef4444;"></i>
-                        <div class="status-tile-count" style="color: #dc2626;">{{ status_counts.cancelled }}</div>
-                        <div class="status-tile-label">Cancelled</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- B. REVENUE PERFORMANCE -->
-        <div class="section-card">
-            <div class="section-header">
-                <div class="section-header-text">
-                    <h3><i class="fas fa-chart-line" style="color: #10b981;"></i> Revenue Performance</h3>
-                    <p>Business booking value and payment collection progress.</p>
+                    <h3>Revenue Performance</h3>
+                    <p>Booking value and verified customer payments.</p>
                 </div>
                 <a href="/caterer/payments" class="section-action-link">
-                    Payments &amp; Earnings <i class="fas fa-arrow-right"></i>
+                    Payments &amp; Earnings
                 </a>
             </div>
             <div class="section-body">
                 <!-- 2 Revenue Summary Cards -->
                 <div class="rev-summary-grid">
                     <div class="rev-card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                        <span class="rev-card-title" style="color: #64748b;">Gross Booking Value</span>
+                        <span class="rev-card-title" style="color: #64748b;">Total Booking Value</span>
                         <span class="rev-card-val" style="color: #0f172a;">₱{{ "{:,.2f}".format(total_revenue) }}</span>
-                        <span class="rev-card-hint" style="color: #94a3b8;">Total contracts in timeframe</span>
                     </div>
                     <div class="rev-card" style="background: #ecfdf5; border: 1px solid #bbf7d0;">
-                        <span class="rev-card-title" style="color: #166534;">Verified Collected</span>
+                        <span class="rev-card-title" style="color: #166534;">Amount Collected</span>
                         <span class="rev-card-val" style="color: #166534;">₱{{ "{:,.2f}".format(total_paid) }}</span>
-                        <span class="rev-card-hint" style="color: #059669;">Verified customer payments</span>
                     </div>
                 </div>
 
@@ -200,16 +126,15 @@
                 <div class="collection-progress-box">
                     {% set col_pct = ((total_paid / total_revenue) * 100) if total_revenue > 0 else 0 %}
                     <div class="collection-progress-hdr">
-                        <span style="font-weight: 700; color: #1e293b;">Payment Collection Progress:</span>
+                        <span style="font-weight: 700; color: #1e293b;">Collection Progress</span>
                         <strong style="color: #0f172a; font-size: 0.95rem;">{{ "{:.0f}".format(col_pct) }}%</strong>
                     </div>
                     <div class="collection-progress-bar-bg">
                         <div class="collection-progress-fill" style="width: {{ [col_pct, 100]|min }}%;"></div>
                     </div>
                     <div class="collection-progress-footer">
-                        <span>Calculated from verified customer payments vs total booking contract value.</span>
                         <a href="/caterer/payments" style="color: var(--primary-color, #ff7b54); text-decoration: none; font-weight: 700;">
-                            View Details <i class="fas fa-chevron-right" style="font-size: 0.65rem;"></i>
+                            Payment details
                         </a>
                     </div>
                 </div>
@@ -224,27 +149,20 @@
     <div class="section-card">
         <div class="section-header">
             <div class="section-header-text">
-                <h3><i class="fas fa-chart-area" style="color: var(--primary-color, #ff7b54);"></i> Revenue Trend</h3>
-                <p>Business booking value and sales volume over the last 6 months.</p>
+                <h3>Revenue Trend</h3>
+                <p>Booking value by month over the last six months.</p>
             </div>
             <span style="font-size: 0.76rem; color: #64748b; font-weight: 700; background: #f8fafc; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0;">
-                <i class="fas fa-calendar-alt" style="margin-right: 4px;"></i> Last 6 Months
+                Last 6 Months
             </span>
         </div>
         <div class="section-body">
-            {% set has_trend_data = (revenue_trend_values and revenue_trend_values|sum > 0) %}
-            {% if has_trend_data %}
-            <div style="height: 260px; width: 100%; position: relative;">
-                <canvas id="revenueTrendChart"></canvas>
+            {% if revenue_trend_values and revenue_trend_values|sum > 0 %}
+            <div class="revenue-trend-chart-wrap">
+                <canvas id="revenueTrendChart" data-trend-labels='{{ revenue_trend_labels | tojson }}' data-trend-values='{{ revenue_trend_values | tojson }}'></canvas>
             </div>
             {% else %}
-            <div class="biz-empty-box">
-                <div class="biz-empty-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-                <h4>No revenue data available for the selected period</h4>
-                <p>Completed and confirmed bookings will show revenue trend performance over time.</p>
-            </div>
+            <p class="trend-empty-note">No booking value recorded in this period yet.</p>
             {% endif %}
         </div>
     </div>
@@ -255,11 +173,11 @@
     <div class="section-card">
         <div class="section-header">
             <div class="section-header-text">
-                <h3><i class="fas fa-boxes-stacked" style="color: #8b5cf6;"></i> Package Performance</h3>
-                <p>Identify which catering packages are most popular and contribute most to bookings.</p>
+                <h3>Package Performance</h3>
+                <p>Bookings and value by package.</p>
             </div>
             <a href="/caterer/services" class="section-action-link">
-                View Packages <i class="fas fa-arrow-right"></i>
+                View Packages
             </a>
         </div>
         <div class="section-body" style="padding: 0;">
@@ -278,7 +196,6 @@
                         {% for pkg in top_packages %}
                         <tr>
                             <td style="font-weight: 700; color: #0f172a;">
-                                <i class="fas fa-box" style="color: #a855f7; margin-right: 6px; font-size: 0.85rem;"></i>
                                 {{ pkg.name }}
                             </td>
                             <td style="text-align: center;">
@@ -299,9 +216,6 @@
             </div>
             {% else %}
             <div class="biz-empty-box">
-                <div class="biz-empty-icon">
-                    <i class="fas fa-box-open"></i>
-                </div>
                 <h4>No package performance data available yet</h4>
                 <p>Packages will be ranked as customer bookings are placed and confirmed.</p>
             </div>
@@ -318,17 +232,14 @@
         <div class="section-card">
             <div class="section-header">
                 <div class="section-header-text">
-                    <h3><i class="fas fa-users" style="color: #0284c7;"></i> Customer Engagement</h3>
-                    <p>Live profile interactions and customer request metrics.</p>
+                    <h3>Customer Engagement</h3>
+                    <p>Profile activity and customer feedback.</p>
                 </div>
             </div>
             <div class="section-body">
                 <div class="engage-grid">
                     <!-- 1. Profile Views -->
                     <div class="engage-box">
-                        <div class="engage-icon" style="background: #f0f9ff; color: #0284c7;">
-                            <i class="fas fa-eye"></i>
-                        </div>
                         <div>
                             <div class="engage-val">{{ profile_views }}</div>
                             <div class="engage-lbl">Profile Views</div>
@@ -337,9 +248,6 @@
 
                     <!-- 2. Booking Requests -->
                     <div class="engage-box">
-                        <div class="engage-icon" style="background: #fffbeb; color: #d97706;">
-                            <i class="fas fa-clipboard-list"></i>
-                        </div>
                         <div>
                             <div class="engage-val">{{ booking_requests }}</div>
                             <div class="engage-lbl">Booking Requests</div>
@@ -348,9 +256,6 @@
 
                     <!-- 3. Customer Reviews -->
                     <div class="engage-box">
-                        <div class="engage-icon" style="background: #f5f3ff; color: #7e22ce;">
-                            <i class="fas fa-comments"></i>
-                        </div>
                         <div>
                             <div class="engage-val">{{ total_reviews }}</div>
                             <div class="engage-lbl">Customer Reviews</div>
@@ -359,9 +264,6 @@
 
                     <!-- 4. Average Rating -->
                     <div class="engage-box">
-                        <div class="engage-icon" style="background: #fefce8; color: #eab308;">
-                            <i class="fas fa-star"></i>
-                        </div>
                         <div>
                             <div class="engage-val">{{ avg_rating }} <span style="font-size: 0.85rem; font-weight: 600; color: #94a3b8;">/ 5.0</span></div>
                             <div class="engage-lbl">Average Rating</div>
@@ -375,18 +277,17 @@
         <div class="section-card">
             <div class="section-header">
                 <div class="section-header-text">
-                    <h3><i class="fas fa-star" style="color: #f59e0b;"></i> Customer Reviews</h3>
-                    <p>Verified ratings and feedback from past catering clients.</p>
+                    <h3>Customer Reviews</h3>
                 </div>
                 <a href="/caterer/reviews" class="section-action-link">
-                    View All Reviews <i class="fas fa-arrow-right"></i>
+                    View All Reviews
                 </a>
             </div>
             <div class="section-body">
                 <!-- Average Rating Header Badge -->
                 <div class="reviews-rating-header">
                     <div class="reviews-score-badge">
-                        <i class="fas fa-star"></i> {{ avg_rating }} / 5.0
+                        {{ avg_rating }} / 5.0
                     </div>
                     <div style="font-size: 0.82rem; color: #92400e; font-weight: 600;">
                         Based on {{ total_reviews }} client review{{ 's' if total_reviews != 1 else '' }}
@@ -417,11 +318,7 @@
                     {% endfor %}
                 {% else %}
                     <div class="biz-empty-box" style="padding: 1.5rem 1rem;">
-                        <div class="biz-empty-icon" style="width: 40px; height: 40px; font-size: 1rem;">
-                            <i class="fas fa-comment-slash"></i>
-                        </div>
                         <h4>No customer reviews yet</h4>
-                        <p>Reviews will appear here as completed events receive client feedback.</p>
                     </div>
                 {% endif %}
             </div>
@@ -435,15 +332,15 @@
     <div class="section-card">
         <div class="section-header">
             <div class="section-header-text">
-                <h3><i class="fas fa-list-check" style="color: var(--primary-color, #ff7b54);"></i> Recent Booking Activity</h3>
-                <p>Latest booking activity in the selected timeframe (showing up to 10 latest).</p>
+                <h3>Recent Bookings</h3>
+                <p>Bookings in the selected timeframe.</p>
             </div>
             <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                 <div class="search-box">
                     <input type="text" id="bookingsSearchInput" placeholder="Search Customer, ID, or Event..." onkeyup="filterRecentBookingsTable()">
                 </div>
                 <a href="/caterer/bookings" class="section-action-link" style="white-space: nowrap;">
-                    View All Bookings <i class="fas fa-arrow-right"></i>
+                    View All Bookings
                 </a>
             </div>
         </div>
@@ -521,20 +418,12 @@
 
             <!-- Empty Search Fallback inside table -->
             <div id="noBookingsSearchMatch" class="biz-empty-box" style="display: none;">
-                <div class="biz-empty-icon">
-                    <i class="fas fa-search"></i>
-                </div>
                 <h4>No bookings matched your search</h4>
-                <p>Try searching with another customer name, booking ID, or event type.</p>
             </div>
 
             {% else %}
             <div class="biz-empty-box">
-                <div class="biz-empty-icon">
-                    <i class="fas fa-calendar-times"></i>
-                </div>
-                <h4>No recent booking activity</h4>
-                <p>Booking records for the selected timeframe will appear here.</p>
+                <h4>No bookings in this timeframe</h4>
             </div>
             {% endif %}
         </div>
@@ -547,18 +436,26 @@
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const trendLabels = {{ revenue_trend_labels | tojson | safe }};
-    const trendValues = {{ revenue_trend_values | tojson | safe }};
+let revenueTrendChart = null;
+let overviewRefreshController = null;
 
+function renderRevenueTrend() {
     const ctx = document.getElementById('revenueTrendChart');
+    if (revenueTrendChart) {
+        revenueTrendChart.destroy();
+        revenueTrendChart = null;
+    }
+    if (!ctx || typeof Chart === 'undefined') return;
+
+    const trendLabels = JSON.parse(ctx.dataset.trendLabels || '[]');
+    const trendValues = JSON.parse(ctx.dataset.trendValues || '[]');
     if (ctx && trendLabels && trendLabels.length > 0) {
         const chartCtx = ctx.getContext('2d');
         const gradient = chartCtx.createLinearGradient(0, 0, 0, 240);
         gradient.addColorStop(0, 'rgba(255, 123, 84, 0.25)');
         gradient.addColorStop(1, 'rgba(255, 123, 84, 0.01)');
 
-        new Chart(ctx, {
+        revenueTrendChart = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: trendLabels,
@@ -580,6 +477,9 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: { top: 0, right: 0, bottom: 0, left: 0 }
+                },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -609,6 +509,56 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+}
+
+async function refreshBusinessOverview(url, updateHistory) {
+    const container = document.querySelector('.overview-container');
+    if (!container) return;
+    if (overviewRefreshController) overviewRefreshController.abort();
+    const controller = new AbortController();
+    overviewRefreshController = controller;
+    const searchValue = document.getElementById('bookingsSearchInput')?.value || '';
+    container.setAttribute('aria-busy', 'true');
+    try {
+        const response = await fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+            signal: controller.signal
+        });
+        if (!response.ok) throw new Error(`Overview refresh failed (${response.status})`);
+        const html = await response.text();
+        if (overviewRefreshController !== controller) return;
+        const refreshedDocument = new DOMParser().parseFromString(html, 'text/html');
+        const refreshedContainer = refreshedDocument.querySelector('.overview-container');
+        if (!refreshedContainer) throw new Error('Overview response did not contain dashboard content');
+        container.innerHTML = refreshedContainer.innerHTML;
+        container.removeAttribute('aria-busy');
+        if (updateHistory) history.replaceState({}, '', url);
+        const searchInput = document.getElementById('bookingsSearchInput');
+        if (searchInput) searchInput.value = searchValue;
+        filterRecentBookingsTable();
+        renderRevenueTrend();
+    } catch (error) {
+        if (overviewRefreshController === controller) {
+            container.removeAttribute('aria-busy');
+            if (error.name !== 'AbortError') console.error('Unable to refresh business overview:', error);
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    renderRevenueTrend();
+    document.addEventListener('submit', function(event) {
+        if (event.target.id !== 'timeframeForm') return;
+        event.preventDefault();
+        const formData = new FormData(event.target);
+        const params = new URLSearchParams(formData);
+        refreshBusinessOverview(`${event.target.action}?${params.toString()}`, true);
+    });
+    window.setInterval(function() {
+        if (!document.hidden) refreshBusinessOverview(window.location.href, false);
+    }, 30000);
 });
 
 function handleTimeframeChange(select) {
@@ -618,7 +568,7 @@ function handleTimeframeChange(select) {
     } else {
         if (customContainer) customContainer.classList.remove('is-active');
         const form = document.getElementById("timeframeForm");
-        if (form) form.submit();
+        if (form) refreshBusinessOverview(`${form.action}?timeframe=${encodeURIComponent(select.value)}`, true);
     }
 }
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Form, UploadFile, File, BackgroundTasks, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Form, UploadFile, File, BackgroundTasks, WebSocket, WebSocketDisconnect
 from typing import Optional
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
@@ -233,9 +233,11 @@ async def get_caterer_delivery_fee(
     caterer_id: int,
     province: str,
     municipality: str,
+    response: Response,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    response.headers["Cache-Control"] = "no-store"
     profile = db.query(models.CatererProfile).get(caterer_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Caterer not found")

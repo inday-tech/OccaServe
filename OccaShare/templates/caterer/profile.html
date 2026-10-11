@@ -554,8 +554,16 @@
                             class="fas fa-eye text-secondary"></i> {{ "{:,}".format(caterer.profile_views or 0) }} Views</span>
                 </div>
 
+                {% if caterer.business_type %}
+                <div class="mb-4">
+                    <span class="inline-flex items-center rounded-full border border-secondary border-opacity-20 bg-slate-100/80 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                        {{ caterer.business_type }}
+                    </span>
+                </div>
+                {% endif %}
+
                 {% set soc = (caterer.scheduling_rules or {}).get('social_links', {}) %}
-                {% if soc.get('facebook') or soc.get('instagram') %}
+                {% if soc.get('facebook') or soc.get('instagram') or soc.get('website') %}
                 <div class="flex flex-wrap items-center justify-center gap-3 mb-5">
                     {% if soc.get('facebook') %}
                     {% set fb_link = soc.get('facebook') %}
@@ -567,6 +575,11 @@
                     {% if not ig_link.startswith('http') and not ig_link.startswith('@') %}{% set ig_link = 'https://instagram.com/' ~ ig_link %}
                     {% elif ig_link.startswith('@') %}{% set ig_link = 'https://instagram.com/' ~ ig_link[1:] %}{% endif %}
                     <a href="{{ ig_link }}" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 bg-[#E4405F]/10 text-[#E4405F] hover:bg-[#E4405F]/20 rounded-full font-bold text-xs transition-colors"><i class="fab fa-instagram"></i> Instagram</a>
+                    {% endif %}
+                    {% if soc.get('website') %}
+                    {% set website_link = soc.get('website')|trim %}
+                    {% if not website_link.startswith('http') %}{% set website_link = 'https://' ~ website_link %}{% endif %}
+                    <a href="{{ website_link }}" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-full font-bold text-xs transition-colors"><i class="fas fa-globe"></i> Website</a>
                     {% endif %}
                 </div>
                 {% endif %}

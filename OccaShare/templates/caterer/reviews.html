@@ -14,16 +14,12 @@
             <h1>Reviews & Ratings</h1>
             <p>Monitor your professional reputation and customer feedback.</p>
         </div>
-        <div class="header-actions">
-            <!-- Local search removed, using global header search -->
-            <input type="hidden" id="reviewSearch">
-        </div>
+        <input type="hidden" id="reviewSearch">
     </div>
 
     <!-- Stats Cards Row -->
     <div class="reviews-stats-grid">
         <div class="stat-card-premium animate-up delay-1">
-            <div class="stat-icon-bg halo-amber"><i class="fas fa-star"></i></div>
             <div class="stat-label-dashboard">Average Rating</div>
             <div class="stat-main-row">
                 <div class="stat-value-dashboard">{{ "%.1f"|format(avg_rating) }}</div>
@@ -37,7 +33,6 @@
         </div>
 
         <div class="stat-card-premium animate-up delay-2">
-            <div class="stat-icon-bg halo-blue"><i class="fas fa-comments"></i></div>
             <div class="stat-label-dashboard">Total Reviews</div>
             <div class="stat-value-dashboard">{{ total_reviews }}</div>
             <div class="stat-hint-dashboard">Verified customer feedback</div>
@@ -118,7 +113,7 @@
                         </td>
                         <td>
                             <div class="verified-badge-sm">
-                                <i class="fas fa-check-circle"></i> Verified
+                                Verified
                             </div>
                         </td>
                     </tr>
@@ -127,7 +122,6 @@
                     <tr>
                         <td colspan="5">
                             <div class="empty-state-card">
-                                <i class="fas fa-comment-slash"></i>
                                 <h3>No Reviews Yet</h3>
                                 <p>Build your reputation by completing bookings and inviting customers to share their experience.</p>
                             </div>
@@ -144,9 +138,9 @@
             Showing <span id="startRange">0</span>-<span id="endRange">0</span> of <span id="totalEntries">0</span> reviews
         </div>
         <div class="pagination-controls">
-            <button id="prevPage" class="btn-pagination-pro"><i class="fas fa-chevron-left"></i></button>
+            <button id="prevPage" class="btn-pagination-pro" aria-label="Previous page">Prev</button>
             <div id="pageNumbers" class="page-numbers-container"></div>
-            <button id="nextPage" class="btn-pagination-pro"><i class="fas fa-chevron-right"></i></button>
+            <button id="nextPage" class="btn-pagination-pro" aria-label="Next page">Next</button>
         </div>
     </div>
 </div>

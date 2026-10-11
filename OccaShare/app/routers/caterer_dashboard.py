@@ -31,6 +31,7 @@ router = APIRouter(prefix="/caterer", tags=["caterer"])
 UPLOAD_DIR = "app/static/uploads/caterer"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 MAX_SERVICE_FEE = Decimal("99999999.99")
+MAX_DELIVERY_FEE = Decimal("999999.99")
 
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
@@ -54,6 +55,42 @@ def parse_service_fee(raw_value) -> float:
     if amount <= 0 or amount > MAX_SERVICE_FEE:
         raise HTTPException(status_code=400, detail="Service fee must be between 0.01 and 99,999,999.99.")
     return float(amount)
+
+
+def parse_delivery_fee(raw_value) -> float:
+    amount_text = str(raw_value or "").strip()
+    if not re.fullmatch(r"(?:\d{1,6}|\d{1,3},\d{3})(?:\.\d{1,2})?", amount_text):
+        raise HTTPException(
+            status_code=400,
+            detail="Delivery fee must have up to 6 whole-number digits and 2 decimal places (maximum 999,999.99).",
+        )
+    try:
+        amount = Decimal(amount_text.replace(",", ""))
+    except InvalidOperation as exc:
+        raise HTTPException(status_code=400, detail="Enter a valid delivery fee.") from exc
+    if amount > MAX_DELIVERY_FEE:
+        raise HTTPException(
+            status_code=400,
+            detail="Delivery fee must have up to 6 whole-number digits and 2 decimal places (maximum 999,999.99).",
+        )
+    return float(amount)
+
+
+def validate_delivery_fee(amount_value: float) -> None:
+    try:
+        amount = Decimal(str(amount_value))
+    except InvalidOperation as exc:
+        raise HTTPException(status_code=400, detail="Enter a valid delivery fee.") from exc
+    if (
+        not amount.is_finite()
+        or amount < 0
+        or amount > MAX_DELIVERY_FEE
+        or amount != amount.quantize(Decimal("0.01"))
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Delivery fee must have up to 6 whole-number digits and 2 decimal places (maximum 999,999.99).",
+        )
 
 
 def calculate_fixed_package_total(starting_price, base_pax: int) -> Optional[Decimal]:
@@ -178,6 +215,28 @@ class DeliveryZoneSchema(BaseModel):
     is_manual_quote: bool = False
     fee: float = 0.0
 
+class DeliverySettingsSchema(BaseModel):
+    base_delivery_fee: float
+    out_of_coverage_action: str
+
+@router.put("/api/delivery-settings")
+async def update_delivery_settings(
+    settings: DeliverySettingsSchema,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    validate_delivery_fee(settings.base_delivery_fee)
+    if settings.out_of_coverage_action not in {"reject", "base_fee", "manual"}:
+        raise HTTPException(status_code=400, detail="Choose a valid outside-coverage option.")
+
+    profile.base_delivery_fee = settings.base_delivery_fee
+    profile.out_of_coverage_action = settings.out_of_coverage_action
+    db.commit()
+    return {"status": "success"}
+
 @router.post("/api/delivery-zones")
 async def add_delivery_zone(
     zone: DeliveryZoneSchema,
@@ -187,6 +246,9 @@ async def add_delivery_zone(
     profile = user.caterer_profile
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+    if not zone.province.strip() or not zone.city_municipality.strip():
+        raise HTTPException(status_code=400, detail="Choose a province and city or municipality.")
+    validate_delivery_fee(zone.fee)
 
     # Check for duplicate zone
     existing = db.query(models.DeliveryZone).filter(
@@ -207,7 +269,17 @@ async def add_delivery_zone(
     )
     db.add(new_zone)
     db.commit()
-    return {"status": "success", "message": "Delivery zone added"}
+    db.refresh(new_zone)
+    return {
+        "status": "success",
+        "zone": {
+            "id": new_zone.id,
+            "province": new_zone.province,
+            "city_municipality": new_zone.city_municipality,
+            "is_manual_quote": new_zone.is_manual_quote,
+            "fee": new_zone.fee,
+        },
+    }
 
 @router.delete("/api/delivery-zones/{zone_id}")
 async def delete_delivery_zone(
@@ -247,12 +319,22 @@ async def edit_delivery_zone(
     
     if not zone:
         raise HTTPException(status_code=404, detail="Zone not found")
+    validate_delivery_fee(zone_data.fee)
         
     zone.is_manual_quote = zone_data.is_manual_quote
     zone.fee = zone_data.fee if not zone_data.is_manual_quote else 0.0
     
     db.commit()
-    return {"status": "success", "message": "Delivery zone updated"}
+    return {
+        "status": "success",
+        "zone": {
+            "id": zone.id,
+            "province": zone.province,
+            "city_municipality": zone.city_municipality,
+            "is_manual_quote": zone.is_manual_quote,
+            "fee": zone.fee,
+        },
+    }
 
 @router.get("/api/availability/check")
 async def check_availability(
@@ -2902,6 +2984,15 @@ async def caterer_payments(
                     p_status = "Partially Paid"
                 else:
                     p_status = "Unpaid"
+
+                if 'refund' in p_type.lower():
+                    p_status = "Refunded"
+                elif b.status in ('cancelled', 'rejected'):
+                    p_status = "Cancelled"
+                elif b.status in ('completed', 'delivered'):
+                    p_status = "Fully Paid"
+                else:
+                    p_status = b._pay_label or PaymentService.display_payment_label(b, b._pay_summary)
                     
                 transactions.append({
                     "id": getattr(rec, "payment_ref", None) or getattr(rec, "display_payment_ref", None) or f"PAY-{rec.id:04d}",
@@ -2922,13 +3013,19 @@ async def caterer_payments(
                     "booking_total": total_val,
                     "paid_val": paid_val,
                     "balance_val": balance_val,
-                    "is_under_review": (p_status == "Payment Pending Verification"),
+                    "is_under_review": (p_status == "Under Review"),
+                    "needs_cash_confirmation": (p_status == "Awaiting Cash Confirmation"),
                     "proof_url": b.balance_proof_url if 'balance' in p_type.lower() else (b.payment_proof_url or b.balance_proof_url),
                     "recorded_by": rec.recorded_by or "System",
                     "booking": b
                 })
         
-        if not has_records:
+        if not has_records and (
+            paid_val > 0
+            or pending_val > 0
+            or b._pay_is_under_review
+            or b.payment_status in ('cash_payment_requested', 'cash_balance_requested')
+        ):
             p_date = b.updated_at or b.created_at
             if b.status in ('completed', 'delivered') or b.payment_status in ('paid', 'fully_paid'):
                 p_type = "Full Payment"
@@ -2958,6 +3055,15 @@ async def caterer_payments(
                 p_type = "Full Payment" if b.payment_plan == 'full' else "Downpayment"
                 t_amt = total_val
                 p_status = "Unpaid"
+
+            if 'refund' in p_type.lower():
+                p_status = "Refunded"
+            elif b.status in ('cancelled', 'rejected'):
+                p_status = "Cancelled"
+            elif b.status in ('completed', 'delivered'):
+                p_status = "Fully Paid"
+            else:
+                p_status = b._pay_label or PaymentService.display_payment_label(b, b._pay_summary)
                 
             fallback_pay_id = (
                 b.booking_ref.replace("-BK-", "-PAY-") 
@@ -2983,14 +3089,26 @@ async def caterer_payments(
                 "booking_total": total_val,
                 "paid_val": paid_val,
                 "balance_val": balance_val,
-                "is_under_review": (p_status == "Payment Pending Verification"),
-                "needs_cash_confirmation": (p_status == "Cash Requested - Awaiting Receipt"),
+                "is_under_review": (p_status == "Under Review"),
+                "needs_cash_confirmation": (p_status == "Awaiting Cash Confirmation"),
                 "proof_url": b.payment_proof_url or b.balance_proof_url,
                 "recorded_by": "System",
                 "booking": b
             })
 
     transactions.sort(key=lambda t: t['date'] or datetime.min, reverse=True)
+    if start_filter and end_filter:
+        transactions = [
+            transaction for transaction in transactions
+            if (
+                transaction["date"] is None
+                or start_filter <= (
+                    transaction["date"].date()
+                    if isinstance(transaction["date"], datetime)
+                    else transaction["date"]
+                ) <= end_filter
+            )
+        ]
 
     return templates.TemplateResponse("caterer/payments.html", {
         "request": request,
@@ -4518,6 +4636,7 @@ async def business_summary(
 
     from datetime import date, datetime, timedelta
     from dateutil.relativedelta import relativedelta
+    from app.services.payment_service import PaymentService
 
     today = date.today()
     stats_start = None
@@ -4546,6 +4665,8 @@ async def business_summary(
         try:
             stats_start = datetime.strptime(start_date, '%Y-%m-%d').date()
             stats_end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            if stats_end < stats_start:
+                raise ValueError("End date must not be before start date")
         except Exception:
             stats_start = today.replace(day=1)
             stats_end = (stats_start + relativedelta(months=1)) - timedelta(days=1)
@@ -4593,8 +4714,18 @@ async def business_summary(
     pending_bookings_count = sum(1 for b in period_bookings if b.status in pending_statuses)
 
     valid_period_bookings = [b for b in period_bookings if b.status not in ['cancelled', 'rejected']]
-    total_revenue = sum(float(b.total_amount or b.total_price or 0.0) for b in valid_period_bookings)
-    total_paid = sum(float(b.amount_paid or 0.0) for b in valid_period_bookings)
+    payment_summaries = {
+        b.id: PaymentService.get_payment_summary(b)
+        for b in valid_period_bookings
+    }
+    total_revenue = sum(
+        float(payment_summaries[b.id]["total_amount"])
+        for b in valid_period_bookings
+    )
+    total_paid = sum(
+        float(payment_summaries[b.id]["verified_paid"])
+        for b in valid_period_bookings
+    )
     pending_balance = max(0.0, total_revenue - total_paid)
 
     # 2. Booking Status Breakdown (based on selected timeframe)
@@ -4616,7 +4747,7 @@ async def business_summary(
         m_end = (m_start + relativedelta(months=1)) - timedelta(days=1)
         label = m_date.strftime('%b')
         m_rev = sum(
-            float(b.total_amount or b.total_price or 0.0)
+            float(b.total_price or b.total_amount or 0.0)
             for b in all_bookings
             if b.status not in ['cancelled', 'rejected']
             and b.event_date
@@ -4640,7 +4771,7 @@ async def business_summary(
             if pkg_name not in package_stats:
                 package_stats[pkg_name] = {"name": pkg_name, "bookings": 0, "revenue": 0.0, "avg_value": 0.0}
             package_stats[pkg_name]["bookings"] += 1
-            package_stats[pkg_name]["revenue"] += float(b.total_amount or b.total_price or 0.0)
+            package_stats[pkg_name]["revenue"] += float(b.total_price or b.total_amount or 0.0)
 
     for pkg in (profile.packages or []):
         if not getattr(pkg, 'is_archived', False) and pkg.name not in package_stats:
@@ -4665,7 +4796,14 @@ async def business_summary(
 
     # 6. Recent Bookings Table
     recent_bookings_data = []
-    for b in sorted(period_bookings, key=lambda x: x.event_date or date.min, reverse=True)[:15]:
+    def booking_last_updated_timestamp(booking: models.Booking) -> float:
+        last_updated = getattr(booking, "updated_at", None) or getattr(booking, "created_at", None)
+        if last_updated:
+            return last_updated.timestamp()
+        fallback_date = booking.event_date or date.min
+        return datetime.combine(fallback_date, datetime.min.time()).timestamp()
+
+    for b in sorted(period_bookings, key=booking_last_updated_timestamp, reverse=True)[:15]:
         pkg_title = b.package.name if b.package else (b.event_type or "Custom Catering")
 
         recent_bookings_data.append({
@@ -4675,7 +4813,7 @@ async def business_summary(
             "event_date": b.event_date,
             "guest_count": b.guest_count or 0,
             "package_name": pkg_title,
-            "amount": float(b.total_amount or b.total_price or 0.0),
+            "amount": float(b.total_price or b.total_amount or 0.0),
             "amount_paid": float(b.amount_paid or 0.0),
             "status": b.status or "pending",
             "payment_status": b.payment_status or "unpaid"
@@ -6632,8 +6770,7 @@ async def update_profile(
     if province and province != province_code and province.lower() not in contact.lower():
         addr_parts.append(province)
         
-    if addr_parts:
-        profile.address_details = ", ".join(addr_parts)
+    profile.address_details = ", ".join(addr_parts) if addr_parts else None
     # Update payment methods
     profile.gcash_number = gcash_number
     profile.maya_number = maya_number
@@ -6664,7 +6801,7 @@ async def update_profile(
     profile.default_reservation_type = default_reservation_type or "fixed"
     
     if base_delivery_fee is not None:
-        profile.base_delivery_fee = _to_float(base_delivery_fee, 150.0)
+        profile.base_delivery_fee = parse_delivery_fee(base_delivery_fee)
     if out_of_coverage_action:
         profile.out_of_coverage_action = out_of_coverage_action
 

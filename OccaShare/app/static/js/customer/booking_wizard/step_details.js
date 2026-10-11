@@ -754,7 +754,7 @@ document.addEventListener('DOMContentLoaded', function () {
             
             // Fetch dynamic delivery fee
             try {
-                const res = await fetch(`/customer/api/caterer/${catererId}/delivery-fee?province=${encodeURIComponent(p)}&municipality=${encodeURIComponent(c)}`);
+                const res = await fetch(`/customer/api/caterer/${catererId}/delivery-fee?province=${encodeURIComponent(p)}&municipality=${encodeURIComponent(c)}`, { cache: 'no-store' });
                 const data = await res.json();
                 
                 if (data.found) {
@@ -1315,6 +1315,12 @@ document.addEventListener('DOMContentLoaded', function () {
         barangaySelect.addEventListener('blur', validateBarangay);
     }
 
+    window.setInterval(() => {
+        if (document.hidden) return;
+        const province = provinceSelect ? provinceSelect.value : '';
+        const city = citySelect ? citySelect.value : '';
+        if (province && city) updateHiddenVenue();
+    }, 30000);
 
     if (form) {
         form.addEventListener('submit', function (e) {

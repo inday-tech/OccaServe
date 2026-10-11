@@ -5,6 +5,8 @@ let galleryFiles = [];
 let existingGalleryUrls = [];
 let deletedGalleryIds = [];
 let highlightsTagify = null;
+let hasExistingCoverPhoto = false;
+let portfolioSaving = false;
 
 document.addEventListener("DOMContentLoaded", () => {
     // Initialize Tagify for highlights
@@ -12,7 +14,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (highlightsInput) {
         highlightsTagify = new Tagify(highlightsInput, {
             dropdown: {
-                maxItems: 20,
                 classname: "tags-look",
                 enabled: 0,
                 closeOnSelect: false
@@ -32,6 +33,11 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener('globalSearch', (e) => {
         filterPortfolios(e.detail?.value || '');
     });
+
+    const form = document.getElementById('portfolioForm');
+    form.addEventListener('input', updatePortfolioSubmitState);
+    form.addEventListener('change', updatePortfolioSubmitState);
+    updatePortfolioSubmitState();
 });
 
 function filterPortfolios(query) {
@@ -45,11 +51,24 @@ function filterPortfolios(query) {
 
 function openPortfolioModal() {
     const form = document.getElementById('portfolioForm');
+    form.reset();
     form.action = '/caterer/portfolio/create';
     document.getElementById('portfolioIdInput').value = '';
+    coverPhotoFile = null;
+    hasExistingCoverPhoto = false;
+    galleryFiles = [];
+    existingGalleryUrls = [];
+    deletedGalleryIds = [];
+    if (highlightsTagify) highlightsTagify.removeAllTags();
+    document.getElementById('coverImg').style.display = 'none';
+    document.getElementById('coverImg').src = '';
+    document.getElementById('coverPlaceholder').style.display = 'flex';
+    renderGalleryPreviews();
+    togglePortfolioCustomEventType();
     document.querySelector('#portfolioModal .occ-modal-title').innerText = 'Add Portfolio Entry';
     document.getElementById('portfolioModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    updatePortfolioSubmitState();
 }
 
 function closePortfolioModal() {
@@ -62,6 +81,7 @@ function closePortfolioModal() {
     
     // Reset previews
     coverPhotoFile = null;
+    hasExistingCoverPhoto = false;
     document.getElementById('coverImg').style.display = 'none';
     document.getElementById('coverImg').src = '';
     document.getElementById('coverPlaceholder').style.display = 'flex';
@@ -70,6 +90,41 @@ function closePortfolioModal() {
     existingGalleryUrls = [];
     deletedGalleryIds = [];
     renderGalleryPreviews();
+    togglePortfolioCustomEventType();
+    updatePortfolioSubmitState();
+}
+
+function togglePortfolioCustomEventType() {
+    const eventType = document.getElementById('portfolioEventTypeInput');
+    const customType = document.getElementById('portfolioCustomEventTypeInput');
+    if (!eventType || !customType) return;
+
+    const isOther = eventType.value === 'Other';
+    customType.hidden = !isOther;
+    customType.disabled = !isOther;
+    customType.required = isOther;
+    updatePortfolioSubmitState();
+}
+
+function isPortfolioFormValid() {
+    const form = document.getElementById('portfolioForm');
+    const eventType = document.getElementById('portfolioEventTypeInput').value;
+    const customType = document.getElementById('portfolioCustomEventTypeInput').value.trim();
+    const title = document.getElementById('portfolioTitleInput').value.trim();
+    const description = document.getElementById('portfolioDescriptionInput').value.trim();
+
+    return form.checkValidity()
+        && title.length > 0
+        && description.length > 0
+        && (eventType !== 'Other' || customType.length > 0)
+        && (hasExistingCoverPhoto || Boolean(coverPhotoFile));
+}
+
+function updatePortfolioSubmitState() {
+    const submitButton = document.getElementById('submitPortfolioBtn');
+    if (submitButton) {
+        submitButton.disabled = portfolioSaving || !isPortfolioFormValid();
+    }
 }
 
 function previewCoverPhoto(input) {
@@ -82,6 +137,7 @@ function previewCoverPhoto(input) {
             document.getElementById('coverPlaceholder').style.display = 'none';
         }
         reader.readAsDataURL(coverPhotoFile);
+        updatePortfolioSubmitState();
     }
 }
 
@@ -150,20 +206,24 @@ async function submitPortfolio(e) {
     e.preventDefault();
     
     const form = document.getElementById('portfolioForm');
-    const isEdit = form.action.includes('/update');
-    
-    if (!isEdit && !coverPhotoFile) {
-        alert("A cover photo is required.");
+    if (!isPortfolioFormValid()) {
+        form.reportValidity();
+        if (!hasExistingCoverPhoto && !coverPhotoFile) {
+            alert("A cover photo is required.");
+        }
         return;
     }
     
     const submitBtn = document.getElementById('submitPortfolioBtn');
+    portfolioSaving = true;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
     
     const formData = new FormData();
     formData.append('title', form.title.value);
-    formData.append('event_type', form.event_type.value);
+    const selectedEventType = document.getElementById('portfolioEventTypeInput').value;
+    const customEventType = document.getElementById('portfolioCustomEventTypeInput').value.trim();
+    formData.append('event_type', selectedEventType === 'Other' ? customEventType : selectedEventType);
     formData.append('description', form.description.value);
     
     if (form.location && form.location.value) formData.append('location', form.location.value);
@@ -201,14 +261,15 @@ async function submitPortfolio(e) {
             window.location.reload();
         } else {
             alert(result.detail || "An error occurred while saving the portfolio.");
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Save Portfolio';
         }
     } catch (error) {
         console.error("Error:", error);
         alert("A network error occurred. Please try again.");
+    } finally {
+        portfolioSaving = false;
         submitBtn.disabled = false;
         submitBtn.innerHTML = 'Save Portfolio';
+        updatePortfolioSubmitState();
     }
 }
 
@@ -258,7 +319,12 @@ function editPortfolio(btn) {
     document.getElementById('portfolioIdInput').value = id;
     
     form.title.value = title;
-    form.event_type.value = eventType;
+    const eventTypeSelect = document.getElementById('portfolioEventTypeInput');
+    const customEventTypeInput = document.getElementById('portfolioCustomEventTypeInput');
+    const predefinedEventType = Array.from(eventTypeSelect.options).some(option => option.value === eventType && option.value !== 'Other');
+    eventTypeSelect.value = predefinedEventType ? eventType : 'Other';
+    customEventTypeInput.value = predefinedEventType ? '' : eventType;
+    togglePortfolioCustomEventType();
     form.description.value = description;
     if (form.location) form.location.value = location;
     if (form.booking_id) form.booking_id.value = bookingId;
@@ -273,10 +339,12 @@ function editPortfolio(btn) {
 
     // Display cover photo if it exists
     if (coverUrl) {
+        hasExistingCoverPhoto = true;
         document.getElementById('coverImg').src = coverUrl;
         document.getElementById('coverImg').style.display = 'block';
         document.getElementById('coverPlaceholder').style.display = 'none';
     } else {
+        hasExistingCoverPhoto = false;
         document.getElementById('coverImg').style.display = 'none';
         document.getElementById('coverPlaceholder').style.display = 'flex';
     }
@@ -287,6 +355,7 @@ function editPortfolio(btn) {
     document.querySelector('#portfolioModal .occ-modal-title').innerText = 'Edit Portfolio Entry';
     document.getElementById('portfolioModal').classList.add('active');
     document.body.style.overflow = 'hidden';
+    updatePortfolioSubmitState();
 }
 
 function filterPortfolios(query) {

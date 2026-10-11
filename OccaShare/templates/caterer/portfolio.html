@@ -109,13 +109,13 @@
 
 <!-- Add Portfolio Modal -->
 <div id="portfolioModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-lg occ-content-pop" style="max-width: 700px;">
-        <div class="occ-modal-header glass-header">
+    <div class="occ-modal-box sz-lg occ-content-pop portfolio-modal-box" style="max-width: 700px;">
+        <div class="occ-modal-header glass-header portfolio-modal-header">
             <div>
                 <h3 class="occ-modal-title" style="color: white;">Add Portfolio Entry</h3>
                 <div class="occ-modal-subtitle" style="color: rgba(255, 255, 255, 0.85);">Showcase a successfully completed event</div>
             </div>
-            <button type="button" onclick="closePortfolioModal()" class="occ-modal-close" style="color: white; opacity: 0.8;"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closePortfolioModal()" class="occ-modal-close portfolio-modal-close" aria-label="Close portfolio form"><i class="fas fa-times"></i></button>
         </div>
         
         <form id="portfolioForm" action="/caterer/portfolio/create" onsubmit="submitPortfolio(event)" style="display: flex; flex-direction: column;">
@@ -123,12 +123,13 @@
                 <input type="hidden" name="portfolio_id" id="portfolioIdInput" value="">
                 <div class="form-row-pro">
                     <div class="form-group-pro" style="flex: 2;">
-                        <label>Portfolio Title *</label>
-                        <input type="text" name="title" class="control-pro" placeholder="e.g. Elegant Garden Wedding" required>
+                        <label for="portfolioTitleInput">Portfolio Title *</label>
+                        <input type="text" name="title" id="portfolioTitleInput" class="control-pro" placeholder="e.g. Elegant Garden Wedding" required>
                     </div>
                     <div class="form-group-pro" style="flex: 1;">
-                        <label>Event Type *</label>
-                        <select name="event_type" class="control-pro" required>
+                        <label for="portfolioEventTypeInput">Event Type *</label>
+                        <select name="event_type" id="portfolioEventTypeInput" class="control-pro" required onchange="togglePortfolioCustomEventType()">
+                            <option value="" selected disabled>Select event type</option>
                             <option value="Wedding">Wedding</option>
                             <option value="Debut">Debut</option>
                             <option value="Birthday">Birthday</option>
@@ -136,14 +137,18 @@
                             <option value="Anniversary">Anniversary</option>
                             <option value="Baptism">Baptism</option>
                             <option value="Private Party">Private Party</option>
+                            {% for custom_event_type in custom_event_types %}
+                            <option value="{{ custom_event_type }}">{{ custom_event_type }}</option>
+                            {% endfor %}
                             <option value="Other">Other</option>
                         </select>
+                        <input type="text" name="custom_event_type" id="portfolioCustomEventTypeInput" class="control-pro" placeholder="Enter the specific event type" maxlength="100" autocomplete="off" hidden disabled>
                     </div>
                 </div>
 
                 <div class="form-group-pro">
-                    <label>Short Description *</label>
-                    <textarea name="description" class="control-pro" rows="3" placeholder="Describe the event, the theme, and the service you provided..." required></textarea>
+                    <label for="portfolioDescriptionInput">Short Description *</label>
+                    <textarea name="description" id="portfolioDescriptionInput" class="control-pro" rows="3" placeholder="Describe the event, the theme, and the service you provided..." required></textarea>
                 </div>
 
                 <div class="form-group-pro">
@@ -152,7 +157,7 @@
                 </div>
 
                 <div class="form-group-pro">
-                    <label>Event Highlights <small>(Press Enter to add tag)</small></label>
+                    <label for="highlightsInput">Event Highlights <small>(Press Enter to add tag)</small></label>
                     <input type="text" name="highlights" id="highlightsInput" placeholder="e.g. 250 Guests, Buffet Setup, White Theme">
                 </div>
                 
@@ -167,7 +172,7 @@
                 </div>
 
                 <div class="form-group-pro" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
-                    <label>Cover Photo <small>(High quality, Landscape preferred. Leave empty to keep existing during edit.)</small></label>
+                    <label>Cover Photo * <small>(High quality, landscape preferred. Required for new portfolios; optional when keeping the existing photo.)</small></label>
                     <input type="file" id="coverPhotoInput" accept="image/*" style="display: none;" onchange="previewCoverPhoto(this)">
                     <div id="coverPhotoPreviewBox" class="upload-box" onclick="document.getElementById('coverPhotoInput').click()" style="height: 150px; position: relative; overflow: hidden;">
                         <div id="coverPlaceholder" style="display: flex; flex-direction: column; align-items: center;">
@@ -198,8 +203,7 @@
                 </div>
             </div>
             <div class="occ-modal-footer" style="padding: 1.25rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
-                <button type="button" class="btn-secondary-pro" onclick="closePortfolioModal()">Cancel</button>
-                <button type="submit" class="btn-primary-pro" id="submitPortfolioBtn">Save Portfolio</button>
+                <button type="submit" class="btn-primary-pro" id="submitPortfolioBtn" disabled>Save Portfolio</button>
             </div>
         </form>
     </div>

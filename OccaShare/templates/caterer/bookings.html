@@ -637,26 +637,28 @@
 
     /* ══ RESPONSIVE ═════════════════════════════════════════════ */
     .b-table-header {
-        display: flex; justify-content: space-between; align-items: center;
-        flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+        display: flex; justify-content: space-between; align-items: flex-start !important;
+        flex-wrap: wrap; gap: 0.55rem; margin-bottom: 0.75rem;
     }
-    .header-controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+    .bookings-heading-row { width: 100%; }
+    .header-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start !important; justify-content: flex-start !important; }
+    .header-controls .filter-wrapper { justify-content: flex-start !important; }
     .mtab-pane-pro { display: none; }
     .mtab-pane-pro.active { display: block; }
 
     @media (max-width: 768px) {
-        .b-table-header { flex-direction: column; align-items: stretch; padding: 0.75rem 1rem !important; }
+        .b-table-header { flex-direction: column; align-items: flex-start !important; padding: 0.65rem 0.75rem !important; }
         .bookings-heading-row { width: 100%; align-items: flex-start !important; gap: 0.5rem !important; }
         .bookings-heading-copy { flex: 1 1 auto; }
         .bookings-heading-copy h3,
         .bookings-heading-copy p { margin-left: 0 !important; text-align: left; }
         .booking-export-control { flex: 0 0 auto !important; align-self: flex-start; }
         .booking-export-control > button { width: auto !important; min-height: 36px; padding: 0.45rem 0.65rem !important; white-space: nowrap; }
-        .header-controls { width: 100%; flex-direction: column; align-items: stretch; }
-        .header-controls .filter-wrapper,
+        .header-controls { width: 100%; flex-direction: column; align-items: flex-start !important; }
+        .header-controls .filter-wrapper { width: 100%; justify-content: flex-start !important; }
         .header-controls select,
         .header-controls .action-dropdown-container,
-        .header-controls button { width: 100%; justify-content: center; }
+        .header-controls button { width: 100%; justify-content: flex-start !important; }
         .process-legend-container { gap: 0.75rem !important; justify-content: flex-start; }
         .process-legend-container > div { flex: 1 1 100%; border-right: none !important; padding-right: 0 !important; }
     }
@@ -750,7 +752,7 @@
     </div>
 </div>
 
-<div class="b-table-header" style="display:flex;flex-direction:column;gap:.75rem;padding:1rem 1.25rem;border-bottom:1px solid #f1f5f9;">
+<div class="b-table-header" style="display:flex;flex-direction:column;gap:.5rem;padding:.75rem 1rem;border-bottom:1px solid #f1f5f9;">
     <div class="bookings-heading-row" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;min-width:0;">
         <div class="bookings-heading-copy" style="min-width:0;">
             <h3 style="margin:0;font-size:1.1rem;font-weight:700;color:#0f172a;">All Bookings</h3>

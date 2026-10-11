@@ -10,7 +10,7 @@ const SECTION_META = {
     'payment-methods':  { title: 'Payment Methods',        subtitle: 'Configure how customers can pay you and where you\'ll receive your earnings.' },
     'booking-policies': { title: 'Booking Policies',       subtitle: 'Set clear expectations for bookings, payments, and cancellations.' },
     'availability':     { title: 'Booking & Event Availability', subtitle: 'Control when customers can request bookings and define the scheduling limits for your business.' },
-    'delivery-settings':{ title: 'Delivery Zones & Fees',  subtitle: 'Define your delivery coverage and compute accurate travel fees for out-of-town bookings.' },
+    'delivery-settings':{ title: 'Delivery Zones & Fees',  subtitle: 'Set delivery fees by service area and choose how to handle locations outside your coverage.' },
     'brand':            { title: 'Branding',               subtitle: 'Manage your visual identity, logo, cover image, and theme styling.' },
     'verification':     { title: 'Verification Center',    subtitle: 'Submit your compliance documents. These are private and never visible to customers.' },
     'account':          { title: 'Account & Security',     subtitle: 'Manage your personal info, notifications, and account preferences.' },
@@ -47,6 +47,12 @@ window.switchSettingsSection = function(sectionId) {
 
     const contentEl = document.querySelector('.settings-content');
     if (contentEl) contentEl.scrollTo({ top: 0, behavior: 'smooth' });
+    if (contentEl && window.matchMedia('(max-width: 900px)').matches) {
+        window.setTimeout(() => {
+            const pageTop = contentEl.getBoundingClientRect().top + window.scrollY - 16;
+            window.scrollTo({ top: pageTop, behavior: 'smooth' });
+        }, 40);
+    }
 };
 
 // ─── Accordion Toggle for Nav Groups ───
@@ -75,6 +81,18 @@ window.toggleNavGroup = function(groupId) {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
+    const paymentMethodSelect = document.getElementById('paymentMethodEditor');
+    if (paymentMethodSelect) {
+        const paymentCards = document.querySelectorAll('[data-payment-method]');
+        const showPaymentMethod = () => {
+            paymentCards.forEach(card => {
+                card.hidden = card.dataset.paymentMethod !== paymentMethodSelect.value;
+            });
+        };
+        paymentMethodSelect.addEventListener('change', showPaymentMethod);
+        showPaymentMethod();
+    }
+
     // 1. Sidebar Nav Click Handlers
     document.querySelectorAll('.snav-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -1263,9 +1281,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('catererSettingsForm');
     if (form) {
         form.addEventListener('input', function(e) {
+            if (e.target.matches('[name="base_delivery_fee"], [name="out_of_coverage_action"]')) return;
             triggerSettingsDirty();
         });
         form.addEventListener('change', function(e) {
+            if (e.target.matches('[name="base_delivery_fee"], [name="out_of_coverage_action"]')) return;
             triggerSettingsDirty();
         });
         form.addEventListener('submit', function() {

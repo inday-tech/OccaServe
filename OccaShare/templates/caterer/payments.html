@@ -17,8 +17,8 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <div class="pay-header-banner">
         <div class="pay-title-group">
-            <h1><i class="fas fa-coins" style="color: var(--primary-color, #ff7b54);"></i> Payments &amp; Earnings</h1>
-            <p>Track customer payments, outstanding balances, earnings, and platform commission in one place.</p>
+            <h1>Payments &amp; Earnings</h1>
+            <p>Review customer payments, balances, and platform commission.</p>
         </div>
         <div class="pay-controls-bar">
             <!-- Period / Date Range Filter -->
@@ -107,7 +107,7 @@
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Estimated Earnings</span>
                 <span class="pay-stat-number" id="kpiNetEarnings">₱{{ "{:,.2f}".format(period_net_earnings) }}</span>
-                <span class="pay-stat-sub" style="color: #7c3aed; font-weight: 700;">After Platform Commission</span>
+                <span class="pay-stat-sub" style="color: #7c3aed; font-weight: 700;">After estimated commission</span>
             </div>
             <div class="pay-stat-icon-wrapper" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
                 <i class="fas fa-coins"></i>
@@ -115,66 +115,35 @@
         </div>
     </div>
 
-    <!-- ─────────────────────────────────────────────────────────── -->
-    <!-- 3. EARNINGS SUMMARY (VISUAL BREAKDOWN ONLY)                 -->
-    <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="net-earnings-bar">
-        <div class="net-metrics-list">
-            <div class="net-metric-item">
-                <span class="net-metric-title">Amount Collected</span>
-                <span class="net-metric-val" style="color: #059669;">₱{{ "{:,.2f}".format(period_amount_collected) }}</span>
-            </div>
-            <span class="net-math-symbol">−</span>
-            <div class="net-metric-item">
-                <span class="net-metric-title">Platform Commission</span>
-                <span class="net-metric-val" style="color: #dc2626;">₱{{ "{:,.2f}".format(period_commission_est) }}</span>
-            </div>
-            <span class="net-math-symbol">=</span>
-            <div class="net-metric-item">
-                <span class="net-metric-title">Estimated Earnings</span>
-                <span class="net-metric-val net-val-highlight">₱{{ "{:,.2f}".format(period_net_earnings) }}</span>
-            </div>
-        </div>
-        <div class="net-disclaimer">
-            <i class="fas fa-info-circle"></i> Estimated earnings are based on the current platform commission rate.
-        </div>
-    </div>
-
-    <!-- ─────────────────────────────────────────────────────────── -->
-    <!-- 4. CUSTOMER PAYMENTS SECTION                                -->
-    <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="section-headline">
-        <h2><i class="fas fa-hand-holding-usd" style="color: var(--primary-color, #ff7b54);"></i> Customer Payments</h2>
-        <p>View and manage payment transactions from customers.</p>
-    </div>
-
     <div class="pay-card-container">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
-                <h3><i class="fas fa-history" style="color: var(--primary-color, #ff7b54);"></i> Transaction History</h3>
-                <p>Recorded customer payments, downpayments, and receipts.</p>
+                <h3>Transaction History</h3>
+                <p>Customer payments within the selected period.</p>
             </div>
             <div class="pay-toolbar">
                 <input type="text" id="paymentSearch" class="pay-search-input" placeholder="Search customer, booking..."
                     oninput="window.filterPayments()">
 
-                <select id="typeFilter" class="pay-select-filter" onchange="window.filterPayments()">
-                    <option value="all">All Payment Types</option>
-                    <option value="downpayment">Downpayment</option>
-                    <option value="partial">Partial Payment</option>
-                    <option value="balance">Balance Payment</option>
-                    <option value="full">Full Payment</option>
-                    <option value="refund">Refund</option>
-                </select>
+                <div class="pay-filter-pair">
+                    <select id="typeFilter" class="pay-select-filter" onchange="window.filterPayments()">
+                        <option value="all">All Payment Types</option>
+                        <option value="downpayment">Downpayment</option>
+                        <option value="partial">Partial Payment</option>
+                        <option value="balance">Balance Payment</option>
+                        <option value="full">Full Payment</option>
+                        <option value="refund">Refund</option>
+                    </select>
 
-                <select id="statusFilter" class="pay-select-filter" onchange="window.filterPayments()">
-                    <option value="all">All Payment Status</option>
-                    <option value="paid">Fully Paid</option>
-                    <option value="partial">Partially Paid</option>
-                    <option value="verify">Pending Verification</option>
-                    <option value="unpaid">Unpaid</option>
-                    <option value="refunded">Refunded</option>
-                </select>
+                    <select id="statusFilter" class="pay-select-filter" onchange="window.filterPayments()">
+                        <option value="all">All Payment Status</option>
+                        <option value="paid">Fully Paid</option>
+                        <option value="partial">Partially Paid</option>
+                        <option value="verify">Under Review</option>
+                        <option value="unpaid">Unpaid</option>
+                        <option value="refunded">Refunded</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -200,6 +169,7 @@
                     <tr class="premium-row transaction-row"
                         data-status="{{ t.status|lower }}"
                         data-type="{{ t.payment_type|lower }}"
+                        data-payment-date="{{ t.date_iso }}"
                         data-booking-id="{{ t.booking_id }}"
                         data-booking-ref="{{ t.booking_ref }}"
                         data-customer-ref="{{ t.customer_ref }}"
@@ -231,8 +201,8 @@
 
                         <!-- 3. Customer -->
                         <td class="premium-cell">
-                            <span class="pay-customer-name" style="font-weight: 700; color: #0f172a;">{{ t.customer_ref }}</span>
-                            <span style="font-size: 0.72rem; color: #64748b; font-weight: 500;">Client ID</span>
+                            <span class="pay-customer-name" style="font-weight: 700; color: #0f172a;">{{ t.customer_name }}</span>
+                            <span style="font-size: 0.72rem; color: #64748b; font-weight: 500;">{{ t.customer_ref }}</span>
                         </td>
 
                         <!-- 4. Payment Type -->
@@ -269,17 +239,19 @@
                         <!-- 8. Status -->
                         <td class="premium-cell">
                             {% if t.status == 'Fully Paid' %}
-                            <span class="badge-pstatus badge-pstatus-paid"><i class="fas fa-check-circle"></i> Fully Paid</span>
-                            {% elif t.status == 'Cash Requested - Awaiting Receipt' %}
-                            <span class="badge-pstatus badge-pstatus-review"><i class="fas fa-hand-holding-usd"></i> Cash Requested</span>
-                            {% elif t.status == 'Payment Pending Verification' %}
-                            <span class="badge-pstatus badge-pstatus-review"><i class="fas fa-clock"></i> Pending Verification</span>
+                            <span class="badge-pstatus badge-pstatus-paid">Fully Paid</span>
+                            {% elif t.status == 'Awaiting Cash Confirmation' %}
+                            <span class="badge-pstatus badge-pstatus-review">Awaiting Cash Confirmation</span>
+                            {% elif t.status in ['Payment Pending Verification', 'Under Review'] %}
+                            <span class="badge-pstatus badge-pstatus-review">Under Review</span>
                             {% elif t.status == 'Partially Paid' %}
-                            <span class="badge-pstatus badge-pstatus-partial"><i class="fas fa-adjust"></i> Partially Paid</span>
+                            <span class="badge-pstatus badge-pstatus-partial">Partially Paid</span>
                             {% elif t.status == 'Refunded' %}
-                            <span class="badge-pstatus badge-pstatus-refunded"><i class="fas fa-undo"></i> Refunded</span>
+                            <span class="badge-pstatus badge-pstatus-refunded">Refunded</span>
+                            {% elif t.status == 'Re-upload Required' %}
+                            <span class="badge-pstatus badge-pstatus-review">Re-upload Required</span>
                             {% else %}
-                            <span class="badge-pstatus badge-pstatus-unpaid"><i class="fas fa-hourglass-start"></i> {{ t.status }}</span>
+                            <span class="badge-pstatus badge-pstatus-unpaid">{{ t.status }}</span>
                             {% endif %}
                         </td>
 
@@ -355,16 +327,11 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 5. OUTSTANDING CUSTOMER BALANCES                            -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="section-headline" style="margin-top: 0.5rem;">
-        <h2><i class="fas fa-clock" style="color: #f59e0b;"></i> Outstanding Customer Balances</h2>
-        <p>Track bookings with remaining customer balances.</p>
-    </div>
-
     <div class="pay-card-container">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
-                <h3><i class="fas fa-exclamation-circle" style="color: #f59e0b;"></i> Unpaid Balances Action List</h3>
-                <p>Summary of active bookings with outstanding balances due.</p>
+                <h3>Outstanding Customer Balances</h3>
+                <p>Active bookings with a remaining balance.</p>
             </div>
             <div class="pay-toolbar">
                 <span style="font-size: 0.8rem; font-weight: 700; color: #92400e; background: #fef3c7; border: 1px solid #fde68a; padding: 4px 10px; border-radius: 6px;">
@@ -469,29 +436,10 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 6. PLATFORM COMMISSION SECTION                              -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="section-headline" style="margin-top: 0.5rem;">
-        <h2><i class="fas fa-percentage" style="color: #6366f1;"></i> Platform Commission</h2>
-        <p>Track the commission owed to OccaServe and manage commission settlements.</p>
+    <div class="section-headline">
+        <h2>Commission Overview</h2>
+        <p>Commission totals and settlement status.</p>
     </div>
-
-    <!-- Compact Warning Banner (Only when outstanding commission > 0) -->
-    {% if outstanding_commission and outstanding_commission > 0 %}
-    <div class="commission-alert-banner">
-        <div class="commission-alert-left">
-            <div class="commission-alert-icon">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div>
-                <div class="commission-alert-title">
-                    You have an outstanding platform commission: ₱{{ "{:,.2f}".format(outstanding_commission) }}
-                </div>
-                <div style="font-size: 0.82rem; color: #b45309; margin-top: 2px;">
-                    Open the pending billing statement below to submit its payment proof.
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- 4 Compact Commission KPI Cards -->
     <div class="pay-kpi-grid">
@@ -549,16 +497,11 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 7. COMMISSION INVOICES                                      -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="section-headline" style="margin-top: 0.5rem;">
-        <h2><i class="fas fa-file-invoice" style="color: #6366f1;"></i> Commission Invoices</h2>
-        <p>View your platform commission billing statements.</p>
-    </div>
-
     <div class="pay-card-container">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
-                <h3><i class="fas fa-file-invoice" style="color: #6366f1;"></i> Commission Invoices (Billing &amp; Statements)</h3>
-                <p>One billing statement per period. Submit payment proof from its pending statement.</p>
+                <h3>Commission Billing Statements</h3>
+                <p>Billing statements and settlement status.</p>
             </div>
         </div>
 

@@ -84,6 +84,11 @@ body {
     color: #243653;
 }
 
+.greeting-text h1.dashboard-greeting-title {
+    font-size: 1.55rem !important;
+    line-height: 1.2 !important;
+}
+
 .greeting-text p {
     margin: 0.35rem 0 0;
     font-size: 0.9rem;
@@ -164,6 +169,12 @@ body {
 @keyframes dropdownFadeIn {
     from { opacity: 0; transform: translateY(-3px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .greeting-text h1.dashboard-greeting-title {
+        font-size: 1.35rem !important;
+    }
 }
 
 /* =========================================================

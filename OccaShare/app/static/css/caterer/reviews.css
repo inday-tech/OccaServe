@@ -262,3 +262,218 @@
     .reviews-stats-grid { grid-template-columns: 1fr; }
     .page-header { text-align: center; }
 }
+
+/* Compact review dashboard */
+.container-premium:has(.reviews-stats-grid) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.container-premium:has(.reviews-stats-grid) > .page-header {
+    margin: 0 !important;
+    padding: 0;
+    gap: 0.45rem !important;
+    text-align: left;
+}
+
+.container-premium:has(.reviews-stats-grid) .header-title-group h1 {
+    margin-bottom: 0.2rem;
+    font-size: 1.45rem;
+    letter-spacing: -0.025em;
+}
+
+.container-premium:has(.reviews-stats-grid) .header-title-group p {
+    font-size: 0.85rem;
+}
+
+.reviews-stats-grid {
+    grid-template-columns: minmax(150px, 190px) minmax(135px, 165px) minmax(240px, 1fr);
+    align-items: start;
+    gap: 0.75rem;
+    margin: 0 0 0.15rem;
+}
+
+.reviews-stats-grid .stat-card-premium {
+    min-width: 0;
+    min-height: 0 !important;
+    padding: 0.85rem 0.95rem !important;
+    gap: 0.25rem;
+    justify-content: flex-start;
+    border-radius: 12px;
+}
+
+.reviews-stats-grid .stat-label-dashboard {
+    margin: 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+}
+
+.reviews-stats-grid .stat-value-dashboard {
+    font-size: 1.65rem;
+    line-height: 1.1;
+}
+
+.reviews-stats-grid .stat-hint-dashboard {
+    margin-top: 0.1rem;
+    font-size: 0.7rem;
+}
+
+.reviews-stats-grid .stat-main-row {
+    flex-wrap: wrap;
+    gap: 0.3rem 0.5rem;
+}
+
+.reviews-stats-grid .star-rating-display {
+    font-size: 0.78rem;
+}
+
+.reviews-stats-grid .rating-breakdown-card {
+    padding: 0.8rem 0.95rem;
+}
+
+.rating-breakdown-card .breakdown-list {
+    gap: 0.3rem;
+}
+
+.rating-breakdown-card .breakdown-item {
+    gap: 0.5rem;
+}
+
+.rating-breakdown-card .star-label {
+    min-width: 30px;
+    font-size: 0.72rem;
+}
+
+.rating-breakdown-card .count-label {
+    min-width: 16px;
+    font-size: 0.72rem;
+}
+
+.reviews-table-wrapper {
+    margin: 0;
+    border-radius: 12px;
+}
+
+.table-premium {
+    min-width: 760px;
+}
+
+.table-premium th {
+    padding: 0.7rem 0.9rem;
+    font-size: 0.68rem;
+}
+
+.table-premium td {
+    padding: 0.75rem 0.9rem;
+}
+
+.reviewer-avatar-sm {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+}
+
+.reviewer-meta {
+    gap: 0.55rem;
+}
+
+.reviewer-name {
+    margin: 0;
+    font-size: 0.8rem;
+}
+
+.review-comment-text-sm {
+    font-size: 0.78rem;
+}
+
+.verified-badge-sm {
+    padding: 3px 7px;
+    box-shadow: none;
+}
+
+.empty-state-card {
+    padding: 1.25rem 0.75rem;
+}
+
+.empty-state-card h3 {
+    margin: 0 0 0.25rem;
+}
+
+.empty-state-card p {
+    margin: 0;
+}
+
+.pagination-footer-pro {
+    margin: 0.15rem 0 0;
+    padding-top: 0.65rem;
+}
+
+.pagination-controls {
+    align-items: center;
+}
+
+.btn-pagination-pro {
+    width: auto;
+    min-width: 48px;
+    padding: 0 0.55rem;
+    white-space: nowrap;
+}
+
+.page-numbers-container {
+    display: flex;
+    gap: 0.35rem;
+}
+
+@media (max-width: 768px) {
+    .container-premium:has(.reviews-stats-grid) {
+        gap: 0.65rem;
+    }
+
+    .container-premium:has(.reviews-stats-grid) .reviews-stats-grid {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        gap: 0.55rem !important;
+    }
+
+    .container-premium:has(.reviews-stats-grid) > .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.35rem !important;
+    }
+
+    .reviews-stats-grid {
+        margin-bottom: 0;
+    }
+
+    .reviews-stats-grid .rating-breakdown-card {
+        grid-column: 1 / -1;
+    }
+
+    .reviews-table-wrapper {
+        margin-top: 0;
+    }
+
+    .pagination-footer-pro {
+        gap: 0.5rem;
+        padding-top: 0.5rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .reviews-stats-grid {
+        gap: 0.45rem;
+    }
+
+    .reviews-stats-grid .stat-card-premium {
+        padding: 0.7rem !important;
+    }
+
+    .reviews-stats-grid .stat-value-dashboard {
+        font-size: 1.45rem;
+    }
+
+    .pagination-footer-pro {
+        flex-wrap: wrap;
+    }
+}

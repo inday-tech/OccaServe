@@ -2429,6 +2429,550 @@ input[type="checkbox"]:checked + .toggle-switch-track .toggle-switch-thumb {
     transition: all 0.15s ease;
 }
 
+.settings-identity-card {
+    flex-wrap: wrap;
+}
+
+.settings-publish-control {
+    flex: 0 0 100%;
+    min-width: 0;
+    padding-top: 0.8rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.settings-publish-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.55rem;
+    color: #64748b;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.settings-listing-badge {
+    flex-shrink: 0;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 0.68rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.settings-listing-badge.is-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.settings-listing-badge.is-live i {
+    font-size: 0.45rem;
+}
+
+.settings-publish-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    width: 100%;
+    min-height: 38px;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 8px;
+    background: var(--primary-color);
+    box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.18);
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.76rem;
+    font-weight: 800;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.settings-publish-button.is-published {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    box-shadow: none;
+    color: #475569;
+}
+
+.payment-method-picker {
+    max-width: 560px;
+    margin-bottom: 1rem;
+}
+
+.payment-method-picker > label {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: #334155;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.payment-method-picker .field-hint {
+    margin-top: 0.45rem;
+}
+
+.payment-box-compact[hidden] {
+    display: none !important;
+}
+
+.delivery-settings-header {
+    margin-bottom: 1.25rem;
+}
+
+.delivery-settings-header h3,
+.delivery-zones-heading h4 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.delivery-settings-header p,
+.delivery-zones-heading p {
+    margin: 0.35rem 0 0;
+    color: #64748b;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.delivery-settings-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.delivery-settings-fields .form-group {
+    min-width: 0;
+    margin: 0;
+}
+
+.delivery-settings-save-state {
+    grid-column: 1 / -1;
+    min-height: 1.2rem;
+    margin-top: -0.55rem;
+    color: #64748b;
+    font-size: 0.75rem;
+}
+
+.delivery-settings-save-state.is-error {
+    color: #b91c1c;
+}
+
+.delivery-settings-save-state.is-saved {
+    color: #15803d;
+}
+
+.delivery-zones-container {
+    min-width: 0;
+    margin-top: 1.35rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.delivery-zones-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+}
+
+.delivery-zone-add-button {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0.55rem 0.85rem;
+    border-radius: 7px;
+    font-size: 0.8rem;
+}
+
+.delivery-zones-table-scroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+    -webkit-overflow-scrolling: touch;
+}
+
+.delivery-zones-table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.delivery-zones-table th,
+.delivery-zones-table td {
+    padding: 0.8rem 0.9rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+    font-size: 0.8rem;
+    vertical-align: middle;
+}
+
+.delivery-zones-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.delivery-zones-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.delivery-zones-table .zone-fee-amount {
+    color: #0f172a;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.delivery-zones-table .delivery-zone-actions {
+    min-width: 150px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.delivery-zone-actions button {
+    min-height: 34px;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+}
+
+.delivery-zone-actions button + button {
+    margin-left: 0.3rem;
+}
+
+.delivery-modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.delivery-fee-validation {
+    display: block;
+    min-height: 1rem;
+    margin-top: 0.35rem;
+    color: #64748b;
+    font-size: 0.72rem;
+    line-height: 1.4;
+}
+
+.delivery-fee-validation.is-error {
+    color: #b91c1c;
+}
+
+#section-delivery-settings [name="base_delivery_fee"][aria-invalid="true"],
+#zoneFeeInput[aria-invalid="true"],
+#editZoneFeeInput[aria-invalid="true"] {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1);
+}
+
+#btnSaveZone:disabled,
+#btnSaveEditZone:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.delivery-zones-empty-row td {
+    padding: 1.25rem;
+    color: #64748b;
+    text-align: center;
+}
+
+.delivery-zones-scroll-hint {
+    display: none;
+    margin: 0.5rem 0 0;
+    color: #64748b;
+    font-size: 0.72rem;
+}
+
+@media (max-width: 900px) {
+    .settings-identity-card {
+        align-items: center;
+    }
+
+    .settings-publish-control {
+        padding-top: 0.75rem;
+    }
+
+    .settings-nav,
+    .snav-group,
+    .snav-group-items {
+        align-items: stretch;
+        text-align: left;
+    }
+
+    .snav-group-header,
+    .snav-item {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 44px !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        white-space: normal !important;
+    }
+
+    .snav-group-label {
+        flex: 1 1 auto;
+        justify-content: flex-start !important;
+        text-align: left !important;
+    }
+
+    .snav-group-items > .snav-item {
+        align-self: stretch;
+        padding-left: 1.5rem;
+    }
+
+    .settings-nav > .snav-standalone {
+        justify-content: flex-start !important;
+        text-align: left !important;
+    }
+
+    .snav-group-header .snav-chevron {
+        margin-left: auto;
+    }
+}
+
+@media (max-width: 600px) {
+    .settings-layout,
+    .settings-content,
+    .profile-main-content,
+    .profile-edit-form {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .settings-content,
+    .profile-main-content,
+    .profile-edit-form {
+        overflow-x: clip;
+    }
+
+    #section-delivery-settings {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        padding: 1rem !important;
+        overflow-x: clip;
+    }
+
+    #section-delivery-settings > *,
+    .delivery-settings-fields,
+    .delivery-zones-container,
+    .delivery-zones-heading,
+    .delivery-zones-table-scroll {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .delivery-settings-header {
+        margin-bottom: 1rem;
+    }
+
+    .delivery-settings-header h3 {
+        font-size: 1.05rem !important;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .delivery-settings-header p,
+    .delivery-zones-heading p {
+        font-size: 0.78rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .settings-identity-card {
+        gap: 0.75rem;
+        padding: 0.9rem;
+    }
+
+    .settings-identity-logo {
+        width: 48px;
+        height: 48px;
+    }
+
+    .settings-publish-button {
+        min-height: 42px;
+    }
+
+    .payment-box-compact {
+        padding: 1rem;
+    }
+
+    .delivery-settings-fields {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.85rem;
+    }
+
+    .delivery-settings-fields .form-group input,
+    .delivery-settings-fields .form-group select {
+        display: block;
+        width: 100% !important;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .delivery-settings-fields .field-hint {
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+
+    .delivery-settings-save-state {
+        grid-column: auto;
+        margin-top: -0.45rem;
+        overflow-wrap: anywhere;
+    }
+
+    .delivery-zones-heading {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.7rem;
+    }
+
+    .delivery-zones-heading > div {
+        min-width: 0;
+    }
+
+    .delivery-zones-heading h4 {
+        font-size: 0.98rem;
+        line-height: 1.35;
+    }
+
+    .delivery-zone-add-button {
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 44px !important;
+        justify-content: center !important;
+        white-space: normal !important;
+    }
+
+    .delivery-zones-table-scroll {
+        display: block;
+        position: relative;
+        border-radius: 8px;
+        scrollbar-width: auto;
+        scroll-snap-type: x proximity;
+        touch-action: pan-x pan-y;
+        overscroll-behavior-x: contain;
+    }
+
+    .delivery-zones-table {
+        width: max-content;
+        min-width: 650px;
+        max-width: none;
+    }
+
+    .delivery-zones-table th,
+    .delivery-zones-table td {
+        padding: 0.7rem;
+        font-size: 0.76rem;
+    }
+
+    .delivery-zones-scroll-hint {
+        display: block;
+    }
+
+    .delivery-zone-actions {
+        min-width: 140px;
+    }
+
+    .delivery-zone-actions button {
+        min-height: 40px !important;
+        height: auto !important;
+        min-width: 54px !important;
+        white-space: normal !important;
+    }
+
+    .delivery-modal-close {
+        width: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        height: 36px !important;
+        padding: 0 !important;
+        white-space: nowrap !important;
+        flex: 0 0 36px;
+    }
+
+    #addZoneModal .occ-modal-box,
+    #editZoneModal .occ-modal-box {
+        width: 100%;
+        max-width: 100%;
+        max-height: min(85vh, 720px);
+    }
+
+    #addZoneModal .occ-modal-body,
+    #editZoneModal .occ-modal-body {
+        gap: 0.85rem;
+        padding: 1rem;
+        overflow-x: hidden;
+    }
+
+    #addZoneModal .occ-modal-body .form-group,
+    #editZoneModal .occ-modal-body .form-group {
+        width: 100%;
+        min-width: 0;
+    }
+
+    #addZoneModal .occ-modal-body select,
+    #addZoneModal .occ-modal-body input,
+    #editZoneModal .occ-modal-body select,
+    #editZoneModal .occ-modal-body input {
+        width: 100% !important;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    #addZoneModal .occ-modal-footer,
+    #editZoneModal .occ-modal-footer {
+        gap: 0.6rem;
+        padding: 0.85rem 1rem;
+    }
+
+    #addZoneModal .occ-modal-footer button,
+    #editZoneModal .occ-modal-footer button {
+        flex: 1 1 0;
+        min-width: 0 !important;
+        height: auto !important;
+        min-height: 44px !important;
+        white-space: normal !important;
+    }
+}
+
 .btn-quick-pill:hover {
     border-color: var(--primary-color, #f97316);
     color: var(--primary-color, #f97316);
@@ -2457,5 +3001,3 @@ input[type="checkbox"]:checked + .toggle-switch-track .toggle-switch-thumb {
 .blocked-date-item-row:hover {
     background-color: #fafafa;
 }
-
-

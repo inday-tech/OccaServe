@@ -45,6 +45,19 @@ async def manage_portfolio_page(
         models.Booking.caterer_id == profile.id,
         models.Booking.status.in_(["Completed", "Delivered", "completed", "delivered"])
     ).all()
+
+    standard_event_types = {
+        "Wedding", "Debut", "Birthday", "Corporate", "Anniversary",
+        "Baptism", "Private Party", "Other"
+    }
+    custom_event_types = [
+        event_type for (event_type,) in db.query(models.Portfolio.event_type)
+        .filter(models.Portfolio.caterer_id == profile.id)
+        .distinct()
+        .order_by(models.Portfolio.event_type)
+        .all()
+        if event_type and event_type not in standard_event_types
+    ]
     
     return templates.TemplateResponse(
         "caterer/portfolio.html", 
@@ -53,7 +66,8 @@ async def manage_portfolio_page(
             "user": user, 
             "profile": profile, 
             "portfolios": portfolios,
-            "completed_bookings": completed_bookings
+            "completed_bookings": completed_bookings,
+            "custom_event_types": custom_event_types
         }
     )
 
@@ -75,6 +89,14 @@ async def create_portfolio(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
+
+    title = title.strip()
+    event_type = event_type.strip()
+    description = description.strip()
+    if not title or not event_type or not description:
+        raise HTTPException(status_code=422, detail="Title, event type, and description are required.")
+    if not cover_photo or not cover_photo.filename:
+        raise HTTPException(status_code=422, detail="A cover photo is required.")
     
     # 1. Create Portfolio Entry
     new_portfolio = models.Portfolio(
@@ -137,6 +159,12 @@ async def update_portfolio(
     user: models.User = Depends(caterer_only)
 ):
     profile = user.caterer_profile
+    title = title.strip()
+    event_type = event_type.strip()
+    description = description.strip()
+    if not title or not event_type or not description:
+        raise HTTPException(status_code=422, detail="Title, event type, and description are required.")
+
     portfolio = db.query(models.Portfolio).filter(
         models.Portfolio.id == portfolio_id,
         models.Portfolio.caterer_id == profile.id

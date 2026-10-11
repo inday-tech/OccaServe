@@ -93,37 +93,28 @@ window.gm_authFailure = function() {
                         <i class="fas fa-info-circle"></i> {{ profile.verification_status or 'Unverified' }}
                     {% endif %}
                 </div>
+            </div>
 
-                <!-- Marketplace Listing Status & Publish Toggle -->
-                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; width: 100%;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                        <span style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Marketplace:</span>
-                        {% if profile.status == 'Published' %}
-                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 800; color: #16a34a; background: #dcfce7; padding: 2px 8px; border-radius: 99px;">
-                                <i class="fas fa-circle" style="font-size: 0.5rem;"></i> LIVE
-                            </span>
-                        {% else %}
-                            <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 800; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 99px;">
-                                <i class="fas fa-circle" style="font-size: 0.5rem; color: #94a3b8;"></i> {{ profile.status or 'Draft' }}
-                            </span>
-                        {% endif %}
-                    </div>
-                    <button type="button" 
-                        onclick="window.toggleCatererPublish && window.toggleCatererPublish(this)"
-                        id="btnSidebarPublish"
-                        style="width: 100%; padding: 6px 10px; font-size: 0.75rem; font-weight: 800; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
-                        {% if profile.status == 'Published' %}
-                            background: #f8fafc; border: 1px solid #cbd5e1; color: #475569;
-                        {% else %}
-                            background: var(--primary-color); border: 1px solid var(--primary-color); color: #ffffff; box-shadow: 0 2px 6px rgba(var(--primary-color-rgb), 0.25);
-                        {% endif %}">
-                        {% if profile.status == 'Published' %}
-                            <i class="fas fa-eye-slash"></i> Unpublish Listing
-                        {% else %}
-                            <i class="fas fa-rocket"></i> Publish to Customers
-                        {% endif %}
-                    </button>
+            <!-- Marketplace Listing Status & Publish Toggle -->
+            <div class="settings-publish-control">
+                <div class="settings-publish-status">
+                    <span>Marketplace listing</span>
+                    {% if profile.status == 'Published' %}
+                        <span class="settings-listing-badge is-live"><i class="fas fa-circle"></i> LIVE</span>
+                    {% else %}
+                        <span class="settings-listing-badge">{{ profile.status or 'Draft' }}</span>
+                    {% endif %}
                 </div>
+                <button type="button"
+                    onclick="window.toggleCatererPublish && window.toggleCatererPublish(this)"
+                    id="btnSidebarPublish"
+                    class="settings-publish-button {% if profile.status == 'Published' %}is-published{% endif %}">
+                    {% if profile.status == 'Published' %}
+                        <i class="fas fa-eye-slash"></i> Unpublish Listing
+                    {% else %}
+                        <i class="fas fa-rocket"></i> Publish to Customers
+                    {% endif %}
+                </button>
             </div>
         </div>
 
@@ -169,17 +160,17 @@ window.gm_authFailure = function() {
                 </div>
             </div>
             
-            <!-- Group: Deliveries & Travel -->
+            <!-- Group: Delivery -->
             <div class="snav-group" id="grp-delivery">
                 <button type="button" class="snav-group-header" onclick="toggleNavGroup('grp-delivery')">
                     <span class="snav-group-label">
-                        <i class="fas fa-truck-fast"></i> Deliveries & Travel
+                        Delivery Zones & Fees
                     </span>
                     <i class="fas fa-chevron-down snav-chevron"></i>
                 </button>
                 <div class="snav-group-items" style="display:none;">
                     <button type="button" class="snav-item" data-section="delivery-settings">
-                        <i class="fas fa-map-location-dot"></i> Delivery Zones & Fees
+                    Delivery Zones & Fees
                     </button>
                 </div>
             </div>
@@ -570,103 +561,127 @@ window.gm_authFailure = function() {
             </div>
             <!-- End Section: Account -->
 
-            <!-- Section: Delivery & Travel Settings -->
+            <!-- Section: Delivery Settings -->
             <div class="settings-section" id="section-delivery-settings">
-                <div class="section-header-compact">
-                    <h3><i class="fas fa-map-location-dot"></i> Delivery Zones & Travel Fees</h3>
-                    <p>Set up your delivery charges based on customer location. These settings apply to new checkout sessions.</p>
+                <div class="delivery-settings-header">
+                    <h3>Delivery Zones &amp; Fees</h3>
+                    <p>Set delivery fees by service area and choose how to handle locations outside those areas. Changes are saved automatically and apply to new booking estimates.</p>
                 </div>
 
                 <!-- Global Settings -->
-                <div class="form-row-two-col" style="margin-top: 1.5rem;">
+                <div class="delivery-settings-fields">
                     <div class="form-group">
-                        <label><i class="fas fa-truck"></i> Fallback Base Fee (₱)</label>
-                        <input type="text" inputmode="numeric" name="base_delivery_fee" class="js-format-comma" value="{{ profile.base_delivery_fee or 150.0 }}">
-                        <span class="field-hint">The default delivery fee applied if the customer's location has no specific zone configured.</span>
+                        <label>Fallback delivery fee (₱)</label>
+                        <input type="text" inputmode="decimal" maxlength="10" name="base_delivery_fee" class="js-format-comma" value="{{ profile.base_delivery_fee or 150.0 }}" aria-describedby="baseDeliveryFeeValidation">
+                        <span class="delivery-fee-validation" id="baseDeliveryFeeValidation" aria-live="polite">Enter up to 6 whole-number digits and 2 decimal places (maximum ₱999,999.99).</span>
+                        <span class="field-hint">Used when a customer’s location has no matching delivery zone and you choose to use the fallback fee.</span>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-ban"></i> Out of Coverage Policy</label>
+                        <label>Bookings outside your delivery zones</label>
                         <select name="out_of_coverage_action" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                            <option value="reject" {% if profile.out_of_coverage_action == 'reject' %}selected{% endif %}>Block Booking (Outside Service Area)</option>
-                            <option value="base_fee" {% if profile.out_of_coverage_action == 'base_fee' %}selected{% endif %}>Allow Booking using Fallback Base Fee</option>
-                            <option value="manual" {% if profile.out_of_coverage_action == 'manual' %}selected{% endif %}>Allow Booking but flag as TBD (Manual Quotation)</option>
+                            <option value="reject" {% if profile.out_of_coverage_action == 'reject' %}selected{% endif %}>Do not accept the booking</option>
+                            <option value="base_fee" {% if profile.out_of_coverage_action == 'base_fee' %}selected{% endif %}>Accept using the fallback delivery fee</option>
+                            <option value="manual" {% if profile.out_of_coverage_action == 'manual' %}selected{% endif %}>Accept and confirm the delivery fee with the customer</option>
                         </select>
-                        <span class="field-hint">What happens when a customer orders outside your Configured Delivery Zones below?</span>
+                        <span class="field-hint">Choose what customers see when their location does not match a zone below.</span>
                     </div>
+                    <div class="delivery-settings-save-state" id="deliverySettingsSaveState" role="status" aria-live="polite">Changes save automatically.</div>
                 </div>
 
                 <!-- Delivery Zones List -->
-                <div class="delivery-zones-container" style="margin-top: 2rem; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h4 style="margin:0; font-size: 1.1rem;"><i class="fas fa-layer-group"></i> Configured Delivery Zones</h4>
-                        <button type="button" class="btn-primary" onclick="openAddZoneModal()" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px;">
-                            <i class="fas fa-plus"></i> Add Zone
+                <div class="delivery-zones-container">
+                    <div class="delivery-zones-heading">
+                        <div>
+                            <h4>Service areas</h4>
+                            <p>Customers in these locations will see the fee set for that zone.</p>
+                        </div>
+                        <button type="button" class="btn-primary delivery-zone-add-button" onclick="openAddZoneModal()">
+                            Add service area
                         </button>
                     </div>
 
-                    <div class="table-responsive">
-                        <table class="table-modern" style="width: 100%; text-align: left; border-collapse: collapse;">
+                    <div class="delivery-zones-table-scroll" role="region" aria-label="Configured delivery service areas" tabindex="0">
+                        <table class="table-modern delivery-zones-table">
                             <thead>
-                                <tr style="border-bottom: 2px solid #e2e8f0;">
-                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem;">Province</th>
-                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem;">Municipality/City</th>
-                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem;">Fee Type</th>
-                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem;">Amount</th>
-                                    <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-align: right;">Action</th>
+                                <tr>
+                                    <th scope="col">Province</th>
+                                    <th scope="col">City / Municipality</th>
+                                    <th scope="col">Delivery fee</th>
+                                    <th scope="col">Amount</th>
+                                    <th scope="col">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="deliveryZonesTableBody">
                                 {% if profile.delivery_zones %}
                                     {% for zone in profile.delivery_zones %}
-                                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                                        <td style="padding: 1rem; color: #334155; vertical-align: middle;">{{ zone.province }}</td>
-                                        <td style="padding: 1rem; color: #334155; vertical-align: middle;">{{ zone.city_municipality }}</td>
-                                        <td style="padding: 1rem; vertical-align: middle;">
+                                    <tr data-zone-id="{{ zone.id }}" data-province="{{ zone.province }}" data-city="{{ zone.city_municipality }}" data-manual="{{ 'true' if zone.is_manual_quote else 'false' }}" data-fee="{{ zone.fee }}">
+                                        <td>{{ zone.province }}</td>
+                                        <td>{{ zone.city_municipality }}</td>
+                                        <td class="zone-fee-type">
                                             {% if zone.is_manual_quote %}
-                                                <span class="badge badge-warning" style="background: #fef08a; color: #854d0e; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Manual Quote</span>
+                                                Confirm with customer
                                             {% else %}
-                                                <span class="badge badge-success" style="background: #bbf7d0; color: #166534; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;">Fixed Fee</span>
+                                                Fixed fee
                                             {% endif %}
                                         </td>
-                                        <td style="padding: 1rem; font-weight: 600; color: #0f172a; vertical-align: middle;">
+                                        <td class="zone-fee-amount">
                                             {% if zone.is_manual_quote %}
-                                                <span style="color: #64748b; font-style: italic;">TBD</span>
+                                                To be confirmed
                                             {% else %}
                                                 ₱{{ "{:,.2f}".format(zone.fee) }}
                                             {% endif %}
                                         </td>
-                                        <td style="padding: 1rem; text-align: right; vertical-align: middle;">
-                                            <button type="button" class="btn-secondary-pro" onclick="openEditZoneModal({{ zone.id }}, '{{ zone.province|replace("'", "\\'") }}', '{{ zone.city_municipality|replace("'", "\\'") }}', '{{ 'true' if zone.is_manual_quote else 'false' }}', {{ zone.fee }})" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px; margin-right: 4px; background: transparent; border: 1px solid #cbd5e1; color: #475569;">
-                                                <i class="fas fa-edit"></i>
+                                        <td class="delivery-zone-actions">
+                                            <button type="button" class="btn-secondary-pro" onclick="openEditZoneModalFromRow(this)">
+                                                Edit
                                             </button>
-                                            <button type="button" class="btn-danger-outline" onclick="deleteDeliveryZone({{ zone.id }})" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 6px;">
-                                                <i class="fas fa-trash"></i>
+                                            <button type="button" class="btn-danger-outline" onclick="deleteDeliveryZone({{ zone.id }})">
+                                                Delete
                                             </button>
                                         </td>
                                     </tr>
                                     {% endfor %}
                                 {% else %}
-                                    <tr>
-                                        <td colspan="5" style="text-align: center; color: #64748b; padding: 2rem;">
-                                            No delivery zones configured yet. Add your service areas above.
+                                    <tr class="delivery-zones-empty-row">
+                                        <td colspan="5">
+                                            No service areas yet. Add one to set a location-specific delivery fee.
                                         </td>
                                     </tr>
                                 {% endif %}
                             </tbody>
                         </table>
                     </div>
+                    <p class="delivery-zones-scroll-hint">On mobile, swipe the table sideways to view all columns.</p>
                 </div>
             </div>
-            <!-- End Section: Delivery & Travel Settings -->
+            <!-- End Section: Delivery Settings -->
 
             <!-- Section: Payment Methods -->
             <div class="settings-section" id="section-payment-methods">
 
+                    {% set active_payment_method = '' %}
+                    {% if profile.gcash_number or profile.gcash_qr_url %}{% set active_payment_method = 'gcash' %}
+                    {% elif profile.maya_number or profile.maya_qr_url %}{% set active_payment_method = 'maya' %}
+                    {% elif profile.bank_name or profile.bank_account_number or profile.bank_qr_url %}{% set active_payment_method = 'bank' %}
+                    {% elif profile.card_bank or profile.card_holder_name or profile.card_number %}{% set active_payment_method = 'card' %}
+                    {% elif profile.cash_instructions %}{% set active_payment_method = 'cash' %}
+                    {% endif %}
+                    <div class="payment-method-picker">
+                        <label for="paymentMethodEditor">Payment method</label>
+                        <select id="paymentMethodEditor" class="filter-select-pro" aria-controls="paymentMethodCards">
+                            <option value="" {% if not active_payment_method %}selected{% endif %}>Choose a payment method</option>
+                            <option value="gcash" {% if active_payment_method == 'gcash' %}selected{% endif %}>GCash</option>
+                            <option value="maya" {% if active_payment_method == 'maya' %}selected{% endif %}>Maya</option>
+                            <option value="bank" {% if active_payment_method == 'bank' %}selected{% endif %}>Bank Transfer</option>
+                            <option value="card" {% if active_payment_method == 'card' %}selected{% endif %}>Debit / Credit Card</option>
+                            <option value="cash" {% if active_payment_method == 'cash' %}selected{% endif %}>Cash / Manual</option>
+                        </select>
+                        <p class="field-hint">Choose a method to edit its details. Other saved payment methods stay available to customers.</p>
+                    </div>
 
-
-                    <div class="payment-methods-tabs-grid">
+                    <div class="payment-methods-tabs-grid" id="paymentMethodCards">
                         <!-- GCash -->
-                        <div class="payment-box-compact">
+                        <div class="payment-box-compact" data-payment-method="gcash" {% if active_payment_method != 'gcash' %}hidden{% endif %}>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
                                 <h4 style="margin: 0;"><i class="fas fa-mobile-alt"></i> GCash</h4>
                                 <span id="gcash_qrStatusBadge" class="{% if profile.gcash_qr_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
@@ -709,7 +724,7 @@ window.gm_authFailure = function() {
                         </div>
 
                         <!-- Maya -->
-                        <div class="payment-box-compact">
+                        <div class="payment-box-compact" data-payment-method="maya" {% if active_payment_method != 'maya' %}hidden{% endif %}>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
                                 <h4 style="margin: 0;"><i class="fas fa-wallet"></i> Maya</h4>
                                 <span id="maya_qrStatusBadge" class="{% if profile.maya_qr_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
@@ -752,7 +767,7 @@ window.gm_authFailure = function() {
                         </div>
 
                         <!-- Bank Transfer -->
-                        <div class="payment-box-compact full-width">
+                        <div class="payment-box-compact full-width" data-payment-method="bank" {% if active_payment_method != 'bank' %}hidden{% endif %}>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
                                 <h4 style="margin: 0;"><i class="fas fa-university"></i> Bank Transfer</h4>
                                 <span id="bank_qrStatusBadge" class="{% if profile.bank_qr_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
@@ -811,7 +826,7 @@ window.gm_authFailure = function() {
                         </div>
 
                         <!-- Debit Card -->
-                        <div class="payment-box-compact full-width">
+                        <div class="payment-box-compact full-width" data-payment-method="card" {% if active_payment_method != 'card' %}hidden{% endif %}>
                             <h4><i class="fas fa-credit-card"></i> Debit Card</h4>
                             <div class="form-row-three-col">
                                 <div class="form-group">
@@ -833,7 +848,7 @@ window.gm_authFailure = function() {
                         </div>
 
                         <!-- Cash -->
-                        <div class="payment-box-compact full-width">
+                        <div class="payment-box-compact full-width" data-payment-method="cash" {% if active_payment_method != 'cash' %}hidden{% endif %}>
                             <h4><i class="fas fa-hand-holding-usd"></i> Cash / Manual</h4>
                             <div class="form-group">
                                 <label>Instructions</label>
@@ -2796,10 +2811,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         <form id="addZoneForm" onsubmit="submitAddZone(event)">
             <div class="occ-modal-header">
                 <div>
-                    <h3 class="occ-modal-title">Add Delivery Zone</h3>
+                    <h3 class="occ-modal-title">Add Service Area</h3>
                 </div>
-                <button type="button" class="occ-modal-close" onclick="closeAddZoneModal()">
-                    <i class="fas fa-times"></i>
+                <button type="button" class="occ-modal-close delivery-modal-close" onclick="closeAddZoneModal()" aria-label="Close">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             
@@ -2819,19 +2834,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="form-group">
                     <label>Fee Type</label>
                     <select id="zoneFeeType" name="is_manual_quote" class="form-control" onchange="toggleZoneFeeInput()" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                        <option value="false">Fixed Delivery Fee</option>
-                        <option value="true">Manual Quotation (TBD)</option>
+                        <option value="" disabled selected>Select fee type</option>
+                        <option value="false">Set a fixed delivery fee</option>
+                        <option value="true">Confirm the fee with the customer</option>
                     </select>
                 </div>
                 <div class="form-group" id="zoneFeeGroup">
-                    <label>Fixed Delivery Fee (₱)</label>
-                    <input type="text" inputmode="numeric" id="zoneFeeInput" name="fee" class="form-control js-format-comma" value="0" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                    <label>Delivery fee (₱)</label>
+                    <input type="text" inputmode="decimal" maxlength="10" id="zoneFeeInput" name="fee" class="form-control" required aria-describedby="zoneFeeValidation" autocomplete="off" placeholder="e.g. 150.00" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                    <span class="delivery-fee-validation" id="zoneFeeValidation" aria-live="polite">Enter up to 6 whole-number digits and 2 decimal places (maximum ₱999,999.99).</span>
                 </div>
             </div>
             
             <div class="occ-modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeAddZoneModal()">Cancel</button>
-                <button type="submit" class="btn-primary" id="btnSaveZone">Add Zone</button>
+                <button type="submit" class="btn-primary" id="btnSaveZone" disabled>Add Zone</button>
             </div>
         </form>
     </div>
@@ -2846,8 +2863,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div>
                     <h3 class="occ-modal-title">Edit Delivery Fee</h3>
                 </div>
-                <button type="button" class="occ-modal-close" onclick="closeEditZoneModal()">
-                    <i class="fas fa-times"></i>
+                <button type="button" class="occ-modal-close delivery-modal-close" onclick="closeEditZoneModal()" aria-label="Close">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
             
@@ -2859,19 +2876,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="form-group">
                     <label>Fee Type</label>
                     <select id="editZoneFeeType" class="form-control" onchange="toggleEditZoneFeeInput()" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                        <option value="false">Fixed Delivery Fee</option>
-                        <option value="true">Manual Quotation (TBD)</option>
+                        <option value="false">Set a fixed delivery fee</option>
+                        <option value="true">Confirm the fee with the customer</option>
                     </select>
                 </div>
                 <div class="form-group" id="editZoneFeeGroup">
-                    <label>Fixed Delivery Fee (₱)</label>
-                    <input type="text" inputmode="numeric" id="editZoneFeeInput" class="form-control js-format-comma" value="0" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                    <label>Delivery fee (₱)</label>
+                    <input type="text" inputmode="decimal" maxlength="10" id="editZoneFeeInput" class="form-control" required aria-describedby="editZoneFeeValidation" autocomplete="off" placeholder="e.g. 150.00" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
+                    <span class="delivery-fee-validation" id="editZoneFeeValidation" aria-live="polite">Enter up to 6 whole-number digits and 2 decimal places (maximum ₱999,999.99).</span>
                 </div>
             </div>
             
             <div class="occ-modal-footer">
                 <button type="button" class="btn-secondary" onclick="closeEditZoneModal()">Cancel</button>
-                <button type="submit" class="btn-primary" id="btnSaveEditZone">Update Fee</button>
+                <button type="submit" class="btn-primary" id="btnSaveEditZone" disabled>Update Fee</button>
             </div>
         </form>
     </div>
@@ -2879,6 +2897,170 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 <script>
     // Delivery Zone Modal Logic
+    const deliveryZonesTableBody = document.getElementById('deliveryZonesTableBody');
+    const deliverySettingsSaveState = document.getElementById('deliverySettingsSaveState');
+    const baseDeliveryFeeInput = document.querySelector('[name="base_delivery_fee"]');
+    const outOfCoverageSelect = document.querySelector('[name="out_of_coverage_action"]');
+    let deliverySettingsSaveTimer;
+    const zoneProvinceSelect = document.getElementById('zoneProvince');
+    const zoneCitySelect = document.getElementById('zoneCity');
+    const zoneFeeTypeSelect = document.getElementById('zoneFeeType');
+    const zoneFeeInput = document.getElementById('zoneFeeInput');
+    const addZoneButton = document.getElementById('btnSaveZone');
+    const editZoneFeeTypeSelect = document.getElementById('editZoneFeeType');
+    const editZoneFeeInput = document.getElementById('editZoneFeeInput');
+    const editZoneButton = document.getElementById('btnSaveEditZone');
+    const maxDeliveryFee = 999999.99;
+    const deliveryFeeFormatMessage = 'Enter up to 6 whole-number digits and 2 decimal places (maximum ₱999,999.99).';
+
+    function parseDeliveryFee(value) {
+        const amount = String(value || '').trim();
+        if (!/^(?:\d{1,6}|\d{1,3},\d{3})(?:\.\d{1,2})?$/.test(amount)) return null;
+        const parsed = Number(amount.replace(/,/g, ''));
+        return Number.isFinite(parsed) && parsed <= maxDeliveryFee ? parsed : null;
+    }
+
+    function updateFeeValidation(input, feedback, isRequired) {
+        const fee = parseDeliveryFee(input.value);
+        const valid = !isRequired || fee !== null;
+        input.setAttribute('aria-invalid', String(!valid));
+        feedback.classList.toggle('is-error', !valid);
+        feedback.textContent = valid
+            ? (isRequired ? 'Valid delivery fee.' : 'A fee is not required for customer-confirmed quotes.')
+            : deliveryFeeFormatMessage;
+        return valid;
+    }
+
+    function updateBaseDeliveryFeeValidation() {
+        const valid = parseDeliveryFee(baseDeliveryFeeInput.value) !== null;
+        const feedback = document.getElementById('baseDeliveryFeeValidation');
+        baseDeliveryFeeInput.setAttribute('aria-invalid', String(!valid));
+        feedback.classList.toggle('is-error', !valid);
+        feedback.textContent = valid
+            ? 'Maximum ₱999,999.99; up to 2 decimal places.'
+            : deliveryFeeFormatMessage;
+        return valid;
+    }
+
+    function updateAddZoneValidation() {
+        const manualQuote = zoneFeeTypeSelect.value === 'true';
+        const feeTypeValid = zoneFeeTypeSelect.value === 'false' || manualQuote;
+        const feeValid = updateFeeValidation(zoneFeeInput, document.getElementById('zoneFeeValidation'), zoneFeeTypeSelect.value === 'false');
+        const locationValid = !!zoneProvinceSelect.value && !!zoneCitySelect.value && !zoneCitySelect.disabled;
+        addZoneButton.disabled = !(locationValid && feeTypeValid && feeValid);
+    }
+
+    function updateEditZoneValidation() {
+        const manualQuote = editZoneFeeTypeSelect.value === 'true';
+        const feeValid = updateFeeValidation(editZoneFeeInput, document.getElementById('editZoneFeeValidation'), !manualQuote);
+        editZoneButton.disabled = !feeValid;
+    }
+
+    function setDeliverySettingsSaveState(message, state = '') {
+        if (!deliverySettingsSaveState) return;
+        deliverySettingsSaveState.textContent = message;
+        deliverySettingsSaveState.classList.toggle('is-error', state === 'error');
+        deliverySettingsSaveState.classList.toggle('is-saved', state === 'saved');
+    }
+
+    async function saveDeliverySettings() {
+        const fee = parseDeliveryFee(baseDeliveryFeeInput.value);
+        if (fee === null) {
+            updateBaseDeliveryFeeValidation();
+            setDeliverySettingsSaveState(deliveryFeeFormatMessage, 'error');
+            return;
+        }
+
+        setDeliverySettingsSaveState('Saving…');
+        try {
+            const response = await fetch('/caterer/api/delivery-settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    base_delivery_fee: fee,
+                    out_of_coverage_action: outOfCoverageSelect.value
+                })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail || 'Could not save delivery settings.');
+            setDeliverySettingsSaveState('Saved. New booking estimates will use these settings.', 'saved');
+        } catch (error) {
+            setDeliverySettingsSaveState(error.message || 'Could not save delivery settings. Try again.', 'error');
+        }
+    }
+
+    function queueDeliverySettingsSave() {
+        window.clearTimeout(deliverySettingsSaveTimer);
+        deliverySettingsSaveTimer = window.setTimeout(saveDeliverySettings, 500);
+    }
+
+    baseDeliveryFeeInput?.addEventListener('input', queueDeliverySettingsSave);
+    baseDeliveryFeeInput?.addEventListener('input', updateBaseDeliveryFeeValidation);
+    baseDeliveryFeeInput?.addEventListener('blur', saveDeliverySettings);
+    outOfCoverageSelect?.addEventListener('change', saveDeliverySettings);
+    updateBaseDeliveryFeeValidation();
+
+    function formatDeliveryFee(fee) {
+        return `₱${Number(fee || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function createDeliveryZoneRow(zone) {
+        const row = document.createElement('tr');
+        row.dataset.zoneId = zone.id;
+        row.dataset.province = zone.province;
+        row.dataset.city = zone.city_municipality;
+        row.dataset.manual = String(zone.is_manual_quote);
+        row.dataset.fee = String(zone.fee || 0);
+
+        [zone.province, zone.city_municipality].forEach(value => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+
+        const feeTypeCell = document.createElement('td');
+        feeTypeCell.className = 'zone-fee-type';
+        feeTypeCell.textContent = zone.is_manual_quote ? 'Confirm with customer' : 'Fixed fee';
+        row.appendChild(feeTypeCell);
+
+        const amountCell = document.createElement('td');
+        amountCell.className = 'zone-fee-amount';
+        amountCell.textContent = zone.is_manual_quote ? 'To be confirmed' : formatDeliveryFee(zone.fee);
+        row.appendChild(amountCell);
+
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'delivery-zone-actions';
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'btn-secondary-pro';
+        editButton.textContent = 'Edit';
+        editButton.addEventListener('click', () => openEditZoneModalFromRow(editButton));
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'btn-danger-outline';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', () => deleteDeliveryZone(zone.id));
+        actionsCell.append(editButton, deleteButton);
+        row.appendChild(actionsCell);
+        return row;
+    }
+
+    function addDeliveryZoneRow(zone) {
+        deliveryZonesTableBody.querySelector('.delivery-zones-empty-row')?.remove();
+        deliveryZonesTableBody.appendChild(createDeliveryZoneRow(zone));
+    }
+
+    function showEmptyDeliveryZones() {
+        if (deliveryZonesTableBody.querySelector('tr[data-zone-id]')) return;
+        const row = document.createElement('tr');
+        row.className = 'delivery-zones-empty-row';
+        const cell = document.createElement('td');
+        cell.colSpan = 5;
+        cell.textContent = 'No service areas yet. Add one to set a location-specific delivery fee.';
+        row.appendChild(cell);
+        deliveryZonesTableBody.appendChild(row);
+    }
+
     function openAddZoneModal() {
         document.getElementById('addZoneModal').classList.add('active');
         loadZoneProvinces();
@@ -2887,14 +3069,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     function closeAddZoneModal() {
         document.getElementById('addZoneModal').classList.remove('active');
         document.getElementById('addZoneForm').reset();
-        document.getElementById('zoneCity').disabled = true;
-        document.getElementById('zoneCity').innerHTML = '<option value="" disabled selected>Select Municipality</option>';
+        zoneProvinceSelect.innerHTML = '<option value="" disabled selected>Select Province</option>';
+        zoneCitySelect.disabled = true;
+        zoneCitySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
         document.getElementById('zoneFeeGroup').style.display = 'block';
+        zoneFeeInput.required = true;
+        zoneFeeTypeSelect.value = '';
+        zoneFeeTypeSelect.selectedIndex = 0;
+        zoneFeeInput.removeAttribute('aria-invalid');
+        document.getElementById('zoneFeeValidation').classList.remove('is-error');
+        addZoneButton.disabled = true;
     }
 
     function toggleZoneFeeInput() {
-        const isManual = document.getElementById('zoneFeeType').value === 'true';
+        const isManual = zoneFeeTypeSelect.value === 'true';
         document.getElementById('zoneFeeGroup').style.display = isManual ? 'none' : 'block';
+        zoneFeeInput.required = !isManual;
+        updateAddZoneValidation();
     }
 
     // Edit Zone Logic
@@ -2904,17 +3095,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('editZoneFeeType').value = isManual;
         document.getElementById('editZoneFeeInput').value = fee;
         toggleEditZoneFeeInput();
+        updateEditZoneValidation();
         
         document.getElementById('editZoneModal').classList.add('active');
     }
 
+    function openEditZoneModalFromRow(button) {
+        const row = button.closest('tr[data-zone-id]');
+        if (!row) return;
+        openEditZoneModal(row.dataset.zoneId, row.dataset.province, row.dataset.city, row.dataset.manual, row.dataset.fee);
+    }
+
     function closeEditZoneModal() {
         document.getElementById('editZoneModal').classList.remove('active');
+        editZoneButton.disabled = true;
     }
 
     function toggleEditZoneFeeInput() {
-        const isManual = document.getElementById('editZoneFeeType').value === 'true';
+        const isManual = editZoneFeeTypeSelect.value === 'true';
         document.getElementById('editZoneFeeGroup').style.display = isManual ? 'none' : 'block';
+        editZoneFeeInput.required = !isManual;
+        updateEditZoneValidation();
     }
 
     async function loadZoneProvinces() {
@@ -2925,6 +3126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Lock to Laguna only
             provSelect.innerHTML = '<option value="043400000" selected>Laguna</option>';
             provSelect.dispatchEvent(new Event('change'));
+            updateAddZoneValidation();
         } catch (e) {
             console.error('Failed to load provinces:', e);
         }
@@ -2935,6 +3137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const citySelect = document.getElementById('zoneCity');
         citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
         citySelect.disabled = true;
+        updateAddZoneValidation();
 
         if (!code) return;
 
@@ -2956,14 +3159,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 citySelect.appendChild(opt);
             });
             citySelect.disabled = false;
+            updateAddZoneValidation();
         } catch (e) {
             console.error('Failed to load cities:', e);
+            updateAddZoneValidation();
         }
     });
+    zoneCitySelect.addEventListener('change', updateAddZoneValidation);
+    zoneFeeInput.addEventListener('input', updateAddZoneValidation);
+    zoneFeeTypeSelect.addEventListener('change', updateAddZoneValidation);
+    editZoneFeeInput.addEventListener('input', updateEditZoneValidation);
+    editZoneFeeTypeSelect.addEventListener('change', updateEditZoneValidation);
 
     async function submitAddZone(e) {
         e.preventDefault();
         const btn = document.getElementById('btnSaveZone');
+        updateAddZoneValidation();
+        if (btn.disabled) return;
         const origText = btn.innerHTML;
         btn.innerHTML = 'Saving...';
         btn.disabled = true;
@@ -2975,7 +3187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             province: provSelect.options[provSelect.selectedIndex].text,
             city_municipality: citySelect.options[citySelect.selectedIndex].text,
             is_manual_quote: document.getElementById('zoneFeeType').value === 'true',
-            fee: parseFloat((document.getElementById('zoneFeeInput').value || '0').replace(/,/g, '')) || 0
+            fee: zoneFeeTypeSelect.value === 'true' ? 0 : parseDeliveryFee(zoneFeeInput.value)
         };
 
         try {
@@ -2986,25 +3198,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             if (res.ok) {
-                Swal.fire('Success', 'Delivery zone added!', 'success').then(() => {
-                    location.reload();
-                });
+                const result = await res.json();
+                addDeliveryZoneRow(result.zone);
+                closeAddZoneModal();
+                Swal.fire('Saved', 'Service area added.', 'success');
             } else {
                 const err = await res.json();
                 Swal.fire('Error', err.detail || 'Failed to add zone', 'error');
                 btn.innerHTML = origText;
-                btn.disabled = false;
+                updateAddZoneValidation();
             }
         } catch (error) {
             Swal.fire('Error', 'Network error', 'error');
             btn.innerHTML = origText;
-            btn.disabled = false;
+            updateAddZoneValidation();
         }
     }
 
     async function submitEditZone(e) {
         e.preventDefault();
         const btn = document.getElementById('btnSaveEditZone');
+        updateEditZoneValidation();
+        if (btn.disabled) return;
         const origText = btn.innerHTML;
         btn.innerHTML = 'Saving...';
         btn.disabled = true;
@@ -3012,7 +3227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const id = document.getElementById('editZoneId').value;
         const data = {
             is_manual_quote: document.getElementById('editZoneFeeType').value === 'true',
-            fee: parseFloat((document.getElementById('editZoneFeeInput').value || '0').replace(/,/g, '')) || 0
+            fee: editZoneFeeTypeSelect.value === 'true' ? 0 : parseDeliveryFee(editZoneFeeInput.value)
         };
 
         try {
@@ -3023,19 +3238,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
 
             if (res.ok) {
-                Swal.fire('Success', 'Delivery fee updated!', 'success').then(() => {
-                    location.reload();
-                });
+                const result = await res.json();
+                const row = deliveryZonesTableBody.querySelector(`tr[data-zone-id="${id}"]`);
+                if (row) {
+                    const updatedRow = createDeliveryZoneRow(result.zone);
+                    row.replaceWith(updatedRow);
+                }
+                closeEditZoneModal();
+                Swal.fire('Saved', 'Delivery fee updated.', 'success');
             } else {
                 const err = await res.json();
                 Swal.fire('Error', err.detail || 'Failed to update zone', 'error');
                 btn.innerHTML = origText;
-                btn.disabled = false;
+                updateEditZoneValidation();
             }
         } catch (error) {
             Swal.fire('Error', 'Network error', 'error');
             btn.innerHTML = origText;
-            btn.disabled = false;
+            updateEditZoneValidation();
         }
     }
 
@@ -3045,7 +3265,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const res = await fetch(`/caterer/api/delivery-zones/${id}`, { method: 'DELETE' });
             if (res.ok) {
-                location.reload();
+                deliveryZonesTableBody.querySelector(`tr[data-zone-id="${id}"]`)?.remove();
+                showEmptyDeliveryZones();
             } else {
                 Swal.fire('Error', 'Failed to delete zone', 'error');
             }

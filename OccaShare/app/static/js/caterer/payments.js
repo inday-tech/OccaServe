@@ -149,31 +149,41 @@ document.addEventListener('DOMContentLoaded', function() {
             const textContent = row.textContent.toLowerCase();
             const dataStatus = (row.getAttribute('data-status') || '').toLowerCase();
             const dataType = (row.getAttribute('data-type') || '').toLowerCase();
-            const badges = Array.from(row.querySelectorAll('.badge-pstatus, .badge-ptype'))
-                .map(b => b.textContent.toLowerCase().trim()).join(' ');
-            const combinedStatus = `${dataStatus} ${badges}`;
+            const paymentStatus = dataStatus || (row.querySelector('.badge-pstatus')?.textContent || '').toLowerCase().trim();
             
             const matchesSearch = !query || textContent.includes(query);
 
             let matchesType = (pType === 'all');
             if (!matchesType) {
-                matchesType = dataType.includes(pType) || badges.includes(pType);
+                if (pType === 'downpayment') {
+                    matchesType = dataType.includes('downpayment') || dataType.includes('deposit');
+                } else if (pType === 'balance') {
+                    matchesType = dataType.includes('balance') || dataType.includes('installment') || dataType.includes('final');
+                } else if (pType === 'partial') {
+                    matchesType = dataType.includes('partial');
+                } else if (pType === 'full') {
+                    matchesType = dataType.includes('full');
+                } else if (pType === 'refund') {
+                    matchesType = dataType.includes('refund');
+                }
             }
 
             let matchesStatus = (status === 'all');
             if (!matchesStatus) {
                 if (status === 'paid') {
-                    matchesStatus = combinedStatus.includes('fully paid') || (combinedStatus.includes('paid') && !combinedStatus.includes('partially'));
+                    matchesStatus = paymentStatus === 'fully paid';
                 } else if (status === 'partial') {
-                    matchesStatus = combinedStatus.includes('partially paid') || combinedStatus.includes('partial');
+                    matchesStatus = paymentStatus === 'partially paid';
                 } else if (status === 'verify') {
-                    matchesStatus = combinedStatus.includes('pending verification') || combinedStatus.includes('pending verify') || combinedStatus.includes('review');
+                    matchesStatus = paymentStatus.includes('review')
+                        || paymentStatus.includes('cash confirmation')
+                        || paymentStatus.includes('re-upload');
                 } else if (status === 'unpaid') {
-                    matchesStatus = combinedStatus.includes('unpaid') || combinedStatus.includes('pending');
+                    matchesStatus = paymentStatus === 'unpaid' || paymentStatus === 'no payment';
                 } else if (status === 'refunded') {
-                    matchesStatus = combinedStatus.includes('refund');
+                    matchesStatus = paymentStatus === 'refunded';
                 } else {
-                    matchesStatus = combinedStatus.includes(status);
+                    matchesStatus = paymentStatus === status;
                 }
             }
             
