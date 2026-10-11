@@ -39,6 +39,7 @@
     flex-direction: column;
     gap: 1.75rem;
     max-width: 1400px;
+    min-width: 0;
     margin: 0 auto;
     padding: 0 0.5rem 3.5rem;
     font-family: var(--pay-font-sans);
@@ -418,6 +419,8 @@
     border-radius: var(--pay-radius-md);
     box-shadow: var(--pay-shadow-sm);
     overflow: hidden;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .pay-card-header {
@@ -492,6 +495,12 @@
     padding: 0 1.4rem 1.25rem 1.4rem;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    scrollbar-width: thin;
 }
 
 .premium-table {

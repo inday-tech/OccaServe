@@ -134,6 +134,42 @@ document.addEventListener('DOMContentLoaded', function() {
         return row.getAttribute('data-status') || '';
     }
 
+    function getPaymentAmount(row) {
+        const rawAmount = row.getAttribute('data-current');
+        if (rawAmount !== null && rawAmount.trim() !== '') {
+            const amount = Number(rawAmount);
+            if (Number.isFinite(amount)) return amount;
+        }
+
+        const amountText = row.querySelector('.amount-pro')?.textContent || '';
+        return Number(amountText.replace(/[^\d.-]/g, '')) || 0;
+    }
+
+    function formatPeso(amount) {
+        return `₱${amount.toLocaleString('en-PH', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        })}`;
+    }
+
+    function getExportPaymentRows() {
+        return filteredRows.map(row => ({
+            paymentId: row.querySelector('.pay-id')?.textContent.trim()
+                || row.getAttribute('data-payment-id')
+                || '',
+            bookingRef: row.querySelector('.pay-booking-ref')?.textContent.trim()
+                || `BK-${row.getAttribute('data-booking-id')}`,
+            customerRef: row.getAttribute('data-customer-ref')
+                || row.getAttribute('data-customer')
+                || '',
+            paymentType: row.getAttribute('data-type') || 'Payment',
+            amount: getPaymentAmount(row),
+            method: row.getAttribute('data-method') || 'Direct',
+            date: row.getAttribute('data-date') || '',
+            status: getRowStatusText(row)
+        }));
+    }
+
     // Filter Payments
     window.filterPayments = function() {
         const queryEl = document.getElementById('paymentSearch');
@@ -205,6 +241,16 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const doc = new jsPDFLib({ orientation: 'landscape' });
             const primaryColor = '#ff7b54';
+            const pesoCanvas = document.createElement('canvas');
+            pesoCanvas.width = 64;
+            pesoCanvas.height = 64;
+            const pesoContext = pesoCanvas.getContext('2d');
+            if (!pesoContext) throw new Error('Unable to render the peso symbol.');
+            pesoContext.fillStyle = '#0f172a';
+            pesoContext.font = 'bold 52px Arial, sans-serif';
+            pesoContext.textBaseline = 'alphabetic';
+            pesoContext.fillText('₱', 2, 52);
+            const pesoSymbolImage = pesoCanvas.toDataURL('image/png');
 
             doc.setFontSize(20);
             doc.setTextColor(primaryColor);
@@ -214,58 +260,83 @@ document.addEventListener('DOMContentLoaded', function() {
             doc.setTextColor(100);
             doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
 
-            let totalPrice = 0;
-            const tableData = filteredRows.map(row => {
-                const amtEl = row.querySelector('.amount-pro');
-                const amtText = amtEl ? amtEl.textContent.replace('₱', '').replace(/,/g, '').trim() : '0';
-                const amt = parseFloat(amtText) || 0;
-                totalPrice += amt;
-                
-                const customerRef = row.getAttribute('data-customer-ref') || row.getAttribute('data-customer') || '';
-                const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
-                const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
-                const ptype = row.getAttribute('data-type') || 'Payment';
-                const method = row.getAttribute('data-method') || 'Direct';
-                const dateStr = row.getAttribute('data-date') || '';
-                
-                return [
-                    payId,
-                    bkId,
-                    customerRef,
-                    ptype.toUpperCase(),
-                    `₱${amt.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 
-                    method,
-                    dateStr,
-                    getRowStatusText(row).toUpperCase()
-                ];
-            });
+            const exportRows = getExportPaymentRows();
+            const totalPrice = exportRows.reduce((total, payment) => total + payment.amount, 0);
+            const tableData = exportRows.map(payment => [
+                payment.paymentId,
+                payment.bookingRef,
+                payment.customerRef,
+                payment.paymentType.toUpperCase(),
+                payment.amount.toLocaleString('en-PH', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }),
+                payment.method,
+                payment.date,
+                payment.status.toUpperCase()
+            ]);
 
             doc.autoTable({
                 startY: 36,
                 head: [['PAYMENT ID', 'BOOKING', 'CUSTOMER REFERENCE', 'TYPE', 'AMOUNT', 'METHOD', 'DATE', 'STATUS']],
                 body: tableData,
+                foot: [[
+                    { content: 'TOTAL COLLECTED', colSpan: 4, styles: { halign: 'right' } },
+                    totalPrice.toLocaleString('en-PH', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }),
+                    '',
+                    '',
+                    ''
+                ]],
+                showFoot: 'lastPage',
                 theme: 'grid',
                 headStyles: { 
                     fillColor: [15, 23, 42], 
                     textColor: 255, 
-                    fontSize: 9, 
+                    fontSize: 8.5,
                     fontStyle: 'bold'
                 },
                 styles: { 
-                    fontSize: 8.5, 
-                    cellPadding: 4, 
+                    fontSize: 8,
+                    cellPadding: 3,
                     lineColor: [226, 232, 240], 
-                    lineWidth: 0.1 
+                    lineWidth: 0.1,
+                    overflow: 'linebreak',
+                    valign: 'middle'
                 },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
-                margin: { left: 14, right: 14 }
+                footStyles: {
+                    fillColor: [255, 255, 255],
+                    textColor: [15, 23, 42],
+                    fontStyle: 'bold',
+                    lineWidth: 0.2
+                },
+                columnStyles: {
+                    0: { cellWidth: 24 },
+                    1: { cellWidth: 23 },
+                    2: { cellWidth: 34 },
+                    3: { cellWidth: 25 },
+                    4: { cellWidth: 28, halign: 'right' },
+                    5: { cellWidth: 24 },
+                    6: { cellWidth: 25 },
+                    7: { cellWidth: 64 }
+                },
+                margin: { left: 14, right: 14 },
+                didDrawCell: data => {
+                    if ((data.section !== 'body' && data.section !== 'foot') || data.column.index !== 4) return;
+                    const cellText = Array.isArray(data.cell.text)
+                        ? data.cell.text.join('')
+                        : String(data.cell.text || '');
+                    const amountWidth = doc.getTextWidth(cellText);
+                    const symbolSize = 3.6;
+                    const rightPadding = 3;
+                    const symbolX = data.cell.x + data.cell.width - rightPadding - amountWidth - symbolSize - 1;
+                    const symbolY = data.cell.y + (data.cell.height - symbolSize) / 2;
+                    doc.addImage(pesoSymbolImage, 'PNG', symbolX, symbolY, symbolSize, symbolSize);
+                }
             });
-
-            const finalY = doc.lastAutoTable.finalY + 10;
-            doc.setFontSize(11);
-            doc.setTextColor(15, 23, 42);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`TOTAL COLLECTED: ₱${totalPrice.toLocaleString(undefined, {minimumFractionDigits: 2})}`, doc.internal.pageSize.width - 14, finalY, { align: 'right' });
 
             doc.save(`Payments_Report_${Date.now()}.pdf`);
         } catch (e) {
@@ -281,34 +352,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         try {
-            let totalAmt = 0;
-            const dataRows = filteredRows.map(row => {
-                const amtEl = row.querySelector('.amount-pro');
-                const amtText = amtEl ? amtEl.textContent.replace('₱', '').replace(/,/g, '').trim() : '0';
-                const amt = parseFloat(amtText) || 0;
-                totalAmt += amt;
-
-                const customerRef = row.getAttribute('data-customer-ref') || row.getAttribute('data-customer') || '';
-                const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
-                const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
-                const ptype = row.getAttribute('data-type') || 'Payment';
-                const method = row.getAttribute('data-method') || 'Direct';
-                const dateStr = row.getAttribute('data-date') || '';
-
-                return [
-                    payId,
-                    bkId,
-                    customerRef,
-                    ptype,
-                    amt,
-                    method,
-                    dateStr,
-                    getRowStatusText(row)
-                ];
-            });
+            const exportRows = getExportPaymentRows();
+            const totalAmt = exportRows.reduce((total, payment) => total + payment.amount, 0);
+            const dataRows = exportRows.map(payment => [
+                payment.paymentId,
+                payment.bookingRef,
+                payment.customerRef,
+                payment.paymentType,
+                payment.amount,
+                payment.method,
+                payment.date,
+                payment.status
+            ]);
 
             const data = [
-                ['Payment ID', 'Booking Ref', 'Customer Reference', 'Payment Type', 'Amount (PHP)', 'Method', 'Date', 'Status'],
+                ['Payment ID', 'Booking Ref', 'Customer Reference', 'Payment Type', 'Amount', 'Method', 'Date', 'Status'],
                 ...dataRows,
                 ['', '', '', 'TOTAL COLLECTED', totalAmt, '', '', '']
             ];
@@ -318,6 +376,12 @@ document.addEventListener('DOMContentLoaded', function() {
             ws['!cols'] = [
                 {wch: 15}, {wch: 15}, {wch: 24}, {wch: 18}, {wch: 16}, {wch: 15}, {wch: 18}, {wch: 20}
             ];
+            for (let rowIndex = 2; rowIndex <= dataRows.length + 2; rowIndex++) {
+                const amountCell = ws[`E${rowIndex}`];
+                if (amountCell && typeof amountCell.v === 'number') {
+                    amountCell.z = '"₱"#,##0.00';
+                }
+            }
 
             XLSX.utils.book_append_sheet(wb, ws, 'Payments');
             XLSX.writeFile(wb, `Payments_Report_${Date.now()}.xlsx`);
@@ -330,31 +394,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Export CSV
     window.exportToCSV = function() {
         try {
-            let csv = 'Payment ID,Booking Ref,Customer Reference,Payment Type,Amount,Method,Date,Status\n';
-            filteredRows.forEach(row => {
-                const amtEl = row.querySelector('.amount-pro');
-                const amtText = amtEl ? amtEl.textContent.replace('₱', '').replace(/,/g, '').trim() : '0';
-                const customerRef = row.getAttribute('data-customer-ref') || row.getAttribute('data-customer') || '';
-                const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
-                const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
-                const ptype = row.getAttribute('data-type') || 'Payment';
-                const method = row.getAttribute('data-method') || 'Direct';
-                const dateStr = row.getAttribute('data-date') || '';
+            const csvRows = [
+                ['Payment ID', 'Booking Ref', 'Customer Reference', 'Payment Type', 'Amount', 'Method', 'Date', 'Status'],
+                ...getExportPaymentRows().map(payment => [
+                    payment.paymentId,
+                    payment.bookingRef,
+                    payment.customerRef,
+                    payment.paymentType,
+                    formatPeso(payment.amount),
+                    payment.method,
+                    payment.date,
+                    payment.status
+                ])
+            ];
+            const csv = csvRows
+                .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
+                .join('\r\n');
 
-                const data = [
-                    payId,
-                    bkId,
-                    customerRef,
-                    ptype,
-                    amtText,
-                    method,
-                    dateStr,
-                    getRowStatusText(row)
-                ];
-                csv += data.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',') + '\n';
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob(['\ufeff', csv], { type: 'text/csv;charset=utf-8;' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
