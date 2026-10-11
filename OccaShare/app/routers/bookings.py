@@ -11,6 +11,7 @@ from ..services.verification import verification_service
 from ..services.email import EmailService
 import shutil
 import os
+import re
 import uuid
 import base64
 import json
@@ -37,6 +38,14 @@ PROOF_UPLOAD_DIR = "app/static/uploads/payment_proofs"
 os.makedirs(PROOF_UPLOAD_DIR, exist_ok=True)
 
 # --- Helper Functions ---
+
+def split_service_notes(notes: Optional[str]) -> list[str]:
+    items = []
+    for item in re.split(r"[\n,]+", str(notes or "")):
+        clean_item = re.sub(r"^\s*[•*-]\s*", "", item).strip()
+        if clean_item:
+            items.append(clean_item)
+    return items
 
 def get_current_user_from_session(request: Request, db: Session):
     token = request.cookies.get("access_token")
@@ -105,7 +114,8 @@ def get_package_grouped_inclusions(package) -> dict:
         grouped[bucket].append({
             'name': name_clean,
             'quantity': (str(quantity) if quantity is not None else "").strip(),
-            'description': (str(description) if description is not None else "").strip()
+            'description': (str(description) if description is not None else "").strip(),
+            'notes': split_service_notes(description) if bucket == 'services' else []
         })
 
     # 1. Parse package.inclusions JSON / dict / list
@@ -1338,6 +1348,10 @@ async def customize_package_page(
         "available_menu_items": available_menu_items,
         "categorized_available_menu": categorized_available_menu,
         "available_services": available_services,
+        "available_service_notes": {
+            service.id: split_service_notes(service.description)
+            for service in available_services
+        },
         "available_equipment": available_equipment,
         "menu_groups": menu_groups,
         "optional_services": optional_services,

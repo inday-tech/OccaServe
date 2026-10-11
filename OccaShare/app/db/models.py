@@ -138,6 +138,7 @@ class CatererProfile(Base):
     # NEW: Refined Registration Fields
     min_pax = Column(Integer, default=0)
     starting_price = Column(Float, default=0.0)
+    default_excess_guest_price = Column(Float, nullable=True)
     sample_menu_url = Column(String, nullable=True)
     permit_url = Column(String, nullable=True)
     dti_url = Column(String, nullable=True)
@@ -1798,5 +1799,4 @@ def auto_generate_invoice_ref(mapper, connection, target):
                 target.invoice_ref = f"{code}-INV-{next_seq:03d}"
     except Exception:
         pass
-
 

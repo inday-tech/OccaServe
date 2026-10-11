@@ -9,9 +9,12 @@ from sqlalchemy.orm import Session
 from ..db import database, models, schemas
 from ..core import security as auth
 import json
+import math
 import os
+import re
 import shutil
 import uuid
+from decimal import Decimal, InvalidOperation
 from ..services.realtime import manager
 from ..services.payment_verification import payment_verification_service
 from ..services.notification import NotificationService
@@ -27,6 +30,7 @@ router = APIRouter(prefix="/caterer", tags=["caterer"])
 
 UPLOAD_DIR = "app/static/uploads/caterer"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+MAX_SERVICE_FEE = Decimal("99999999.99")
 
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
@@ -37,6 +41,29 @@ def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75, 
     from app.services.storage import upload_file_to_cloudinary
     url = upload_file_to_cloudinary(content_bytes, folder=folder)
     return url or ""
+
+
+def parse_service_fee(raw_value) -> float:
+    amount_text = str(raw_value or "").replace(",", "").strip()
+    if not re.fullmatch(r"\d+(?:\.\d{1,2})?", amount_text):
+        raise HTTPException(status_code=400, detail="Enter a service fee with up to 8 whole-number digits and 2 decimal places.")
+    try:
+        amount = Decimal(amount_text)
+    except InvalidOperation as exc:
+        raise HTTPException(status_code=400, detail="Enter a valid service fee.") from exc
+    if amount <= 0 or amount > MAX_SERVICE_FEE:
+        raise HTTPException(status_code=400, detail="Service fee must be between 0.01 and 99,999,999.99.")
+    return float(amount)
+
+
+def calculate_fixed_package_total(starting_price, base_pax: int) -> Optional[Decimal]:
+    try:
+        per_guest_price = Decimal(str(starting_price or 0))
+    except InvalidOperation:
+        return None
+    if not per_guest_price.is_finite() or per_guest_price <= 0 or base_pax <= 0:
+        return None
+    return (per_guest_price * base_pax).quantize(Decimal("0.01"))
 
 
 def sanitize_booking_id(val) -> int:
@@ -5217,6 +5244,24 @@ async def manage_services(
         "user": user,
         "items": items,
         "packages": active_packages,
+        "caterer_min_pax": profile.min_pax or 20,
+        "caterer_starting_price": profile.starting_price or 0,
+        "caterer_default_excess_guest_price": (
+            profile.default_excess_guest_price
+            if profile.default_excess_guest_price is not None
+            else profile.starting_price or 0
+        ),
+        "caterer_service_duration": (profile.scheduling_rules or {}).get("package_rules", {}).get("min_event_duration", 4),
+        "existing_package_categories": sorted({
+            (package.service_type or "").strip()
+            for package in profile.packages
+            if (package.service_type or "").strip()
+            and (package.service_type or "").strip().lower() not in {
+                "wedding", "birthday", "debut", "christening", "corporate",
+                "funeral", "anniversary", "kiddie party", "fiesta", "general",
+                "customizable"
+            }
+        }, key=str.casefold),
         "active_page": "services"
     })
 
@@ -5519,7 +5564,7 @@ async def add_service_wizard(
         name=form.get("name"),
         category=form.get("category"),
         description=form.get("description"),
-        selling_price=float(form.get("price", 0)),
+        selling_price=parse_service_fee(form.get("price")),
         unit_type=form.get("unit_type", "Per Event"),
         status=service_status_val,
         usage_type="both",
@@ -5833,8 +5878,9 @@ async def add_package(
     name: str = Form(...),
     description: str = Form(...),
     service_type: str = Form("General"),
+    other_category: Optional[str] = Form(None),
     pricing_mode: str = Form("per_pax"),
-    service_duration: int = Form(8),
+    service_duration: Optional[int] = Form(None),
     price_per_head: float = Form(0.0),
     cost_price: float = Form(0.0),
     cost_breakdown: Optional[str] = Form(None),
@@ -5869,34 +5915,61 @@ async def add_package(
     user: models.User = Depends(caterer_only)
 ):
     errors = []
-    
-    # Inject Global Settings for Operational Costs and Reservation
+    name = name.strip()
+    profile = user.caterer_profile
+    global_min_pax = max(1, profile.min_pax or 20)
+    package_rules = (profile.scheduling_rules or {}).get("package_rules", {})
+    if service_duration is None:
+        service_duration = package_rules.get("min_event_duration", 4)
+    if pricing_mode == "customizable" and price_per_head == 0 and profile.starting_price:
+        price_per_head = profile.starting_price
+
+    # Operational costs follow business settings; packages do not collect a reservation fee.
     labor_cost = user.caterer_profile.default_labor_cost or 0.0
     utility_cost = user.caterer_profile.default_utility_cost or 0.0
     transportation_cost = user.caterer_profile.default_transport_cost or 0.0
-    reservation_fee_type = user.caterer_profile.default_reservation_type or "fixed"
-    reservation_fee_value = user.caterer_profile.default_reservation_value or 0.0
-    
+    reservation_fee_type = "fixed"
+    reservation_fee_value = 0.0
+
     if not name.strip():
         errors.append("Package name is required.")
 
     if pricing_mode == 'customizable':
         price_per_head = float(price_per_head or 0.0)
-        reservation_fee_value = float(reservation_fee_value or 0.0)
+        if price_per_head <= 0:
+            errors.append("Starting price must be greater than 0.")
         service_type = "Customizable"
     else:
-        if price_per_head <= 0:
+        if service_type == "Other":
+            service_type = (other_category or "").strip()
+            if not service_type:
+                errors.append("A specific category name is required.")
+        else:
+            service_type = service_type.strip()
+        if not service_type:
+            errors.append("Package category is required.")
+        if len(service_type) > 60:
+            errors.append("Category name must be 60 characters or fewer.")
+        if pricing_mode == "fixed":
+            min_guests = base_pax
+            fixed_total = calculate_fixed_package_total(profile.starting_price, base_pax)
+            if fixed_total is None:
+                errors.append("Set a starting price above ₱0 in Business Settings and enter a valid base guest count.")
+            else:
+                price_per_head = float(fixed_total)
+        elif price_per_head <= 0:
             errors.append("Price per head must be greater than 0.")
-        if reservation_fee_value <= 0 and price_per_head > 0:
-            pass # Optional warning: errors.append("Reservation fee must be greater than 0.")
-        elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
-            max_allowed_fee = (price_per_head * min_guests) * 0.5
-            if reservation_fee_value > max_allowed_fee:
-                errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
 
-    global_min_pax = user.caterer_profile.min_pax or 20
-    if min_guests < global_min_pax:
+    if pricing_mode != "fixed" and min_guests < global_min_pax:
         errors.append(f"Minimum guests cannot be lower than your global setting of {global_min_pax}.")
+    if pricing_mode == "fixed" and base_pax < global_min_pax:
+        errors.append(f"Package guest count cannot be lower than your global setting of {global_min_pax}.")
+    if not 1 <= service_duration <= 24:
+        errors.append("Service duration must be between 1 and 24 hours.")
+    if not math.isfinite(additional_guest_price) or not 0 <= additional_guest_price <= 99_999_999.99:
+        errors.append("Extra guest rate must be between ₱0 and ₱99,999,999.99.")
+    elif round(additional_guest_price, 2) != additional_guest_price:
+        errors.append("Extra guest rate can have no more than 2 decimal places.")
         
     global_lead_time = user.caterer_profile.booking_lead_time or 7
     if booking_lead_time < global_lead_time:
@@ -5906,7 +5979,8 @@ async def add_package(
     # Smart Validation: Detect existing package with the same name
     existing_pkg = db.query(models.CateringPackage).filter(
         models.CateringPackage.caterer_id == user.caterer_profile.id,
-        models.CateringPackage.name.ilike(name.strip())
+        func.lower(models.CateringPackage.name) == name.lower(),
+        models.CateringPackage.status != "archived"
     ).first()
     
     if existing_pkg:
@@ -5917,6 +5991,9 @@ async def add_package(
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
         return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
+
+    if pricing_mode == "fixed":
+        profile.default_excess_guest_price = additional_guest_price
 
     import base64
     image_url = None
@@ -6266,6 +6343,7 @@ async def update_profile(
     booking_lead_time: Optional[str] = Form("7"),
     min_pax: Optional[str] = Form("50"),
     starting_price: Optional[str] = Form("0.0"),
+    default_excess_guest_price: Optional[str] = Form(None),
     terms_and_conditions: Optional[str] = Form(None),
     general_terms: Optional[str] = Form(None),
     payment_terms: List[str] = Form(default=["100"]),
@@ -6570,6 +6648,13 @@ async def update_profile(
     profile.equipment_turnover_hours = _to_int(package_turnover_time, 6)
     profile.min_pax = _to_int(min_pax, 50)
     profile.starting_price = _to_float(starting_price, 0.0)
+    if default_excess_guest_price is not None:
+        profile.default_excess_guest_price = _to_float(
+            default_excess_guest_price.replace(",", ""),
+            profile.default_excess_guest_price
+            if profile.default_excess_guest_price is not None
+            else profile.starting_price,
+        )
     profile.terms_and_conditions = terms_and_conditions
     profile.general_terms = general_terms
     profile.default_labor_cost = _to_float(default_labor_cost, 0.0)
@@ -6820,8 +6905,9 @@ async def update_package(
     name: str = Form(...),
     description: str = Form(...),
     service_type: str = Form("General"),
+    other_category: Optional[str] = Form(None),
     pricing_mode: str = Form("per_pax"),
-    service_duration: int = Form(8),
+    service_duration: Optional[int] = Form(None),
     price_per_head: float = Form(0.0),
     cost_price: float = Form(0.0),
     cost_breakdown: Optional[str] = Form(None),
@@ -6863,34 +6949,61 @@ async def update_package(
         raise HTTPException(status_code=404, detail="Package not found")
         
     errors = []
-    
-    # Inject Global Settings for Operational Costs and Reservation
+    name = name.strip()
+    profile = user.caterer_profile
+    global_min_pax = max(1, profile.min_pax or 20)
+    package_rules = (profile.scheduling_rules or {}).get("package_rules", {})
+    if service_duration is None:
+        service_duration = package_rules.get("min_event_duration", 4)
+    if pricing_mode == "customizable" and price_per_head == 0 and profile.starting_price:
+        price_per_head = profile.starting_price
+
+    # Operational costs follow business settings; packages do not collect a reservation fee.
     labor_cost = user.caterer_profile.default_labor_cost or 0.0
     utility_cost = user.caterer_profile.default_utility_cost or 0.0
     transportation_cost = user.caterer_profile.default_transport_cost or 0.0
-    reservation_fee_type = user.caterer_profile.default_reservation_type or "fixed"
-    reservation_fee_value = user.caterer_profile.default_reservation_value or 0.0
-    
+    reservation_fee_type = "fixed"
+    reservation_fee_value = 0.0
+
     if not name.strip():
         errors.append("Package name is required.")
 
     if pricing_mode == 'customizable':
         price_per_head = float(price_per_head or 0.0)
-        reservation_fee_value = float(reservation_fee_value or 0.0)
+        if price_per_head <= 0:
+            errors.append("Starting price must be greater than 0.")
         service_type = "Customizable"
     else:
-        if price_per_head <= 0:
+        if service_type == "Other":
+            service_type = (other_category or "").strip()
+            if not service_type:
+                errors.append("A specific category name is required.")
+        else:
+            service_type = service_type.strip()
+        if not service_type:
+            errors.append("Package category is required.")
+        if len(service_type) > 60:
+            errors.append("Category name must be 60 characters or fewer.")
+        if pricing_mode == "fixed":
+            min_guests = base_pax
+            fixed_total = calculate_fixed_package_total(profile.starting_price, base_pax)
+            if fixed_total is None:
+                errors.append("Set a starting price above ₱0 in Business Settings and enter a valid base guest count.")
+            else:
+                price_per_head = float(fixed_total)
+        elif price_per_head <= 0:
             errors.append("Price per head must be greater than 0.")
-        if reservation_fee_value <= 0 and price_per_head > 0:
-            pass
-        elif reservation_fee_type == 'fixed' and price_per_head > 0 and min_guests > 0 and pricing_mode == 'per_pax':
-            max_allowed_fee = (price_per_head * min_guests) * 0.5
-            if reservation_fee_value > max_allowed_fee:
-                errors.append(f"Reservation fee cannot exceed 50% of the total base package cost.")
 
-    global_min_pax = user.caterer_profile.min_pax or 20
-    if min_guests < global_min_pax:
+    if pricing_mode != "fixed" and min_guests < global_min_pax:
         errors.append(f"Minimum guests cannot be lower than your global setting of {global_min_pax}.")
+    if pricing_mode == "fixed" and base_pax < global_min_pax:
+        errors.append(f"Package guest count cannot be lower than your global setting of {global_min_pax}.")
+    if not 1 <= service_duration <= 24:
+        errors.append("Service duration must be between 1 and 24 hours.")
+    if not math.isfinite(additional_guest_price) or not 0 <= additional_guest_price <= 99_999_999.99:
+        errors.append("Extra guest rate must be between ₱0 and ₱99,999,999.99.")
+    elif round(additional_guest_price, 2) != additional_guest_price:
+        errors.append("Extra guest rate can have no more than 2 decimal places.")
         
     global_lead_time = user.caterer_profile.booking_lead_time or 7
     if booking_lead_time < global_lead_time:
@@ -6899,7 +7012,8 @@ async def update_package(
     # Smart Validation: Detect other package with the same name
     existing_pkg = db.query(models.CateringPackage).filter(
         models.CateringPackage.caterer_id == user.caterer_profile.id,
-        models.CateringPackage.name.ilike(name.strip()),
+        func.lower(models.CateringPackage.name) == name.lower(),
+        models.CateringPackage.status != "archived",
         models.CateringPackage.id != package_id
     ).first()
     
@@ -6911,6 +7025,9 @@ async def update_package(
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
         return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
+
+    if pricing_mode == "fixed":
+        profile.default_excess_guest_price = additional_guest_price
 
     package.name = name
     package.description = description
@@ -6924,7 +7041,8 @@ async def update_package(
     package.min_contract_amount = min_contract_amount
     package.min_guests = min_guests
     package.max_guests = int(max_guests) if max_guests and str(max_guests).strip() else None
-    package.base_pax = base_pax
+    if pricing_mode == "fixed":
+        package.base_pax = base_pax
     package.additional_guest_price = additional_guest_price
     package.labor_cost = labor_cost
     package.utility_cost = utility_cost
@@ -7350,7 +7468,7 @@ async def quick_add_catalog_item(
         raise HTTPException(status_code=400, detail="Item name is required.")
 
     item_type = (item_type or "menu").lower()
-    price = max(0.0, float(price or 0.0))
+    price = parse_service_fee(price) if item_type == "service" else max(0.0, float(price or 0.0))
     desc = description.strip() if description else None
 
     image_url = None
@@ -7364,7 +7482,9 @@ async def quick_add_catalog_item(
             image_url = None
 
     if item_type == "menu":
-        cat = category.strip() if category else "Main Course"
+        cat = category.strip() if category else ""
+        if not cat or len(cat) > 60:
+            raise HTTPException(status_code=400, detail="Enter a menu category up to 60 characters.")
         unit = unit_type.strip() if unit_type else "per_pax"
         new_item = models.MenuItem(
             caterer_id=profile.id,

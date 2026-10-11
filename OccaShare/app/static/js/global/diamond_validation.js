@@ -23,14 +23,29 @@
 
         let cursorPosition = input.selectionStart;
         const originalValue = input.value;
+        const previousOverflow = input.dataset.formatOverflow === 'true'
+            && input.dataset.formatOverflowValue === originalValue;
 
         // Split into integer and decimal parts
         let parts = originalValue.split('.');
         let integerPart = parts[0].replace(/\D/g, '');
         let decimalPart = parts.length > 1 ? parts[1].replace(/\D/g, '').slice(0, 2) : null;
+        const maxIntegerDigits = parseInt(input.dataset.maxIntegerDigits, 10);
+        const maxDecimalDigits = parseInt(input.dataset.maxDecimalDigits, 10);
+        const integerOverflow = Number.isInteger(maxIntegerDigits) && integerPart.length > maxIntegerDigits;
+        const decimalDigits = parts.length > 1 ? parts[1].replace(/\D/g, '') : '';
+        const decimalOverflow = (Number.isInteger(maxDecimalDigits) && decimalDigits.length > maxDecimalDigits) || parts.length > 2;
+        const hasOverflow = integerOverflow || decimalOverflow || previousOverflow;
+
+        if (integerOverflow) integerPart = integerPart.slice(0, maxIntegerDigits);
+        if (Number.isInteger(maxDecimalDigits) && decimalPart !== null) {
+            decimalPart = decimalPart.slice(0, maxDecimalDigits);
+        }
 
         if (integerPart === '' && decimalPart === null) {
             input.value = '';
+            input.dataset.formatOverflow = 'false';
+            delete input.dataset.formatOverflowValue;
             return;
         }
 
@@ -40,6 +55,9 @@
         if (input.value !== formattedValue) {
             input.value = formattedValue;
         }
+        input.dataset.formatOverflow = hasOverflow ? 'true' : 'false';
+        if (hasOverflow) input.dataset.formatOverflowValue = formattedValue;
+        else delete input.dataset.formatOverflowValue;
     };
 
     const getStringSimilarity = (s1, s2) => {

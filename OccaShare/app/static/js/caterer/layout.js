@@ -833,7 +833,7 @@ function _dismissModal(overlay) {
 
 // Close on overlay backdrop click
 document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('occ-modal-overlay')) {
+    if (e.target.classList.contains('occ-modal-overlay') && e.target.dataset.backdropDismiss !== 'false') {
         window.closeModal(e.target.id);
     }
 });

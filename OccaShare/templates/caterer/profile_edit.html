@@ -860,7 +860,12 @@ window.gm_authFailure = function() {
                         <div class="form-group">
                             <label><i class="fas fa-tags"></i> Starting Price (₱)</label>
                             <input type="text" inputmode="numeric" name="starting_price" class="js-format-comma" min="0" value="{{ profile.starting_price or 0 }}">
-                            <span class="field-hint">Your lowest per-head price.</span>
+                            <span class="field-hint">Per-guest base rate. Used to calculate the included base total for fixed packages and the starting price for customizable packages.</span>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-user-plus"></i> Default Extra Guest Rate (₱ / guest)</label>
+                            <input type="text" inputmode="numeric" name="default_excess_guest_price" class="js-format-comma" min="0" value="{{ profile.default_excess_guest_price if profile.default_excess_guest_price is not none else (profile.starting_price or 0) }}">
+                            <span class="field-hint">Applied to each guest above a fixed package's included guest count. Saving a fixed package updates this default.</span>
                         </div>
                         <div class="form-group">
                             <label><i class="fas fa-calendar-plus"></i> Max Advance Booking (Days)</label>

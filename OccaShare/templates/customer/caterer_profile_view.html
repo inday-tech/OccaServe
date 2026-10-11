@@ -1629,6 +1629,29 @@
             let normalizedInclusions = [];
             const seenKeys = new Set();
 
+            function renderServiceNotesDropdown(notes) {
+                const items = String(notes || '')
+                    .split(/[\n,]+/)
+                    .map(note => note.replace(/^\s*[•*-]\s*/, '').trim())
+                    .filter(Boolean);
+                if (!items.length) return '';
+
+                const escapeText = value => String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+
+                return `
+                    <details class="customer-service-notes" style="margin-top:4px;color:#64748b;font-size:0.75rem;line-height:1.4;">
+                        <summary style="width:fit-content;max-width:100%;color:#2563eb;font-weight:700;cursor:pointer;">Service notes (${items.length})</summary>
+                        <ul style="margin:4px 0 0;padding-left:18px;overflow-wrap:anywhere;">
+                            ${items.map(note => `<li>${escapeText(note)}</li>`).join('')}
+                        </ul>
+                    </details>`;
+            }
+
             function addItem(cat, subcat, name, qty, desc) {
                 if (!name || !String(name).trim()) return;
                 const cleanName = String(name).trim();
@@ -1924,7 +1947,7 @@
                                     ${item.quantity || 'Included'}
                                 </span>
                             </div>
-                            ${item.description ? `<div style="font-size: 0.73rem; color: #64748b; line-height: 1.35; margin-top: 3px;">${item.description}</div>` : ''}
+                            ${renderServiceNotesDropdown(item.description)}
                         </div>
                     </div>
                 `).join('');
@@ -1943,7 +1966,7 @@
                                 <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0.6rem 0.8rem;">
                                     <div>
                                         <strong style="font-size: 0.8rem; color: #1e293b;">${s.name}</strong>
-                                        ${s.description ? `<span style="font-size: 0.72rem; color: #64748b; display: block;">${s.description}</span>` : ''}
+                                        ${renderServiceNotesDropdown(s.description)}
                                     </div>
                                     <span style="font-size: 0.72rem; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 2px 7px; border-radius: 6px; white-space: nowrap; margin-left: 6px;">${pStr}</span>
                                 </div>`;

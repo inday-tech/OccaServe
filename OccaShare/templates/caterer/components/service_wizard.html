@@ -44,8 +44,16 @@
 
                     <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem;">
                         <div class="form-group-pro">
-                            <label>Base / Starting Price (₱) *</label>
-                            <input type="number" name="price" class="control-pro" placeholder="0.00" required min="1" step="0.01">
+                            <label>Service Fee / Starting Price (₱) *</label>
+                            <input type="text" name="price" id="serviceWizardPriceInput"
+                                class="control-pro js-format-comma" placeholder="0.00" required
+                                inputmode="decimal" maxlength="12" data-max-integer-digits="8"
+                                data-max-decimal-digits="2" oninput="window.validateServiceWizardPrice()">
+                            <small id="serviceWizardPriceError" aria-live="polite"
+                                style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
+                            <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">
+                                Up to ₱99,999,999.99. Commas are added automatically.
+                            </small>
                         </div>
                         <div class="form-group-pro">
                             <label>Pricing Type *</label>

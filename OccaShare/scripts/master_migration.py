@@ -109,6 +109,7 @@ def master_migration():
             ("address_details", "TEXT"),
             ("min_pax", "INTEGER DEFAULT 0"),
             ("starting_price", "FLOAT DEFAULT 0.0"),
+            ("default_excess_guest_price", "FLOAT"),
             ("sample_menu_url", "VARCHAR"),
             ("permit_url", "VARCHAR"),
             ("permit_status", "VARCHAR DEFAULT 'Pending'"),

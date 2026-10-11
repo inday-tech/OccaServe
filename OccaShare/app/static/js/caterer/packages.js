@@ -7,6 +7,9 @@ var DISH_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/
 var STEPS_ORDER = ['basic', 'inclusions', 'review'];
 var ALL_STEPS = ['basic', 'inclusions', 'review'];
 var currentPackageId = null;
+let packageNameValidationStatus = 'idle';
+let packageNameValidationSequence = 0;
+let packageNameValidationTimer = null;
 
 // ==========================================
 // UNLIMITED INCLUSIONS STATE (v17)
@@ -60,12 +63,14 @@ var safeOpenModal = (id, float = false) => {
     const el = document.getElementById(id);
     if (!el) return;
 
-    document.querySelectorAll('.occ-modal-overlay.active').forEach((overlay) => {
-        if (overlay.id !== id) {
-            overlay.classList.remove('active');
-            overlay.style.display = 'none';
-        }
-    });
+    if (!float) {
+        document.querySelectorAll('.occ-modal-overlay.active').forEach((overlay) => {
+            if (overlay.id !== id) {
+                overlay.classList.remove('active');
+                overlay.style.display = 'none';
+            }
+        });
+    }
 
     el.style.display = 'flex';
     requestAnimationFrame(() => {
@@ -98,9 +103,68 @@ function getActivePackageId() {
     return null;
 }
 
+function setPackageNameValidation(status, message = '') {
+    packageNameValidationStatus = status;
+    const messageEl = document.getElementById('packageNameValidationMessage');
+    const nameInput = document.getElementById('pkgNameInput');
+    if (messageEl) {
+        messageEl.textContent = message;
+        messageEl.classList.toggle('is-error', status === 'duplicate' || status === 'error');
+        messageEl.classList.toggle('is-success', status === 'valid');
+    }
+    if (nameInput) {
+        nameInput.setAttribute('aria-invalid', status === 'duplicate' || status === 'error' ? 'true' : 'false');
+    }
+    updatePackageWizardControls();
+}
+
+async function validatePackageName(name) {
+    const normalizedName = name.trim();
+    const sequence = ++packageNameValidationSequence;
+    if (!normalizedName) {
+        setPackageNameValidation('idle');
+        return;
+    }
+
+    setPackageNameValidation('checking', 'Checking package name...');
+    try {
+        const response = await fetch('/caterer/api/validate-package-name', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: normalizedName, exclude_id: getActivePackageId() })
+        });
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+        const result = await response.json();
+        if (sequence !== packageNameValidationSequence) return;
+        if (result.exists) {
+            setPackageNameValidation('duplicate', 'A package with this name already exists. Choose a different name.');
+        } else {
+            setPackageNameValidation('valid', 'This package name is available.');
+        }
+    } catch (error) {
+        if (sequence !== packageNameValidationSequence) return;
+        console.error('[Packages] Package name validation failed:', error);
+        setPackageNameValidation('error', 'Could not verify the package name. Check your connection and try again.');
+    }
+}
+
+function schedulePackageNameValidation(name) {
+    window.clearTimeout(packageNameValidationTimer);
+    packageNameValidationSequence++;
+    if (!name.trim()) {
+        setPackageNameValidation('idle');
+        return;
+    }
+    packageNameValidationStatus = 'checking';
+    setPackageNameValidation('checking', 'Checking package name...');
+    packageNameValidationTimer = window.setTimeout(() => validatePackageName(name), 350);
+}
+
 window.togglePricingMode = function (mode) {
     const isFixed = mode === 'fixed';
     const isCustomizable = mode === 'customizable';
+    const pricingModeSelect = document.getElementById('pkgPricingModeSelect');
+    const previousMode = pricingModeSelect?.dataset.previousMode;
 
     // 1. Category Field: Only visible for Fixed packages, hidden for Customizable
     const categoryGroup = document.getElementById('pkgCategoryGroup');
@@ -109,6 +173,13 @@ window.togglePricingMode = function (mode) {
 
     if (categoryGroup) {
         categoryGroup.style.display = isCustomizable ? 'none' : 'block';
+    }
+    const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
+    const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
+    if (otherCategoryGroup) {
+        const showOtherCategory = !isCustomizable && serviceTypeSelect?.value === 'Other';
+        otherCategoryGroup.style.display = showOtherCategory ? 'block' : 'none';
+        if (otherCategoryInput) otherCategoryInput.required = showOtherCategory;
     }
     if (serviceTypeSelect) {
         serviceTypeSelect.required = !isCustomizable;
@@ -127,38 +198,36 @@ window.togglePricingMode = function (mode) {
     // 2. Package Pricing Details (Fixed package price, Per-pax rate, or Customizable starting price)
     const pricingCard = document.getElementById('pkgPricingCard');
     const priceInput = document.getElementById('pkgManualPriceInput');
-    const resFeeInput = document.getElementById('pkgReservationFeeInput') || document.querySelector('input[name="reservation_fee"]');
-    const lblPricingMain = document.getElementById('lblPricingMain');
-    const lblPricingSub = document.getElementById('lblPricingSub');
+    const minGuestsInput = document.querySelector('#packageForm [name="min_guests"]');
+    const basePaxInput = document.querySelector('#packageForm [name="base_pax"]');
+    const pricingLabelText = document.getElementById('pkgPricingLabelText');
 
     if (pricingCard) {
         pricingCard.style.display = 'block';
     }
 
     if (isCustomizable) {
-        if (lblPricingMain) lblPricingMain.innerHTML = 'Starting Price (₱) <span style="color: #ea580c; font-size: 0.8rem; font-weight: 700;">(Starting at...)</span> *';
-        if (lblPricingSub) lblPricingSub.innerHTML = 'Starting / base price displayed to customers for this customizable package.';
+        if (pricingLabelText) pricingLabelText.textContent = 'Starting price (₱) *';
         if (priceInput) {
+            priceInput.readOnly = false;
             priceInput.placeholder = 'e.g. 350.00';
             priceInput.required = true;
-            if (priceInput.value === '0.00' || priceInput.value === '0') {
-                priceInput.value = '';
+            if (previousMode === 'fixed' || !priceInput.value.trim() || priceInput.value === '0.00' || priceInput.value === '0') {
+                const defaultStartingPrice = Number(window.CATERER_STARTING_PRICE) || 0;
+                priceInput.value = defaultStartingPrice ? String(defaultStartingPrice) : '';
             }
         }
     } else if (mode === 'fixed') {
-        if (lblPricingMain) lblPricingMain.innerHTML = 'Package Price (Total ₱) *';
-        if (lblPricingSub) lblPricingSub.innerHTML = 'Fixed total contract price visible to customers.';
+        if (pricingLabelText) pricingLabelText.textContent = 'Package price (base total, auto-calculated) *';
         if (priceInput) {
+            priceInput.readOnly = true;
             priceInput.placeholder = '0.00';
             priceInput.required = true;
-            if (priceInput.value === '0.00' || priceInput.value === '0') {
-                priceInput.value = '';
-            }
         }
     } else {
-        if (lblPricingMain) lblPricingMain.innerHTML = 'Package Price (₱ / pax) *';
-        if (lblPricingSub) lblPricingSub.innerHTML = 'Selling price per guest visible to customers.';
+        if (pricingLabelText) pricingLabelText.textContent = 'Package price (₱ / guest) *';
         if (priceInput) {
+            priceInput.readOnly = false;
             priceInput.placeholder = '0.00';
             priceInput.required = true;
             if (priceInput.value === '0.00' || priceInput.value === '0') {
@@ -170,11 +239,28 @@ window.togglePricingMode = function (mode) {
     // 3. Show/hide capacity sections
     document.querySelectorAll('.capacity-per-pax').forEach(el => el.style.display = isFixed ? 'none' : 'block');
     document.querySelectorAll('.capacity-fixed').forEach(el => el.style.display = isFixed ? 'block' : 'none');
+    document.querySelectorAll('.capacity-additional').forEach(el => el.style.display = isFixed ? 'block' : 'none');
+    const globalMinPax = Math.max(1, Number(window.CATERER_MIN_PAX) || 20);
+    if (minGuestsInput) {
+        minGuestsInput.min = String(globalMinPax);
+        minGuestsInput.required = !isFixed;
+    }
+    if (basePaxInput) {
+        basePaxInput.min = String(globalMinPax);
+        basePaxInput.required = isFixed;
+        basePaxInput.disabled = !isFixed;
+        if (isFixed && !basePaxInput.value) basePaxInput.value = String(globalMinPax);
+    }
+    if (pricingModeSelect) pricingModeSelect.dataset.previousMode = mode;
 
     // 4. Step 2 sidebar title
     const sidebarTitle = document.getElementById('step2SidebarTitle');
     if (sidebarTitle) {
-        sidebarTitle.innerText = isCustomizable ? '2. Available Options' : '2. Package Inclusions';
+        sidebarTitle.innerText = isCustomizable ? '2. Customer Options' : '2. Package Inclusions';
+    }
+    const sidebarMobileTitle = document.getElementById('step2SidebarMobileTitle');
+    if (sidebarMobileTitle) {
+        sidebarMobileTitle.innerText = isCustomizable ? '2. Options' : '2. Inclusions';
     }
 
     // 5. Step 2 containers
@@ -188,21 +274,6 @@ window.togglePricingMode = function (mode) {
         estContainer.style.display = (isFixed || isCustomizable) ? 'none' : 'block';
     }
 
-    // 6. Help text under Package Type select
-    const typeDesc = document.getElementById('pkgTypeDescription');
-    if (typeDesc) {
-        if (isCustomizable) {
-            typeDesc.innerText = 'Customer builds their own package from the food and services you make available.';
-            typeDesc.style.display = 'block';
-        } else if (isFixed) {
-            typeDesc.innerText = 'Predefined package with fixed inclusions. Customers cannot modify the included items.';
-            typeDesc.style.display = 'block';
-        } else {
-            typeDesc.innerText = 'Tiered pricing calculated per attending guest.';
-            typeDesc.style.display = 'block';
-        }
-    }
-
     if (isCustomizable) {
         if (window.fetchInclusionsCatalog) {
             window.fetchInclusionsCatalog().then(() => {
@@ -214,6 +285,7 @@ window.togglePricingMode = function (mode) {
     }
 
     calculatePricing();
+    updatePackageWizardControls();
 };
 
 window.openAddPackageModal = async function () {
@@ -221,13 +293,38 @@ window.openAddPackageModal = async function () {
     if (!form) { console.error('[Packages] packageForm not found'); return; }
 
     const title = document.getElementById('packageModalTitle');
-    if (title) title.innerText = 'Create New Package';
+    if (title) title.innerText = 'Create a Package';
 
     form.action = '/caterer/packages/add';
     form.reset();
 
+    const globalMinPax = Math.max(1, Number(window.CATERER_MIN_PAX) || 20);
+    const startingPrice = Math.max(0, Number(window.CATERER_STARTING_PRICE) || 0);
+    const serviceDuration = Math.min(24, Math.max(1, Number(window.CATERER_SERVICE_DURATION) || 4));
+    if (form.min_guests) {
+        form.min_guests.value = String(globalMinPax);
+        form.min_guests.min = String(globalMinPax);
+    }
+    if (form.base_pax) {
+        form.base_pax.value = String(globalMinPax);
+        form.base_pax.min = String(globalMinPax);
+    }
+    if (form.service_duration) form.service_duration.value = String(serviceDuration);
+    const defaultExcessGuestPrice = Math.max(0, Number(window.CATERER_DEFAULT_EXCESS_GUEST_PRICE) || 0);
+    if (form.additional_guest_price) form.additional_guest_price.value = String(defaultExcessGuestPrice);
+    if (form.price_per_head) form.price_per_head.value = '';
+    const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
+    const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
+    if (otherCategoryInput) otherCategoryInput.value = '';
+    if (otherCategoryGroup) otherCategoryGroup.style.display = 'none';
+    window.clearTimeout(packageNameValidationTimer);
+    packageNameValidationSequence++;
+    setPackageNameValidation('idle');
+
     // Reset new fields to defaults
     if (form.pricing_mode) form.pricing_mode.value = 'fixed';
+    const pricingModeSelect = document.getElementById('pkgPricingModeSelect');
+    if (pricingModeSelect) pricingModeSelect.dataset.previousMode = 'fixed';
     if (form.status) form.status.value = 'active';
 
     window.togglePricingMode('fixed');
@@ -265,6 +362,7 @@ window.openAddPackageModal = async function () {
         window.switchPackageTab(basicStepBtn, 'basic');
     }
     safeOpenModal('packageModal');
+    updatePackageWizardControls();
 
     // Fetch catalog upfront so menus, equipment, services are all immediately available
     if (window.fetchInclusionsCatalog) {
@@ -309,11 +407,22 @@ window.editPackage = async function (pkgId) {
         if (form.description) form.description.value = pkg.description || '';
         if (form.service_type) form.service_type.value = pkg.service_type || 'General';
         if (form.pricing_mode) form.pricing_mode.value = pkg.pricing_mode || 'fixed';
-        if (form.price_per_head) form.price_per_head.value = pkg.price_per_head || pkg.price || '';
-        if (form.min_guests) form.min_guests.value = pkg.min_guests || 50;
-        if (form.max_guests) form.max_guests.value = pkg.max_guests || '';
-        if (form.base_pax) form.base_pax.value = pkg.base_pax || '';
-        if (form.additional_guest_price) form.additional_guest_price.value = pkg.additional_guest_price || '';
+        const pricingModeSelect = document.getElementById('pkgPricingModeSelect');
+        if (pricingModeSelect) pricingModeSelect.dataset.previousMode = form.pricing_mode.value;
+        if (form.price_per_head) form.price_per_head.value = pkg.price_per_head ?? pkg.price ?? '';
+        const globalMinPax = Math.max(1, Number(window.CATERER_MIN_PAX) || 20);
+        if (form.min_guests) {
+            form.min_guests.value = pkg.min_guests || globalMinPax;
+            form.min_guests.min = String(globalMinPax);
+        }
+        if (form.base_pax) {
+            form.base_pax.value = pkg.base_pax || globalMinPax;
+            form.base_pax.min = String(globalMinPax);
+        }
+        if (form.service_duration) form.service_duration.value = pkg.service_duration || window.CATERER_SERVICE_DURATION || 4;
+        if (form.additional_guest_price) {
+            form.additional_guest_price.value = pkg.additional_guest_price ?? window.CATERER_DEFAULT_EXCESS_GUEST_PRICE ?? '';
+        }
         if (form.status) form.status.value = pkg.status || 'active';
         if (form.booking_lead_time) form.booking_lead_time.value = pkg.booking_lead_time || 7;
 
@@ -323,6 +432,9 @@ window.editPackage = async function (pkgId) {
         }
 
         window.togglePricingMode(form.pricing_mode ? form.pricing_mode.value : 'fixed');
+        schedulePackageNameValidation(pkg.name || '');
+        const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
+        if (otherCategoryGroup) otherCategoryGroup.style.display = 'none';
 
         // Image Preview Handling
         const preview = document.getElementById('pkgImagePreview');
@@ -416,6 +528,7 @@ window.editPackage = async function (pkgId) {
             window.switchPackageTab(basicStepBtn, 'basic');
         }
         safeOpenModal('packageModal');
+        updatePackageWizardControls();
 
         if (typeof loadPkgMenuLibrary === 'function') {
             loadPkgMenuLibrary().catch(e => console.warn('[Packages] Library load error (non-critical):', e));
@@ -480,8 +593,35 @@ function calculatePricing() {
     const form = document.getElementById('packageForm');
     if (!form) return;
 
-    const mode = form.pricing_mode ? form.pricing_mode.value : 'per_pax';
-    const rawPrice = (form.price_per_head.value || '').replace(/,/g, '');
+    const modeInput = form.elements.namedItem('pricing_mode');
+    const priceInput = form.elements.namedItem('price_per_head');
+    const basePaxInput = form.elements.namedItem('base_pax');
+    const minGuestsInput = form.elements.namedItem('min_guests');
+    const mode = modeInput ? modeInput.value : 'per_pax';
+    if (mode === 'fixed' && priceInput && basePaxInput) {
+        const basePax = Number(basePaxInput.value);
+        const startingPrice = Number(window.CATERER_STARTING_PRICE);
+        const hasValidInputs = Number.isSafeInteger(basePax) && basePax > 0
+            && Number.isFinite(startingPrice) && startingPrice > 0;
+        const total = hasValidInputs
+            ? Math.round((basePax * startingPrice + Number.EPSILON) * 100) / 100
+            : 0;
+        priceInput.value = total > 0
+            ? total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : '';
+        if (minGuestsInput) minGuestsInput.value = hasValidInputs ? String(basePax) : '';
+        const priceHelp = document.getElementById('pkgPriceHelp');
+        if (priceHelp) {
+            const formattedRate = Number.isFinite(startingPrice) && startingPrice > 0
+                ? startingPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : 'not set';
+            const formattedTotal = total > 0
+                ? total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                : 'not available';
+            priceHelp.textContent = `Base total = ${hasValidInputs ? basePax : 'valid included guests'} × ₱${formattedRate} per guest = ₱${formattedTotal}. Extra guest rate is charged separately for guests above the included count.`;
+        }
+    }
+    const rawPrice = String(priceInput?.value || '').replace(/,/g, '');
     const sellingPrice = parseFloat(rawPrice) || 0;
 
     // Sum cost of all checked inclusion items
@@ -498,7 +638,7 @@ function calculatePricing() {
 
     const valEl = document.getElementById('estStartingPriceValue');
     if (valEl && mode === 'per_pax') {
-        const minGuests = parseInt(form.min_guests.value) || 0;
+        const minGuests = parseInt(minGuestsInput?.value || '', 10) || 0;
         const estTotal = sellingPrice * minGuests;
         valEl.innerText = '₱' + estTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 });
     }
@@ -540,17 +680,109 @@ function calculatePricing() {
             marginEl.parentElement.style.borderColor = '#bfdbfe';
         }
     }
+    updatePackageWizardControls();
 }
 
 // Attach event listeners for price calculation and form submission
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('packageForm');
     if (form) {
+        const nameInput = document.getElementById('pkgNameInput');
+        const categorySelect = document.getElementById('pkgServiceTypeSelect');
+        const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
+        const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
+        document.querySelectorAll('#packageModal .pkg-step-side').forEach(stepButton => {
+            stepButton.addEventListener('keydown', event => {
+                if ((event.key === 'Enter' || event.key === ' ') && stepButton.getAttribute('aria-disabled') !== 'true') {
+                    event.preventDefault();
+                    const stepName = stepButton.id.replace('step-btn-', '');
+                    window.switchPackageTab(stepButton, stepName);
+                }
+            });
+        });
+        if (nameInput) {
+            nameInput.addEventListener('input', () => schedulePackageNameValidation(nameInput.value));
+        }
+        if (categorySelect) {
+            categorySelect.addEventListener('change', () => {
+                const showOther = categorySelect.value === 'Other';
+                if (otherCategoryGroup) otherCategoryGroup.style.display = showOther ? 'block' : 'none';
+                if (otherCategoryInput) otherCategoryInput.required = showOther;
+                updatePackageWizardControls();
+            });
+        }
+        if (otherCategoryInput) {
+            otherCategoryInput.addEventListener('input', updatePackageWizardControls);
+        }
+        form.querySelectorAll('input, select, textarea').forEach(field => {
+            field.addEventListener('input', updatePackageWizardControls);
+            field.addEventListener('change', updatePackageWizardControls);
+        });
         if (form.price_per_head) form.price_per_head.addEventListener('input', calculatePricing);
-        if (form.min_guests) form.min_guests.addEventListener('input', calculatePricing);
+        const basePaxInput = form.elements.namedItem('base_pax');
+        const extraGuestRateInput = form.elements.namedItem('additional_guest_price');
+        if (basePaxInput) {
+            ['input', 'change'].forEach(eventName => basePaxInput.addEventListener(eventName, calculatePricing));
+        }
+        if (extraGuestRateInput) {
+            ['input', 'change'].forEach(eventName => extraGuestRateInput.addEventListener(eventName, () => {
+                updatePackageWizardControls();
+                if (document.querySelector('.pkg-step-side.active')?.id === 'step-btn-review') updateReviewTab();
+            }));
+        }
+        if (form.elements.namedItem('min_guests')) form.elements.namedItem('min_guests').addEventListener('input', calculatePricing);
+        const helpTriggers = document.querySelectorAll('#packageModal .pkg-help-trigger');
+        helpTriggers.forEach(trigger => {
+            trigger.addEventListener('click', event => {
+                event.preventDefault();
+                event.stopPropagation();
+                const help = document.getElementById(trigger.getAttribute('aria-controls'));
+                const shouldOpen = trigger.getAttribute('aria-expanded') !== 'true';
+                helpTriggers.forEach(other => {
+                    other.setAttribute('aria-expanded', 'false');
+                    const otherHelp = document.getElementById(other.getAttribute('aria-controls'));
+                    if (otherHelp) otherHelp.hidden = true;
+                });
+                if (help) help.hidden = !shouldOpen;
+                trigger.setAttribute('aria-expanded', String(shouldOpen));
+            });
+        });
+        document.addEventListener('click', event => {
+            if (event.target.closest('#packageModal .pkg-help-trigger, #packageModal .pkg-field-help')) return;
+            helpTriggers.forEach(trigger => {
+                trigger.setAttribute('aria-expanded', 'false');
+                const help = document.getElementById(trigger.getAttribute('aria-controls'));
+                if (help) help.hidden = true;
+            });
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape') return;
+            helpTriggers.forEach(trigger => {
+                trigger.setAttribute('aria-expanded', 'false');
+                const help = document.getElementById(trigger.getAttribute('aria-controls'));
+                if (help) help.hidden = true;
+            });
+        });
 
         // Guarantee inclusions and customizable selection rules are serialized right before form submit
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', (event) => {
+            if (!packageStepIsReady('review')) {
+                event.preventDefault();
+                const activeStep = document.querySelector('.pkg-step-side.active');
+                const step = activeStep ? activeStep.id.replace('step-btn-', '') : 'basic';
+                validateTab(step);
+                updatePackageWizardControls();
+                return;
+            }
+            if (categorySelect && categorySelect.value === 'Other' && otherCategoryInput) {
+                const category = otherCategoryInput.value.trim();
+                let option = Array.from(categorySelect.options).find(item => item.value.toLowerCase() === category.toLowerCase());
+                if (!option) {
+                    option = new Option(category, category);
+                    categorySelect.add(option);
+                }
+                categorySelect.value = option.value;
+            }
             syncInclusionsHidden();
             if (typeof syncCustomizableSelectionRules === 'function') {
                 syncCustomizableSelectionRules();
@@ -632,6 +864,7 @@ window.switchPackageTab = function (el, tabName) {
         if (btnNext) btnNext.style.setProperty('display', 'inline-flex', 'important');
         if (btnSave) btnSave.style.setProperty('display', 'none', 'important');
     }
+    updatePackageWizardControls();
 };
 
 window.goToWizardNextStep = function () {
@@ -668,8 +901,8 @@ function validateTab(tabName) {
     let isValid = true;
 
     // Clear old errors
-    document.querySelectorAll('.inline-error-badge').forEach(b => b.remove());
-    document.querySelectorAll('.control-pro').forEach(c => c.style.borderColor = '');
+    document.querySelectorAll('#packageModal .inline-error-badge').forEach(b => b.remove());
+    document.querySelectorAll('#packageModal .control-pro').forEach(c => c.style.borderColor = '');
 
     const addError = (input, msg) => {
         isValid = false;
@@ -686,19 +919,40 @@ function validateTab(tabName) {
         const nameInput = form.elements.namedItem('name');
         const nameVal = nameInput ? nameInput.value.trim() : '';
         if (!nameVal) addError(nameInput, "Package Name is required.");
+        else if (packageNameValidationStatus !== 'valid') {
+            const nameMessage = packageNameValidationStatus === 'duplicate'
+                ? 'Choose a different package name.'
+                : packageNameValidationStatus === 'error'
+                    ? 'Package name could not be verified. Please try again.'
+                    : 'Wait for package name validation to finish.';
+            addError(nameInput, nameMessage);
+        }
 
         const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
+        if (mode !== 'customizable' && form.service_type?.value === 'Other') {
+            const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
+            if (!otherCategoryInput || !otherCategoryInput.value.trim()) {
+                addError(otherCategoryInput, 'Enter the specific category name.');
+            }
+        }
+        const globalMinPax = Math.max(1, Number(window.CATERER_MIN_PAX) || 20);
+        const durationInput = form.elements.namedItem('service_duration');
+        const duration = Number(durationInput?.value);
+        if (!Number.isInteger(duration) || duration < 1 || duration > 24) addError(durationInput, 'Enter a service duration from 1 to 24 hours.');
         if (mode === 'per_pax' || mode === 'customizable') {
             const minG = parseInt(form.min_guests.value);
-            if (isNaN(minG) || minG < 1) addError(form.min_guests, "Minimum guests must be at least 1.");
+            if (isNaN(minG) || minG < globalMinPax) addError(form.min_guests, `Minimum guests must be at least ${globalMinPax}.`);
+        } else if (mode === 'fixed') {
+            const basePax = parseInt(form.base_pax?.value, 10);
+            if (!Number.isInteger(basePax) || basePax < globalMinPax) addError(form.base_pax, `Package guest count must be at least ${globalMinPax}.`);
         }
 
         if (mode === 'customizable') {
             if (form.price_per_head) {
                 const rawPrice = (form.price_per_head.value || '').replace(/,/g, '');
                 const price = parseFloat(rawPrice);
-                if (isNaN(price) || price < 0) {
-                    addError(form.price_per_head, "Starting price must be a valid amount (₱0 or greater).");
+                if (!rawPrice.trim() || !Number.isFinite(price) || price <= 0) {
+                    addError(form.price_per_head, "Enter a starting price greater than ₱0.");
                 }
             }
         } else {
@@ -706,32 +960,86 @@ function validateTab(tabName) {
                 const rawPrice = (form.price_per_head.value || '').replace(/,/g, '');
                 const price = parseFloat(rawPrice);
                 if (isNaN(price) || price <= 0) {
-                    addError(form.price_per_head, "Selling price must be greater than 0.");
+                    addError(form.price_per_head, Number(window.CATERER_STARTING_PRICE) > 0
+                        ? "Enter a valid base guest count to calculate the package total."
+                        : "Set a starting price above ₱0 in Business Settings to calculate this package total.");
                 }
             }
 
-            if (form.reservation_fee && form.reservation_fee.value) {
-                const resFee = parseFloat(form.reservation_fee.value);
-                const price = parseFloat((form.price_per_head.value || '0').replace(/,/g, ''));
-                if (resFee > price) {
-                    addError(form.reservation_fee, "Reservation fee cannot exceed selling price.");
-                }
-            }
         }
     }
 
     if (tabName === 'inclusions') {
         const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
         if (mode === 'customizable') {
-            const total = customizableMenuIds.size + customizableServiceIds.size;
+            const total = customizableMenuIds.size + customizableServiceIds.size + customizableEquipmentIds.size;
             if (total === 0) {
                 alert("Please select at least one menu item or service for customers to choose from.");
                 return false;
             }
+        } else if (packageInclusions.length === 0) {
+            alert('Add at least one inclusion to this package before continuing.');
+            return false;
         }
     }
 
     return isValid;
+}
+
+function packageStepIsReady(tabName) {
+    const form = document.getElementById('packageForm');
+    if (!form) return false;
+    const value = name => String(form.elements.namedItem(name)?.value || '').trim();
+    const mode = value('pricing_mode') || 'fixed';
+    const globalMinPax = Math.max(1, Number(window.CATERER_MIN_PAX) || 20);
+
+    if (tabName === 'basic') {
+        const rawPrice = value('price_per_head').replace(/,/g, '');
+        const price = Number(rawPrice);
+        const duration = Number(value('service_duration'));
+        const categoryOkay = mode === 'customizable' || (
+            Boolean(value('service_type')) &&
+            (value('service_type') !== 'Other' || Boolean(document.getElementById('pkgOtherCategoryInput')?.value.trim()))
+        );
+        const capacity = mode === 'fixed'
+            ? Number(value('base_pax')) >= globalMinPax
+            : Number(value('min_guests')) >= globalMinPax;
+        return Boolean(value('name')) && packageNameValidationStatus === 'valid' && categoryOkay
+            && Number.isInteger(duration) && duration >= 1 && duration <= 24
+            && Boolean(rawPrice) && Number.isFinite(price) && price > 0
+            && capacity;
+    }
+
+    if (tabName === 'inclusions') {
+        if (mode !== 'customizable') return packageInclusions.length > 0;
+
+        const hasOptions = customizableMenuIds.size + customizableServiceIds.size + customizableEquipmentIds.size > 0;
+        const categoryCounts = getCustomizableMenuCategoryCounts();
+        const quotasReady = Object.entries(categoryCounts).every(([cat, available]) => {
+            const quota = Number(customizableCategoryQuotas[cat]);
+            return Number.isInteger(quota) && quota >= 1 && quota <= available;
+        });
+        return hasOptions && quotasReady;
+    }
+
+    return packageStepIsReady('basic') && packageStepIsReady('inclusions');
+}
+
+function updatePackageWizardControls() {
+    const active = document.querySelector('.pkg-step-side.active');
+    const step = active ? active.id.replace('step-btn-', '') : 'basic';
+    const next = document.getElementById('btnWizardNext');
+    const save = document.getElementById('pkgSaveBtn');
+    if (next) next.disabled = !packageStepIsReady(step);
+    if (save) save.disabled = !packageStepIsReady('review');
+
+    (window.STEPS_ORDER || ['basic', 'inclusions', 'review']).forEach((name, index, steps) => {
+        const stepButton = document.getElementById(`step-btn-${name}`);
+        if (!stepButton) return;
+        const enabled = index === 0 || steps.slice(0, index).every(packageStepIsReady);
+        stepButton.setAttribute('aria-disabled', String(!enabled));
+        stepButton.tabIndex = enabled ? 0 : -1;
+    });
 }
 
 function updateInclusionCounters() {
@@ -746,7 +1054,13 @@ function updateReviewTab() {
     const dType = document.getElementById('reviewType');
     const dMode = document.getElementById('reviewPricingMode');
     const dCap = document.getElementById('reviewCapacity');
+    const dCapLabel = document.getElementById('reviewCapacityLabel');
     const dPrice = document.getElementById('reviewPrice');
+    const priceFormula = document.getElementById('reviewPriceFormula');
+    const dDuration = document.getElementById('reviewDuration');
+    const dStatus = document.getElementById('reviewStatus');
+    const descriptionRow = document.getElementById('reviewDescriptionRow');
+    const dDescription = document.getElementById('reviewDescription');
 
     const nameInput = form.elements.namedItem('name');
     if (dName) dName.innerText = (nameInput && nameInput.value) || 'Untitled Package';
@@ -763,6 +1077,9 @@ function updateReviewTab() {
         const opt = form.service_type.options[form.service_type.selectedIndex];
         catText = opt ? opt.text : form.service_type.value;
     }
+    if (form.service_type?.value === 'Other') {
+        catText = document.getElementById('pkgOtherCategoryInput')?.value.trim() || 'Other';
+    }
     if (dType) dType.innerText = catText;
 
     if (dMode) {
@@ -770,6 +1087,13 @@ function updateReviewTab() {
         else if (mode === 'fixed') dMode.innerText = 'Fixed Package';
         else dMode.innerText = 'Per Pax';
     }
+    if (dDuration) dDuration.innerText = `${form.service_duration?.value || '—'} hours`;
+    if (dStatus && form.status) {
+        dStatus.innerText = form.status.options[form.status.selectedIndex]?.text || form.status.value;
+    }
+    const description = String(form.description?.value || '').trim();
+    if (descriptionRow) descriptionRow.style.display = description ? 'block' : 'none';
+    if (dDescription) dDescription.innerText = description;
 
     if (dCap) {
         const excessRow = document.getElementById('reviewExcessRow');
@@ -781,14 +1105,15 @@ function updateReviewTab() {
             dCap.innerText = `${minVal || 0}${max} Guests`;
             if (excessRow) excessRow.style.display = 'none';
         } else {
-            dCap.innerText = form.base_pax && form.base_pax.value ? `Good for ${form.base_pax.value} Guests` : 'N/A';
+            dCap.innerText = form.base_pax && form.base_pax.value ? `${form.base_pax.value} guests included` : 'N/A';
             if (excessRow && form.additional_guest_price && form.additional_guest_price.value) {
                 excessRow.style.display = 'block';
-                excessRate.innerText = `₱${form.additional_guest_price.value} / head`;
+                excessRate.innerText = `₱${Number(form.additional_guest_price.value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per extra guest`;
             } else if (excessRow) {
                 excessRow.style.display = 'none';
             }
         }
+        if (dCapLabel) dCapLabel.innerText = mode === 'fixed' ? 'Included guests:' : 'Minimum guests:';
     }
 
     if (dPrice) {
@@ -796,10 +1121,16 @@ function updateReviewTab() {
         if (mode === 'customizable') {
             dPrice.innerHTML = `<span style="color: #0f172a; font-weight: 800; font-size: 1.05rem;">Starting at ₱${val}</span><div style="font-size: 0.72rem; color: #16a34a; font-weight: 600; margin-top: 2px;">+ Customizable choices calculated per customer selection</div>`;
         } else if (mode === 'fixed') {
-            dPrice.innerText = `₱${val} total`;
+            dPrice.innerText = `₱${val} base total`;
+            if (priceFormula) {
+                const basePax = Number(form.base_pax?.value) || 0;
+                const rate = Number(window.CATERER_STARTING_PRICE) || 0;
+                priceFormula.innerText = `${basePax} included guests × ₱${rate.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per guest. Extra guests are charged separately.`;
+            }
         } else {
             dPrice.innerText = `₱${val} / pax`;
         }
+        if (mode !== 'fixed' && priceFormula) priceFormula.innerText = '';
     }
 
     // Toggle Review Blocks
@@ -844,8 +1175,8 @@ function updateReviewTab() {
                 const catIcons = { 'Menu / Food': '🍽️', 'Service': '🛎️', 'Equipment': '🪑', 'Other': '📦' };
                 let html = '';
                 for (const [cat, items] of Object.entries(grouped)) {
-                    html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:0.35rem;">${catIcons[cat] || '•'} ${cat}</div>`;
-                    html += items.map(i => `<div style="font-size:0.85rem;color:#1e293b;display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;"><i class="fas fa-check-circle" style="color:#16a34a;margin-top:3px;flex-shrink:0;"></i><span><strong>${escapeHtml(i.name)}</strong>${i.quantity ? ' — ' + escapeHtml(i.quantity) : ''}${i.description ? '<br><span style="color:#64748b;font-size:0.78rem;">' + escapeHtml(i.description) + '</span>' : ''}</span></div>`).join('');
+                    html += `<div class="review-inclusion-group" style="margin-bottom:0.75rem;"><div class="review-inclusion-group-title" style="font-size:0.75rem;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:0.35rem;">${catIcons[cat] || '•'} ${cat}</div>`;
+                    html += items.map(i => `<div class="review-inclusion-summary-item" style="font-size:0.85rem;color:#1e293b;display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;"><i class="fas fa-check-circle" style="color:#16a34a;margin-top:3px;flex-shrink:0;"></i><span><strong>${escapeHtml(i.name)}</strong>${i.description ? '<br><span style="color:#64748b;font-size:0.78rem;">' + escapeHtml(i.description) + '</span>' : ''}</span></div>`).join('');
                     html += '</div>';
                 }
                 reviewInclusionsDetail.innerHTML = html;
@@ -1508,10 +1839,10 @@ function setInclusionPhotoPreview(src) {
     const box = document.getElementById('inclusionPhotoPreview');
     if (!box) return;
     if (src) {
-        box.innerHTML = `<img src="${escapeHtml(src)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-camera\\'></i>';">`;
+        box.innerHTML = `<img src="${escapeHtml(src)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.remove();">`;
         box.style.border = '1.5px solid #e2e8f0';
     } else {
-        box.innerHTML = '<i class="fas fa-camera"></i>';
+        box.innerHTML = '';
         box.style.border = '1.5px dashed #cbd5e1';
     }
 }
@@ -1624,8 +1955,6 @@ window.openAddInclusionModal = async function () {
     const btnDoneText = document.getElementById('btnInclusionSaveDoneText');
     const alertBox = document.getElementById('addInclusionSuccessAlert');
     const desc = document.getElementById('customInclusionDescription');
-    const qtyNum = document.getElementById('customInclusionQtyNum');
-    const qtyUnit = document.getElementById('customInclusionQtyUnit');
     const itemSelect = document.getElementById('inclusionItemSelect');
     const searchInput = document.getElementById('inclusionItemSearch');
     const selectedBanner = document.getElementById('selectedItemInfoBanner');
@@ -1642,9 +1971,7 @@ window.openAddInclusionModal = async function () {
     }
     if (alertBox) { alertBox.style.display = 'none'; alertBox.innerText = ''; }
     if (desc) desc.value = '';
-    if (qtyNum) qtyNum.value = '';
-    if (qtyUnit) qtyUnit.value = '';
-    if (itemSelect) itemSelect.innerHTML = '<option value="">-- Select Menu ▼ --</option>';
+    if (itemSelect) itemSelect.innerHTML = '<option value="" selected disabled>Select a catalog item</option>';
     if (searchInput) searchInput.value = '';
     if (selectedBanner) selectedBanner.style.display = 'none';
     resetInclusionImagePicker('');
@@ -1679,12 +2006,10 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
 
     const lblItem = document.getElementById('lblInclusionItem');
     const btnCreateText = document.getElementById('btnCreateNewCatalogItemText');
+    const btnCreateCatalog = document.getElementById('btnCreateNewCatalogItem');
     const searchInput = document.getElementById('inclusionItemSearch');
-    const unitInput = document.getElementById('customInclusionQtyUnit');
-    const qtyInput = document.getElementById('customInclusionQtyNum');
     const banner = document.getElementById('selectedItemInfoBanner');
     const catalogSection = document.querySelector('#addInclusionModal .inclusion-catalog-section');
-    const qtyContainer = document.getElementById('inclusionQtyContainer');
     const descriptionSection = document.querySelector('#addInclusionModal .inclusion-description-section');
     const photoSection = document.querySelector('#addInclusionModal .inclusion-photo-section');
     const infoAlert = document.querySelector('#addInclusionModal .inclusion-info-alert');
@@ -1694,7 +2019,6 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
 
     if (!normType) {
         if (catalogSection) catalogSection.style.display = 'none';
-        if (qtyContainer) qtyContainer.style.display = 'none';
         if (descriptionSection) descriptionSection.style.display = 'none';
         if (photoSection) photoSection.style.display = 'none';
         if (infoAlert) infoAlert.style.display = 'none';
@@ -1709,13 +2033,12 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
         const nameEl = document.getElementById('customInclusionName');
         if (itemIdEl) itemIdEl.value = '';
         if (nameEl) nameEl.value = '';
-        if (select) select.innerHTML = '<option value="">-- Select Menu ▼ --</option>';
+        if (select) select.innerHTML = '<option value="" selected disabled>Select a catalog item</option>';
         if (!inclusionImageFile) resetInclusionImagePicker('');
         return;
     }
-
     if (catalogSection) catalogSection.style.display = 'block';
-    if (qtyContainer) qtyContainer.style.display = 'block';
+    if (catalogSection) catalogSection.style.display = 'block';
     if (descriptionSection) descriptionSection.style.display = 'block';
     if (photoSection) photoSection.style.display = 'block';
     if (infoAlert) infoAlert.style.display = 'flex';
@@ -1728,7 +2051,8 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
 
     // Update UI text and placeholders
     if (lblItem) lblItem.innerHTML = `${normType} <span style="color: #ef4444;">*</span>`;
-    if (btnCreateText) btnCreateText.innerText = `+ Create New ${normType === 'Menu' ? 'Menu Item' : normType}`;
+    if (btnCreateText) btnCreateText.innerText = 'Create new';
+    if (btnCreateCatalog) btnCreateCatalog.style.display = normType === 'Equipment' ? 'none' : 'inline-flex';
     if (searchInput) {
         searchInput.placeholder = `Type to filter ${normType.toLowerCase()} catalog...`;
         searchInput.value = '';
@@ -1740,17 +2064,6 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
     if (itemIdEl) itemIdEl.value = '';
     if (nameEl) nameEl.value = '';
     resetInclusionImagePicker('');
-
-    // Quantity is optional for both menu items and services.
-    const lblQtyOptional = document.getElementById('lblInclusionQtyOptional');
-    const lblQtyRequired = document.getElementById('lblInclusionQtyRequired');
-
-    if (lblQtyOptional) lblQtyOptional.style.display = 'inline';
-    if (lblQtyRequired) lblQtyRequired.style.display = 'none';
-    if (unitInput) {
-        unitInput.value = '';
-        unitInput.placeholder = normType === 'Service' ? 'e.g. pax, hour, setup' : (normType === 'Equipment' ? 'e.g. chairs, pcs' : 'e.g. pax, serving');
-    }
 
     // Populate the dropdown
     window.populateCatalogSelect(normType, '', preselectId);
@@ -1771,7 +2084,7 @@ window.populateCatalogSelect = function (type, filterQuery = '', preselectId = n
         return n.includes(query) || c.includes(query);
     }) : items;
 
-    let html = `<option value="">-- Select ${type} ▼ --</option>`;
+    let html = `<option value="" selected disabled>Select a ${type.toLowerCase()} item</option>`;
     if (filtered.length === 0) {
         html += `<option value="" disabled>No ${type.toLowerCase()} matching search</option>`;
     } else {
@@ -1815,15 +2128,12 @@ window.handleCatalogItemSelected = function (selectedId) {
     const badge = document.getElementById('selectedItemCategoryBadge');
     const title = document.getElementById('selectedItemTitle');
     const meta = document.getElementById('selectedItemMeta');
-    const qtyNum = document.getElementById('customInclusionQtyNum');
-    const qtyUnit = document.getElementById('customInclusionQtyUnit');
 
     if (!selectedId || !select) {
         if (banner) banner.style.display = 'none';
         if (itemIdEl) itemIdEl.value = '';
         if (nameEl) nameEl.value = '';
         if (!inclusionImageFile) resetInclusionImagePicker('');
-        window.updateQuantityPreview();
         return;
     }
 
@@ -1831,7 +2141,6 @@ window.handleCatalogItemSelected = function (selectedId) {
     if (!opt || !opt.dataset.name) return;
 
     const itemName = opt.dataset.name;
-    const itemUnit = opt.dataset.unit || '';
     const itemQty = opt.dataset.qty || '';
     const itemCat = opt.dataset.cat || '';
 
@@ -1849,66 +2158,14 @@ window.handleCatalogItemSelected = function (selectedId) {
         if (meta) meta.innerText = itemQty ? `Available: ${itemQty}` : `Category: ${itemCat}`;
     }
 
-    // Set intelligent default quantity and unit if empty
     const catSelect = document.getElementById('customInclusionCategory');
     const currentType = catSelect ? catSelect.value : 'Equipment';
-    const qtyContainer = document.getElementById('inclusionQtyContainer');
-
-    if (currentType === 'Service') {
-        if (qtyContainer) qtyContainer.style.display = 'block';
-    } else if (currentType === 'Menu') {
-        if (qtyContainer) qtyContainer.style.display = 'block';
-        // Quantity is optional for Menu/Food - do not enforce 100
-        if (qtyUnit && !qtyUnit.value) {
-            qtyUnit.value = itemUnit || 'pax';
-        }
-    } else if (currentType === 'Equipment') {
-        if (qtyContainer) qtyContainer.style.display = 'block';
-        if (qtyNum && (!qtyNum.value || qtyNum.value === '0')) {
-            const avail = parseInt(itemQty, 10);
-            if (avail && avail < 50) qtyNum.value = String(avail);
-        }
-        if (qtyUnit && !qtyUnit.value) {
-            if (itemUnit) {
-                qtyUnit.value = itemUnit;
-            } else {
-                const nLower = itemName.toLowerCase();
-                if (nLower.includes('chair')) qtyUnit.value = 'chairs';
-                else if (nLower.includes('table')) qtyUnit.value = 'tables';
-                else qtyUnit.value = 'pcs';
-            }
-        }
-    }
 
     select.style.borderColor = '';
     // Show the catalog item's existing photo unless the user already picked a new one
     if (!inclusionImageFile) {
         resetInclusionImagePicker(findCatalogImage(currentType, selectedId, itemName));
     }
-    window.updateQuantityPreview();
-};
-
-// Update dynamic quantity preview text
-window.updateQuantityPreview = function () {
-    const qtyNumEl = document.getElementById('customInclusionQtyNum');
-    const qtyUnitEl = document.getElementById('customInclusionQtyUnit');
-    const qtyPreview = document.getElementById('qtyPreviewDisplay');
-    const hiddenQty = document.getElementById('customInclusionQuantity');
-
-    const num = qtyNumEl ? qtyNumEl.value.trim() : '';
-    const unit = qtyUnitEl ? qtyUnitEl.value.trim() : '';
-
-    let formatted = '';
-    if (num && unit) {
-        formatted = `${num} ${unit}`;
-    } else if (num) {
-        formatted = `${num}`;
-    } else if (unit) {
-        formatted = `${unit}`;
-    }
-
-    if (hiddenQty) hiddenQty.value = formatted;
-    if (qtyPreview) qtyPreview.innerText = formatted || 'Not specified (optional)';
 };
 
 // Edit Existing Inclusion
@@ -1923,8 +2180,6 @@ window.editInclusion = async function (index) {
     const btnDoneText = document.getElementById('btnInclusionSaveDoneText');
     const alertBox = document.getElementById('addInclusionSuccessAlert');
     const desc = document.getElementById('customInclusionDescription');
-    const qtyNumEl = document.getElementById('customInclusionQtyNum');
-    const qtyUnitEl = document.getElementById('customInclusionQtyUnit');
 
     if (editIndexEl) editIndexEl.value = String(index);
     if (title) title.innerText = 'Edit Package Inclusion';
@@ -1948,32 +2203,8 @@ window.editInclusion = async function (index) {
         await window.fetchInclusionsCatalog();
     }
 
-    // Pre-populate fields
-    if (item.quantity_num) {
-        if (qtyNumEl) qtyNumEl.value = item.quantity_num;
-        if (qtyUnitEl) qtyUnitEl.value = item.unit || '';
-    } else if (item.quantity) {
-        const m = String(item.quantity).match(/^(\d+)\s*(.*)$/);
-        if (m) {
-            if (qtyNumEl) qtyNumEl.value = m[1];
-            if (qtyUnitEl) qtyUnitEl.value = m[2] || '';
-        } else {
-            if (qtyNumEl) qtyNumEl.value = '';
-            if (qtyUnitEl) qtyUnitEl.value = item.quantity;
-        }
-    }
-
     window.handleInclusionTypeChange(itemType, item.item_id);
     if (btnAddAnother) btnAddAnother.hidden = true;
-
-    const qtyContainer = document.getElementById('inclusionQtyContainer');
-    if (itemType === 'Service') {
-        if (qtyContainer) qtyContainer.style.display = 'none';
-        if (qtyNumEl) qtyNumEl.value = '';
-        if (qtyUnitEl) qtyUnitEl.value = '';
-    } else {
-        if (qtyContainer) qtyContainer.style.display = 'block';
-    }
 
     // If item_id wasn't in catalog yet, set name manually
     const nameEl = document.getElementById('customInclusionName');
@@ -1982,7 +2213,6 @@ window.editInclusion = async function (index) {
     setInclusionCategoryChoices(itemType === 'Equipment');
     resetInclusionImagePicker(item.image_url || findCatalogImage(itemType, item.item_id, item.name));
 
-    window.updateQuantityPreview();
     safeOpenModal('addInclusionModal', true);
 };
 
@@ -1998,8 +2228,6 @@ window.saveInclusion = async function (addAnother = false) {
     const select = document.getElementById('inclusionItemSelect');
     const itemIdEl = document.getElementById('customInclusionItemId');
     const nameEl = document.getElementById('customInclusionName');
-    const qtyNumEl = document.getElementById('customInclusionQtyNum');
-    const qtyUnitEl = document.getElementById('customInclusionQtyUnit');
     const descEl = document.getElementById('customInclusionDescription');
     const alertBox = document.getElementById('addInclusionSuccessAlert');
 
@@ -2027,11 +2255,6 @@ window.saveInclusion = async function (addAnother = false) {
     }
     if (select) select.style.borderColor = '';
 
-    // Formatted Quantity
-    window.updateQuantityPreview();
-    let qtyVal = (document.getElementById('customInclusionQuantity') || {}).value || '';
-    let qtyNum = qtyNumEl && qtyNumEl.value ? parseInt(qtyNumEl.value, 10) : null;
-    let qtyUnit = qtyUnitEl ? qtyUnitEl.value.trim() : '';
     const descVal = descEl ? descEl.value.trim() : '';
 
     const categoryVal = selectedType === 'Menu' ? 'Menu / Food' : selectedType;
@@ -2065,9 +2288,6 @@ window.saveInclusion = async function (addAnother = false) {
         category: categoryVal,
         item_id: itemId ? parseInt(itemId, 10) : null,
         name: nameVal,
-        quantity: qtyVal,
-        quantity_num: qtyNum,
-        unit: qtyUnit,
         description: descVal,
         image_url: imageUrl
     };
@@ -2100,8 +2320,6 @@ window.saveInclusion = async function (addAnother = false) {
             if (select) select.value = '';
             if (itemIdEl) itemIdEl.value = '';
             if (nameEl) nameEl.value = '';
-            if (qtyNumEl) qtyNumEl.value = '';
-            if (qtyUnitEl) qtyUnitEl.value = '';
             if (descEl) descEl.value = '';
             resetInclusionImagePicker('');
             setInclusionCategoryChoices(false);
@@ -2138,16 +2356,12 @@ function syncInclusionsHidden() {
 window.handleCreateNewCatalogItem = function () {
     const catSelect = document.getElementById('customInclusionCategory');
     const type = catSelect ? catSelect.value : 'Equipment';
-    const editIndexEl = document.getElementById('customInclusionEditIndex');
-    const editIdx = editIndexEl ? editIndexEl.value : '-1';
-
-    // Fixed package flow must remain in the same modal to avoid overlapping dialogs.
-    if (type === 'Menu' || type === 'Service') {
-        if (window.showToast) {
-            window.showToast('Use the same quick-add form to add this item without opening a second modal.', 'info');
-        }
+    if (type === 'Equipment') {
+        if (window.showToast) window.showToast('Equipment cannot be added through Quick Add Inclusion.', 'error');
         return;
     }
+    const editIndexEl = document.getElementById('customInclusionEditIndex');
+    const editIdx = editIndexEl ? editIndexEl.value : '-1';
 
     // Store return state so we return seamlessly to addInclusionModal without closing packageModal
     window._pkgInclusionReturnState = {
@@ -2159,7 +2373,7 @@ window.handleCreateNewCatalogItem = function () {
     // Close inclusion modal temporarily (leaves packageModal untouched)
     safeCloseModal('addInclusionModal');
 
-    const quickType = (type === 'Menu' || type === 'Menu / Food') ? 'menu' : (type === 'Service' ? 'service' : 'equipment');
+    const quickType = (type === 'Menu' || type === 'Menu / Food') ? 'menu' : 'service';
     if (typeof window.openQuickAddOptionModal === 'function') {
         window.openQuickAddOptionModal(quickType);
     } else {
@@ -2226,10 +2440,10 @@ function renderInclusionsList() {
                 <h4 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin: 0 0 0.4rem 0;">No inclusions added yet</h4>
                 <p style="font-size: 0.85rem; color: #64748b; max-width: 420px; margin: 0 auto 0.4rem auto; line-height: 1.5;">Add the menu, services, and equipment included in this package.</p>
                 <p style="font-size: 0.8rem; color: #64748b; font-weight: 600; margin: 0 auto 1.5rem auto;"><i class="fas fa-info-circle" style="color: var(--primary-color, #f97316); margin-right: 4px;"></i>These inclusions are fixed and cannot be changed by customers.</p>
-                <button type="button" class="btn-primary-pro" onclick="window.openAddInclusionModal()"
+                <button type="button" class="btn-primary-pro" onclick="window.openFixedQuickAddOptionModal()"
                     style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.875rem; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                     <i class="fas fa-plus"></i>
-                    <span>+ Add Inclusion</span>
+                    <span>Add Inclusion</span>
                 </button>
             </div>
         `;
@@ -2315,20 +2529,20 @@ function renderInclusionsList() {
 
         html += `
         <div class="inclusion-item-card" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: all 0.2s ease;">
-            <div style="display: flex; align-items: flex-start; gap: 1rem; flex: 1; min-width: 0;">
-                <div style="width: 56px; height: 56px; border-radius: 12px; background: ${cfg.iconBg}; color: ${cfg.iconColor}; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; overflow: hidden;">
+            <div class="inclusion-item-card-content" style="display: flex; align-items: flex-start; gap: 1rem; flex: 1; min-width: 0;">
+                <div class="inclusion-item-card-thumbnail" style="width: 56px; height: 56px; border-radius: 12px; background: ${cfg.iconBg}; color: ${cfg.iconColor}; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; overflow: hidden;">
                     ${resolvedImg
                         ? `<img src="${escapeHtml(resolvedImg)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'${cfg.icon}\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
                         : `<i class="${cfg.icon}"></i>`}
                 </div>
-                <div style="flex: 1; min-width: 0;">
+                <div class="inclusion-item-card-details" style="flex: 1; min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
                         <span style="font-size: 0.72rem; font-weight: 800; color: ${cfg.badgeColor}; background: ${cfg.badgeBg}; border: 1px solid ${cfg.badgeBorder}; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.4px;">
                             ${cat}
                         </span>
                     </div>
                     <div style="font-size: 0.98rem; font-weight: 800; color: #0f172a; line-height: 1.3; margin-bottom: 3px;">
-                        ${escapeHtml(item.name)}${cat !== 'Service' && item.quantity ? ` <span style="font-size: 0.78rem; font-weight: 700; color: #475569; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 2px 7px; border-radius: 6px; margin-left: 6px; vertical-align: middle;">${escapeHtml(item.quantity)}</span>` : ''}
+                        ${escapeHtml(item.name)}
                     </div>
                     ${resolvedDesc && String(resolvedDesc).trim().length > 2 ? `
                         <div style="font-size: 0.84rem; color: #64748b; line-height: 1.45; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
@@ -2339,8 +2553,9 @@ function renderInclusionsList() {
             </div>
 
             <!-- Actions -->
-            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto;">
+            <div class="inclusion-item-card-actions" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto;">
                 <button type="button" onclick="window.editInclusion(${index})" title="Edit inclusion"
+                    aria-label="Edit inclusion"
                     style="display: inline-flex; align-items: center; gap: 5px; padding: 0.45rem 0.75rem; font-size: 0.8rem; font-weight: 700; color: #334155; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; transition: all 0.15s;"
                     onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a';"
                     onmouseout="this.style.background='#f8fafc'; this.style.color='#334155';">
@@ -2348,6 +2563,7 @@ function renderInclusionsList() {
                     <span>Edit</span>
                 </button>
                 <button type="button" onclick="window.removeInclusion(${index})" title="Delete inclusion"
+                    aria-label="Delete inclusion"
                     style="display: inline-flex; align-items: center; gap: 5px; padding: 0.45rem 0.75rem; font-size: 0.8rem; font-weight: 700; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; cursor: pointer; transition: all 0.15s;"
                     onmouseover="this.style.background='#fee2e2'; this.style.color='#b91c1c';"
                     onmouseout="this.style.background='#fef2f2'; this.style.color='#dc2626';">
@@ -2379,13 +2595,13 @@ window.archivePackage = function (id) {
                 } else {
                     alert('Failed to archive package.');
                     confirmBtn.disabled = false;
-                    confirmBtn.innerText = 'Archive Now';
+                    confirmBtn.innerText = 'Archive package';
                 }
             } catch (err) {
                 console.error('Error archiving package:', err);
                 alert('An error occurred while archiving.');
                 confirmBtn.disabled = false;
-                confirmBtn.innerText = 'Archive Now';
+                confirmBtn.innerText = 'Archive package';
             }
         };
     }
@@ -2423,6 +2639,17 @@ let customizableCategoryQuotas = {};
 let lastMenuQuery = '';
 let lastServiceQuery = '';
 
+function getCustomizableMenuCategoryCounts() {
+    const counts = {};
+    (window.inclusionsCatalog.menu || [])
+        .filter(item => customizableMenuIds.has(Number(item.id)))
+        .forEach(item => {
+            const category = String(item.category || '').trim() || 'Others';
+            counts[category] = (counts[category] || 0) + 1;
+        });
+    return counts;
+}
+
 window.toggleCustomizableItem = function (type, id, checked) {
     const numId = Number(id);
     if (type === 'menu') {
@@ -2436,6 +2663,7 @@ window.toggleCustomizableItem = function (type, id, checked) {
         updateCustomizableCounters('service');
     }
     syncCustomizableSelectionRules();
+    updatePackageWizardControls();
 };
 
 window.toggleAllCustomizableCatalog = function (type, selectAll) {
@@ -2453,6 +2681,7 @@ window.toggleAllCustomizableCatalog = function (type, selectAll) {
         updateCustomizableCounters('service');
     }
     syncCustomizableSelectionRules();
+    updatePackageWizardControls();
 };
 
 window.filterCustomizableCatalog = function (type, query) {
@@ -2484,6 +2713,7 @@ window.renderCustomizableCatalogs = function () {
     renderCustomizableServices(lastServiceQuery);
     renderCategoryQuotas();
     updateCustomizableCounters();
+    updatePackageWizardControls();
 };
 
 function renderCustomizableMenu(query = '') {
@@ -2570,11 +2800,20 @@ function renderCustomizableServices(query = '') {
         let unitText = item.unit_type || 'service';
         if (unitText.startsWith('per_')) unitText = unitText.replace('per_', '');
         const img = item.image_url || '';
-        const desc = String(item.description || '').trim();
+        const notes = String(item.notes || item.description || '')
+            .split(/[\n,]+/)
+            .map(note => note.replace(/^\s*[•*-]\s*/, '').trim())
+            .filter(Boolean);
+        const notesHtml = notes.length
+            ? `<details class="package-service-notes" onclick="event.stopPropagation()">
+                    <summary>Service notes (${notes.length})</summary>
+                    <ul>${notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}</ul>
+               </details>`
+            : '';
 
         return `
             <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? '#eff6ff' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#93c5fd' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
-                 class="catalog-option-card">
+                 class="catalog-option-card service-option-card">
                 <input type="checkbox" ${isChecked ? 'checked' : ''} 
                        onchange="window.toggleCustomizableItem('service', ${id}, this.checked); const c = this.closest('.catalog-option-card'); c.style.background = this.checked ? '#eff6ff' : '#ffffff'; c.style.borderColor = this.checked ? '#93c5fd' : '#e2e8f0';"
                        style="width: 17px; height: 17px; accent-color: #2563eb; cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
@@ -2586,14 +2825,14 @@ function renderCustomizableServices(query = '') {
                 <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
                         <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3;">${escapeHtml(item.name)}</strong>
-                        <span style="font-size: 0.75rem; font-weight: 800; color: #1e40af; background: #dbeafe; padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
+                        <span class="service-option-price" style="font-size: 0.75rem; font-weight: 800; color: #1e40af; background: #dbeafe; padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
                             ₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unitText && unitText !== 'fixed' ? '/' + escapeHtml(unitText) : ''}
                         </span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
                         ${item.category ? `<span style="font-size: 0.7rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.category)}</span>` : ''}
                     </div>
-                    ${desc.length > 2 ? `<p style="font-size: 0.75rem; color: #64748b; line-height: 1.4; margin: 6px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(desc)}</p>` : ''}
+                    ${notesHtml}
                 </div>
                 <div style="display: flex; align-items: center; gap: 4px; margin-left: 2px; flex-shrink: 0;">
                     <button type="button" title="Edit Service" onclick="window.openQuickEditModal('service', ${id}, event)"
@@ -2619,9 +2858,11 @@ function syncCustomizableSelectionRules() {
     if (jsonInput) {
         const cleanQuotas = {};
         let total = 0;
-        for (const [cat, val] of Object.entries(customizableCategoryQuotas)) {
-            const num = parseInt(val, 10);
-            if (!isNaN(num) && num > 0) {
+        const categoryCounts = getCustomizableMenuCategoryCounts();
+        for (const [cat, available] of Object.entries(categoryCounts)) {
+            const rawQuota = customizableCategoryQuotas[cat];
+            const num = Number(rawQuota);
+            if (String(rawQuota ?? '').trim() && Number.isInteger(num) && num >= 1 && num <= available) {
                 cleanQuotas[cat] = num;
                 total += num;
             }
@@ -2638,86 +2879,39 @@ function syncCustomizableSelectionRules() {
     }
 }
 
-window.adjustCategoryQuota = function(encodedCat, delta) {
-    const cat = decodeURIComponent(encodedCat);
-    const cur = parseInt(customizableCategoryQuotas[cat] !== undefined ? customizableCategoryQuotas[cat] : 1, 10);
-    const next = Math.max(0, cur + delta);
-    customizableCategoryQuotas[cat] = next;
-    renderCategoryQuotas();
-    syncCustomizableSelectionRules();
-};
-
 window.setCategoryQuota = function(encodedCat, val) {
     const cat = decodeURIComponent(encodedCat);
-    const next = Math.max(0, parseInt(val, 10) || 0);
-    customizableCategoryQuotas[cat] = next;
-    renderCategoryQuotas();
-    syncCustomizableSelectionRules();
-};
-
-window.presetOneVariantPerCategory = function() {
-    const menuCatalog = window.inclusionsCatalog.menu || [];
-    const activeItems = customizableMenuIds.size > 0 
-        ? menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)))
-        : menuCatalog;
-    
-    activeItems.forEach(i => {
-        const cat = (i.category || 'Main Course').trim();
-        if (cat) customizableCategoryQuotas[cat] = 1;
-    });
-    renderCategoryQuotas();
-    syncCustomizableSelectionRules();
-};
-
-window.presetAllCategoryQuotas = function(qty = 1) {
-    const targetQty = Math.max(0, parseInt(qty, 10) || 1);
-    const menuCatalog = window.inclusionsCatalog.menu || [];
-    const activeItems = customizableMenuIds.size > 0 
-        ? menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)))
-        : menuCatalog;
-    
-    activeItems.forEach(i => {
-        const cat = (i.category || 'Main Course').trim();
-        if (cat) customizableCategoryQuotas[cat] = targetQty;
-    });
-    renderCategoryQuotas();
-    syncCustomizableSelectionRules();
-};
-
-window.clearAllCategoryQuotas = function() {
-    for (const cat of Object.keys(customizableCategoryQuotas)) {
-        customizableCategoryQuotas[cat] = 0;
+    const available = getCustomizableMenuCategoryCounts()[cat] || 0;
+    const next = String(val || '').trim() ? Number(val) : NaN;
+    if (!Number.isInteger(next) || next < 1 || next > available) {
+        delete customizableCategoryQuotas[cat];
+    } else {
+        customizableCategoryQuotas[cat] = next;
     }
     renderCategoryQuotas();
     syncCustomizableSelectionRules();
+    updatePackageWizardControls();
 };
 
 function renderCategoryQuotas() {
     const container = document.getElementById('categoryQuotasContainer');
     if (!container) return;
 
-    const menuCatalog = window.inclusionsCatalog.menu || [];
-    const activeItems = customizableMenuIds.size > 0 
-        ? menuCatalog.filter(i => customizableMenuIds.has(Number(i.id)))
-        : menuCatalog;
-
-    const catCounts = {};
-    activeItems.forEach(i => {
-        const cat = (i.category || 'Main Course').trim();
-        if (cat) catCounts[cat] = (catCounts[cat] || 0) + 1;
-    });
-
+    const catCounts = getCustomizableMenuCategoryCounts();
     const categories = Object.keys(catCounts).sort();
     if (categories.length === 0) {
         container.innerHTML = `
-            <div style="grid-column: 1 / -1; padding: 1rem; text-align: center; color: #94a3b8; font-size: 0.82rem; font-style: italic;">
-                Select menu items in Section A above to set category limits.
+            <div class="customizable-quota-empty" style="grid-column: 1 / -1; padding: 1rem; text-align: center; color: #64748b; font-size: 0.82rem;">
+                Select the menu dishes you want to offer above. Their categories and limits will appear here.
             </div>
         `;
         const totalEl = document.getElementById('custTotalVariantsAllowedText');
         if (totalEl) totalEl.innerText = '0';
         const banner = document.getElementById('custQuotaSummaryBanner');
-        if (banner) banner.style.display = 'none';
+        if (banner) {
+            banner.style.display = 'block';
+            banner.textContent = 'Choose menu dishes above to configure customer selection limits.';
+        }
         return;
     }
 
@@ -2725,36 +2919,32 @@ function renderCategoryQuotas() {
     const summaryParts = [];
 
     container.innerHTML = categories.map(cat => {
-        if (customizableCategoryQuotas[cat] === undefined) {
-            customizableCategoryQuotas[cat] = 1;
-        }
-        const quota = customizableCategoryQuotas[cat];
-        totalAllowed += quota;
+        const quotaValue = customizableCategoryQuotas[cat];
+        const quota = String(quotaValue ?? '').trim() ? Number(quotaValue) : NaN;
         const availableInCat = catCounts[cat] || 0;
-        const encodedCat = encodeURIComponent(cat);
+        const encodedCat = encodeURIComponent(cat).replace(/'/g, '%27');
+        const quotaIsValid = Number.isInteger(quota) && quota >= 1 && quota <= availableInCat;
 
-        if (quota > 0) {
-            summaryParts.push(`${quota} ${cat}`);
+        if (quotaIsValid) {
+            totalAllowed += quota;
+            summaryParts.push(`${quota} from ${escapeHtml(cat)}`);
         }
 
         return `
-            <div style="background: ${quota > 0 ? '#ffffff' : '#f8fafc'}; border: 1.5px solid ${quota > 0 ? '#fed7aa' : '#e2e8f0'}; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; transition: all 0.15s ease;">
-                <div style="flex: 1; min-width: 0;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <strong style="font-size: 0.85rem; color: ${quota > 0 ? '#0f172a' : '#94a3b8'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(cat)}</strong>
-                        <span style="font-size: 0.7rem; color: #64748b; background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-weight: 600; white-space: nowrap;">${availableInCat} avail</span>
-                    </div>
-                    ${quota === 0 ? '<div style="font-size: 0.7rem; color: #ef4444; font-weight: 600; margin-top: 1px;">Excluded from package</div>' : ''}
+            <div class="customizable-quota-card" style="background: ${quotaIsValid ? '#ffffff' : '#fffaf5'}; border: 1.5px solid ${quotaIsValid ? '#fed7aa' : '#fdba74'}; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <div class="customizable-quota-category">
+                    <strong>${escapeHtml(cat)}</strong>
+                    <span>${availableInCat} choice${availableInCat === 1 ? '' : 's'} offered</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 3px; flex-shrink: 0;">
-                    <button type="button" onclick="window.adjustCategoryQuota('${encodedCat}', -1)" 
-                            style="width: 26px; height: 26px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">-</button>
-                    <input type="number" min="0" max="20" value="${quota}" 
-                           onchange="window.setCategoryQuota('${encodedCat}', this.value)"
-                           style="width: 38px; height: 26px; text-align: center; font-weight: 800; font-size: 0.88rem; border: 1.5px solid #fed7aa; border-radius: 6px; color: #ea580c; background: #ffffff; padding: 0;" />
-                    <button type="button" onclick="window.adjustCategoryQuota('${encodedCat}', 1)" 
-                            style="width: 26px; height: 26px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; font-weight: 800; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;">+</button>
-                </div>
+                <label class="customizable-quota-input">
+                    <span>Customer must choose</span>
+                    <span class="customizable-quota-input-control">
+                        <input type="number" min="1" max="${availableInCat}" value="${quotaIsValid ? quota : ''}"
+                            aria-label="Number of ${escapeHtml(cat)} dishes customers may select"
+                            onchange="window.setCategoryQuota('${encodedCat}', this.value)" />
+                        <span>of ${availableInCat}</span>
+                    </span>
+                </label>
             </div>
         `;
     }).join('');
@@ -2765,12 +2955,11 @@ function renderCategoryQuotas() {
     const banner = document.getElementById('custQuotaSummaryBanner');
     if (banner) {
         banner.style.display = 'block';
-        if (summaryParts.length > 0) {
-            banner.innerHTML = `<i class="fas fa-clipboard-check" style="color: #ea580c; margin-right: 5px;"></i> <strong>Customer picks:</strong> ${summaryParts.join(', ')} (${totalAllowed} variants total)`;
-        } else {
-            banner.innerHTML = `<i class="fas fa-info-circle" style="color: #64748b; margin-right: 5px;"></i> No category limits set yet. Click <em>"Set 1 Each"</em> to allow 1 dish per category.`;
-        }
+        banner.innerHTML = summaryParts.length === categories.length
+            ? `<strong>Required customer picks:</strong> ${summaryParts.join(', ')} (${totalAllowed} total)`
+            : 'Set the required number of picks for each selected category to continue.';
     }
+    updatePackageWizardControls();
 }
 
 function renderReviewCustomizable() {
@@ -2805,7 +2994,7 @@ function renderReviewCustomizable() {
                 for (const [cat, val] of Object.entries(customizableCategoryQuotas)) {
                     const num = parseInt(val, 10);
                     if (!isNaN(num) && num > 0) {
-                        summaryParts.push(`<span style="background: #ffffff; border: 1px solid #fed7aa; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #9a3412; font-size: 0.8rem;"><strong style="color: #ea580c;">${num}</strong> ${escapeHtml(cat)}</span>`);
+                        summaryParts.push(`<span style="background: #ffffff; border: 1px solid #fed7aa; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #9a3412; font-size: 0.8rem;"><strong style="color: #ea580c;">${num}</strong> required from ${escapeHtml(cat)}</span>`);
                         totalAllowed += num;
                     }
                 }
@@ -2816,17 +3005,17 @@ function renderReviewCustomizable() {
                     <div style="background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 4px;">
                             <h5 style="font-size: 0.75rem; font-weight: 800; color: #c2410c; text-transform: uppercase; margin: 0;">
-                                <i class="fas fa-layer-group" style="margin-right: 5px;"></i> Menu Selection Quotas (Allowed per Category)
+                                <i class="fas fa-layer-group" style="margin-right: 5px;"></i>                                 Required Menu Picks by Category
                             </h5>
                             <span style="font-size: 0.75rem; font-weight: 800; color: #ea580c; background: #ffedd5; padding: 2px 8px; border-radius: 12px; border: 1px solid #fed7aa;">
-                                Total: ${totalAllowed} dish${totalAllowed === 1 ? '' : 'es'}
+                                Required: ${totalAllowed} dish${totalAllowed === 1 ? '' : 'es'}
                             </span>
                         </div>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
                             ${summaryParts.join('')}
                         </div>
                         <div style="font-size: 0.78rem; color: #9a3412; margin-top: 6px;">
-                            <i class="fas fa-check" style="margin-right: 4px;"></i> Customer will choose up to this quota when booking.
+                            <i class="fas fa-check" style="margin-right: 4px;"></i> Customers must select the required number from every category to continue.
                         </div>
                     </div>
                 `;
@@ -2866,13 +3055,100 @@ function renderReviewCustomizable() {
 // -------------------------------------------------------------
 // Quick Add Options for Customizable Packages (Food, Service, Equipment)
 // -------------------------------------------------------------
+window.validateQuickAddOptionPrice = function () {
+    const input = document.getElementById('quickAddOptionPrice');
+    const error = document.getElementById('quickAddOptionPriceError');
+    const type = document.getElementById('quickAddOptionType')?.value || '';
+    if (!input) return false;
+    if (window.applyCommaFormatting) window.applyCommaFormatting(input);
+
+    const rawValue = input.value.replace(/,/g, '').trim();
+    const amount = Number(rawValue);
+    let message = '';
+    if (type === 'service') {
+        if (!rawValue) {
+            message = 'Enter a service fee.';
+        } else if (input.dataset.formatOverflow === 'true') {
+            message = 'Use up to 8 whole-number digits and 2 decimal places.';
+        } else if (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount)) {
+            message = 'Enter a valid service fee with no more than 2 decimal places.';
+        } else if (amount <= 0) {
+            message = 'Service fee must be greater than zero.';
+        } else if (amount > 99999999.99) {
+            message = 'The maximum service fee is ₱99,999,999.99.';
+        }
+    }
+
+    input.setCustomValidity(message);
+    if (error) {
+        error.textContent = message;
+        error.style.display = message ? 'block' : 'none';
+    }
+    return !message;
+};
+
+window.renderQuickAddOptionCategorySuggestions = function () {
+    const input = document.getElementById('quickAddOptionCategory');
+    const suggestionList = document.getElementById('quickAddOptionCategorySuggestions');
+    if (!input || !suggestionList || document.getElementById('quickAddOptionType')?.value !== 'menu') return;
+
+    const query = input.value.trim().toLowerCase();
+    const categories = Array.from(new Set((window.inclusionsCatalog.menu || [])
+        .map(item => String(item.category || '').trim())
+        .filter(Boolean)))
+        .filter(category => !query || category.toLowerCase().includes(query))
+        .sort((a, b) => a.localeCompare(b));
+
+    if (!categories.length) {
+        suggestionList.innerHTML = '';
+        suggestionList.style.display = 'none';
+        return;
+    }
+
+    suggestionList.innerHTML = categories.map(category => `
+        <button type="button" class="quick-add-category-suggestion" data-category="${escapeHtml(category)}"
+            onmousedown="event.preventDefault()">
+            ${escapeHtml(category)}
+        </button>
+    `).join('');
+    suggestionList.style.display = 'block';
+};
+
+window.handleQuickAddOptionCategorySuggestionClick = function (event) {
+    const suggestionList = event.currentTarget;
+    const target = event.target instanceof Element ? event.target.closest('.quick-add-category-suggestion') : null;
+    let option = target;
+
+    if (!option) {
+        const listRect = suggestionList.getBoundingClientRect();
+        const clickY = event.clientY - listRect.top + suggestionList.scrollTop;
+        option = Array.from(suggestionList.children).find(child =>
+            clickY >= child.offsetTop && clickY < child.offsetTop + child.offsetHeight
+        );
+    }
+
+    if (!option || !option.dataset.category) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.selectQuickAddOptionCategory(option.dataset.category);
+};
+
+window.selectQuickAddOptionCategory = function (category) {
+    const input = document.getElementById('quickAddOptionCategory');
+    const suggestionList = document.getElementById('quickAddOptionCategorySuggestions');
+    if (input) {
+        input.value = category;
+        input.setCustomValidity('');
+    }
+    if (suggestionList) suggestionList.style.display = 'none';
+};
+
 window.setQuickAddOptionType = function (type) {
     if (!['menu', 'service', 'equipment'].includes(type)) type = '';
 
-    const typeWrapper = document.getElementById('quickAddOptionTypeWrapper');
     const footer = document.getElementById('quickAddOptionFooter');
-    const typeSelect = document.getElementById('quickAddOptionTypeSelect');
     const hiddenType = document.getElementById('quickAddOptionType');
+    const typeWrapper = document.getElementById('quickAddOptionTypeWrapper');
     const nameWrapper = document.getElementById('quickAddOptionNameWrapper');
     const unitWrapper = document.getElementById('quickAddOptionUnitWrapper');
     const descriptionWrapper = document.getElementById('quickAddOptionDescriptionWrapper');
@@ -2881,36 +3157,64 @@ window.setQuickAddOptionType = function (type) {
     const priceWrapper = document.getElementById('quickAddOptionPriceWrapper');
     const priceLabel = document.getElementById('quickAddOptionPriceLabel');
     const priceInput = document.getElementById('quickAddOptionPrice');
+    const priceError = document.getElementById('quickAddOptionPriceError');
     const qtyWrapper = document.getElementById('quickAddOptionQtyWrapper');
     const nameLabel = document.getElementById('quickAddOptionNameLabel');
     const nameInput = document.getElementById('quickAddOptionName');
     const unitLabel = document.getElementById('quickAddOptionUnitLabel');
     const unitSelect = document.getElementById('quickAddOptionUnit');
     const categoryInput = document.getElementById('quickAddOptionCategory');
+    const categoryWrapper = document.getElementById('quickAddOptionCategoryWrapper');
+    const categorySuggestions = document.getElementById('quickAddOptionCategorySuggestions');
     const description = document.getElementById('quickAddOptionDescription');
     const equipmentFlow = type === 'equipment';
 
-    if (typeWrapper) typeWrapper.style.display = equipmentFlow ? 'none' : 'block';
-    if (typeSelect) {
-        typeSelect.required = !equipmentFlow;
-        if (type && !equipmentFlow) typeSelect.value = type;
+    if (categoryInput && categorySuggestions && !categoryInput.dataset.suggestionsBound) {
+        categoryInput.addEventListener('input', window.renderQuickAddOptionCategorySuggestions);
+        categoryInput.addEventListener('focus', window.renderQuickAddOptionCategorySuggestions);
+        categorySuggestions.addEventListener('click', window.handleQuickAddOptionCategorySuggestionClick);
+        categoryInput.addEventListener('blur', () => {
+            window.setTimeout(() => {
+                if (categorySuggestions) categorySuggestions.style.display = 'none';
+            }, 250);
+        });
+        categoryInput.dataset.suggestionsBound = 'true';
     }
+
     if (hiddenType) hiddenType.value = type;
 
     const hasType = Boolean(type);
+    if (hiddenType) hiddenType.required = true;
+    if (window._pkgInclusionReturnState?.direct) {
+        window._pkgInclusionReturnState.type = type === 'menu'
+            ? 'Menu'
+            : (type === 'service' ? 'Service' : (type === 'equipment' ? 'Equipment' : ''));
+    }
+    if (typeWrapper) typeWrapper.style.display = 'block';
     if (footer) footer.style.display = hasType ? 'flex' : 'none';
     if (nameWrapper) nameWrapper.style.display = hasType ? 'block' : 'none';
     if (unitWrapper) unitWrapper.style.display = hasType ? 'block' : 'none';
     if (descriptionWrapper) descriptionWrapper.style.display = hasType ? 'block' : 'none';
     if (photoWrapper) photoWrapper.style.display = hasType ? 'block' : 'none';
+    if (categoryWrapper) categoryWrapper.style.display = type === 'menu' ? 'block' : 'none';
     if (nameInput) nameInput.required = hasType;
     if (unitSelect) unitSelect.required = hasType;
+    if (categoryInput) categoryInput.required = type === 'menu';
     if (qtyWrapper) qtyWrapper.style.display = equipmentFlow ? 'block' : 'none';
+    if (priceError) {
+        priceError.textContent = '';
+        priceError.style.display = 'none';
+    }
+    if (priceInput) priceInput.setCustomValidity('');
 
     if (!hasType) {
         if (priceRow) priceRow.style.display = 'none';
         if (priceInput) priceInput.required = false;
         if (categoryInput) categoryInput.value = '';
+        if (categorySuggestions) {
+            categorySuggestions.innerHTML = '';
+            categorySuggestions.style.display = 'none';
+        }
         return;
     }
 
@@ -2927,7 +3231,11 @@ window.setQuickAddOptionType = function (type) {
             `;
             unitSelect.value = 'per_pax';
         }
-        if (categoryInput) categoryInput.value = 'Main Course';
+        if (categoryInput) categoryInput.value = '';
+        if (categorySuggestions) {
+            categorySuggestions.innerHTML = '';
+            categorySuggestions.style.display = 'none';
+        }
         if (priceRow) priceRow.style.display = 'none';
         if (priceInput) {
             priceInput.value = '0.00';
@@ -2956,7 +3264,7 @@ window.setQuickAddOptionType = function (type) {
         if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="color: #ef4444;">*</span>';
         if (priceInput) {
             priceInput.required = true;
-            priceInput.value = '0.00';
+            priceInput.value = '';
             priceInput.placeholder = '0.00';
         }
         if (description) description.placeholder = 'Details, inclusions, specifications or notes...';
@@ -2985,6 +3293,12 @@ window.setQuickAddOptionType = function (type) {
             priceInput.value = '0.00';
         }
     }
+
+    const title = document.getElementById('quickAddOptionModalTitle');
+    const subtitle = document.querySelector('#quickAddOptionModal .quick-add-option-subtitle');
+    const itemLabel = type === 'menu' ? 'menu item' : type;
+    if (title) title.textContent = `Create ${itemLabel}`;
+    if (subtitle) subtitle.textContent = `Add a new ${itemLabel} to your catalog${window._pkgInclusionReturnState?.direct ? ' and package' : ''}.`;
 };
 
 window.openQuickAddOptionModal = function (type) {
@@ -2993,18 +3307,41 @@ window.openQuickAddOptionModal = function (type) {
 
     const form = document.getElementById('quickAddOptionForm');
     if (form) form.reset();
+    const photoPreview = document.getElementById('quickAddOptionPhotoPreview');
+    if (photoPreview) photoPreview.innerHTML = '';
 
     const normalizedType = ['menu', 'service', 'equipment'].includes(type) ? type : '';
-    const typeSelect = document.getElementById('quickAddOptionTypeSelect');
-    if (typeSelect) typeSelect.value = normalizedType === 'equipment' ? '' : normalizedType;
     window.setQuickAddOptionType(normalizedType);
+    const title = document.getElementById('quickAddOptionModalTitle');
+    const subtitle = modal.querySelector('.quick-add-option-subtitle');
+    if (title) {
+        title.textContent = normalizedType
+            ? `Create ${normalizedType === 'menu' ? 'menu item' : normalizedType}`
+            : 'Quick Add Inclusion';
+    }
+    if (subtitle) {
+        subtitle.textContent = normalizedType
+            ? `Add a new ${normalizedType === 'menu' ? 'menu item' : normalizedType} to your catalog and package.`
+            : 'Choose an option type, then add it to your catalog and package.';
+    }
     safeOpenModal('quickAddOptionModal', true);
+};
+
+window.openFixedQuickAddOptionModal = function () {
+    window._pkgInclusionReturnState = {
+        active: true,
+        direct: true,
+        type: ''
+    };
+    window.openQuickAddOptionModal('');
 };
 
 window.closeQuickAddOptionModal = function () {
     safeCloseModal('quickAddOptionModal');
     if (window._pkgInclusionReturnState && window._pkgInclusionReturnState.active) {
-        safeOpenModal('addInclusionModal', true);
+        if (!window._pkgInclusionReturnState.direct) {
+            safeOpenModal('addInclusionModal', true);
+        }
         window._pkgInclusionReturnState = null;
     }
 };
@@ -3013,11 +3350,12 @@ window.submitQuickAddOption = async function (e) {
     e.preventDefault();
     const type = document.getElementById('quickAddOptionType')?.value || '';
     const name = (document.getElementById('quickAddOptionName')?.value || '').trim();
-    const category = document.getElementById('quickAddOptionCategory')?.value || '';
+    const categoryInput = document.getElementById('quickAddOptionCategory');
+    const category = (categoryInput?.value || '').trim();
     const unit = document.getElementById('quickAddOptionUnit')?.value || '';
     const priceInput = document.getElementById('quickAddOptionPrice');
     const priceText = (priceInput?.value || '').trim();
-    const price = type === 'menu' ? 0 : (parseFloat(priceText || '0') || 0);
+    const price = type === 'menu' ? 0 : (Number(priceText.replace(/,/g, '')) || 0);
     const qty = parseInt(document.getElementById('quickAddOptionQty')?.value || 100, 10) || 100;
     const desc = (document.getElementById('quickAddOptionDescription')?.value || '').trim();
 
@@ -3029,7 +3367,16 @@ window.submitQuickAddOption = async function (e) {
         alert('Please enter an item name.');
         return;
     }
-    if (type === 'service' && (!priceText || !Number.isFinite(Number(priceText)) || Number(priceText) < 0)) {
+    if (type === 'menu' && !category.trim()) {
+        if (categoryInput) {
+            categoryInput.setCustomValidity('Enter a food category, such as Rice, Pork, or Chicken.');
+            categoryInput.reportValidity();
+            categoryInput.focus();
+        }
+        return;
+    }
+    if (categoryInput) categoryInput.setCustomValidity('');
+    if (type === 'service' && !window.validateQuickAddOptionPrice()) {
         if (priceInput) priceInput.focus();
         return;
     }
@@ -3085,6 +3432,26 @@ window.submitQuickAddOption = async function (e) {
 
         // Close modal
         safeCloseModal('quickAddOptionModal');
+
+        if (window._pkgInclusionReturnState?.direct) {
+            const categoryLabel = type === 'menu' ? 'Menu / Food' : type.charAt(0).toUpperCase() + type.slice(1);
+            packageInclusions.push({
+                type: categoryLabel === 'Menu / Food' ? 'Menu' : categoryLabel,
+                category: categoryLabel,
+                item_id: newId,
+                name: newItem.name,
+                description: newItem.description || '',
+                image_url: newItem.image_url || ''
+            });
+            syncInclusionsHidden();
+            renderInclusionsList();
+            if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
+            window._pkgInclusionReturnState = null;
+            if (window.showToast) {
+                window.showToast(`Added "${newItem.name}" to this package.`, 'success');
+            }
+            return;
+        }
 
         // Check if we came from inclusion modal (e.g. fixed-price package create/edit)
         if (window._pkgInclusionReturnState && window._pkgInclusionReturnState.active) {
@@ -3142,6 +3509,7 @@ window.openQuickEditModal = function (type, id, event) {
     const nameLabel = document.getElementById('quickEditOptionNameLabel');
     const nameInput = document.getElementById('quickEditOptionName');
     const catSelect = document.getElementById('quickEditOptionCategory');
+    const categorySuggestions = document.getElementById('quickEditOptionCategorySuggestions');
     const unitLabel = document.getElementById('quickEditOptionUnitLabel');
     const unitSelect = document.getElementById('quickEditOptionUnit');
     const priceLabel = document.getElementById('quickEditOptionPriceLabel');
@@ -3151,6 +3519,14 @@ window.openQuickEditModal = function (type, id, event) {
     const price = parseFloat(item.price || item.selling_price || 0);
 
     const priceWrapper = document.getElementById('quickEditOptionPriceWrapper');
+    if (catSelect) catSelect.value = item.category || (type === 'service' ? 'Service' : '');
+    if (categorySuggestions) {
+        const categories = Array.from(new Set([
+            ...(window.inclusionsCatalog[type] || []).map(entry => String(entry.category || '').trim()),
+            String(item.category || '').trim()
+        ].filter(Boolean)));
+        categorySuggestions.innerHTML = categories.map(category => `<option value="${escapeHtml(category)}"></option>`).join('');
+    }
 
     if (type === 'menu') {
         if (titleEl) titleEl.innerHTML = '<i class="fas fa-edit" style="color: #16a34a; margin-right: 6px;"></i> Edit Food / Dish';
@@ -3162,32 +3538,6 @@ window.openQuickEditModal = function (type, id, event) {
             priceInput.required = false;
         }
 
-        if (catSelect) {
-            catSelect.innerHTML = `
-                <option value="Main Course">Main Course</option>
-                <option value="Beef">Beef</option>
-                <option value="Pork">Pork</option>
-                <option value="Chicken">Chicken</option>
-                <option value="Seafood">Seafood</option>
-                <option value="Pasta & Noodles">Pasta & Noodles</option>
-                <option value="Vegetables">Vegetables</option>
-                <option value="Buffet Menu">Buffet Menu</option>
-                <option value="Dessert">Dessert</option>
-                <option value="Beverage">Beverage</option>
-                <option value="Appetizer">Appetizer</option>
-                <option value="Other">Other</option>
-            `;
-            if (item.category) {
-                const exists = Array.from(catSelect.options).some(o => o.value.toLowerCase() === item.category.toLowerCase());
-                if (!exists) {
-                    const opt = document.createElement('option');
-                    opt.value = item.category;
-                    opt.innerText = item.category;
-                    catSelect.appendChild(opt);
-                }
-                catSelect.value = item.category;
-            }
-        }
         if (unitSelect) {
             unitSelect.innerHTML = `
                 <option value="per_pax">Per Pax / Guest</option>
@@ -3206,29 +3556,6 @@ window.openQuickEditModal = function (type, id, event) {
         if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="color: #ef4444;">*</span>';
         if (priceInput) priceInput.required = true;
 
-        if (catSelect) {
-            catSelect.innerHTML = `
-                <option value="Waitstaff & Servers">Waitstaff & Servers</option>
-                <option value="Bartender / Barista">Bartender / Barista</option>
-                <option value="Chef / Cook On-Site">Chef / Cook On-Site</option>
-                <option value="Buffet Management">Buffet Management</option>
-                <option value="Event Setup & Cleanup">Event Setup & Cleanup</option>
-                <option value="Sound & Lighting">Sound & Lighting</option>
-                <option value="Decoration / Styling">Decoration / Styling</option>
-                <option value="Coordinator">Coordinator</option>
-                <option value="General Service">General Service</option>
-            `;
-            if (item.category) {
-                const exists = Array.from(catSelect.options).some(o => o.value.toLowerCase() === item.category.toLowerCase());
-                if (!exists) {
-                    const opt = document.createElement('option');
-                    opt.value = item.category;
-                    opt.innerText = item.category;
-                    catSelect.appendChild(opt);
-                }
-                catSelect.value = item.category;
-            }
-        }
         if (unitSelect) {
             unitSelect.innerHTML = `
                 <option value="per_event">Per Event (Flat Rate)</option>

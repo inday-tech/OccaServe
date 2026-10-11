@@ -5,9 +5,8 @@
             style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 1.5rem 2rem;">
             <div>
                 <h3 class="occ-modal-title" id="packageModalTitle"
-                    style="color: #0f172a; font-size: 1.25rem; font-weight: 800; margin: 0;">Create New Package</h3>
-                <div class="occ-modal-subtitle" style="color: #64748b; font-size: 0.85rem; margin-top: 4px;">Build your
-                    professional package offerings exactly how you sell them.</div>
+                    style="color: #0f172a; font-size: 1.25rem; font-weight: 800; margin: 0;">Create a Package</h3>
+                <div class="occ-modal-subtitle" style="color: #64748b; font-size: 0.85rem; margin-top: 4px;">Add the details, choose what's included, then review the customer-facing price before saving.</div>
             </div>
             <button class="btn-close-pro" onclick="window.closePackageModal()" type="button"><i
                     class="fas fa-times"></i></button>
@@ -19,24 +18,33 @@
             <div class="occ-modal-body modal-body">
                 <!-- Left Sidebar Stepper -->
                 <div class="pkg-wizard-sidebar modal-sidebar">
-                    <div class="pkg-step-side active" id="step-btn-basic"
+                    <div class="pkg-step-side active" id="step-btn-basic" role="button" tabindex="0"
                         onclick="window.switchPackageTab(this, 'basic')">
                         <div class="step-icon-side"><i class="fas fa-info-circle"></i></div>
-                        <div class="step-text-side"><span class="step-title-side">1. Package Information</span></div>
+                        <div class="step-text-side">
+                            <span class="step-title-side step-title-desktop">1. Package Details</span>
+                            <span class="step-title-side step-title-mobile">1. Details</span>
+                        </div>
                     </div>
-                    <div class="pkg-step-side" id="step-btn-inclusions"
+                    <div class="pkg-step-side" id="step-btn-inclusions" role="button" tabindex="0"
                         onclick="window.switchPackageTab(this, 'inclusions')">
                         <div class="step-icon-side"><i class="fas fa-boxes"></i></div>
-                        <div class="step-text-side"><span class="step-title-side" id="step2SidebarTitle">2. Package Inclusions</span></div>
+                        <div class="step-text-side">
+                            <span class="step-title-side step-title-desktop" id="step2SidebarTitle">2. Inclusions &amp; Options</span>
+                            <span class="step-title-side step-title-mobile" id="step2SidebarMobileTitle">2. Inclusions</span>
+                        </div>
                     </div>
-                    <div class="pkg-step-side" id="step-btn-review" onclick="window.switchPackageTab(this, 'review')">
+                    <div class="pkg-step-side" id="step-btn-review" role="button" tabindex="0" onclick="window.switchPackageTab(this, 'review')">
                         <div class="step-icon-side"><i class="fas fa-check-double"></i></div>
-                        <div class="step-text-side"><span class="step-title-side">3. Review &amp; Publish</span></div>
+                        <div class="step-text-side">
+                            <span class="step-title-side step-title-desktop">3. Review &amp; Save</span>
+                            <span class="step-title-side step-title-mobile">3. Review</span>
+                        </div>
                     </div>
                     <div class="sidebar-progress-wrapper" style="margin-top: auto; padding-top: 1rem;">
                         <div
                             style="font-size: 10px; font-weight: 800; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase;">
-                            Completion</div>
+                            Progress</div>
                         <div
                             style="width: 100%; height: 6px; background: #e2e8f0; border-radius: var(--border-radius, 4px); overflow: hidden;">
                             <div id="pkgWizardProgress"
@@ -51,12 +59,19 @@
                     <div class="tab-pane-pro active" id="tab-basic">
                         <div class="form-grid">
                             <div class="form-group-pro form-grid-full">
-                                <label>Package Name *</label>
-                                <input class="control-pro" name="name" placeholder="e.g. Wedding Gold Package"
-                                    required="" type="text" />
+                                <label class="pkg-label-with-help">Package name *
+                                    <button type="button" class="pkg-help-trigger" aria-label="Package name information" aria-expanded="false" aria-controls="pkgNameHelp"><i class="fas fa-info"></i></button>
+                                    <span class="pkg-field-help" id="pkgNameHelp" hidden>Choose a clear name customers can recognize. Package names must be unique in your catalog.</span>
+                                </label>
+                                <input class="control-pro" name="name" id="pkgNameInput" placeholder="e.g. Wedding Gold"
+                                    required="" type="text" autocomplete="off" aria-describedby="packageNameValidationMessage" />
+                                <small id="packageNameValidationMessage" class="package-name-validation" aria-live="polite"></small>
                             </div>
                             <div class="form-group-pro" id="pkgCategoryGroup">
-                                <label>Category *</label>
+                                <label class="pkg-label-with-help">Event category *
+                                    <button type="button" class="pkg-help-trigger" aria-label="Event category information" aria-expanded="false" aria-controls="pkgCategoryHelp"><i class="fas fa-info"></i></button>
+                                    <span class="pkg-field-help" id="pkgCategoryHelp" hidden>Choose the event this package is designed for. Select Other to enter and save a new category.</span>
+                                </label>
                                 <select class="control-pro" name="service_type" id="pkgServiceTypeSelect" required="">
                                     <option value="Wedding">Wedding</option>
                                     <option value="Birthday">Birthday</option>
@@ -67,19 +82,31 @@
                                     <option value="Anniversary">Anniversary</option>
                                     <option value="Kiddie Party">Kiddie Party</option>
                                     <option value="Fiesta">Fiesta</option>
-                                    <option value="General">Others</option>
+                                    <option value="General">General</option>
+                                    {% for category in existing_package_categories or [] %}
+                                    <option value="{{ category }}">{{ category }}</option>
+                                    {% endfor %}
+                                    <option value="Other">Other</option>
                                 </select>
                             </div>
+                            <div class="form-group-pro form-grid-full" id="pkgOtherCategoryGroup" style="display: none;">
+                                <label class="pkg-label-with-help" for="pkgOtherCategoryInput">Name your category *
+                                    <button type="button" class="pkg-help-trigger" aria-label="Custom category information" aria-expanded="false" aria-controls="pkgOtherCategoryHelp"><i class="fas fa-info"></i></button>
+                                    <span class="pkg-field-help" id="pkgOtherCategoryHelp" hidden>This category will be available in the list the next time you create a package.</span>
+                                </label>
+                                <input class="control-pro" id="pkgOtherCategoryInput" name="other_category" type="text" maxlength="60"
+                                    placeholder="e.g. Graduation, Company Anniversary" autocomplete="off" />
+                            </div>
                             <div class="form-group-pro" id="pkgPricingModeGroup">
-                                <label>Package Type *</label>
+                                <label class="pkg-label-with-help">Pricing type *
+                                    <button type="button" class="pkg-help-trigger" aria-label="Pricing type information" aria-expanded="false" aria-controls="pkgPricingTypeHelp"><i class="fas fa-info"></i></button>
+                                    <span class="pkg-field-help" id="pkgPricingTypeHelp" hidden>Fixed packages include set items. Customizable packages let customers select from the options you provide.</span>
+                                </label>
                                 <select class="control-pro" name="pricing_mode" id="pkgPricingModeSelect"
                                     onchange="window.togglePricingMode(this.value)" required="">
                                     <option value="fixed" selected>Fixed Package</option>
                                     <option value="customizable">Customizable Package</option>
                                 </select>
-                                <div id="pkgTypeDescription" style="color: #64748b; font-size: 0.8rem; font-weight: 500; margin-top: 6px; line-height: 1.4;">
-                                    Predefined package with fixed inclusions. Customers cannot modify the included items.
-                                </div>
                             </div>
                             <div class="form-grid-full"
                                 style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1.25rem; border-radius: 12px;">
@@ -88,49 +115,58 @@
                                     <i class="fas fa-users" style="margin-right: 6px;"></i> Guest Capacity Rules</h5>
                                 <div class="form-row-pro" id="capacityRow" style="margin-bottom: 0;">
                                     <div class="form-group-pro capacity-per-pax" style="flex: 1; margin-bottom: 0;">
-                                        <label>Minimum Guests *</label>
-                                        <input class="control-pro" min="1" name="min_guests" type="number" value="50" />
+                                        <label class="pkg-label-with-help">Minimum guests *
+                                            <button type="button" class="pkg-help-trigger" aria-label="Minimum guests information" aria-expanded="false" aria-controls="pkgMinGuestsHelp"><i class="fas fa-info"></i></button>
+                                            <span class="pkg-field-help" id="pkgMinGuestsHelp" hidden>The smallest guest count customers may book. It cannot be lower than your Business Settings minimum.</span>
+                                        </label>
+                                        <input class="control-pro" min="{{ caterer_min_pax or 20 }}" name="min_guests" type="number" value="{{ caterer_min_pax or 20 }}" required />
                                     </div>
-                                    <div class="form-group-pro capacity-per-pax" style="flex: 1; margin-bottom: 0;">
-                                        <label>Maximum Guests <span
-                                                style="color: #94a3b8; font-weight: 400; text-transform: none;">Optional</span></label>
-                                        <input class="control-pro" name="max_guests" placeholder="No Limit"
-                                            type="number" />
-                                    </div>
-                                    <div class="form-group-pro capacity-fixed"
-                                        style="display: none; flex: 1; margin-bottom: 0;">
-                                        <label>Good For (Fixed Base) *</label>
+                                    <div class="form-group-pro capacity-additional"
+                                        style="display: block; flex: 1; margin-bottom: 0;">
+                                        <label class="pkg-label-with-help">Included guests (base pax) *
+                                            <button type="button" class="pkg-help-trigger" aria-label="Included guests information" aria-expanded="false" aria-controls="pkgBasePaxHelp"><i class="fas fa-info"></i></button>
+                                            <span class="pkg-field-help" id="pkgBasePaxHelp" hidden>The number of guests covered by the fixed package's base total. Extra guest charges start above this count.</span>
+                                        </label>
                                         <div style="display: flex; align-items: center; gap: 8px;">
-                                            <input class="control-pro" name="base_pax" placeholder="e.g. 50"
-                                                type="number" style="flex: 1;" />
+                                            <input class="control-pro" name="base_pax" placeholder="Guest count"
+                                                type="number" min="{{ caterer_min_pax or 20 }}" value="{{ caterer_min_pax or 20 }}" required style="flex: 1;" />
                                             <span
                                                 style="font-size: 0.85rem; font-weight: 700; color: #64748b;">Guests</span>
                                         </div>
                                     </div>
                                     <div class="form-group-pro capacity-fixed"
                                         style="display: none; flex: 1; margin-bottom: 0;">
-                                        <label>Additional / Excess Pax (₱)</label>
+                                        <label class="pkg-label-with-help">Extra guest rate (₱ / guest)
+                                            <button type="button" class="pkg-help-trigger" aria-label="Extra guest rate information" aria-expanded="false" aria-controls="pkgExtraRateHelp"><i class="fas fa-info"></i></button>
+                                            <span class="pkg-field-help" id="pkgExtraRateHelp" hidden>Charged for each guest above the included count. Saving this fixed package also updates your Business Settings default.</span>
+                                        </label>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span style="font-size: 0.85rem; font-weight: 700; color: #64748b;">₱</span>
                                             <input class="control-pro" name="additional_guest_price"
-                                                placeholder="e.g. 500" type="number" style="flex: 1;" />
+                                                placeholder="e.g. 500" type="number" min="0" step="0.01" value="{{ caterer_default_excess_guest_price or '' }}" style="flex: 1;" />
                                             <span
                                                 style="font-size: 0.85rem; font-weight: 700; color: #64748b; white-space: nowrap;">/
-                                                head</span>
+                                                guest</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label>Service Duration (Hours) *</label>
+                                <label class="pkg-label-with-help">Service duration (hours) *
+                                    <button type="button" class="pkg-help-trigger" aria-label="Service duration information" aria-expanded="false" aria-controls="pkgDurationHelp"><i class="fas fa-info"></i></button>
+                                    <span class="pkg-field-help" id="pkgDurationHelp" hidden>How many hours the package's catering service covers. Defaults to your Business Settings duration.</span>
+                                </label>
                                 <input class="control-pro" min="1" max="24" name="service_duration"
-                                    placeholder="Enter the actual service hours (1-24)" required type="number" />
-                                <small style="color: #64748b; font-size: 0.75rem;">Set the actual duration included in this package.</small>
+                                    placeholder="Enter the actual service hours (1-24)" required type="number"
+                                    value="{{ caterer_service_duration or 4 }}" />
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label>Short Description (Optional)</label>
+                                <label class="pkg-label-with-help">Package description (optional)
+                                    <button type="button" class="pkg-help-trigger" aria-label="Package description information" aria-expanded="false" aria-controls="pkgDescriptionHelp"><i class="fas fa-info"></i></button>
+                                    <span class="pkg-field-help" id="pkgDescriptionHelp" hidden>Briefly explain what makes this package useful or special. Customers can see this description.</span>
+                                </label>
                                 <textarea class="control-pro" name="description"
-                                    placeholder="Perfect for intimate weddings with buffet setup and professional service."
+                                    placeholder="Describe what's special about this package."
                                     rows="2"></textarea>
                             </div>
 
@@ -139,37 +175,29 @@
                                 <div
                                     style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
                                     <h4 style="font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0;"><i
-                                            class="fas fa-tag" style="color: var(--primary-color);"></i> Package Pricing
-                                        Details</h4>
+                                            class="fas fa-tag" style="color: var(--primary-color);">                                            </i> Package price</h4>
                                 </div>
                                 <div class="form-row-pro">
                                     <div class="form-group-pro" style="flex: 1;">
-                                        <label id="lblPricingMain">Package Price (₱) *</label>
+                                        <label class="pkg-label-with-help" id="lblPricingMain"><span id="pkgPricingLabelText">Package Price (Base Total, Auto-calculated) *</span>
+                                            <button type="button" class="pkg-help-trigger" aria-label="Package price calculation information" aria-expanded="false" aria-controls="pkgPriceHelp"><i class="fas fa-info"></i></button>
+                                            <span class="pkg-field-help" id="pkgPriceHelp" hidden>Base total = included guests × starting price per guest in Business Settings. Extra guest charges are separate.</span>
+                                        </label>
                                         <div style="position: relative; display: flex; align-items: center;">
                                             <span
                                                 style="position: absolute; left: 12px; color: #64748b; font-weight: 700;">₱</span>
                                             <input class="control-pro js-format-comma" id="pkgManualPriceInput"
-                                                maxlength="10" name="price_per_head" placeholder="0.00" required=""
+                                                maxlength="12" name="price_per_head" placeholder="0.00" readonly required=""
                                                 style="padding-left: 28px; font-weight: 700;" type="text" />
-                                        </div>
-                                        <small id="lblPricingSub"
-                                            style="color: #64748b; font-size: 0.75rem; font-weight: 500; display: block; margin-top: 4px;">Final
-                                            price visible to customers</small>
-                                    </div>
-                                    <div class="form-group-pro" style="flex: 1;">
-                                        <label>Reservation Fee (₱) <span
-                                                style="color: #94a3b8; font-weight: 400; text-transform: none; font-size: 0.75rem;">Optional</span></label>
-                                        <div style="position: relative; display: flex; align-items: center;">
-                                            <span
-                                                style="position: absolute; left: 12px; color: #64748b; font-weight: 700;">₱</span>
-                                            <input class="control-pro" min="0" name="reservation_fee" id="pkgReservationFeeInput"
-                                                placeholder="e.g. 5000" style="padding-left: 28px;" type="number" />
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label>Package Availability</label>
+                                <label class="pkg-label-with-help">Package status
+                                    <button type="button" class="pkg-help-trigger" aria-label="Package status information" aria-expanded="false" aria-controls="pkgStatusHelp"><i class="fas fa-info"></i></button>
+                                    <span class="pkg-field-help" id="pkgStatusHelp" hidden>Choose whether customers can see and book this package, or keep it as a draft.</span>
+                                </label>
                                 <select class="control-pro" name="status">
                                     <option value="active">Available (Published)</option>
                                     <option value="seasonal">Seasonal</option>
@@ -178,7 +206,10 @@
                                 </select>
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label>Cover Photo</label>
+                                <label class="pkg-label-with-help">Cover photo (optional)
+                                    <button type="button" class="pkg-help-trigger" aria-label="Cover photo information" aria-expanded="false" aria-controls="pkgPhotoHelp"><i class="fas fa-info"></i></button>
+                                    <span class="pkg-field-help" id="pkgPhotoHelp" hidden>Add a clear photo to help customers recognize this package.</span>
+                                </label>
                                 <div style="display: flex; gap: 1.5rem; align-items: flex-start;">
                                     <div class="photo-upload-zone"
                                         onclick="document.getElementById('pkgImageInput').click()"
@@ -186,7 +217,7 @@
                                         <i class="fas fa-camera"
                                             style="font-size: 1.5rem; color: #94a3b8; margin-bottom: 0.5rem;"></i>
                                         <span
-                                            style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Upload</span>
+                                            style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Choose photo</span>
                                         <input accept="image/*" id="pkgImageInput" name="image"
                                             onchange="window.previewPackageImage(this)" style="display: none;"
                                             type="file" />
@@ -235,12 +266,12 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 1rem;">
                                 <div>
                                     <div style="display: flex; align-items: center; gap: 10px;">
-                                        <h4 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">Package Inclusions</h4>
-                                        <span id="inclusionsTotalBadge" style="background: #f1f5f9; color: #475569; font-size: 0.8rem; font-weight: 800; padding: 3px 10px; border-radius: 9999px; border: 1px solid #e2e8f0;">0 Total Inclusions</span>
+                                        <h4 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">What's included</h4>
+                                        <span id="inclusionsTotalBadge" style="background: #f1f5f9; color: #475569; font-size: 0.8rem; font-weight: 800; padding: 3px 10px; border-radius: 9999px; border: 1px solid #e2e8f0;">0 items</span>
                                     </div>
-                                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Add the menu, services, and equipment included in this package.</p>
+                                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Add the menu items and services every customer receives with this fixed package.</p>
                                 </div>
-                                <button type="button" class="btn-primary-pro" onclick="window.openAddInclusionModal()"
+                                <button type="button" class="btn-primary-pro" onclick="window.openFixedQuickAddOptionModal()"
                                     style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                                     <i class="fas fa-plus"></i>
                                     <span>Quick Add Inclusion</span>
@@ -250,7 +281,7 @@
                             <!-- Small Informational Note -->
                             <div style="display: flex; align-items: center; gap: 8px; padding: 0.65rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 1.25rem; color: #475569; font-size: 0.82rem; font-weight: 600;">
                                 <i class="fas fa-info-circle" style="color: var(--primary-color, #f97316); font-size: 0.95rem;"></i>
-                                <span>These inclusions are fixed and cannot be changed by customers.</span>
+                                <span>Customers receive every item listed here; they cannot swap or remove inclusions.</span>
                             </div>
 
                             <!-- Summary Category Chips (Shown when inclusions exist) -->
@@ -265,7 +296,7 @@
 
                             <!-- Bottom Add Button (Visible when items exist) -->
                             <div id="inclusionsBottomAddContainer" style="display: none; margin-top: 1.25rem; text-align: center;">
-                                <button type="button" class="btn-secondary-pro" onclick="window.openAddInclusionModal()"
+                                <button type="button" class="btn-secondary-pro" onclick="window.openFixedQuickAddOptionModal()"
                                     style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; border: 1.5px dashed #cbd5e1; background: #f8fafc; width: 100%; justify-content: center;">
                                     <i class="fas fa-plus text-brand"></i>
                                     <span>Quick Add Another Inclusion</span>
@@ -280,20 +311,24 @@
                                 <div class="customizable-options-heading">
                                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                         <h4 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">Available Options</h4>
-                                        <span id="custTotalAvailableBadge" style="background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; font-size: 0.8rem; font-weight: 800; padding: 3px 10px; border-radius: 9999px;">0 Options Available</span>
+                                        <span id="custTotalAvailableBadge" style="background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; font-size: 0.8rem; font-weight: 800; padding: 3px 10px; border-radius: 9999px;">0 options selected</span>
                                     </div>
-                                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Select the menu and services that customers can choose from when customizing their booking.</p>
+                                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Choose the menu items and services customers may select when they build their package.</p>
                                 </div>
-                                <button type="button" class="btn-primary-pro customizable-options-add-button" onclick="window.openQuickAddOptionModal()"
-                                    style="padding: 0.45rem 0.85rem; font-size: 0.78rem; font-weight: 800; border-radius: 7px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
-                                    <i class="fas fa-plus"></i> Quick Add Option
-                                </button>
+                                <div class="customizable-options-create-actions">
+                                    <button type="button" class="btn-primary-pro customizable-options-add-button" onclick="window.openQuickAddOptionModal('menu')">
+                                        <i class="fas fa-plus" aria-hidden="true"></i><span>Create menu</span>
+                                    </button>
+                                    <button type="button" class="btn-secondary-pro customizable-options-add-button" onclick="window.openQuickAddOptionModal('service')">
+                                        <i class="fas fa-plus" aria-hidden="true"></i><span>Create service</span>
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Small Informational Note -->
                             <div style="display: flex; align-items: center; gap: 8px; padding: 0.65rem 1rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; color: #9a3412; font-size: 0.82rem; font-weight: 600;">
                                 <i class="fas fa-sliders-h" style="color: #ea580c; font-size: 0.95rem;"></i>
-                                <span>Check the items from your existing catalog that you want to offer as customizable choices to customers. Use the <strong>Edit</strong> or <strong>Delete</strong> icons on each item to manage them directly.</span>
+                                <span>Select the menu items and services customers can choose from. You can edit or remove an item from your catalog using its action buttons.</span>
                             </div>
 
                             <!-- A. MENU / FOOD -->
@@ -302,10 +337,10 @@
                                     <div>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span style="font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">Section A</span>
-                                            <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">MENU / FOOD</h4>
-                                            <span id="custMenuCountBadge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 9999px;">0 Selected</span>
+                                            <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">Menu items</h4>
+                                            <span id="custMenuCountBadge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 9999px;">0 selected</span>
                                         </div>
-                                        <p style="font-size: 0.8rem; color: #64748b; margin: 3px 0 0 0;">Items available for customers to choose for their event menu.</p>
+                                        <p style="font-size: 0.8rem; color: #64748b; margin: 3px 0 0 0;">Select the dishes customers can choose from for their event.</p>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
                                         <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('menu', true)"
@@ -316,10 +351,9 @@
                                 </div>
                                 <div style="margin-bottom: 0.85rem;">
                                     <div style="position: relative;">
-                                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #94a3b8; font-size: 0.85rem;"></i>
                                         <input type="text" id="custMenuSearchInput" oninput="window.filterCustomizableCatalog('menu', this.value)"
                                             placeholder="Filter menu items by name or category..." class="control-pro"
-                                            style="width: 100%; height: 38px; padding-left: 34px; font-size: 0.85rem; border-radius: 8px;" />
+                                            style="width: 100%; height: 38px; padding: 0 12px; font-size: 0.85rem; border-radius: 8px;" />
                                     </div>
                                 </div>
                                 <div id="customizableMenuList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.65rem; max-height: 380px; overflow-y: auto; padding: 2px;">
@@ -328,35 +362,23 @@
                             </div>
 
                             <!-- CATEGORY QUOTAS (SELECTION LIMITS) -->
-                            <div style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 12px; padding: 1rem 1.25rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span style="font-size: 0.7rem; font-weight: 800; background: #ea580c; color: #ffffff; padding: 2px 7px; border-radius: 4px; text-transform: uppercase;">Quotas</span>
-                                        <h4 style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin: 0;">Menu Selection Limits</h4>
-                                        <span style="font-size: 0.78rem; color: #64748b;">(Dishes customer can pick per category)</span>
+                            <div class="customizable-quota-section" style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 12px; padding: 1rem 1.25rem;">
+                                <div class="customizable-quota-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                                    <div class="customizable-quota-heading">
+                                        <h4 style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin: 0;">Required choices per category</h4>
+                                        <p style="font-size: 0.8rem; color: #64748b; margin: 4px 0 0;">Set the number of dishes customers must choose from each category. Only the selected dishes above are available.</p>
                                     </div>
-                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                        <button type="button" onclick="window.presetOneVariantPerCategory()"
-                                                title="Set 1 variant limit for each category"
-                                                style="padding: 3px 8px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; cursor: pointer;">
-                                            Set 1 Each
-                                        </button>
-                                        <button type="button" onclick="window.presetAllCategoryQuotas(2)"
-                                                title="Set 2 variants limit for each category"
-                                                style="padding: 3px 8px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; background: #f8fafc; border: 1px solid #cbd5e1; color: #475569; cursor: pointer;">
-                                            Set 2 Each
-                                        </button>
-                                        <span style="font-size: 0.78rem; font-weight: 800; color: #9a3412; background: #ffedd5; padding: 3px 10px; border-radius: 20px; border: 1px solid #fed7aa;">
-                                            Total: <strong id="custTotalVariantsAllowedText" style="color: #ea580c;">0</strong> allowed
-                                        </span>
-                                    </div>
+                                    <span class="customizable-quota-total" style="font-size: 0.78rem; font-weight: 800; color: #9a3412; background: #ffedd5; padding: 3px 10px; border-radius: 20px; border: 1px solid #fed7aa;">
+                                        Required choices in total: <strong id="custTotalVariantsAllowedText" style="color: #ea580c;">0</strong>
+                                    </span>
                                 </div>
                                 <div id="categoryQuotasContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.6rem; margin-top: 0.5rem;">
                                     <!-- Populated dynamically via JS -->
                                 </div>
-                                <div id="custQuotaSummaryBanner" style="margin-top: 0.65rem; padding: 6px 10px; background: #fffaf5; border: 1px dashed #fed7aa; border-radius: 6px; font-size: 0.78rem; color: #9a3412; display: none;">
+                                <div id="custQuotaSummaryBanner" style="margin-top: 0.65rem; padding: 6px 10px; background: #fffaf5; border: 1px dashed #fed7aa; border-radius: 6px; font-size: 0.78rem; color: #9a3412;">
                                     <!-- Dynamic text -->
                                 </div>
+                                <p class="customizable-quota-example">Example: If 3 chicken dishes are selected and the required number is 1, each customer must choose 1 chicken dish.</p>
                             </div>
 
                             <!-- B. SERVICES -->
@@ -365,10 +387,10 @@
                                     <div>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span style="font-size: 0.72rem; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">Section B</span>
-                                            <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">SERVICES</h4>
-                                            <span id="custServiceCountBadge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 9999px;">0 Selected</span>
+                                            <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">Services</h4>
+                                            <span id="custServiceCountBadge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 9999px;">0 selected</span>
                                         </div>
-                                        <p style="font-size: 0.8rem; color: #64748b; margin: 3px 0 0 0;">Catering services and staff options available for customer selection.</p>
+                                        <p style="font-size: 0.8rem; color: #64748b; margin: 3px 0 0 0;">Select the services customers may add to their package.</p>
                                     </div>
                                     <div style="display: flex; align-items: center; gap: 6px;">
                                         <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('service', true)"
@@ -379,10 +401,9 @@
                                 </div>
                                 <div style="margin-bottom: 0.85rem;">
                                     <div style="position: relative;">
-                                        <i class="fas fa-search" style="position: absolute; left: 12px; top: 12px; color: #94a3b8; font-size: 0.85rem;"></i>
                                         <input type="text" id="custServiceSearchInput" oninput="window.filterCustomizableCatalog('service', this.value)"
                                             placeholder="Filter services by name..." class="control-pro"
-                                            style="width: 100%; height: 38px; padding-left: 34px; font-size: 0.85rem; border-radius: 8px;" />
+                                            style="width: 100%; height: 38px; padding: 0 12px; font-size: 0.85rem; border-radius: 8px;" />
                                     </div>
                                 </div>
                                 <div id="customizableServiceList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.65rem; max-height: 320px; overflow-y: auto; padding: 2px;">
@@ -391,46 +412,52 @@
                             </div>
                         </div>
                     </div>
-                    <!-- STEP 3: REVIEW & PUBLISH -->
+                    <!-- STEP 3: REVIEW & SAVE -->
                     <div class="tab-pane-pro" id="tab-review">
                         <div
                             style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--border-radius); padding: 1.5rem;">
                             <h4
                                 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-                                <i class="fas fa-clipboard-check text-green-500 mr-2"></i> Package Summary</h4>
+                                <i class="fas fa-clipboard-check text-green-500 mr-2"></i> Review your package</h4>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                                 <div>
                                     <h5
                                         style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;">
                                         Identity</h5>
-                                    <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Name:</strong> <span
+                                    <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Package:</strong> <span
                                             id="reviewName"></span></p>
                                     <p id="reviewCategoryRow" style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Category:</strong> <span
                                             id="reviewType"></span></p>
-                                    <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Type:</strong> <span
+                                    <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Pricing type:</strong> <span
                                             id="reviewPricingMode"></span></p>
-                                    <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Capacity:</strong> <span
+                                    <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong id="reviewCapacityLabel">Guest limit:</strong> <span
                                             id="reviewCapacity"></span></p>
-                                    <p id="reviewExcessRow" style="display: none;"><strong>Additional/Excess Pax
-                                            Rate:</strong> <span id="reviewExcessRate"></span></p>
+                                    <p id="reviewExcessRow" style="display: none; font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Extra guest rate:</strong> <span id="reviewExcessRate"></span></p>
+                                    <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Service duration:</strong> <span id="reviewDuration"></span></p>
+                                    <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Availability:</strong> <span id="reviewStatus"></span></p>
                                 </div>
                                 <div>
                                     <h5
                                         style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;">
-                                        Pricing</h5>
+                                        Customer pricing</h5>
                                     <p
                                         style="font-size: 1rem; margin: 0 0 0.25rem; font-weight: 900; color: var(--primary-color);">
-                                        <span id="reviewPrice"></span></p>
+                                        <span id="reviewPrice"></span>
+                                        <small id="reviewPriceFormula" style="display: block; font-size: 0.75rem; font-weight: 500; color: #64748b;"></small>
+                                    </p>
                                 </div>
+                                <p id="reviewDescriptionRow" style="display: none; grid-column: 1 / -1; font-size: 0.85rem; color: #475569; margin: 1rem 0 0;">
+                                    <strong>Description:</strong> <span id="reviewDescription"></span>
+                                </p>
                             </div>
 
                             <!-- REVIEW FOR FIXED PACKAGE -->
                             <div id="reviewFixedPackageBlock" style="margin-top: 1.5rem;">
                                 <h5
                                     style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;">
-                                    Inclusions Summary</h5>
-                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;">
-                                    <div
+                                    Included items</h5>
+                                <div class="review-inclusion-count-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem;">
+                                    <div class="review-inclusion-count-card"
                                         style="background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem); padding: 0.75rem; text-align: center;">
                                         <div id="reviewDishesCount"
                                             style="font-size: 1.35rem; font-weight: 900; color: #16a34a;">0</div>
@@ -438,7 +465,7 @@
                                             style="font-size: 0.68rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-top: 2px;">
                                             Menu Items</div>
                                     </div>
-                                    <div
+                                    <div class="review-inclusion-count-card"
                                         style="background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem); padding: 0.75rem; text-align: center;">
                                         <div id="reviewServicesCount"
                                             style="font-size: 1.35rem; font-weight: 900; color: #2563eb;">0</div>
@@ -446,7 +473,7 @@
                                             style="font-size: 0.68rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-top: 2px;">
                                             Services</div>
                                     </div>
-                                    <div
+                                    <div class="review-inclusion-count-card"
                                         style="background: white; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem); padding: 0.75rem; text-align: center;">
                                         <div id="reviewEquipmentCount"
                                             style="font-size: 1.35rem; font-weight: 900; color: #dc2626;">0</div>
@@ -509,8 +536,8 @@
                                 <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 0.85rem 1rem; display: flex; align-items: center; gap: 10px;">
                                     <i class="fas fa-check-circle" style="color: #16a34a; font-size: 1.1rem;"></i>
                                     <div>
-                                        <strong style="color: #15803d; font-size: 0.85rem; display: block;">Customizable Package Ready</strong>
-                                        <span style="color: #166534; font-size: 0.8rem;">Customers will choose their preferred food and services from the options you selected above.</span>
+                                        <strong style="color: #15803d; font-size: 0.85rem; display: block;">Your options are ready</strong>
+                                        <span style="color: #166534; font-size: 0.8rem;">Customers can choose from the menu items and services selected above.</span>
                                     </div>
                                 </div>
                             </div>
@@ -521,12 +548,6 @@
             <!-- Modal Footer (Properly inside the modal and form) -->
             <div class="occ-modal-footer modal-footer" id="pkgWizardFooter"
                 style="display: flex !important; justify-content: space-between !important; align-items: center !important; padding: 14px 24px !important; background: #ffffff !important; border-top: 1px solid #e2e8f0 !important; width: 100% !important; box-sizing: border-box !important;">
-                <div>
-                    <button class="btn-secondary-pro pkg-modal-nav-btn" onclick="window.closePackageModal()"
-                        style="color: #64748b; border: 1.5px solid #cbd5e1; background: #ffffff; padding: 0.55rem 1.25rem; border-radius: 8px; font-weight: 700; cursor: pointer;" type="button">
-                        Cancel
-                    </button>
-                </div>
                 <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
                     <button class="btn-secondary-pro pkg-modal-nav-btn" id="btnWizardBack"
                         onclick="window.goToWizardBackStep()" style="display: none !important; color: #475569; border: 1.5px solid #cbd5e1; background: #ffffff; padding: 0.55rem 1.25rem; border-radius: 8px; font-weight: 700; cursor: pointer; align-items: center; gap: 6px;" type="button">
@@ -534,11 +555,11 @@
                     </button>
                     <button class="btn-primary-pro pkg-modal-nav-btn" id="btnWizardNext"
                         onclick="window.goToWizardNextStep()" style="display: inline-flex !important; background: var(--primary-color, #ff7b54); border: none; color: #ffffff; padding: 0.55rem 1.4rem; border-radius: 8px; font-weight: 800; cursor: pointer; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(255, 123, 84, 0.25);" type="button">
-                        <span class="pkg-wizard-nav-text">Next Step</span> <i class="fas fa-arrow-right"></i>
+                        <span class="pkg-wizard-nav-text">Continue</span> <i class="fas fa-arrow-right"></i>
                     </button>
                     <button class="btn-primary-pro pkg-modal-nav-btn" id="pkgSaveBtn" style="display: none !important; background: #16a34a !important; border: none !important; color: #ffffff !important; padding: 0.55rem 1.5rem !important; border-radius: 8px !important; font-weight: 800 !important; cursor: pointer !important; align-items: center !important; gap: 6px !important; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25) !important;"
                         type="submit">
-                        <i class="fas fa-check-circle"></i> <span style="font-weight: 800;">Publish Package</span>
+                        <i class="fas fa-check-circle"></i> <span style="font-weight: 800;">Save Package</span>
                     </button>
                 </div>
             </div>
@@ -548,22 +569,20 @@
 
 <!-- Archive Package Confirmation Modal -->
 <div id="archivePackageModal" class="occ-modal-overlay" style="display: none; z-index: 99999;">
-    <div class="occ-modal-box occ-modal-prompt" style="max-width: 450px;">
-        <div style="padding: 3rem 2rem; text-align: center;">
-            <div class="occ-modal-icon-box"
-                style="background: #fef2f2; color: #ef4444; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.2);">
+    <div class="occ-modal-box occ-modal-prompt archive-package-dialog">
+        <div class="archive-package-content">
+            <div class="archive-package-icon" aria-hidden="true">
                 <i class="fas fa-archive"></i>
             </div>
-            <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 0.75rem;">Archive Package?
-            </h3>
-            <p style="font-size: 0.9rem; color: #64748b; font-weight: 500; line-height: 1.6; margin-bottom: 2rem;">This
-                package will be hidden from your catalog and will no longer accept new bookings. Existing bookings are
-                unaffected.</p>
-            <div style="display: flex; gap: 12px; justify-content: center;">
-                <button type="button" class="occ-modal-btn-outline" style="flex: 1;"
+            <h3 class="archive-package-title">Archive this package?</h3>
+            <p class="archive-package-message">
+                It will be hidden from your catalog and won't accept new bookings. Existing bookings will not be affected.
+            </p>
+            <div class="archive-package-actions">
+                <button type="button" class="occ-modal-btn-outline"
                     onclick="window.closeModal('archivePackageModal')">Cancel</button>
-                <button type="button" class="occ-modal-btn-primary" style="flex: 1; background: #ef4444;"
-                    id="confirmArchivePackageBtn">Archive Now</button>
+                <button type="button" class="occ-modal-btn-primary archive-package-confirm"
+                    id="confirmArchivePackageBtn">Archive package</button>
             </div>
         </div>
     </div>
@@ -573,7 +592,7 @@
 <!-- Unified Add / Edit Inclusion Modal -->
 <!-- Add Package Inclusion Modal (Relational Catalog Linking) -->
 <!-- Unified Add / Edit Inclusion Modal -->
-<div class="occ-modal-overlay" id="addInclusionModal" style="z-index: 2300; display: none;">
+<div class="occ-modal-overlay" id="addInclusionModal" data-backdrop-dismiss="false" style="z-index: 2300; display: none;">
     <div class="occ-modal-box sz-md occ-content-pop inclusion-modal-box" style="max-width: 540px; max-height: 90vh; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); display: flex; flex-direction: column;">
         <div class="occ-modal-header inclusion-modal-header"
             style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0;">
@@ -582,6 +601,7 @@
                 <div id="inclusionModalSubtitle" style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">Add a food item or service to your fixed package.</div>
             </div>
             <button class="occ-modal-close" onclick="window.closeAddInclusionModal()" type="button"
+                aria-label="Close quick add inclusion"
                 style="background:#f1f5f9; border:1px solid #cbd5e1; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:1rem; color:#475569; cursor:pointer; padding:0; border-radius:50%; box-shadow:none; flex-shrink:0;">
                 <i class="fas fa-times"></i>
             </button>
@@ -591,7 +611,6 @@
             <input type="hidden" id="customInclusionEditIndex" value="-1" />
             <input type="hidden" id="customInclusionItemId" value="" />
             <input type="hidden" id="customInclusionName" value="" />
-            <input type="hidden" id="customInclusionQuantity" value="" />
 
             <!-- Instant Success alert banner for Save & Add Another -->
             <div id="addInclusionSuccessAlert"
@@ -625,22 +644,21 @@
                     </label>
                     <button type="button" id="btnCreateNewCatalogItem" onclick="window.handleCreateNewCatalogItem()"
                         style="background: none; border: none; color: var(--primary-color, #f97316); font-size: 0.82rem; font-weight: 800; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px;">
-                        <i class="fas fa-plus"></i> <span id="btnCreateNewCatalogItemText">+ Create New Equipment</span>
+                        <i class="fas fa-plus" aria-hidden="true"></i> <span id="btnCreateNewCatalogItemText">Create new</span>
                     </button>
                 </div>
 
                 <!-- Search Input for catalog items -->
                 <div style="position: relative; margin-bottom: 8px;">
-                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.85rem;"></i>
                     <input type="text" id="inclusionItemSearch" class="control-pro" placeholder="Type to search equipment catalog..."
                         oninput="window.filterInclusionCatalogItems(this.value)"
-                        style="width: 100%; height: 38px; padding-left: 36px; padding-right: 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; color: #1e293b;" />
+                        style="width: 100%; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; color: #1e293b;" />
                 </div>
 
                 <!-- Dropdown Selector -->
                 <select class="control-pro" id="inclusionItemSelect" onchange="window.handleCatalogItemSelected(this.value)"
                     style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 600; color: #1e293b; background: #fff;">
-                    <option value="">-- Select Equipment ▼ --</option>
+                    <option value="" selected disabled>Select a catalog item</option>
                 </select>
 
                 <!-- Selected Item Preview Card -->
@@ -655,30 +673,6 @@
                             Available: 100
                         </span>
                     </div>
-                </div>
-            </div>
-
-            <!-- Quantity Included -->
-            <div class="form-group-pro inclusion-quantity-section" id="inclusionQtyContainer" style="display: none; margin-bottom: 1.25rem;">
-                <label id="lblInclusionQty" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Quantity Included <span id="lblInclusionQtyRequired" style="color: #ef4444; display: none;">*</span><span id="lblInclusionQtyOptional" style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
-                </label>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input class="control-pro" id="customInclusionQtyNum"
-                        placeholder="50" min="1"
-                        style="flex: 1; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #1e293b;"
-                        type="number"
-                        oninput="window.updateQuantityPreview()"
-                        onkeydown="if(event.key==='Enter'){event.preventDefault();window.saveInclusion(false);}" />
-                    <input class="control-pro" id="customInclusionQtyUnit"
-                        placeholder="Unit (e.g. chairs, pax)"
-                        style="width: 140px; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; color: #1e293b;"
-                        type="text"
-                        oninput="window.updateQuantityPreview()"
-                        onkeydown="if(event.key==='Enter'){event.preventDefault();window.saveInclusion(false);}" />
-                </div>
-                <div id="qtyPreviewText" style="font-size: 0.8rem; color: #64748b; margin-top: 5px; font-weight: 600;">
-                    Will display as: <strong id="qtyPreviewDisplay" style="color: #0f172a;">50 chairs</strong>
                 </div>
             </div>
 
@@ -700,18 +694,17 @@
                 <div class="inclusion-photo-upload" style="display: flex; align-items: center; gap: 12px;">
                     <div id="inclusionPhotoPreview" onclick="window.triggerInclusionImagePicker()" title="Upload photo"
                         class="inclusion-photo-preview" style="width: 72px; height: 72px; flex-shrink: 0; border-radius: 10px; border: 1.5px dashed #cbd5e1; background: #f8fafc; color: #94a3b8; display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden;">
-                        <i class="fas fa-camera"></i>
                     </div>
                     <div class="inclusion-photo-controls" style="flex: 1; min-width: 0;">
                         <input type="file" id="inclusionImageInput" accept=".jpg,.jpeg,.png,image/jpeg,image/png" onchange="window.handleInclusionImageChange(event)" style="display: none;" />
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <button type="button" class="inclusion-photo-upload-button" onclick="window.triggerInclusionImagePicker()"
                                 style="padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 800; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer;">
-                                <i class="fas fa-upload" style="margin-right: 4px;"></i> Upload Photo
+                                Upload photo
                             </button>
                             <button type="button" id="btnInclusionPhotoClear" onclick="window.clearInclusionImageSelection()"
                                 style="display: none; padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 800; border: 1.5px solid #fecaca; background: #fef2f2; color: #dc2626; cursor: pointer;">
-                                <i class="fas fa-times" style="margin-right: 4px;"></i> Remove
+                                Remove
                             </button>
                         </div>
                         <div id="inclusionPhotoHint" style="font-size: 0.78rem; color: #64748b; margin-top: 6px; font-weight: 600;">
@@ -727,46 +720,44 @@
             style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;">
             <button class="btn-secondary-pro" id="btnInclusionSaveAddAnother" onclick="window.saveInclusion(true)" type="button"
                 hidden style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; border: 1.5px solid var(--primary-color, #f97316); color: var(--primary-color, #f97316); background: #ffffff;">
-                <i class="fas fa-plus" style="margin-right: 4px;"></i> Save &amp; Add Another
+                Save &amp; Add Another
             </button>
             <button class="btn-primary-pro" id="btnInclusionSaveDone" onclick="window.saveInclusion(false)" type="button" disabled hidden
                 style="padding: 0.55rem 1.35rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
-                <i class="fas fa-check"></i>
                 <span id="btnInclusionSaveDoneText">Save &amp; Select</span>
             </button>
         </div>
     </div>
 </div>
 
-<!-- Quick Add Option Modal (For Customizable Package Step 2: Food, Service, Equipment) -->
-<div class="occ-modal-overlay" id="quickAddOptionModal" style="z-index: 2450; display: none;">
+<!-- Quick Add Option Modal (For package menu and service items) -->
+<div class="occ-modal-overlay" id="quickAddOptionModal" data-backdrop-dismiss="false" style="z-index: 2450; display: none;">
     <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 500px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
         <div class="occ-modal-header"
             style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <h3 class="occ-modal-title" id="quickAddOptionModalTitle" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">Quick Add Option</h3>
-                <div style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">Add a food item or service to your customizable package.</div>
+                <h3 class="occ-modal-title" id="quickAddOptionModalTitle" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">Create menu item</h3>
+                <div class="quick-add-option-subtitle" style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">Add a new menu item to your catalog and package.</div>
             </div>
             <button class="occ-modal-close" onclick="window.closeQuickAddOptionModal()" type="button"
+                aria-label="Close create item"
                 style="background:none; border:none; font-size:1.1rem; color:#94a3b8; cursor:pointer; padding: 4px 8px; border-radius: 6px;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <form id="quickAddOptionForm" onsubmit="window.submitQuickAddOption(event)">
-            <input type="hidden" name="item_type" id="quickAddOptionType" value="menu" />
             <div class="occ-modal-body quick-add-option-body" style="padding: 1.5rem; background: #ffffff;">
                 <div class="form-group-pro" id="quickAddOptionTypeWrapper" style="margin-bottom: 1rem;">
-                    <label for="quickAddOptionTypeSelect" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Option Type <span style="color: #ef4444;">*</span>
+                    <label for="quickAddOptionType" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        What would you like to add? <span style="color: #ef4444;">*</span>
                     </label>
-                    <select id="quickAddOptionTypeSelect" class="control-pro" required onchange="window.setQuickAddOptionType(this.value)"
+                    <select name="item_type" id="quickAddOptionType" class="control-pro" required onchange="window.setQuickAddOptionType(this.value)"
                         style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
-                        <option value="" selected disabled>Select option type</option>
-                        <option value="menu">Food / Menu Item</option>
+                        <option value="" selected disabled>Select an option type</option>
+                        <option value="menu">Menu / Food</option>
                         <option value="service">Service</option>
                     </select>
                 </div>
-
                 <div class="form-group-pro" id="quickAddOptionNameWrapper" style="display: none; margin-bottom: 1rem;">
                     <label id="quickAddOptionNameLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                         Dish / Menu Item Name <span style="color: #ef4444;">*</span>
@@ -775,7 +766,18 @@
                         style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
                 </div>
 
-                <input type="hidden" name="category" id="quickAddOptionCategory" value="" />
+                <div class="form-group-pro" id="quickAddOptionCategoryWrapper" style="display: none; margin-bottom: 1rem;">
+                    <label for="quickAddOptionCategory" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Food Category <span style="color: #ef4444;">*</span>
+                    </label>
+                    <input type="text" name="category" id="quickAddOptionCategory"
+                        class="control-pro" maxlength="60" autocomplete="off" required
+                        oninput="this.setCustomValidity('')"
+                        placeholder="e.g. Rice, Pork, Chicken, Pasta or Drinks"
+                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
+                    <div id="quickAddOptionCategorySuggestions" class="quick-add-category-suggestions" style="display: none;"></div>
+                    <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">Use a category name customers will recognize. Existing categories will appear as suggestions.</small>
+                </div>
 
                 <div class="form-group-pro" id="quickAddOptionUnitWrapper" style="display: none; margin-bottom: 1rem;">
                     <label id="quickAddOptionUnitLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -791,8 +793,11 @@
                         <label id="quickAddOptionPriceLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                             Price (₱) <span style="color: #ef4444;">*</span>
                         </label>
-                        <input type="number" step="0.01" min="0" name="price" id="quickAddOptionPrice" class="control-pro" value="0.00"
+                        <input type="text" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2"
+                            name="price" id="quickAddOptionPrice" class="control-pro" value="0.00"
+                            oninput="window.validateQuickAddOptionPrice()"
                             style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #0f172a;" />
+                        <small id="quickAddOptionPriceError" aria-live="polite" style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
                     </div>
 
                     <div class="form-group-pro" id="quickAddOptionQtyWrapper" style="display: none;">
@@ -820,7 +825,6 @@
                     <div id="quickAddOptionPhotoZone" onclick="document.getElementById('quickAddOptionImage').click()"
                         style="border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 0.85rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: border-color 0.15s;">
                         <div id="quickAddOptionPhotoPreview" style="width: 56px; height: 56px; border-radius: 10px; background: #e2e8f0; color: #94a3b8; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
-                            <i class="fas fa-camera"></i>
                         </div>
                         <div style="min-width: 0;">
                             <div style="font-size: 0.85rem; font-weight: 800; color: #334155;">Upload photo</div>
@@ -837,7 +841,6 @@
                     style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700;">Cancel</button>
                 <button type="submit" id="btnQuickOptionSubmit" class="btn-primary-pro"
                     style="padding: 0.55rem 1.35rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-check"></i>
                     <span>Save &amp; Select</span>
                 </button>
             </div>
@@ -875,9 +878,10 @@
                         <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                             Category <span style="color: #ef4444;">*</span>
                         </label>
-                        <select name="category" id="quickEditOptionCategory" class="control-pro" required
-                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 600;">
-                        </select>
+                        <input type="text" name="category" id="quickEditOptionCategory" class="control-pro" required
+                            list="quickEditOptionCategorySuggestions" maxlength="60" autocomplete="off"
+                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 600;" />
+                        <datalist id="quickEditOptionCategorySuggestions"></datalist>
                     </div>
 
                     <div class="form-group-pro">

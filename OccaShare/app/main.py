@@ -123,6 +123,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS registration_source VARCHAR DEFAULT 'Website'",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS admin_remarks TEXT",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS starting_price FLOAT DEFAULT 0.0",
+        "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS default_excess_guest_price FLOAT",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS sample_menu_url VARCHAR",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS province_code VARCHAR",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS city_code VARCHAR",

@@ -249,8 +249,15 @@
                                         {{ item.quantity if item.quantity else 'Included' }}
                                     </span>
                                 </div>
-                                {% if item.description %}
-                                <div style="font-size: 0.75rem; color: #64748b; line-height: 1.35; margin-top: 3px;">{{ item.description }}</div>
+                                {% if item.notes %}
+                                <details class="customer-service-notes" style="margin-top: 0.45rem; color: #64748b; font-size: 0.76rem; line-height: 1.4;">
+                                    <summary style="width: fit-content; max-width: 100%; color: #2563eb; font-weight: 700; cursor: pointer;">Service notes ({{ item.notes|length }})</summary>
+                                    <ul style="margin: 0.35rem 0 0; padding-left: 1.1rem; overflow-wrap: anywhere;">
+                                        {% for note in item.notes %}
+                                        <li>{{ note }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </details>
                                 {% endif %}
                             </div>
                         </div>

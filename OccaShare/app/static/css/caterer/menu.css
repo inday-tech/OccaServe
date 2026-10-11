@@ -443,6 +443,21 @@
 
 .control-pro:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 4px var(--primary-light); }
 
+#menuModal #modalCategory {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 2.5rem 0 1rem;
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
+}
+
+#menuModal #modalCategory option {
+    padding: 0.55rem 0.75rem;
+}
+
 .form-row-pro { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 @media (max-width: 480px) { .form-row-pro { grid-template-columns: 1fr; } }
 
@@ -531,4 +546,3 @@ input:checked + .slider-pro:before { transform: translateX(20px); }
 }
 
 .btn-primary-pro:active { transform: translateY(0); }
-

@@ -17,7 +17,7 @@
     <div class="menu-header-actions">
         <input type="hidden" id="menuSearchInput">
         <div style="display: flex; gap: 10px;">
-            <button class="btn-primary-pro" onclick="window.openAddPackageModal()">
+            <button class="btn-primary-pro services-create-package-button" onclick="window.openAddPackageModal()" type="button">
                 <i class="fas fa-gift"></i> <span>Create Package</span>
             </button>
         </div>
@@ -265,7 +265,14 @@
                         <div class="form-group-pro" id="serviceSellingPriceGroup">
                             <label id="priceLabel">Selling Price (₱) *</label>
                             <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma"
-                                placeholder="0" inputmode="numeric" maxlength="10" required>
+                                placeholder="0.00" inputmode="decimal" maxlength="12"
+                                data-max-integer-digits="8" data-max-decimal-digits="2"
+                                oninput="window.validateServicePriceField()" required>
+                            <small id="servicePriceError" aria-live="polite"
+                                style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
+                            <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">
+                                Enter an amount up to ₱99,999,999.99. Commas are added automatically.
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -427,6 +434,36 @@
     serviceCats.push('Others');
     const equipmentUnits = ['Per Piece', 'Per Set', 'Per Bundle', 'Per Day', 'Per Event'];
     const serviceUnits = ['Per Staff', 'Per Hour', 'Per Event', 'Per Package', 'Per Session'];
+    const maxServicePrice = 99999999.99;
+
+    window.validateServicePriceField = function () {
+        const input = document.getElementById('servicePriceInput');
+        const error = document.getElementById('servicePriceError');
+        if (!input) return false;
+        if (window.applyCommaFormatting) window.applyCommaFormatting(input);
+
+        const rawValue = input.value.replace(/,/g, '').trim();
+        const amount = Number(rawValue);
+        let message = '';
+        if (!rawValue) {
+            message = 'Enter a service fee or rental price.';
+        } else if (input.dataset.formatOverflow === 'true') {
+            message = 'Use up to 8 whole-number digits and 2 decimal places.';
+        } else if (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount)) {
+            message = 'Enter a valid amount with no more than 2 decimal places.';
+        } else if (amount <= 0) {
+            message = 'The amount must be greater than zero.';
+        } else if (amount > maxServicePrice) {
+            message = 'The maximum amount is ₱99,999,999.99.';
+        }
+
+        input.setCustomValidity(message);
+        if (error) {
+            error.textContent = message;
+            error.style.display = message ? 'block' : 'none';
+        }
+        return !message;
+    };
 
     function handleTypeChange() {
         const type = typeSelect.value;
@@ -486,6 +523,8 @@
         modalTitle.innerHTML = '<i class="fas fa-box"></i> Add New Item/Service';
         form.action = '/caterer/services/add';
         form.reset();
+        document.getElementById('servicePriceError').style.display = 'none';
+        document.getElementById('servicePriceInput').setCustomValidity('');
         document.getElementById('updateItemType').value = '';
         document.getElementById('removeImageFlag').value = 'false';
         removeImage();
@@ -613,6 +652,7 @@
             if (form.allow_freelancers) form.allow_freelancers.checked = el.dataset.allowFreelancers === 'true';
             if (form.buffer_time_hours) form.buffer_time_hours.value = el.dataset.bufferTimeHours || 0;
             if (window.applyCommaFormatting) window.applyCommaFormatting(form.price);
+            window.validateServicePriceField();
 
             // Populate Inclusions for editing
             const bulkTextEl = document.getElementById('serviceInclusionsBulkText');
@@ -780,8 +820,8 @@
         if (!name || name.length < 2) {
             alert('Name must be at least 2 characters.'); if (updateType) typeSelect.disabled = true; return;
         }
-        if (sellPrice <= 0) {
-            alert(`${type === 'Equipment' ? 'Rental Price' : 'Service Fee'} must be greater than zero.`);
+        if (!window.validateServicePriceField()) {
+            priceInput.focus();
             if (updateType) typeSelect.disabled = true; return;
         }
         if (type === 'Equipment' && qty < 1) {
@@ -888,6 +928,10 @@
         } else if (modalId === 'serviceWizardModal') {
             serviceStep = 1;
             serviceInclusions = [];
+            const servicePriceInput = document.getElementById('serviceWizardPriceInput');
+            const servicePriceError = document.getElementById('serviceWizardPriceError');
+            if (servicePriceInput) servicePriceInput.setCustomValidity('');
+            if (servicePriceError) servicePriceError.style.display = 'none';
             const sText = document.getElementById('serviceInclusionsBulkText');
             if (sText) sText.value = '';
             if (typeof syncServiceInclusionsFromBulkText === 'function') syncServiceInclusionsFromBulkText();
@@ -1211,8 +1255,41 @@
         }
     }
 
+    window.validateServiceWizardPrice = function () {
+        const input = document.getElementById('serviceWizardPriceInput');
+        const error = document.getElementById('serviceWizardPriceError');
+        if (!input) return false;
+        if (window.applyCommaFormatting) window.applyCommaFormatting(input);
+
+        const rawValue = input.value.replace(/,/g, '').trim();
+        const amount = Number(rawValue);
+        let message = '';
+        if (!rawValue) {
+            message = 'Enter a service fee or starting price.';
+        } else if (input.dataset.formatOverflow === 'true') {
+            message = 'Use up to 8 whole-number digits and 2 decimal places.';
+        } else if (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount)) {
+            message = 'Enter a valid amount with no more than 2 decimal places.';
+        } else if (amount <= 0) {
+            message = 'The service fee must be greater than zero.';
+        } else if (amount > 99999999.99) {
+            message = 'The maximum service fee is ₱99,999,999.99.';
+        }
+
+        input.setCustomValidity(message);
+        if (error) {
+            error.textContent = message;
+            error.style.display = message ? 'block' : 'none';
+        }
+        return !message;
+    };
+
     function navigateServiceWizard(dir) {
         if (dir === 1) {
+            if (serviceStep === 1 && !window.validateServiceWizardPrice()) {
+                document.getElementById('serviceWizardPriceInput')?.reportValidity();
+                return;
+            }
             const currentStepEl = document.getElementById('serviceStep' + serviceStep);
             if (currentStepEl) {
                 const inputs = currentStepEl.querySelectorAll('input, select, textarea');
@@ -1353,6 +1430,11 @@
 
     async function submitServiceWizard(status) {
         const form = document.getElementById('serviceWizardForm');
+        if (!window.validateServiceWizardPrice()) {
+            document.getElementById('serviceWizardPriceInput')?.focus();
+            document.getElementById('serviceWizardPriceInput')?.reportValidity();
+            return;
+        }
         if (!form.checkValidity()) {
             form.reportValidity();
             return;
@@ -1371,6 +1453,7 @@
 
         const btn = status === 'Published' ? document.getElementById('serviceBtnPublish') : document.getElementById('serviceBtnDraft');
         const data = new FormData(form);
+        data.set('price', document.getElementById('serviceWizardPriceInput').value.replace(/,/g, ''));
         if (window.apiAction) {
             const res = await window.apiAction(form.action, { method: 'POST', body: data }, btn);
             if (res) {
@@ -1399,6 +1482,12 @@
 </script>
 
 <script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v={{ static_asset_version('js/caterer/packages.js') }}"></script>
+<script>
+    window.CATERER_MIN_PAX = {{ (caterer_min_pax or 20)|tojson }};
+    window.CATERER_STARTING_PRICE = {{ (caterer_starting_price or 0)|tojson }};
+    window.CATERER_DEFAULT_EXCESS_GUEST_PRICE = {{ (caterer_default_excess_guest_price or 0)|tojson }};
+    window.CATERER_SERVICE_DURATION = {{ (caterer_service_duration or 4)|tojson }};
+</script>
 <script>
     // Listen to global header search for packages
     window.addEventListener('globalSearch', function (e) {

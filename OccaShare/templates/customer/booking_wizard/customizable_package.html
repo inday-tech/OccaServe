@@ -4,6 +4,28 @@
 
 {% block step_css %}
 <style>
+    .customer-service-notes {
+        margin-top: 0.45rem;
+        color: #64748b;
+        font-size: 0.76rem;
+        line-height: 1.4;
+    }
+    .customer-service-notes > summary {
+        width: fit-content;
+        max-width: 100%;
+        color: #2563eb;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .customer-service-notes > ul {
+        margin: 0.35rem 0 0;
+        padding-left: 1.1rem;
+        overflow-wrap: anywhere;
+    }
+    .customer-service-notes > ul > li + li {
+        margin-top: 0.15rem;
+    }
+
     .cust-wizard-header {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
         border-radius: 16px;
@@ -728,6 +750,7 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem;">
                     {% for svc in available_services %}
                     {% set unit_text = (svc.unit_type or 'service')|replace('per_', '') %}
+                    {% set service_notes = available_service_notes.get(svc.id, []) %}
                     <label class="cust-item-card" id="card_svc_{{ svc.id }}">
                         <input type="checkbox" 
                                class="cust-item-checkbox service-checkbox"
@@ -746,10 +769,15 @@
                                     ₱{{ "{:,.2f}".format(svc.selling_price or 0) }}{% if unit_text and unit_text != 'fixed' and unit_text != 'service' %}/{{ unit_text }}{% endif %}
                                 </span>
                             </div>
-                            {% if svc.description %}
-                            <div style="font-size: 0.78rem; color: #64748b; margin-top: 4px; line-height: 1.4;">
-                                {{ svc.description }}
-                            </div>
+                            {% if service_notes %}
+                            <details class="customer-service-notes" onclick="event.stopPropagation()">
+                                <summary>Service notes ({{ service_notes|length }})</summary>
+                                <ul>
+                                    {% for note in service_notes %}
+                                    <li>{{ note }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </details>
                             {% endif %}
                             <div class="subtotal-pill" id="subtotal_svc_{{ svc.id }}" style="display: none;">
                                 ₱{{ "{:,.2f}".format(svc.selling_price or 0) }}
