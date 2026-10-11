@@ -1819,6 +1819,8 @@ function showBookingDetails(btn) {
                 services.forEach(function(s) {
                     var sRow = document.createElement('div');
                     sRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;';
+                    var serviceFee = Number(s.price);
+                    var hasServiceFee = Number.isFinite(serviceFee) && serviceFee > 0;
                     sRow.innerHTML = `
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             <div style="width: 32px; height: 32px; border-radius: 6px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 0.85rem;">
@@ -1829,9 +1831,7 @@ function showBookingDetails(btn) {
                                 <div style="font-size: 0.75rem; color: #64748b;">${s.category || 'Event Service'}</div>
                             </div>
                         </div>
-                        <div style="font-weight: 800; font-size: 1rem; color: #0f172a;">
-                            ₱${Number(s.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
+                        ${hasServiceFee ? `<div style="font-weight: 800; font-size: 1rem; color: #0f172a;">₱${serviceFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>` : ''}
                     `;
                     var serviceNotes = String(s.notes || s.description || '')
                         .split(/[\n,]+/)
@@ -2044,13 +2044,16 @@ function showBookingDetails(btn) {
                     selectedItems.forEach(function(item) {
                         var incRow = document.createElement('div');
                         incRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;';
+                        var itemPrice = Number(item.price);
+                        var hasItemPrice = Number.isFinite(itemPrice) && itemPrice > 0;
+                        var priceLabel = item.is_included ? 'Included' : (hasItemPrice ? '₱' + itemPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
                         incRow.innerHTML = `
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <i class="fas fa-check-circle" style="color: #16a34a;"></i>
                                 <span style="font-weight: 700; color: #0f172a;">${item.name}</span>
-                                ${item.quantity > 1 ? `<span style="font-size: 0.75rem; color: #64748b;">(x${item.quantity})</span>` : ''}
+                                ${hasItemPrice && item.quantity > 1 ? `<span style="font-size: 0.75rem; color: #64748b;">(x${item.quantity})</span>` : ''}
                             </div>
-                            <span style="font-weight: 800; color: #0f172a;">${item.is_included ? 'Included' : '₱' + Number(item.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                            ${priceLabel ? `<span style="font-weight: 800; color: #0f172a;">${priceLabel}</span>` : ''}
                         `;
                         onInclusions.appendChild(incRow);
                     });

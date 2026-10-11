@@ -3984,11 +3984,20 @@ async def get_booking_details_api(
             service_name = item.custom_name or item.service.name
             service_key = str(service_name).strip().casefold()
             if service_key in service_names:
+                # The booking's saved selection price is authoritative over
+                # any legacy copy of the service in custom_requirements.
+                existing_service = next(
+                    service for service in services_list
+                    if str(service.get("name") or "").strip().casefold() == service_key
+                )
+                existing_service["price"] = float(item.price or 0)
                 continue
             service_names.add(service_key)
             services_list.append({
                 "name": service_name,
-                "price": float(item.price or item.service.selling_price or 0),
+                # Use the amount saved on this booking selection. A zero or
+                # missing saved price means no itemized service fee to show.
+                "price": float(item.price or 0),
                 "category": item.service.category or "Service",
                 "is_selected": True
             })

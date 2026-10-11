@@ -1226,14 +1226,12 @@
                                                                     {% endif %}
                                                                 </div>
                                                                 {% set item_qty = item.quantity if item.quantity else (booking.guest_count if not item.is_add_on else 1) %}
-                                                                {% set item_price = item.price or item.menu_item.base_price or 0 %}
+                                                                {% set item_price = item.price if item.price is not none else 0 %}
                                                                 {% set item_total = item_qty * item_price %}
                                                                 <div style="text-align: right;">
-                                                                    {% if booking.is_custom_event or item.is_add_on or item_price > 0 %}
+                                                                    {% if item_price > 0 %}
                                                                         <div style="font-weight: 800; color: #0f172a; font-size: 0.85rem;">₱{{ "{:,.2f}".format(item_total) }}</div>
                                                                         <div style="font-size: 0.7rem; color: #64748b;">₱{{ "{:,.2f}".format(item_price) }} &times; {{ item_qty }}</div>
-                                                                    {% else %}
-                                                                        <span style="background: #e2e8f0; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; color: #334155;">&times;{{ item_qty }}</span>
                                                                     {% endif %}
                                                                 </div>
                                                             </div>
@@ -1317,13 +1315,11 @@
                                                         </div>
                                                     </div>
                                                     {% set item_qty = item.quantity if item.quantity else 1 %}
-                                                    {% set item_price = item.price or item.service.rate or 0 %}
+                                                    {% set item_price = item.price if item.price is not none else 0 %}
                                                     <div style="text-align: right;">
-                                                        {% if booking.is_custom_event or item.is_add_on or item_price > 0 %}
+                                                        {% if item_price > 0 %}
                                                             <div style="font-weight: 800; color: #0f172a; font-size: 0.85rem;">₱{{ "{:,.2f}".format(item_qty * item_price) }}</div>
                                                             <div style="font-size: 0.7rem; color: #64748b;">{{ item_qty }} staff/service</div>
-                                                        {% else %}
-                                                            <span style="background: #e2e8f0; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; color: #334155;">&times;{{ item_qty }}</span>
                                                         {% endif %}
                                                     </div>
                                                 </div>
