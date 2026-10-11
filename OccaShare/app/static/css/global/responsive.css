@@ -273,11 +273,19 @@ button {
     .modal-content,
     .admin-modal-card,
     .sweet-alert,
-    .swal2-popup {
+    .swal2-popup:not(.small-toast-popup):not(.swal2-toast) {
         width: min(100%, calc(100vw - 20px)) !important;
         max-width: calc(100vw - 20px) !important;
         margin: 0.5rem auto !important;
         box-sizing: border-box !important;
+    }
+
+    .swal2-popup.small-toast-popup,
+    .swal2-popup.swal2-toast {
+        width: auto !important;
+        max-width: min(360px, calc(100vw - 24px)) !important;
+        padding: 0.6rem 0.75rem !important;
+        margin: 0.5rem !important;
     }
 
     .modal-body,
