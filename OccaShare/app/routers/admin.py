@@ -3325,19 +3325,19 @@ async def admin_customers(
 ):
     # ── Customer Directory ────────────────────────────────────────────────────
     # Platform accounts and booking-only walk-in records have distinct actions
-    # and are projected separately in the directory.
-    # Show customer accounts linked to an active Darwin booking, including
-    # caterer CRM customers. Unlinked manual CRM entries remain out of this list.
-    darwin_profile = _get_darwin_profile(db)
+    # and are projected separately in the directory. This is the platform-wide
+    # admin directory, so customer visibility and booking counts must not depend
+    # on a particular caterer's profile or bookings.
     base_filters = [
         models.User.role == "customer",
         _not_archived(models.User.is_archived),
         models.User.email.isnot(None),
         func.trim(models.User.email) != "",
         func.lower(models.User.email).notlike("walkin\\_%@guest.occashare.com", escape="\\"),
+        func.coalesce(models.User.auth_provider, "email") != "manual_entry",
     ]
 
-    darwin_booking_filters = [_not_archived(models.Booking.is_archived)]
+    directory_booking_filters = [_not_archived(models.Booking.is_archived)]
     customer_booking_link = or_(
         models.Booking.user_id == models.User.id,
         and_(
@@ -3346,18 +3346,9 @@ async def admin_customers(
             == func.lower(func.trim(models.User.email)),
         ),
     )
-    if darwin_profile:
-        darwin_booking_filters.append(models.Booking.caterer_id == darwin_profile.id)
-        customers = db.query(models.User).join(
-            models.Booking, customer_booking_link
-        ).filter(*base_filters, *darwin_booking_filters).distinct().order_by(
-            models.User.created_at.desc()
-        ).all()
-    else:
-        base_filters.append(func.coalesce(models.User.auth_provider, "email") != "manual_entry")
-        customers = db.query(models.User).filter(*base_filters).order_by(
-            models.User.created_at.desc()
-        ).all()
+    customers = db.query(models.User).filter(*base_filters).order_by(
+        models.User.created_at.desc()
+    ).all()
 
     customers_by_email = {
         customer.email.strip().lower(): customer
@@ -3373,7 +3364,7 @@ async def admin_customers(
         joinedload(models.Booking.caterer),
     ).filter(
         models.Booking.status != "draft",
-        *darwin_booking_filters,
+        *directory_booking_filters,
     ).all()
 
     for booking in directory_bookings:
@@ -3398,7 +3389,7 @@ async def admin_customers(
         models.Booking, customer_booking_link
     ).filter(
         *base_filters,
-        *darwin_booking_filters,
+        *directory_booking_filters,
     ).group_by(models.User.id).all())
     for customer in customers:
         customer.admin_customer_refs = sorted(customer_refs_by_user.get(customer.id, set()))
