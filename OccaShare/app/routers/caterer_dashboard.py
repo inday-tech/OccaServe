@@ -37,6 +37,11 @@ MAX_DELIVERY_FEE = Decimal("999999.99")
 caterer_only = auth.RoleChecker(["caterer"])
 
 
+def _booking_status_key(booking: models.Booking) -> str:
+    """Normalize historical booking status casing for dashboard comparisons."""
+    return (booking.status or "").strip().lower()
+
+
 def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75, folder: str = "menu_images") -> str:
     """Uploads image bytes to Cloudinary and returns CDN URL."""
     from app.services.storage import upload_file_to_cloudinary
@@ -1521,6 +1526,7 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
     
     for b in bookings:
         if not b.event_date: continue
+        status_key = _booking_status_key(b)
         
         amount = float(b.total_amount or b.total_price or 0)
         
@@ -1540,22 +1546,23 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
         if b.event_date >= stats_start and b.event_date <= stats_end:
             unique_customers.add(b.user_id)
             
-            if b.status in ['confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']:
+            if status_key in ['confirmed', 'preparing', 'on_the_way', 'in_progress', 'completed']:
                 total_projected_revenue += amount
                 total_projected_expenses += actual_cost
-                if b.status != 'completed': active_bookings += 1
+                if status_key != 'completed': active_bookings += 1
 
             # Realized Revenue Computation
             cleared_amount = 0
-            if b.payment_status == 'paid':
+            payment_status_key = (b.payment_status or '').strip().lower()
+            if payment_status_key == 'paid':
                 cleared_amount = amount
-            elif b.payment_status == 'deposit_paid':
+            elif payment_status_key == 'deposit_paid':
                 dep_pct = 20
                 if b.quotation: dep_pct = b.quotation.downpayment_percent
                 cleared_amount = amount * (dep_pct / 100)
             
             total_realized_revenue += cleared_amount
-            total_actual_expenses += actual_cost if b.status in ['confirmed', 'completed', 'in_progress'] else 0
+            total_actual_expenses += actual_cost if status_key in ['confirmed', 'completed', 'in_progress'] else 0
 
             # Loyalty & Spenders Tracking
             if b.user_id:
@@ -1582,8 +1589,9 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
         date_key = b.event_date.strftime(date_format)
         if date_key in period_revenue:
             cleared_chart = 0
-            if b.payment_status == 'paid': cleared_chart = amount
-            elif b.payment_status == 'deposit_paid':
+            payment_status_key = (b.payment_status or '').strip().lower()
+            if payment_status_key == 'paid': cleared_chart = amount
+            elif payment_status_key == 'deposit_paid':
                 dep_pct = 20
                 if b.quotation: dep_pct = b.quotation.downpayment_percent
                 cleared_chart = amount * (dep_pct / 100)
@@ -1591,9 +1599,9 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
             period_revenue[date_key] += cleared_chart
             period_expenses[date_key] += actual_cost
             
-            if b.status in ['completed', 'confirmed', 'in_progress']:
+            if status_key in ['completed', 'confirmed', 'in_progress']:
                 period_bookings[date_key]['completed'] += 1
-            elif b.status != 'cancelled':
+            elif status_key != 'cancelled':
                 period_bookings[date_key]['pending'] += 1
 
         # --- C. PACKAGE EFFICIENCY ---
@@ -1601,7 +1609,7 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
             if b.package_id not in package_stats:
                 package_stats[b.package_id] = {'revenue': 0, 'expenses': 0, 'orders': 0}
             package_stats[b.package_id]['orders'] += 1
-            if b.status in ['confirmed', 'completed']:
+            if status_key in ['confirmed', 'completed']:
                 package_stats[b.package_id]['revenue'] += amount
                 package_stats[b.package_id]['expenses'] += actual_cost
 
@@ -1637,7 +1645,7 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
         })
     
     active_op_statuses = ['confirmed', 'preparing', 'on_the_way', 'in_progress']
-    upcoming_events = sorted([b for b in bookings if b.status in active_op_statuses and b.event_date and b.event_date >= today], key=lambda x: x.event_date)[:4]
+    upcoming_events = sorted([b for b in bookings if _booking_status_key(b) in active_op_statuses and b.event_date and b.event_date >= today], key=lambda x: x.event_date)[:4]
     
     popular_packages = []
     for pkg in profile.packages:
@@ -1655,10 +1663,10 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
 
     
     # Calculate Pending Actions
-    pending_approvals = sum(1 for b in bookings if b.status in ['pending_quotation', 'pending_review'])
-    pending_payments = sum(1 for b in bookings if b.payment_status == 'pending_verification')
+    pending_approvals = sum(1 for b in bookings if _booking_status_key(b) in ['pending_quotation', 'pending_review'])
+    pending_payments = sum(1 for b in bookings if (b.payment_status or '').strip().lower() == 'pending_verification')
     identity_requests = 0
-    pending_contracts = sum(1 for b in bookings if getattr(b, 'contract_status', '') == 'awaiting_signature')
+    pending_contracts = sum(1 for b in bookings if (getattr(b, 'contract_status', '') or '').strip().lower() == 'awaiting_signature')
     
     pending_actions = {
         "approvals": pending_approvals,
@@ -1670,7 +1678,7 @@ def _get_caterer_stats(profile, bookings, timeframe='month', start_date=None, en
     }
 
     # Today's Schedule
-    today_schedule = [b for b in bookings if b.event_date == today and b.status not in ['cancelled', 'draft']]
+    today_schedule = [b for b in bookings if b.event_date == today and _booking_status_key(b) not in ['cancelled', 'draft']]
     today_schedule.sort(key=lambda x: x.event_time.hour if x.event_time else 0)
     
     return {
@@ -1749,15 +1757,19 @@ async def caterer_dashboard(
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
     profile = user.caterer_profile
-    from sqlalchemy.orm import joinedload
+    from sqlalchemy.orm import joinedload, selectinload
     from sqlalchemy import func, or_
     all_bookings = db.query(models.Booking).options(
         joinedload(models.Booking.package),
         joinedload(models.Booking.quotation),
         joinedload(models.Booking.user),
         joinedload(models.Booking.caterer),
-    ).filter(models.Booking.caterer_id == profile.id).all()
-    bookings = [b for b in all_bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted'] and not b.is_archived]
+        selectinload(models.Booking.payment_records),
+    ).filter(
+        models.Booking.caterer_id == profile.id,
+        or_(models.Booking.is_archived.is_(False), models.Booking.is_archived.is_(None)),
+    ).all()
+    bookings = [b for b in all_bookings if _booking_status_key(b) not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted']]
     customer_messages = db.query(func.count(models.BookingMessage.id)).join(
         models.Booking, models.Booking.id == models.BookingMessage.booking_id
     ).filter(
@@ -1773,26 +1785,30 @@ async def caterer_dashboard(
     today = date.today()
     
     # 1. Operational Dashboard Metrics
-    today_events_count = len([b for b in all_bookings if not b.is_archived and b.event_date == today and b.status not in ['cancelled', 'draft']])
-    upcoming_events_count = len([b for b in all_bookings if not b.is_archived and b.event_date and today < b.event_date <= today + timedelta(days=30) and b.status not in ['cancelled', 'draft']])
+    today_events_count = len([b for b in all_bookings if b.event_date == today and _booking_status_key(b) not in ['cancelled', 'draft']])
+    upcoming_events_count = len([b for b in all_bookings if b.event_date and today < b.event_date <= today + timedelta(days=30) and _booking_status_key(b) not in ['cancelled', 'draft']])
     
     outstanding_balance = 0
     outstanding_count = 0
     action_center_items = []
+    from app.services.payment_service import PaymentService
     
     for b in all_bookings:
-        if b.is_archived or b.status in ['cancelled', 'draft', 'completed']:
+        status_key = _booking_status_key(b)
+        if status_key in ['cancelled', 'draft', 'completed']:
             continue
             
-        amount = float(b.total_amount or b.total_price or 0)
-        paid = float(b.amount_paid or 0)
+        payment_summary = PaymentService.get_payment_summary(b)
+        amount = float(payment_summary.get('total_amount') or b.total_amount or b.total_price or 0)
+        paid = float(payment_summary.get('verified_paid') or 0)
         b_ref = b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:04d}")
         c_ref = b.customer_ref or _booking_customer_reference(b)
         ev_title = b.event_name or (b.package.name if b.package else (b.event_type or "Catering Event"))
-        rem_balance = max(0.0, amount - paid)
+        summary_balance = payment_summary.get('remaining_balance')
+        rem_balance = float(summary_balance if summary_balance is not None else max(0.0, amount - paid))
         
         # Balance computation
-        if amount > paid and b.status not in ['pending_quotation', 'pending_review']:
+        if rem_balance > 0.009 and status_key not in ['pending_quotation', 'pending_review']:
             outstanding_balance += rem_balance
             outstanding_count += 1
             if b.event_date and b.event_date <= today + timedelta(days=3):
@@ -1803,7 +1819,7 @@ async def caterer_dashboard(
                     'icon': 'fa-money-bill-wave',
                     'booking_id': b.id
                 })
-            elif b.event_date and b.event_date <= today + timedelta(days=14) and b.status in ['confirmed', 'preparing']:
+            elif b.event_date and b.event_date <= today + timedelta(days=14) and status_key in ['confirmed', 'preparing']:
                 action_center_items.append({
                     'type': 'warning',
                     'title': f'Final Balance Due — Client {c_ref}',
@@ -1813,7 +1829,7 @@ async def caterer_dashboard(
                 })
 
         # Unconfirmed booking alert
-        if b.status in ['pending', 'inquiry', 'pending_quotation', 'pending_review', 'awaiting_caterer']:
+        if status_key in ['pending', 'inquiry', 'pending_quotation', 'pending_review', 'awaiting_caterer']:
             action_center_items.append({
                 'type': 'urgent',
                 'title': f'Unconfirmed Booking — Client {c_ref}',
@@ -1823,7 +1839,7 @@ async def caterer_dashboard(
             })
 
         # Missing booking information alert (e.g. missing venue/location)
-        if b.status in ['confirmed', 'preparing'] and not (b.event_address or b.venue_address or b.event_location):
+        if status_key in ['confirmed', 'preparing'] and not (b.event_address or b.venue_address or b.event_location):
             action_center_items.append({
                 'type': 'warning',
                 'title': f'Missing Venue Location — Client {c_ref}',
@@ -1843,7 +1859,7 @@ async def caterer_dashboard(
                 'booking_id': b.id
             })
             
-        if getattr(b, 'contract_status', '') == 'awaiting_signature':
+        if (getattr(b, 'contract_status', '') or '').strip().lower() == 'awaiting_signature':
             action_center_items.append({
                 'type': 'warning',
                 'title': f'Contract Pending Signature — Client {c_ref}',
@@ -1905,13 +1921,13 @@ async def caterer_dashboard(
     elif profile.status == 'Draft' or profile.status == 'Identity Verified':
         next_action = {"title": "Publish Listing", "desc": "You're all set! Publish your listing to start receiving bookings.", "url": "#", "btn": "Publish Now", "onclick": "window.toggleCatererPublish && window.toggleCatererPublish(this)"}
 
-    total_bookings = len([b for b in all_bookings if b.status not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled'] and not b.is_archived])
+    total_bookings = len([b for b in all_bookings if _booking_status_key(b) not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled']])
     
     import datetime as dt_module
-    today_schedule = [b for b in all_bookings if not b.is_archived and b.event_date == today and b.status not in ['cancelled', 'draft']]
+    today_schedule = [b for b in all_bookings if b.event_date == today and _booking_status_key(b) not in ['cancelled', 'draft']]
     today_schedule.sort(key=lambda b: (b.event_time or dt_module.time.min))
 
-    upcoming_events_list = [b for b in all_bookings if not b.is_archived and b.event_date and b.event_date > today and b.status not in ['cancelled', 'draft']]
+    upcoming_events_list = [b for b in all_bookings if b.event_date and b.event_date > today and _booking_status_key(b) not in ['cancelled', 'draft']]
     upcoming_events_list.sort(key=lambda b: (b.event_date, b.event_time or dt_module.time.min))
     upcoming_events_list = upcoming_events_list[:8]
 
@@ -1932,18 +1948,18 @@ async def caterer_dashboard(
     # Accurate analytics counts across both online and walk-in bookings:
     accurate_active_bookings = len([
         b for b in all_bookings 
-        if not b.is_archived and b.status in [
+        if _booking_status_key(b) in [
             'confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 
             'arrived', 'setup_ongoing', 'in_progress'
         ]
     ])
     accurate_completed_events = len([
         b for b in all_bookings 
-        if not b.is_archived and b.status in ['completed', 'delivered']
+        if _booking_status_key(b) in ['completed', 'delivered']
     ])
     accurate_pending_bookings = len([
         b for b in all_bookings 
-        if not b.is_archived and b.status in [
+        if _booking_status_key(b) in [
             'pending', 'inquiry', 'pending_quotation', 'pending_review', 
             'awaiting_caterer', 'awaiting_customer', 'awaiting_payment'
         ]
@@ -1951,12 +1967,12 @@ async def caterer_dashboard(
     accurate_total_revenue = sum([
         float(b.total_amount or b.total_price or 0.0) 
         for b in all_bookings 
-        if not b.is_archived and b.status in ['completed', 'delivered']
+        if _booking_status_key(b) in ['completed', 'delivered']
     ])
 
     # Recent 5 bookings for Dashboard
     recent_bookings_dashboard = []
-    for b in sorted([b for b in all_bookings if not getattr(b, 'is_archived', False)], key=lambda x: (x.created_at or dt_module.datetime.min, x.id), reverse=True)[:5]:
+    for b in sorted(all_bookings, key=lambda x: (x.created_at or dt_module.datetime.min, x.id), reverse=True)[:5]:
         cust_display = (
             b.customer_name 
             or (f"{b.user.first_name} {b.user.last_name}".strip() if b.user and (b.user.first_name or b.user.last_name) else None)
@@ -2247,15 +2263,19 @@ async def dashboard_overview_api(
         print(f'Reminder generation error: {e}')
     from fastapi.responses import JSONResponse
     profile = user.caterer_profile
-    from sqlalchemy.orm import joinedload
+    from sqlalchemy.orm import joinedload, selectinload
     from sqlalchemy import func, or_
     all_bookings = db.query(models.Booking).options(
         joinedload(models.Booking.package),
         joinedload(models.Booking.quotation),
         joinedload(models.Booking.user),
         joinedload(models.Booking.caterer),
-    ).filter(models.Booking.caterer_id == profile.id).all()
-    bookings = [b for b in all_bookings if b.status not in ['draft', 'pending_quotation', 'pending_review'] and not b.is_archived]
+        selectinload(models.Booking.payment_records),
+    ).filter(
+        models.Booking.caterer_id == profile.id,
+        or_(models.Booking.is_archived.is_(False), models.Booking.is_archived.is_(None)),
+    ).all()
+    bookings = [b for b in all_bookings if _booking_status_key(b) not in ['draft', 'pending_quotation', 'pending_review']]
     customer_messages = db.query(func.count(models.BookingMessage.id)).join(
         models.Booking, models.Booking.id == models.BookingMessage.booking_id
     ).filter(
@@ -4033,6 +4053,13 @@ async def get_booking_details_api(
         and (history.notes or "").endswith(" by caterer.")
         for history in booking.history
     )
+
+    def payment_reference_display(record):
+        for value in (record.reference_notes, record.payment_ref, booking.payment_reference):
+            if value is not None and str(value).strip():
+                return str(value).strip()
+        return "\u2013"
+
     return {
         "id": booking.id,
         "booking_ref": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or f"BK-{booking.id:06d}",
@@ -4145,7 +4172,9 @@ async def get_booking_details_api(
             "payment_date": record.payment_date.isoformat() if record.payment_date else None,
             "payment_method": record.payment_method,
             "payment_type": record.payment_type,
+            "payment_ref": record.payment_ref,
             "reference_notes": record.reference_notes,
+            "reference_display": payment_reference_display(record),
             "reference_number": record.reference_notes,
             "notes": record.reference_notes,
             "recorded_by": record.recorded_by or "Caterer",

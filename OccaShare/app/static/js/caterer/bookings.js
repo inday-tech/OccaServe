@@ -2258,7 +2258,17 @@ function showBookingDetails(btn) {
                 var recStatusBg = recIsUnderReview ? '#fef3c7' : '#dcfce7';
                 var recStatusColor = recIsUnderReview ? '#92400e' : '#166534';
                 var recAmtColor = recIsUnderReview ? '#92400e' : '#166534';
-                var refText = rec.reference_notes || rec.reference_number || rec.notes || '—';
+                var referenceCandidates = [
+                    rec.reference_display,
+                    rec.reference_notes,
+                    rec.payment_ref,
+                    data.paymentRef,
+                    rec.reference_number,
+                    rec.notes
+                ];
+                var refText = referenceCandidates.find(function(value) {
+                    return value != null && String(value).trim() !== '';
+                }) || '—';
                 var escapeCell = function(value) { var el = document.createElement('span'); el.textContent = String(value ?? ''); return el.innerHTML; };
                 var receiptMatch = String(refText).match(/Receipt:\s*(https?:\/\/[^\s|]+)/i);
                 var receiptUrl = '';
