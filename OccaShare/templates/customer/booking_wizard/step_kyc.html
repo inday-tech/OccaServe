@@ -1483,26 +1483,13 @@
                 <div class="scanner-center-icon"><i class="fas fa-shield-alt"></i></div>
             </div>
 
-            <h2 class="processing-title">Processing Your Data</h2>
-            <p class="processing-subtitle">Aming sinusuri ang iyong mga dokumento at biometrics. Sandali lamang ito.</p>
+            <h2 class="processing-title">System Verification in Progress</h2>
+            <p class="processing-subtitle">The system is checking your ID, face match, and liveness. If it cannot confirm the result, your case will be sent for admin review.</p>
 
             <div class="processing-checklist">
-                <span class="checklist-title">Verification Steps</span>
                 <div class="checklist-item active" id="step-enc">
                     <i class="fas fa-circle-notch fa-spin"></i>
-                    <span>Encrypting personal details</span>
-                </div>
-                <div class="checklist-item" id="step-doc">
-                    <i class="far fa-circle"></i>
-                    <span>Checking document authenticity</span>
-                </div>
-                <div class="checklist-item" id="step-face">
-                    <i class="far fa-circle"></i>
-                    <span>Matching face & biometric data</span>
-                </div>
-                <div class="checklist-item" id="step-final">
-                    <i class="far fa-circle"></i>
-                    <span>Running compliance evaluation</span>
+                    <span>Securely validating your ID and selfie</span>
                 </div>
             </div>
 
@@ -1513,7 +1500,7 @@
                 
                 <button onclick="resetKycStatus()" class="btn btn-outline-secondary btn-sm mt-3"
                     style="border-radius: 0.75rem; font-weight: 600; padding: 0.5rem 1.25rem;">
-                    <i class="fas fa-sync-alt mr-1"></i> Cancel and Try Again
+                    <i class="fas fa-sync-alt mr-1"></i> Restart Verification
                 </button>
             </div>
         </div>
@@ -1524,50 +1511,9 @@
                     const res = await fetch(`/api/bookings/kyc/reset`, { method: 'POST' });
                     if (res.ok) window.location.reload();
                 } catch (e) {
-                    alert("Failed to reset status.");
+                    alert("Could not restart verification. Please try again.");
                 }
             }
-
-            // Simple animated checklist loader
-            document.addEventListener('DOMContentLoaded', () => {
-                const stepEnc = document.getElementById('step-enc');
-                const stepDoc = document.getElementById('step-doc');
-                const stepFace = document.getElementById('step-face');
-                const stepFinal = document.getElementById('step-final');
-
-                if (stepEnc && stepDoc && stepFace && stepFinal) {
-                    // Start sequence
-                    setTimeout(() => {
-                        // Complete step 1
-                        stepEnc.className = 'checklist-item completed';
-                        stepEnc.querySelector('i').className = 'fas fa-check-circle';
-                        
-                        // Start step 2
-                        stepDoc.className = 'checklist-item active';
-                        stepDoc.querySelector('i').className = 'fas fa-circle-notch fa-spin';
-                    }, 2000);
-
-                    setTimeout(() => {
-                        // Complete step 2
-                        stepDoc.className = 'checklist-item completed';
-                        stepDoc.querySelector('i').className = 'fas fa-check-circle';
-                        
-                        // Start step 3
-                        stepFace.className = 'checklist-item active';
-                        stepFace.querySelector('i').className = 'fas fa-circle-notch fa-spin';
-                    }, 5000);
-
-                    setTimeout(() => {
-                        // Complete step 3
-                        stepFace.className = 'checklist-item completed';
-                        stepFace.querySelector('i').className = 'fas fa-check-circle';
-                        
-                        // Start step 4
-                        stepFinal.className = 'checklist-item active';
-                        stepFinal.querySelector('i').className = 'fas fa-circle-notch fa-spin';
-                    }, 8500);
-                }
-            });
         </script>
         {% endif %}
 
@@ -2019,7 +1965,7 @@
                 </div>
             </div>
 
-            <!-- WAITING FOR CATERER APPROVAL -->
+            <!-- WAITING FOR ADMIN REVIEW -->
             <div id="kyc-waiting-approval"
                 style="display: {% if kyc_record and kyc_record.verification_status in ['manual_review', 'pending_manual_review'] %}block{% else %}none{% endif %};" class="processing-container">
                 <div class="premium-scanner-box">
@@ -2028,14 +1974,14 @@
                     <div class="spinner-ring spinner-ring-inner"></div>
                     <div class="scanner-center-icon"><i class="fas fa-user-check"></i></div>
                 </div>
-                <h2 class="processing-title">Verification Under Review</h2>
+                <h2 class="processing-title">Admin Review Required</h2>
                 <p class="processing-subtitle">
-                    Your submitted documents require additional verification. You will be notified once the review is completed.
+                    The system could not confirm your identity with enough confidence. An admin will review your ID and liveness results.
                 </p>
                 <div
                     style="background: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;">
                     <i class="fas fa-info-circle"></i>
-                    <span>Real-time Update: We will automatically move to the next step once you are approved.</span>
+                    <span>You will be redirected to the quotation once the admin approves your verification.</span>
                 </div>
             </div>
 
@@ -2048,8 +1994,8 @@
                     <div class="spinner-ring spinner-ring-inner"></div>
                     <div class="scanner-center-icon"><i class="fas fa-fingerprint"></i></div>
                 </div>
-                <h3 id="status-text" class="processing-title">Verifying Biometrics...</h3>
-                <p id="status-subtext" class="processing-subtitle">Analyzing your face against the ID. This may take a few seconds.</p>
+                <h3 id="status-text" class="processing-title">System Verification in Progress</h3>
+                <p id="status-subtext" class="processing-subtitle">The system is checking your ID, face match, and liveness.</p>
                 <div class="badge-secure">
                     <i class="fas fa-lock"></i> 256-Bit SSL Secure Connection
                 </div>
