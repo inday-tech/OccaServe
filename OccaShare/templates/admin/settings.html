@@ -109,7 +109,7 @@
     }
 
     .page-header-clean h1 {
-        font-size: 1.65rem;
+        font-size: 1.4rem;
         font-weight: 800;
         color: var(--dm-secondary);
         letter-spacing: -0.02em;
@@ -330,6 +330,10 @@
         transform: none;
     }
 
+    .terminal-panel {
+        scroll-margin-top: 1rem;
+    }
+
     /* Audit Logs Tab */
     .audit-list {
         display: flex;
@@ -402,6 +406,64 @@
         .terminal-container { grid-template-columns: 1fr; }
         .terminal-nav { position: static; }
         .intel-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+        .main-content { padding: 1rem !important; }
+        .terminal-container { gap: 1rem; }
+        .terminal-nav { padding: 1rem; border-radius: 1.25rem; }
+        .nav-header { padding: 0 0.25rem 0.75rem; margin-bottom: 0.75rem; }
+        .terminal-nav .terminal-btn {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            min-width: 0;
+            min-height: 3.25rem;
+            margin: 0;
+            padding: 0.7rem 0.55rem;
+            border-radius: 0.75rem;
+            font-size: 0.72rem;
+            line-height: 1.25;
+            transform: none;
+        }
+        .terminal-nav .terminal-btn i {
+            flex: 0 0 1rem;
+            width: 1rem;
+            margin-top: 0.05rem;
+            font-size: 0.85rem;
+        }
+        .terminal-nav .terminal-btn:last-child {
+            border-top: 0 !important;
+            margin-top: 0 !important;
+            padding-top: 0.7rem !important;
+        }
+        .terminal-nav {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.4rem;
+        }
+        .terminal-nav .nav-header { grid-column: 1 / -1; }
+        .terminal-display { border-radius: 1.25rem; min-height: 0; }
+        .display-header { padding: 1.25rem; }
+        .display-header h2 { font-size: 1.15rem; }
+        .display-body { padding: 1.25rem; }
+        .display-footer {
+            display: flex;
+            gap: 0.6rem;
+            padding: 1rem;
+        }
+        .display-footer .terminal-btn,
+        .display-footer .btn-sync {
+            width: auto !important;
+            min-width: 0;
+            flex: 1 1 0;
+            justify-content: center;
+            margin: 0;
+            padding: 0.8rem 0.5rem;
+            border-radius: 0.8rem;
+            font-size: 0.82rem;
+            white-space: nowrap;
+        }
     }
 
     /* Modal Polyfill */
@@ -504,11 +566,11 @@
                     <div class="intel-grid">
                         <div class="input-wrapper">
                             <label class="label-premium">Platform Name</label>
-                            <input type="text" name="site_name" class="input-premium" value="{{ config.site_name }}" required>
+                            <input type="text" name="site_name" class="input-premium" value="{{ config.site_name }}" disabled>
                         </div>
                         <div class="input-wrapper">
                             <label class="label-premium">Support Email</label>
-                            <input type="email" name="support_email" class="input-premium" value="{{ config.support_email }}" required>
+                            <input type="email" name="support_email" class="input-premium" value="{{ config.support_email }}" disabled>
                         </div>
                     </div>
                     <div class="intel-grid">
@@ -722,9 +784,9 @@
             </div>
 
             <div class="display-footer" id="formActions">
-                <button type="button" class="terminal-btn" style="width: auto; margin-bottom: 0;" onclick="window.location.reload()">Discard Changes</button>
+                <button type="button" class="terminal-btn" style="width: auto; margin-bottom: 0;" onclick="window.location.reload()">Cancel</button>
                 <button type="submit" class="btn-sync" id="syncBtn">
-                    <i class="fas fa-cloud-arrow-up"></i> Sync Configuration
+                    <i class="fas fa-cloud-arrow-up"></i> Save
                 </button>
             </div>
         </form>
@@ -793,10 +855,14 @@
         btn.classList.add('active');
 
         document.querySelectorAll('.terminal-panel').forEach(p => p.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
+        const panel = document.getElementById(tabId);
+        panel.classList.add('active');
 
         // Hide/Show Sync button for Audit tab
         document.getElementById('formActions').style.display = (tabId === 'audit') ? 'none' : 'flex';
+        if (window.matchMedia('(max-width: 600px)').matches) {
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 
     function toggleMaint(el) {
@@ -985,4 +1051,3 @@
 </script>
 
 {% endblock %}
-

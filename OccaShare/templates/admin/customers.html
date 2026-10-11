@@ -11,7 +11,15 @@
         --adm-success: #10b981;
     }
 
+    .dashboard-header-clean h1 {
+        font-size: 1.55rem;
+    }
 
+    @media (max-width: 768px) {
+        .dashboard-header-clean h1 {
+            font-size: 1.35rem;
+        }
+    }
 
     .status-badge-dm {
         padding: 5px 12px;
@@ -40,44 +48,6 @@
         background: #fef3c7;
         color: #92400e;
         border: 1px solid #fde68a;
-    }
-
-    .customer-filter-card {
-        width: 100%;
-        min-width: 0;
-        min-height: 104px !important;
-        height: auto !important;
-        padding: 1.15rem !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        color: inherit;
-        font: inherit;
-        text-align: left;
-        cursor: pointer;
-    }
-
-    .customer-filter-card .kpi-info {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .customer-filter-card:hover {
-        transform: translateY(-3px);
-        border-color: var(--adm-primary) !important;
-        box-shadow: var(--adm-shadow) !important;
-    }
-
-    .customer-filter-card[aria-pressed="true"] {
-        border-color: var(--adm-primary) !important;
-        box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12) !important;
-    }
-
-    .customer-filter-card:focus-visible {
-        outline: 3px solid rgba(249, 115, 22, 0.35);
-        outline-offset: 2px;
     }
 
     .customer-section-heading td {
@@ -227,6 +197,7 @@
         font-size: 0.75rem;
         font-weight: 700;
         color: #475569;
+        text-decoration: none;
         transition: all 0.2s;
         cursor: pointer;
         border: none;
@@ -303,64 +274,82 @@
 
 <!-- Customer summary cards also filter the directory. -->
 <div class="kpi-grid-clean">
-    <button type="button" class="kpi-card-clean customer-filter-card" data-customer-filter="all" aria-pressed="true" onclick="setCustomerFilter('all')">
+    <button type="button" class="kpi-card-clean kpi-interactive-card customer-filter-card" data-customer-filter="all" aria-pressed="true" onclick="setCustomerFilter('all')">
         <div class="kpi-info">
             <h4>Total Customers</h4>
             <span class="kpi-value">{{ metrics.total_customers }}</span>
-            <span class="trend-badge trend-up">All accounts</span>
+            <span class="trend-badge trend-up">All customer records</span>
         </div>
     </button>
-    <button type="button" class="kpi-card-clean customer-filter-card" data-customer-filter="verified" aria-pressed="false" onclick="setCustomerFilter('verified')">
+    <button type="button" class="kpi-card-clean kpi-interactive-card customer-filter-card" data-customer-filter="verified" aria-pressed="false" onclick="setCustomerFilter('verified')">
         <div class="kpi-info">
             <h4>Verified</h4>
             <span class="kpi-value">{{ metrics.verified_customers }}</span>
             <span class="trend-badge trend-up">Identity checked</span>
         </div>
     </button>
-    <button type="button" class="kpi-card-clean customer-filter-card" data-customer-filter="pending" aria-pressed="false" onclick="setCustomerFilter('pending')">
+    <button type="button" class="kpi-card-clean kpi-interactive-card customer-filter-card" data-customer-filter="pending" aria-pressed="false" onclick="setCustomerFilter('pending')">
         <div class="kpi-info">
             <h4>Pending Verification</h4>
             <span class="kpi-value">{{ metrics.pending_customers }}</span>
             <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Identity not verified</span>
         </div>
     </button>
-    <button type="button" class="kpi-card-clean customer-filter-card" data-customer-filter="suspended" aria-pressed="false" onclick="setCustomerFilter('suspended')">
+    <button type="button" class="kpi-card-clean kpi-interactive-card customer-filter-card" data-customer-filter="walkin" aria-pressed="false" onclick="setCustomerFilter('walkin')">
         <div class="kpi-info">
-            <h4>Suspended</h4>
-            <span class="kpi-value">{{ metrics.suspended_customers }}</span>
-            <span class="trend-badge trend-down">Access paused</span>
+            <h4>Walk-in</h4>
+            <span class="kpi-value">{{ metrics.walkin_customers }}</span>
+            <span class="trend-badge">Caterer-entered customers</span>
         </div>
     </button>
 </div>
 
 {% macro customer_row(customer, section) %}
-<tr class="cust-row" data-customer-section="{{ section }}" data-verification-status="{{ 'verified' if customer.is_verified else 'pending' }}" data-account-status="{{ (customer.status or 'active')|lower }}">
+<tr class="cust-row" data-customer-section="{{ section }}" data-verification-status="{{ 'not-applicable' if customer.kind|default('account') == 'walkin' else ('verified' if customer.is_verified else 'pending') }}" data-account-status="{{ 'walk-in' if customer.kind|default('account') == 'walkin' else (customer.status or 'active')|lower }}">
     <td style="padding: 1rem 1.25rem;">
         <div style="display:flex; align-items:center; gap:12px; min-width:0;">
             <div class="registry-avatar" aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border:1px solid #e2e8f0;">
-                {{ (customer.first_name or ' ')[0] }}{{ (customer.last_name or ' ')[0] }}
+                {% if customer.kind|default('account') == 'walkin' %}W{% else %}{{ (customer.first_name or ' ')[0] }}{{ (customer.last_name or ' ')[0] }}{% endif %}
             </div>
             <div style="min-width:0;">
-                <div style="font-weight:800;color:var(--adm-navy);overflow-wrap:anywhere;">{{ customer.first_name or '' }} {{ customer.last_name or '' }}</div>
-                <div style="font-size:.7rem;color:#64748b;font-weight:700;">Customer ID #{{ "%05d"|format(customer.id) }}</div>
+                <div style="font-weight:800;color:var(--adm-navy);overflow-wrap:anywhere;">{% if customer.kind|default('account') == 'walkin' %}{{ customer.name }}{% else %}{{ customer.first_name or '' }} {{ customer.last_name or '' }}{% endif %}</div>
+                {% if customer.kind|default('account') == 'walkin' %}
+                <div style="font-size:.7rem;color:#64748b;font-weight:700;" data-customer-ref="{{ customer.customer_ref }}">Caterer Customer ID {{ customer.customer_ref }}</div>
+                {% elif customer.admin_customer_refs %}
+                <div style="font-size:.7rem;color:#64748b;font-weight:700;" data-customer-ref="{{ customer.admin_customer_refs|join(', ') }}">Caterer Customer ID {{ customer.admin_customer_refs|join(', ') }}</div>
+                {% else %}
+                <div style="font-size:.7rem;color:#64748b;font-weight:700;" data-customer-ref="Platform #{{ '%05d'|format(customer.id) }}">Platform Customer ID #{{ "%05d"|format(customer.id) }}</div>
+                {% endif %}
             </div>
         </div>
     </td>
     <td>
+        {% if customer.kind|default('account') == 'walkin' %}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="status-badge-dm" style="background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;">Walk-in</span>
+            <span style="font-size:.75rem;color:#64748b;overflow-wrap:anywhere;">No platform account</span>
+        </div>
+        {% else %}
         <div style="display:flex;flex-direction:column;align-items:flex-start;gap:5px;">
-            <span class="status-badge-dm {{ 'status-active' if customer.is_verified else ('status-suspended' if (customer.status or '')|lower == 'rejected' else 'status-flagged') }}">{{ 'Verified' if customer.is_verified else ('Rejected' if (customer.status or '')|lower == 'rejected' else 'Pending verification') }}</span>
-            {% if (customer.status or '')|lower == 'suspended' %}<span class="status-badge-dm status-suspended">Suspended</span>
-            {% elif (customer.status or '')|lower == 'flagged' %}<span class="status-badge-dm status-flagged">Flagged for review</span>
-            {% elif (customer.status or '')|lower not in ['active', 'rejected', 'suspended', 'flagged'] %}<span class="status-badge-dm status-flagged">{{ (customer.status or 'unknown')|replace('_', ' ')|title }}</span>{% else %}<span class="status-badge-dm status-active">{{ (customer.status or 'active')|replace('_', ' ')|title }}</span>{% endif %}
+            <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                <span class="status-badge-dm {{ 'status-active' if customer.is_verified else ('status-suspended' if (customer.status or '')|lower == 'rejected' else 'status-flagged') }}">{{ 'Verified' if customer.is_verified else ('Rejected' if (customer.status or '')|lower == 'rejected' else 'Pending verification') }}</span>
+                {% if (customer.status or '')|lower == 'suspended' %}<span class="status-badge-dm status-suspended">Suspended</span>
+                {% elif (customer.status or '')|lower == 'flagged' %}<span class="status-badge-dm status-flagged">Flagged for review</span>
+                {% elif (customer.status or '')|lower not in ['active', 'rejected', 'suspended', 'flagged'] %}<span class="status-badge-dm status-flagged">{{ (customer.status or 'unknown')|replace('_', ' ')|title }}</span>{% else %}<span class="status-badge-dm status-active">{{ (customer.status or 'active')|replace('_', ' ')|title }}</span>{% endif %}
+            </div>
             <span style="font-size:.75rem;color:#64748b;overflow-wrap:anywhere;">{{ customer.email or 'No email on file' }}</span>
         </div>
+        {% endif %}
     </td>
-    <td>{{ customer.admin_booking_count|default(0) }}</td>
+    <td>{{ customer.booking_count if customer.kind|default('account') == 'walkin' else customer.admin_booking_count|default(0) }}</td>
     <td>{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'Not recorded' }}</td>
     <td style="text-align:right;padding-right:1.25rem;">
         <div class="action-menu-dm">
-            <button type="button" class="action-dots-adm" aria-label="Actions for {{ customer.first_name }} {{ customer.last_name }}" aria-expanded="false" onclick="toggleActionMenu(this, event)"><i class="fas fa-ellipsis-h" aria-hidden="true"></i></button>
+            <button type="button" class="action-dots-adm" aria-label="Actions for {{ customer.name if customer.kind|default('account') == 'walkin' else ((customer.first_name or '') ~ ' ' ~ (customer.last_name or '')) }}" aria-expanded="false" onclick="toggleActionMenu(this, event)"><i class="fas fa-ellipsis-h" aria-hidden="true"></i></button>
             <div class="dropdown-menu-dm">
+                {% if customer.kind|default('account') == 'walkin' %}
+                <a class="dropdown-item-dm" href="/admin/bookings?search={{ customer.latest_booking_id }}">View latest booking</a>
+                {% else %}
                 <button type="button" class="dropdown-item-dm" data-id="{{ customer.id }}" data-name="{{ customer.first_name or '' }} {{ customer.last_name or '' }}" onclick="viewCustomerDetails(this)"><i class="fas fa-id-card" aria-hidden="true"></i> View details</button>
                 <div class="dropdown-divider"></div>
                 {% if (customer.status or '')|lower == 'suspended' %}
@@ -371,6 +360,7 @@
                 {% if not customer.is_verified %}<button type="button" class="dropdown-item-dm" data-id="{{ customer.id }}" data-name="{{ customer.first_name or '' }} {{ customer.last_name or '' }}" onclick="openCustomerIdentityReview(this.dataset.id, this.dataset.name)"><i class="fas fa-user-shield" aria-hidden="true"></i>Review identity</button>{% endif %}
                 <button type="button" class="dropdown-item-dm danger" onclick="suspendAccount('{{ customer.id }}')"><i class="fas fa-ban" aria-hidden="true"></i>Suspend account</button>
                 <button type="button" class="dropdown-item-dm" onclick="flagAccount('{{ customer.id }}')"><i class="fas fa-flag" aria-hidden="true"></i>Flag for review</button>
+                {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -387,6 +377,7 @@
                 <option value="all">All customers</option>
                 <option value="verified">Verified</option>
                 <option value="pending">Pending verification</option>
+                <option value="walkin">Walk-in</option>
                 <option value="suspended">Suspended</option>
                 <option value="flagged">Flagged for review</option>
             </select>
@@ -401,7 +392,7 @@
                     <th style="padding-left: 1.5rem;">Customer</th>
                     <th>Verification and account status</th>
                     <th>Bookings</th>
-                    <th>Date joined</th>
+                    <th>Date joined / first booking</th>
                     <th style="text-align: right; padding-right: 1.5rem;">Actions</th>
                 </tr>
             </thead>
@@ -412,6 +403,10 @@
             <tbody>
                 <tr class="customer-section-heading" data-section-heading="pending"><td colspan="5">Pending verification</td></tr>
                 {% for customer in pending_verification_customers %}{{ customer_row(customer, 'pending') }}{% endfor %}
+            </tbody>
+            <tbody>
+                <tr class="customer-section-heading" data-section-heading="walkin"><td colspan="5">Walk-in customers</td></tr>
+                {% for customer in walkin_customers %}{{ customer_row(customer, 'walkin') }}{% endfor %}
                 <tr class="customer-empty-row" id="customerEmptyRow" style="display:none;"><td colspan="5">No customers match this filter or search.</td></tr>
             </tbody>
         </table>
@@ -421,7 +416,7 @@
     <div class="pagination-terminal">
         <div style="font-size: 0.75rem; color: var(--adm-muted); font-weight: 700;">
             Showing <span id="entryStart">1</span> to <span id="entryEnd">10</span> of <span id="totalEntries">{{
-                customers|length }}</span> customers
+                (customers|length + walkin_customers|length) }}</span> customers
         </div>
         <div style="display: flex; gap: 8px;">
             <button class="pag-btn" id="prevBtn" onclick="changePage(-1)" disabled>
@@ -487,6 +482,7 @@
             const matchesStatus = status === 'all' ||
                 (status === 'verified' && verificationStatus === 'verified') ||
                 (status === 'pending' && verificationStatus === 'pending') ||
+                (status === 'walkin' && row.dataset.customerSection === 'walkin') ||
                 (status === 'suspended' && accountStatus === 'suspended') ||
                 (status === 'flagged' && accountStatus === 'flagged');
 
@@ -510,12 +506,12 @@
 
     function downloadCustomerCsv() {
         const visibleRows = filteredCustomerRows;
-        const values = [['Customer', 'Customer ID', 'Email', 'Verification', 'Account status', 'Bookings', 'Date joined']];
+        const values = [['Customer', 'Customer ID', 'Status and contact', 'Verification', 'Account status', 'Bookings', 'Date joined / first booking']];
         visibleRows.forEach(row => {
             const cells = row.cells;
             values.push([
                 cells[0].innerText.replace(/\s+/g, ' ').trim(),
-                cells[0].innerText.match(/#\d+/)?.[0] || '',
+                cells[0].querySelector('[data-customer-ref]')?.dataset.customerRef || '',
                 cells[1].innerText.split('\n').map(value => value.trim()).filter(Boolean).at(-1) || '',
                 row.dataset.verificationStatus,
                 row.dataset.accountStatus,
@@ -629,7 +625,8 @@
                 const formatDate = value => value ? new Date(value).toLocaleString() : 'No login recorded';
                 const accountStatus = String(data.status || 'unknown').replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
                 section('Personal details', [
-                    ['Name', data.full_name], ['Email', data.email], ['Phone', data.phone_number], ['Customer ID', `#${String(customerId).padStart(5, '0')}`]
+                    ['Name', data.full_name], ['Email', data.email], ['Phone', data.phone_number],
+                    ['Customer ID', data.customer_refs?.length ? data.customer_refs.join(', ') : `Platform #${String(customerId).padStart(5, '0')}`]
                 ]);
                 section('Account details', [
                     ['Identity verification', data.is_verified ? 'Verified' : 'Pending verification'], ['Account status', accountStatus],

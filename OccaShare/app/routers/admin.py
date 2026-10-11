@@ -16,11 +16,8 @@ import json, re, asyncio
 from ..services.realtime import manager
 from ..services.verification import verification_service
 from ..services.commission import (
-    calculate_booking_commission,
     get_commission_rate_percent,
-    is_pre_deployment_manual_booking,
 )
-from ..services.reminders import billing_period_due_date
 from sqlalchemy import or_
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -43,6 +40,21 @@ def _format_manila_timestamp(value, date_format="%b %d, %Y %I:%M:%S %p PHT"):
 def _search_like_pattern(query: str) -> str:
     escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return f"%{escaped_query}%"
+
+
+def _is_walkin_booking(booking: models.Booking) -> bool:
+    source = (booking.booking_source or "").strip().lower()
+    customer_email = (booking.customer_email or "").strip().lower()
+    requirements = booking.custom_requirements or {}
+    return (
+        not booking.user_id
+        or "walk" in source
+        or "internal" in source
+        or "manual" in source
+        or (customer_email.startswith("walkin_") and customer_email.endswith("@guest.occashare.com"))
+        or (isinstance(requirements, dict) and bool(requirements.get("is_walk_in")))
+        or bool(booking.user and booking.user.auth_provider == "manual_entry")
+    )
 
 
 @router.get("/api/omni-search")
@@ -171,12 +183,12 @@ async def omni_search(
         )
     ).order_by(models.Booking.created_at.desc()).limit(11).all()
     for b in bookings[:10]:
-        booking_customer_name = b.customer_name
+        booking_customer_name = "Walk-in" if _is_walkin_booking(b) else b.customer_name
         if not booking_customer_name and b.user:
             booking_customer_name = " ".join(filter(None, [b.user.first_name, b.user.last_name]))
         results.append({
             "type": "Booking", 
-            "title": f"Booking #BK-{b.id}",
+            "title": f"Booking {b.booking_ref}",
             "subtitle": f"{booking_customer_name or 'Customer'} · {(b.status or 'UNKNOWN').upper()}",
             "link": f"/admin/bookings?search={b.id}",
             "icon": "fas fa-calendar-check"
@@ -293,9 +305,23 @@ async def get_sidebar_badges(
     ).count()
 
     # Customer Management (Action Needed: pending KYC reviews)
-    customers_count = db.query(models.IdentityVerification).filter(
-        models.IdentityVerification.verification_status == 'pending_manual_review'
-    ).count()
+    latest_customer_verifications = db.query(
+        func.max(models.IdentityVerification.id).label("latest_id")
+    ).join(
+        models.User,
+        models.User.id == models.IdentityVerification.user_id,
+    ).filter(
+        models.User.role == "customer",
+        models.IdentityVerification.verification_type != "business_permit",
+    ).group_by(
+        models.IdentityVerification.user_id
+    ).subquery()
+    customers_count = db.query(func.count(models.IdentityVerification.id)).join(
+        latest_customer_verifications,
+        models.IdentityVerification.id == latest_customer_verifications.c.latest_id,
+    ).filter(
+        models.IdentityVerification.verification_status == "pending_manual_review"
+    ).scalar() or 0
 
     # All Bookings (Action Needed: disputes or flagged bookings)
     bookings_count = db.query(models.DisputeReport).filter(
@@ -416,14 +442,20 @@ async def admin_audit_logs(
     user: models.User = Depends(admin_only)
 ):
     query = db.query(models.AuditLog)
+    q = q.strip()[:100] if q else ""
     
     # Apply Filters
     if q:
+        search_pattern = _search_like_pattern(q)
+        query = query.outerjoin(models.User, models.AuditLog.user_id == models.User.id)
         query = query.filter(
             or_(
-                models.AuditLog.notes.ilike(f"%{q}%"),
-                models.AuditLog.action.ilike(f"%{q}%"),
-                models.AuditLog.ip_address.ilike(f"%{q}%")
+                models.AuditLog.notes.ilike(search_pattern, escape="\\"),
+                models.AuditLog.action.ilike(search_pattern, escape="\\"),
+                models.AuditLog.ip_address.ilike(search_pattern, escape="\\"),
+                models.User.first_name.ilike(search_pattern, escape="\\"),
+                models.User.last_name.ilike(search_pattern, escape="\\"),
+                models.User.email.ilike(search_pattern, escape="\\"),
             )
         )
     
@@ -434,13 +466,14 @@ async def admin_audit_logs(
         try:
             target_date = datetime.strptime(date, '%Y-%m-%d').date()
             query = query.filter(func.date(models.AuditLog.timestamp) == target_date)
-        except:
-            pass
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Date filter must use YYYY-MM-DD format.") from exc
 
     # Pagination Logic
     per_page = 20
     total_count = query.count()
-    total_pages = (total_count + per_page - 1) // per_page
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = min(max(page, 1), total_pages)
     logs = query.order_by(models.AuditLog.timestamp.desc()).offset((page - 1) * per_page).limit(per_page).all()
     
     distinct_actions = [row[0] for row in db.query(models.AuditLog.action).distinct().all() if row[0]]
@@ -460,6 +493,9 @@ async def admin_audit_logs(
 
 @router.get("/api/audit-logs/export")
 async def export_audit_logs(
+    q: Optional[str] = None,
+    category: Optional[str] = None,
+    date: Optional[str] = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
@@ -467,7 +503,30 @@ async def export_audit_logs(
     from io import StringIO
     from fastapi.responses import StreamingResponse
 
-    logs = db.query(models.AuditLog).order_by(models.AuditLog.timestamp.desc()).all()
+    query = db.query(models.AuditLog)
+    q = q.strip()[:100] if q else ""
+    if q:
+        search_pattern = _search_like_pattern(q)
+        query = query.outerjoin(models.User, models.AuditLog.user_id == models.User.id).filter(
+            or_(
+                models.AuditLog.notes.ilike(search_pattern, escape="\\"),
+                models.AuditLog.action.ilike(search_pattern, escape="\\"),
+                models.AuditLog.ip_address.ilike(search_pattern, escape="\\"),
+                models.User.first_name.ilike(search_pattern, escape="\\"),
+                models.User.last_name.ilike(search_pattern, escape="\\"),
+                models.User.email.ilike(search_pattern, escape="\\"),
+            )
+        )
+    if category:
+        query = query.filter(models.AuditLog.action == category)
+    if date:
+        try:
+            target_date = datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Date filter must use YYYY-MM-DD format.") from exc
+        query = query.filter(func.date(models.AuditLog.timestamp) == target_date)
+
+    logs = query.order_by(models.AuditLog.timestamp.desc()).all()
     
     def generate():
         data = StringIO()
@@ -1194,8 +1253,6 @@ async def website_settings(
 @router.post("/settings/update")
 async def update_website_settings(
     request: Request,
-    site_name: str = Form(...),
-    support_email: str = Form(...),
     fb_link: Optional[str] = Form(None),
     ig_link: Optional[str] = Form(None),
     tw_link: Optional[str] = Form(None),
@@ -1227,11 +1284,6 @@ async def update_website_settings(
         db.add(config)
 
     # 🛡️ VALIDATION & SANITATION
-    site_name = site_name.strip()
-    support_email = support_email.strip().lower()
-    if not site_name or not support_email:
-        return {"success": False, "message": "Platform Name and Support Email are required."}
-
     if commission is not None and (commission < 0 or commission > 100):
         return {"success": False, "message": "Commission rate must be between 0% and 100%."}
     
@@ -1240,7 +1292,6 @@ async def update_website_settings(
 
     # 📝 AUDIT PREPARATION (Capture old values)
     changes = []
-    if config.site_name != site_name: changes.append(f"Site Name: {config.site_name} -> {site_name}")
     if config.commission_rate != commission: changes.append(f"Commission: {config.commission_rate}% -> {commission}%")
     if config.max_file_size_mb != max_upload: changes.append(f"Max Upload: {config.max_file_size_mb}MB -> {max_upload}MB")
     
@@ -1249,8 +1300,6 @@ async def update_website_settings(
         changes.append(f"Maintenance Mode: {'ON' if new_maint_mode else 'OFF'}")
 
     # APPLY CHANGES
-    config.site_name = site_name
-    config.support_email = support_email
     config.facebook_link = fb_link
     config.instagram_link = ig_link
     config.twitter_link = tw_link
@@ -3053,27 +3102,35 @@ async def admin_bookings(
     search_query = request.query_params.get('search', '').strip()[:100]
 
     base_query = db.query(models.Booking).filter(models.Booking.is_archived == False)
-    if len(search_query) >= 2:
-        search_pattern = _search_like_pattern(search_query)
+    if search_query:
         base_query = base_query.outerjoin(
             models.User, models.Booking.user_id == models.User.id
         ).outerjoin(
             models.CatererProfile, models.Booking.caterer_id == models.CatererProfile.id
         ).outerjoin(
             models.CateringPackage, models.Booking.package_id == models.CateringPackage.id
-        ).filter(or_(
-            func.cast(models.Booking.id, String).ilike(search_pattern, escape="\\"),
-            models.User.first_name.ilike(search_pattern, escape="\\"),
-            models.User.last_name.ilike(search_pattern, escape="\\"),
-            models.User.email.ilike(search_pattern, escape="\\"),
-            models.Booking.customer_name.ilike(search_pattern, escape="\\"),
-            models.Booking.customer_email.ilike(search_pattern, escape="\\"),
-            models.Booking.customer_contact.ilike(search_pattern, escape="\\"),
-            models.Booking.event_name.ilike(search_pattern, escape="\\"),
-            models.Booking.event_type.ilike(search_pattern, escape="\\"),
-            models.CatererProfile.business_name.ilike(search_pattern, escape="\\"),
-            models.CateringPackage.name.ilike(search_pattern, escape="\\")
-        ))
+        )
+        for search_term in search_query.split():
+            search_pattern = _search_like_pattern(search_term)
+            base_query = base_query.filter(or_(
+                func.cast(models.Booking.id, String).ilike(search_pattern, escape="\\"),
+                models.User.first_name.ilike(search_pattern, escape="\\"),
+                models.User.last_name.ilike(search_pattern, escape="\\"),
+                models.User.email.ilike(search_pattern, escape="\\"),
+                models.Booking.customer_name.ilike(search_pattern, escape="\\"),
+                models.Booking.customer_email.ilike(search_pattern, escape="\\"),
+                models.Booking.customer_contact.ilike(search_pattern, escape="\\"),
+                models.Booking._booking_ref.ilike(search_pattern, escape="\\"),
+                models.Booking._customer_ref.ilike(search_pattern, escape="\\"),
+                models.Booking.event_name.ilike(search_pattern, escape="\\"),
+                models.Booking.event_type.ilike(search_pattern, escape="\\"),
+                models.Booking.status.ilike(search_pattern, escape="\\"),
+                models.Booking.payment_status.ilike(search_pattern, escape="\\"),
+                func.cast(models.Booking.event_date, String).ilike(search_pattern, escape="\\"),
+                func.cast(models.Booking.total_amount, String).ilike(search_pattern, escape="\\"),
+                models.CatererProfile.business_name.ilike(search_pattern, escape="\\"),
+                models.CateringPackage.name.ilike(search_pattern, escape="\\")
+            ))
     if status_filter == 'pending':
         base_query = base_query.filter(models.Booking.status.in_(PENDING_STATUSES))
     elif status_filter == 'disputed':
@@ -3104,6 +3161,20 @@ async def admin_bookings(
         joinedload(models.Booking.package),
         selectinload(models.Booking.payment_records),
     ).order_by(models.Booking.created_at.desc(), models.Booking.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    for booking in bookings:
+        booking.admin_booking_ref = booking.booking_ref
+        booking.admin_customer_ref = booking.customer_ref
+        booking.admin_is_walkin = _is_walkin_booking(booking)
+        booking.admin_customer_label = (
+            "Walk-in"
+            if booking.admin_is_walkin
+            else (
+                f"{booking.user.first_name or ''} {booking.user.last_name or ''}".strip()
+                if booking.user
+                else booking.customer_name or "Customer"
+            )
+        )
+        booking.admin_payment_status = (booking.payment_status or "pending").replace("_", " ").title()
 
     # ─── Booking Intelligence Metrics ───
     # NOTE: "awaiting action" mirrors the statuses used by the table filters below.
@@ -3142,6 +3213,37 @@ async def admin_bookings(
     })
 
 
+@router.get("/api/bookings/monitor-status")
+async def get_booking_monitor_status(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    raw_ids = request.query_params.getlist("id")
+    if len(raw_ids) > 100 or any(not value.isdigit() for value in raw_ids):
+        raise HTTPException(status_code=400, detail="Provide up to 100 valid booking IDs.")
+
+    booking_ids = {int(value) for value in raw_ids}
+    bookings = db.query(models.Booking).filter(
+        models.Booking.id.in_(booking_ids),
+        models.Booking.is_archived == False,
+    ).all() if booking_ids else []
+    latest_booking_id = db.query(func.max(models.Booking.id)).filter(
+        models.Booking.is_archived == False
+    ).scalar() or 0
+    return {
+        "success": True,
+        "latest_booking_id": latest_booking_id,
+        "bookings": {
+            str(booking.id): {
+                "status": booking.status or "pending",
+                "payment_status": booking.payment_status or "pending",
+            }
+            for booking in bookings
+        },
+    }
+
+
 
 # ─── Customer Management ───────────────────────────────────────────────────────
 
@@ -3152,21 +3254,63 @@ async def admin_customers(
     user: models.User = Depends(admin_only)
 ):
     # ── Customer Directory ────────────────────────────────────────────────────
-    # Only accounts that were genuinely created on the website are listed here.
-    # "Manual entry" records (walk-in customers encoded by a caterer) have no
-    # login credentials of their own, so they are intentionally excluded — they
-    # are managed through the caterer's own client list, not platform accounts.
+    # Platform accounts and booking-only walk-in records have distinct actions
+    # and are projected separately in the directory.
     base_filters = [
         models.User.role == "customer",
         models.User.is_archived == False,
         models.User.email.isnot(None),
         func.trim(models.User.email) != "",
         func.coalesce(models.User.auth_provider, "email") != "manual_entry",
+        func.lower(models.User.email).notlike("walkin\\_%@guest.occashare.com", escape="\\"),
     ]
 
     customers = db.query(models.User).filter(
         *base_filters
     ).order_by(models.User.created_at.desc()).all()
+    customers_by_email = {
+        customer.email.strip().lower(): customer
+        for customer in customers
+        if customer.email
+    }
+
+    customer_refs_by_user = {}
+    walkin_bookings_by_customer = {}
+    from sqlalchemy.orm import joinedload
+    directory_bookings = db.query(models.Booking).options(
+        joinedload(models.Booking.user),
+        joinedload(models.Booking.caterer),
+    ).filter(
+        models.Booking.status != "draft",
+        models.Booking.is_archived == False,
+    ).all()
+
+    for booking in directory_bookings:
+        ref = booking.customer_ref
+        if booking.user_id:
+            customer_refs_by_user.setdefault(booking.user_id, set()).add(ref)
+        if booking.customer_email:
+            normalized_email = booking.customer_email.strip().lower()
+            matching_customer = customers_by_email.get(normalized_email)
+            if matching_customer:
+                customer_refs_by_user.setdefault(matching_customer.id, set()).add(ref)
+
+        booking_user = booking.user
+        source = (booking.booking_source or "").strip().lower()
+        email = (booking.customer_email or "").strip().lower()
+        custom_requirements = booking.custom_requirements or {}
+        is_walkin = (
+            "walk" in source
+            or (email.startswith("walkin_") and email.endswith("@guest.occashare.com"))
+            or (isinstance(custom_requirements, dict) and bool(custom_requirements.get("is_walk_in")))
+            or (booking_user and booking_user.auth_provider == "manual_entry")
+        )
+        if is_walkin:
+            key = (booking.caterer_id, ref)
+            walkin_bookings_by_customer.setdefault(key, []).append(booking)
+
+    for customer in customers:
+        customer.admin_customer_refs = sorted(customer_refs_by_user.get(customer.id, set()))
 
     # Some legacy/online bookings have customer_email populated but user_id
     # missing. Match those to the registered account for directory counts.
@@ -3183,6 +3327,25 @@ async def admin_customers(
     for customer in customers:
         customer.admin_booking_count = booking_counts.get(customer.id, 0)
 
+    walkin_customers = []
+    for (caterer_id, customer_ref), bookings in walkin_bookings_by_customer.items():
+        latest_booking = max(
+            bookings,
+            key=lambda booking: (booking.event_date or date.min, booking.id),
+        )
+        walkin_customers.append({
+            "kind": "walkin",
+            "name": latest_booking.customer_name
+            or (f"{latest_booking.user.first_name or ''} {latest_booking.user.last_name or ''}".strip() if latest_booking.user else "")
+            or "Walk-in",
+            "customer_ref": customer_ref,
+            "booking_count": len(bookings),
+            "created_at": latest_booking.created_at,
+            "latest_booking_id": latest_booking.id,
+            "caterer_id": caterer_id,
+        })
+    walkin_customers.sort(key=lambda customer: customer["customer_ref"])
+
     verified_customers = [customer for customer in customers if customer.is_verified]
     pending_verification_customers = [customer for customer in customers if not customer.is_verified]
 
@@ -3193,7 +3356,7 @@ async def admin_customers(
 
     # Metrics use the exact same population as the table so the numbers always match.
     metrics = {
-        "total_customers": db.query(models.User).filter(*base_filters).count(),
+        "total_customers": db.query(models.User).filter(*base_filters).count() + len(walkin_customers),
         "verified_customers": db.query(models.User).filter(
             *base_filters,
             models.User.is_verified == True
@@ -3206,13 +3369,15 @@ async def admin_customers(
         "flagged_customers": db.query(models.User).filter(
             *base_filters,
             func.lower(func.coalesce(models.User.status, "")) == "flagged"
-        ).count()
+        ).count(),
+        "walkin_customers": len(walkin_customers),
     }
 
     return templates.TemplateResponse("admin/customers.html", {
         "request": request,
         "user": user,
         "customers": customers,
+        "walkin_customers": walkin_customers,
         "verified_customers": verified_customers,
         "pending_verification_customers": pending_verification_customers,
         "metrics": metrics,
@@ -3236,6 +3401,11 @@ async def get_customer_audit_data(
         models.Booking.user_id == target.id,
         func.lower(func.trim(models.Booking.customer_email)) == func.lower(func.trim(target.email)),
     )).all()
+    customer_refs = sorted({
+        booking.customer_ref
+        for booking in bookings
+        if booking.status != "draft" and not booking.is_archived and booking.customer_ref
+    })
     normalized_status = lambda booking: (booking.status or "").strip().lower()
     total_completed = sum(1 for b in bookings if normalized_status(b) == "completed")
     total_spent = sum((b.total_amount or b.total_price or 0.0) for b in bookings if normalized_status(b) == "completed")
@@ -3252,6 +3422,7 @@ async def get_customer_audit_data(
         "data": {
             "full_name": f"{target.first_name} {target.last_name}",
             "email": target.email,
+            "customer_refs": customer_refs,
             "status": target.status,
             "is_verified": target.is_verified,
             "join_date": target.created_at.strftime("%b %d, %Y") if target.created_at else None,
@@ -3642,6 +3813,9 @@ async def get_booking_details(
             "success": True,
             "booking": {
                 "id": booking.id,
+                "booking_ref": booking.booking_ref,
+                "customer_ref": booking.customer_ref,
+                "is_walkin": _is_walkin_booking(booking),
                 "event_name": booking.event_name or "Standard Event",
                 "event_type": booking.event_type or "Catering",
                 "event_date": booking.event_date.strftime('%b %d, %Y') if booking.event_date else "TBD",
@@ -3655,7 +3829,15 @@ async def get_booking_details(
                 "booking_source": booking.booking_source or "OccaServe",
                 "document_type": booking.document_type or "booking",
                 "caterer_name": booking.caterer.business_name if booking.caterer else "N/A",
-                "customer_name": f"{booking.user.first_name} {booking.user.last_name}" if booking.user else "Anonymous User",
+                "customer_name": (
+                    "Walk-in"
+                    if _is_walkin_booking(booking)
+                    else (
+                        f"{booking.user.first_name or ''} {booking.user.last_name or ''}".strip()
+                        if booking.user
+                        else booking.customer_name or "Customer"
+                    )
+                ),
                 "special_requests": booking.special_requests or "None specified.",
                 "payment_method": booking.payment_method,
                 "payment_proof_url": booking.payment_proof_url,
@@ -3682,180 +3864,6 @@ async def get_booking_details(
         print(f"[AUDIT_DETAILS_ERROR] {e}")
         return {"success": False, "message": f"Intelligence Engine Error: {str(e)}"}
 
-@router.post("/api/bookings/{booking_id}/reconcile")
-async def reconcile_booking_payment(
-    booking_id: int,
-    notes: str = Form(...),
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    booking = db.query(models.Booking).get(booking_id)
-    if not booking:
-        return {"success": False, "message": "Booking not found"}
-
-    from ..services.payment_service import PaymentService
-    if booking.status in {"cancelled", "expired"}:
-        raise HTTPException(status_code=409, detail="A cancelled or expired booking cannot be reconciled as paid.")
-    summary = PaymentService.get_payment_summary(booking)
-    total_amount = float(summary.get("total_amount") or 0)
-    if total_amount <= 0:
-        raise HTTPException(status_code=409, detail="The booking has no payable total to reconcile.")
-
-    reconciliation = db.query(models.BookingPaymentRecord).filter(
-        models.BookingPaymentRecord.booking_id == booking.id,
-        models.BookingPaymentRecord.recorded_by == "Admin",
-        models.BookingPaymentRecord.payment_type == "Admin Reconciliation",
-    ).first()
-    if reconciliation:
-        reconciliation.amount = total_amount
-        reconciliation.payment_date = datetime.now(timezone.utc)
-        reconciliation.reference_notes = notes.strip()
-    else:
-        db.add(models.BookingPaymentRecord(
-            booking_id=booking.id,
-            amount=total_amount,
-            payment_date=datetime.now(timezone.utc),
-            payment_method="Manual reconciliation",
-            payment_type="Admin Reconciliation",
-            reference_notes=notes.strip(),
-            recorded_by="Admin",
-        ))
-    booking.amount_paid = total_amount
-    booking.payment_status = "paid"
-    if booking.status != "completed":
-        booking.status = "confirmed"
-    
-    prefix = "ORD" if booking.document_type == "invoice" else "BK"
-    word = "Order" if booking.document_type == "invoice" else "Booking"
-    
-    # Log the governance reconciliation
-    audit = models.AuditLog(
-        user_id=user.id,
-        action="GOVERNANCE_RECONCILE",
-        notes=f"Administrative payment reconciliation for #{prefix}-{booking_id}. Reason: {notes}"
-    )
-    db.add(audit)
-    db.add(models.BookingHistory(
-        booking_id=booking.id,
-        status=booking.status,
-        notes=f"Payment reconciled by admin {user.id}: {notes.strip()}",
-    ))
-    db.commit()
-    
-    return {"success": True, "message": f"{word} #{prefix}-{booking_id} has been manually verified and reconciled."}
-
-@router.post("/api/bookings/{booking_id}/force-complete")
-async def force_complete_booking(
-    booking_id: int,
-    notes: str = Form(...),
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    booking = db.query(models.Booking).get(booking_id)
-    if not booking:
-        return {"success": False, "message": "Booking not found"}
-    from ..services.payment_service import PaymentService
-    completion_gate = PaymentService.assert_can_mark_completed(booking)
-    if not completion_gate["ok"]:
-        raise HTTPException(status_code=409, detail=completion_gate["message"])
-
-    old_status = booking.status
-    booking.status = "completed"
-    booking.preparation_status = "completed"
-
-    # Keep the same commission accounting performed by caterer completion.
-    if not booking.commission_calculated and not is_pre_deployment_manual_booking(booking):
-        caterer_profile = booking.caterer
-        if caterer_profile:
-            config = db.query(models.WebsiteConfig).first()
-            commission_percent = get_commission_rate_percent(config)
-            commission_amount = calculate_booking_commission(
-                float(booking.total_amount or booking.total_price or 0),
-                commission_percent,
-            )
-            billing_period = booking.event_date.strftime("%B %Y") if booking.event_date else "General"
-            invoice_exists = db.query(models.BillingInvoice.id).filter(
-                models.BillingInvoice.booking_id == booking.id
-            ).first()
-            if not invoice_exists:
-                caterer_profile.outstanding_balance = float(caterer_profile.outstanding_balance or 0) + commission_amount
-                db.add(models.BillingInvoice(
-                    caterer_id=booking.caterer_id,
-                    booking_id=booking.id,
-                    billing_period=billing_period,
-                    due_date=billing_period_due_date(billing_period, booking.event_date),
-                    amount=commission_amount,
-                    commission_rate=commission_percent / 100.0,
-                    status="pending",
-                ))
-            booking.commission_calculated = True
-    
-    prefix = "ORD" if booking.document_type == "invoice" else "BK"
-    word = "Order" if booking.document_type == "invoice" else "Booking"
-
-    # Log action
-    audit = models.AuditLog(
-        user_id=user.id,
-        action="FORCE_COMPLETE",
-        notes=f"Administrative force completion for #{prefix}-{booking_id}. Reason: {notes}"
-    )
-    db.add(audit)
-    db.add(models.BookingHistory(
-        booking_id=booking.id,
-        status="completed",
-        notes=f"Admin force-completed booking from {old_status}: {notes.strip()}",
-    ))
-    db.commit()
-    
-    return {"success": True, "message": f"{word} #{prefix}-{booking_id} marked as completed via administrative override."}
-
-@router.post("/api/bookings/{booking_id}/cancel")
-async def administrative_cancel_booking(
-    booking_id: int,
-    reason: str = Form(...),
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    booking = db.query(models.Booking).get(booking_id)
-    if not booking:
-        return {"success": False, "message": "Booking not found"}
-    from ..services.payment_service import PaymentService
-    if PaymentService.has_payment_requiring_cancellation_review(booking):
-        raise HTTPException(
-            status_code=409,
-            detail="This booking has verified funds or payment awaiting review. Resolve payment and any refund before cancelling.",
-        )
-    booking.status = "cancelled"
-    
-    prefix = "ORD" if booking.document_type == "invoice" else "BK"
-    word = "Order" if booking.document_type == "invoice" else "Booking"
-
-    # Timeline
-    history = models.BookingHistory(booking_id=booking.id, status="cancelled", notes=f"Cancelled by admin: {reason.strip()}")
-    db.add(history)
-    
-    # Log action
-    audit = models.AuditLog(
-        user_id=user.id,
-        action="FORCE_CANCEL_BOOKING",
-        notes=f"System Administrator cancelled {word.lower()} #{prefix}-{booking_id}. Reason: {reason}"
-    )
-    db.add(audit)
-    
-    # Notify Customer & Caterer
-    for target_id in [booking.user_id, booking.caterer.user_id if booking.caterer else None]:
-        if target_id:
-            db.add(models.Notification(
-                user_id=target_id,
-                title=f"{word} Cancelled by Administrator",
-                message=f"Your {word.lower()} #{prefix}-{booking_id} has been cancelled by the System Administrator. Reason: {reason}",
-                type="warning"
-            ))
-            
-    db.commit()
-    
-    return {"success": True, "message": f"{word} #{prefix}-{booking_id} terminated."}
-
 @router.post("/api/bookings/{booking_id}/flag-dispute")
 async def flag_booking_dispute(
     booking_id: int,
@@ -3868,34 +3876,22 @@ async def flag_booking_dispute(
     if not booking:
         return {"success": False, "message": "Booking not found"}
     
-    booking.status = "under_dispute"
-    
-    prefix = "ORD" if booking.document_type == "invoice" else "BK"
     word = "Order" if booking.document_type == "invoice" else "Booking"
 
-    # Timeline
-    history = models.BookingHistory(booking_id=booking.id, status="UNDER DISPUTE", notes=f"{reason}: {description}")
-    db.add(history)
-    
+    db.add(models.FraudFlag(
+        booking_id=booking.id,
+        flag_type="admin_review",
+        description=f"{reason}: {description}",
+    ))
     audit = models.AuditLog(
         user_id=user.id,
-        action="FLAG_DISPUTE",
-        notes=f"Flagged {word.lower()} #{prefix}-{booking_id} for dispute. Category: {reason}. Notes: {description}"
+        action="BOOKING_FLAGGED_FOR_REVIEW",
+        notes=f"Flagged {word.lower()} {booking.booking_ref} for admin review. Category: {reason}. Notes: {description}"
     )
     db.add(audit)
-    
-    for target_id in [booking.user_id, booking.caterer.user_id if booking.caterer else None]:
-        if target_id:
-            db.add(models.Notification(
-                user_id=target_id,
-                title=f"{word} Under Dispute",
-                message=f"{word} #{prefix}-{booking_id} has been placed under dispute review. Reason: {reason}",
-                type="warning"
-            ))
-            
     db.commit()
     
-    return {"success": True, "message": f"{word} #{prefix}-{booking_id} flagged for resolution."}
+    return {"success": True, "message": f"{word} {booking.booking_ref} flagged for admin review."}
 
 @router.post("/api/bookings/{booking_id}/send-alert")
 async def dispatch_booking_alert(
@@ -3909,136 +3905,33 @@ async def dispatch_booking_alert(
     if not booking:
         return {"success": False, "message": "Booking not found"}
     
-    prefix = "ORD" if booking.document_type == "invoice" else "BK"
     word = "Order" if booking.document_type == "invoice" else "Booking"
+    reference = booking.booking_ref
+    recipient_ids = {
+        target_id
+        for target_id in (
+            None if _is_walkin_booking(booking) else booking.user_id,
+            booking.caterer.user_id if booking.caterer else None,
+        )
+        if target_id
+    }
 
-    # Send alert to both Customer and Caterer
-    for target_id in [booking.user_id, booking.caterer.user_id if booking.caterer else None]:
-        if target_id:
-            new_notif = models.Notification(
-                user_id=target_id,
-                title=f"System Notification: {category}",
-                message=f"Regarding #{prefix}-{booking_id}: {message}",
-                type="info"
-            )
-            db.add(new_notif)
+    for target_id in recipient_ids:
+        db.add(models.Notification(
+            user_id=target_id,
+            title=f"System Notification: {category}",
+            message=f"Regarding {reference}: {message}",
+            type="info"
+        ))
             
     audit = models.AuditLog(
         user_id=user.id,
         action="SEND_SYSTEM_ALERT",
-        notes=f"Sent {category} alert for #{prefix}-{booking_id}"
+        notes=f"Sent {category} alert for {reference}"
     )
     db.add(audit)
     db.commit()
-    return {"success": True, "message": f"Global {word.lower()} alert dispatched successfully."}
-
-@router.post("/api/bookings/{booking_id}/verify-payment")
-async def admin_verify_payment(
-    booking_id: int,
-    action: str = Form(...), # "approve" or "reject"
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    booking = db.query(models.Booking).get(booking_id)
-    if not booking:
-        return {"success": False, "message": "Booking not found"}
-
-    if action not in {"approve", "reject"}:
-        raise HTTPException(status_code=400, detail="Action must be approve or reject.")
-
-    from ..services.payment_service import PaymentService
-    PaymentService.sync_review_status(booking, db)
-    if booking.payment_status in {"cash_payment_requested", "cash_balance_requested"}:
-        raise HTTPException(
-            status_code=409,
-            detail="Cash requests must be confirmed by the caterer after the money is received.",
-        )
-    payment_summary = PaymentService.get_payment_summary(booking)
-    is_balance_review = booking.payment_status in {"balance_proof_submitted", "cash_balance_requested"}
-    is_initial_review = booking.payment_status in {"proof_submitted", "cash_payment_requested", "pending_verification"}
-    if not is_balance_review and not is_initial_review:
-        raise HTTPException(status_code=409, detail="This booking has no payment awaiting verification.")
-        
-    prefix = "ORD" if booking.document_type == "invoice" else "BK"
-    word = "Order" if booking.document_type == "invoice" else "Booking"
-
-    if action == "approve":
-        total_amount = float(payment_summary.get("total_amount") or 0)
-        pending_amount = float(payment_summary.get("pending_review") or 0)
-        if pending_amount <= 0:
-            pending_amount = (
-                max(0.0, total_amount - float(payment_summary.get("verified_paid") or 0))
-                if is_balance_review
-                else float(payment_summary.get("required_deposit") or 0)
-            )
-        if pending_amount <= 0:
-            raise HTTPException(status_code=409, detail="Could not determine the amount awaiting verification.")
-
-        payment_type = "Balance" if is_balance_review else ("Full" if total_amount > 0 and pending_amount >= total_amount else "Deposit")
-        candidates = db.query(models.BookingPaymentRecord).filter(
-            models.BookingPaymentRecord.booking_id == booking.id,
-            func.lower(models.BookingPaymentRecord.recorded_by) == "customer",
-        ).all()
-        matching_record = next((record for record in candidates if (
-            (payment_type == "Balance" and (record.payment_type or "").strip().lower() in {"balance", "installment", "final", "balance_payment"})
-            or (payment_type != "Balance" and (record.payment_type or "").strip().lower() in {"deposit", "full", "downpayment"})
-        )), None)
-        if matching_record:
-            matching_record.recorded_by = "Admin"
-            matching_record.amount = pending_amount
-            matching_record.reference_notes = ((matching_record.reference_notes or "") + " | Approved by admin").strip(" |")
-        else:
-            db.add(models.BookingPaymentRecord(
-                booking_id=booking.id,
-                amount=pending_amount,
-                payment_date=datetime.now(timezone.utc),
-                payment_method=booking.payment_method or "Manual verification",
-                payment_type=payment_type,
-                reference_notes="Payment proof approved by administration.",
-                recorded_by="Admin",
-            ))
-
-        verified_total = min(total_amount, float(payment_summary.get("verified_paid") or 0) + pending_amount)
-        booking.amount_paid = verified_total
-        required_deposit = float(payment_summary.get("required_deposit") or 0)
-        if total_amount > 0 and verified_total >= total_amount:
-            booking.payment_status = "paid"
-        elif verified_total >= required_deposit > 0:
-            booking.payment_status = "deposit_paid"
-        else:
-            booking.payment_status = "partially_paid"
-        if not is_balance_review and booking.status in {"pending", "pending_payment", "awaiting_payment", "pending_review"}:
-            booking.status = "confirmed"
-            booking.expires_at = None
-        history = models.BookingHistory(booking_id=booking.id, status=booking.status, notes=f"Payment proof approved by Administration ({payment_type}, {pending_amount:.2f}).")
-        db.add(history)
-        
-        # Notify
-        if booking.user_id:
-            db.add(models.Notification(user_id=booking.user_id, title="Payment Verified", message=f"Your payment for {word} #{prefix}-{booking.id} has been verified successfully.", type="success"))
-        if booking.caterer and booking.caterer.user_id:
-            db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verified", message=f"Payment for {word} #{prefix}-{booking.id} has been verified.", type="success"))
-            
-    elif action == "reject":
-        booking.payment_status = "balance_reupload_requested" if is_balance_review else "reupload_requested"
-        history = models.BookingHistory(booking_id=booking.id, status=booking.status, notes="Payment proof rejected by Administration; a replacement is required.")
-        db.add(history)
-        
-        # Notify
-        if booking.user_id:
-            db.add(models.Notification(user_id=booking.user_id, title="Payment Rejected", message=f"Your payment proof for {word} #{prefix}-{booking.id} was rejected. Please upload a valid proof of payment.", type="warning"))
-        if booking.caterer and booking.caterer.user_id:
-            db.add(models.Notification(user_id=booking.caterer.user_id, title="Payment Verification Failed", message=f"Payment verification failed for {word} #{prefix}-{booking.id}.", type="warning"))
-            
-    audit = models.AuditLog(
-        user_id=user.id,
-        action=f"PAYMENT_{action.upper()}",
-        notes=f"{action.capitalize()}d payment for #{prefix}-{booking_id}"
-    )
-    db.add(audit)
-    db.commit()
-    
-    return {"success": True, "message": f"Payment {action}d successfully."}
+    return {"success": True, "message": f"{word} alert dispatched successfully."}
 
 @router.post("/api/notifications/{notification_id}/mark-read")
 async def mark_admin_notification_read(
