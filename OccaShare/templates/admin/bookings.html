@@ -371,8 +371,8 @@
                     <td>
                         <div
                             style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem; display: block; margin-bottom: 2px;">
-                            {{ ((booking.user.first_name or '') ~ ' ' ~ (booking.user.last_name or '')).strip() if booking.user else (booking.customer_name or 'Walk-in Customer') }}</div>
-                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">{{ booking.user.email if booking.user else (booking.customer_email or 'No customer account') }}</div>
+                            {{ booking.admin_customer_name }}</div>
+                        <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">{{ booking.admin_customer_email }}</div>
                     </td>
                     <td>
                         <div

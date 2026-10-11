@@ -45,6 +45,12 @@ def _search_like_pattern(query: str) -> str:
     return f"%{escaped_query}%"
 
 
+def _get_darwin_profile(db: Session):
+    return db.query(models.CatererProfile).filter(
+        func.lower(func.trim(models.CatererProfile.business_name)) == "darwin's catering services"
+    ).first()
+
+
 @router.get("/api/omni-search")
 async def omni_search(
     q: str,
@@ -2031,18 +2037,30 @@ async def get_customers_overview(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    darwin_profile = _get_darwin_profile(db)
+    active_darwin_filter = or_(
+        models.Booking.is_archived.is_(False),
+        models.Booking.is_archived.is_(None),
+    )
+    darwin_customer_ids = db.query(models.Booking.user_id).filter(
+        models.Booking.caterer_id == darwin_profile.id,
+        models.Booking.user_id.isnot(None),
+        active_darwin_filter,
+    ).distinct().subquery() if darwin_profile else None
     customers = db.query(models.User).filter(
         models.User.role == "customer",
-        models.User.is_archived == False
+        models.User.is_archived == False,
+        models.User.id.in_(darwin_customer_ids) if darwin_customer_ids is not None else False,
     ).all()
     
     enriched = []
     for c in customers:
         # Get engagement metrics
-        bookings = db.query(models.Booking).filter(or_(
+        bookings = db.query(models.Booking).filter(
             models.Booking.user_id == c.id,
-            func.lower(func.trim(models.Booking.customer_email)) == func.lower(func.trim(c.email)),
-        )).all()
+            models.Booking.caterer_id == darwin_profile.id,
+            active_darwin_filter,
+        ).all()
         booking_count = len(bookings)
         completed_bookings = [b for b in bookings if b.status == "completed"]
         cancelled_bookings = [b for b in bookings if b.status == "cancelled"]
@@ -2078,9 +2096,9 @@ async def get_customers_overview(
         })
         
     metrics = {
-        "total_customers": db.query(models.User).filter(models.User.role == "customer", models.User.is_archived == False).count(),
-        "active_customers": db.query(models.User).filter(models.User.role == "customer", models.User.status == "active", models.User.is_archived == False).count(),
-        "kyc_completed": db.query(models.User).filter(models.User.role == "customer", models.User.is_kyc_complete == True, models.User.is_archived == False).count(),
+        "total_customers": len(customers),
+        "active_customers": sum(1 for customer in customers if customer.status == "active"),
+        "kyc_completed": sum(1 for customer in customers if customer.is_kyc_complete),
     }
     
     return {"success": True, "customers": enriched, "metrics": metrics}
@@ -3052,7 +3070,11 @@ async def admin_bookings(
     caterer_id_filter = request.query_params.get('caterer_id', 'all')
     search_query = request.query_params.get('search', '').strip()[:100]
 
-    base_query = db.query(models.Booking).filter(models.Booking.is_archived == False)
+    active_booking_filter = or_(
+        models.Booking.is_archived.is_(False),
+        models.Booking.is_archived.is_(None),
+    )
+    base_query = db.query(models.Booking).filter(active_booking_filter)
     if len(search_query) >= 2:
         search_pattern = _search_like_pattern(search_query)
         base_query = base_query.outerjoin(
@@ -3107,14 +3129,22 @@ async def admin_bookings(
 
     # ─── Booking Intelligence Metrics ───
     # NOTE: "awaiting action" mirrors the statuses used by the table filters below.
-    pending_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False, models.Booking.status.in_(PENDING_STATUSES)).scalar() or 0
-    completed_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False, models.Booking.status == 'completed').scalar() or 0
-    disputed_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False, models.Booking.status.in_(DISPUTED_STATUSES)).scalar() or 0
-    cancelled_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False, models.Booking.status == 'cancelled').scalar() or 0
-    total_bookings = db.query(func.count(models.Booking.id)).filter(models.Booking.is_archived == False).scalar() or 0
+    pending_bookings = db.query(func.count(models.Booking.id)).filter(active_booking_filter, models.Booking.status.in_(PENDING_STATUSES)).scalar() or 0
+    completed_bookings = db.query(func.count(models.Booking.id)).filter(active_booking_filter, models.Booking.status == 'completed').scalar() or 0
+    disputed_bookings = db.query(func.count(models.Booking.id)).filter(active_booking_filter, models.Booking.status.in_(DISPUTED_STATUSES)).scalar() or 0
+    cancelled_bookings = db.query(func.count(models.Booking.id)).filter(active_booking_filter, models.Booking.status == 'cancelled').scalar() or 0
+    total_bookings = db.query(func.count(models.Booking.id)).filter(active_booking_filter).scalar() or 0
     caterers = db.query(models.CatererProfile).join(
         models.Booking, models.Booking.caterer_id == models.CatererProfile.id
-    ).filter(models.Booking.is_archived == False).distinct().order_by(models.CatererProfile.business_name).all()
+    ).filter(active_booking_filter).distinct().order_by(models.CatererProfile.business_name).all()
+
+    for booking in bookings:
+        linked_user_name = " ".join(filter(None, [
+            booking.user.first_name if booking.user else None,
+            booking.user.last_name if booking.user else None,
+        ]))
+        booking.admin_customer_name = booking.customer_name or linked_user_name or "Walk-in Customer"
+        booking.admin_customer_email = booking.customer_email or (booking.user.email if booking.user else None) or "No customer account"
 
     metrics = {
         "total_bookings": total_bookings,
@@ -3156,30 +3186,38 @@ async def admin_customers(
     # "Manual entry" records (walk-in customers encoded by a caterer) have no
     # login credentials of their own, so they are intentionally excluded — they
     # are managed through the caterer's own client list, not platform accounts.
+    darwin_profile = _get_darwin_profile(db)
+    if not darwin_profile:
+        darwin_customer_ids = db.query(models.Booking.user_id).filter(False).subquery()
+    else:
+        active_darwin_bookings = db.query(models.Booking).filter(
+            models.Booking.caterer_id == darwin_profile.id,
+            or_(models.Booking.is_archived.is_(False), models.Booking.is_archived.is_(None)),
+        )
+        darwin_customer_ids = active_darwin_bookings.filter(
+            models.Booking.user_id.isnot(None)
+        ).with_entities(models.Booking.user_id).distinct().subquery()
+
     base_filters = [
         models.User.role == "customer",
         models.User.is_archived == False,
+        models.User.id.in_(darwin_customer_ids),
         models.User.email.isnot(None),
         func.trim(models.User.email) != "",
         func.coalesce(models.User.auth_provider, "email") != "manual_entry",
     ]
 
-    customers = db.query(models.User).filter(
-        *base_filters
-    ).order_by(models.User.created_at.desc()).all()
-
-    # Some legacy/online bookings have customer_email populated but user_id
-    # missing. Match those to the registered account for directory counts.
-    booking_counts = dict(db.query(
-        models.User.id,
-        func.count(func.distinct(models.Booking.id))
-    ).outerjoin(
-        models.Booking,
-        or_(
-            models.Booking.user_id == models.User.id,
-            func.lower(func.trim(models.Booking.customer_email)) == func.lower(func.trim(models.User.email)),
-        )
-    ).filter(*base_filters).group_by(models.User.id).all())
+    customers = db.query(models.User).filter(*base_filters).order_by(models.User.created_at.desc()).all()
+    booking_counts = {}
+    if darwin_profile:
+        booking_counts = dict(db.query(
+            models.Booking.user_id,
+            func.count(models.Booking.id),
+        ).filter(
+            models.Booking.caterer_id == darwin_profile.id,
+            models.Booking.user_id.in_([customer.id for customer in customers]),
+            or_(models.Booking.is_archived.is_(False), models.Booking.is_archived.is_(None)),
+        ).group_by(models.Booking.user_id).all())
     for customer in customers:
         customer.admin_booking_count = booking_counts.get(customer.id, 0)
 
@@ -3232,10 +3270,12 @@ async def get_customer_audit_data(
         return {"success": False, "message": "Participant not found."}
     
     # Calculate performance metrics
-    bookings = db.query(models.Booking).filter(or_(
+    darwin_profile = _get_darwin_profile(db)
+    bookings = db.query(models.Booking).filter(
         models.Booking.user_id == target.id,
-        func.lower(func.trim(models.Booking.customer_email)) == func.lower(func.trim(target.email)),
-    )).all()
+        models.Booking.caterer_id == darwin_profile.id if darwin_profile else False,
+        or_(models.Booking.is_archived.is_(False), models.Booking.is_archived.is_(None)),
+    ).all()
     normalized_status = lambda booking: (booking.status or "").strip().lower()
     total_completed = sum(1 for b in bookings if normalized_status(b) == "completed")
     total_spent = sum((b.total_amount or b.total_price or 0.0) for b in bookings if normalized_status(b) == "completed")
