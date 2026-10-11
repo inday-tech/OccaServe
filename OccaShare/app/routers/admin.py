@@ -2039,7 +2039,10 @@ async def get_customers_overview(
     enriched = []
     for c in customers:
         # Get engagement metrics
-        bookings = db.query(models.Booking).filter(models.Booking.user_id == c.id).all()
+        bookings = db.query(models.Booking).filter(or_(
+            models.Booking.user_id == c.id,
+            func.lower(func.trim(models.Booking.customer_email)) == func.lower(func.trim(c.email)),
+        )).all()
         booking_count = len(bookings)
         completed_bookings = [b for b in bookings if b.status == "completed"]
         cancelled_bookings = [b for b in bookings if b.status == "cancelled"]
@@ -3165,6 +3168,21 @@ async def admin_customers(
         *base_filters
     ).order_by(models.User.created_at.desc()).all()
 
+    # Some legacy/online bookings have customer_email populated but user_id
+    # missing. Match those to the registered account for directory counts.
+    booking_counts = dict(db.query(
+        models.User.id,
+        func.count(func.distinct(models.Booking.id))
+    ).outerjoin(
+        models.Booking,
+        or_(
+            models.Booking.user_id == models.User.id,
+            func.lower(func.trim(models.Booking.customer_email)) == func.lower(func.trim(models.User.email)),
+        )
+    ).filter(*base_filters).group_by(models.User.id).all())
+    for customer in customers:
+        customer.admin_booking_count = booking_counts.get(customer.id, 0)
+
     verified_customers = [customer for customer in customers if customer.is_verified]
     pending_verification_customers = [customer for customer in customers if not customer.is_verified]
 
@@ -3214,7 +3232,10 @@ async def get_customer_audit_data(
         return {"success": False, "message": "Participant not found."}
     
     # Calculate performance metrics
-    bookings = target.bookings
+    bookings = db.query(models.Booking).filter(or_(
+        models.Booking.user_id == target.id,
+        func.lower(func.trim(models.Booking.customer_email)) == func.lower(func.trim(target.email)),
+    )).all()
     normalized_status = lambda booking: (booking.status or "").strip().lower()
     total_completed = sum(1 for b in bookings if normalized_status(b) == "completed")
     total_spent = sum((b.total_amount or b.total_price or 0.0) for b in bookings if normalized_status(b) == "completed")

@@ -355,7 +355,7 @@
             <span style="font-size:.75rem;color:#64748b;overflow-wrap:anywhere;">{{ customer.email or 'No email on file' }}</span>
         </div>
     </td>
-    <td>{{ customer.bookings|length if customer.bookings else 0 }}</td>
+    <td>{{ customer.admin_booking_count|default(0) }}</td>
     <td>{{ customer.created_at.strftime('%b %d, %Y') if customer.created_at else 'Not recorded' }}</td>
     <td style="text-align:right;padding-right:1.25rem;">
         <div class="action-menu-dm">
