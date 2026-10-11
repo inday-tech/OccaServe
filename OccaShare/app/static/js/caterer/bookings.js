@@ -1231,6 +1231,7 @@ async function submitExpenses(e) {
 
 function hydrateButtonDataset(btn, detail) {
     if (!btn || !detail) return;
+    const hasDetailField = (key) => Object.prototype.hasOwnProperty.call(detail, key);
     const isManual = detail.source_kind === 'manual' || !detail.has_registered_customer;
     const customerRef = detail.customer_ref || detail.customer_reference || btn.dataset.customerRef || '';
     
@@ -1243,16 +1244,18 @@ function hydrateButtonDataset(btn, detail) {
         sourceLabel: detail.source_label || (isManual ? 'MANUAL BOOKING' : 'ONLINE BOOKING'),
         bookingChannel: detail.booking_channel || btn.dataset.bookingChannel || (isManual ? 'Manual / Direct Inquiry' : 'OccaServe Website'),
         addedBy: detail.added_by || btn.dataset.addedBy || (isManual ? 'Caterer / Staff' : 'Customer'),
-        celebrantName: detail.celebrant_name || '',
+        celebrantName: hasDetailField('celebrant_name') ? (detail.celebrant_name || '') : '',
         paymentRecordsJson: JSON.stringify(detail.payment_records || []),
         eventDate: detail.event_date || btn.dataset.eventDate || '',
-        eventTime: detail.event_time || btn.dataset.eventTime || 'TBA',
+        eventTime: hasDetailField('event_time') ? (detail.event_time || 'TBA') : (btn.dataset.eventTime || 'TBA'),
         customerRef: customerRef,
         customer: customerRef || (isManual ? 'Walk-in Customer' : 'Customer'),
         email: '',
         contact: '',
-        venue: detail.venue || btn.dataset.venue || 'Not specified',
-        eventType: detail.event_type || btn.dataset.eventType || 'Booking',
+        venue: hasDetailField('venue')
+            ? (detail.venue || detail.event_location || 'Not specified')
+            : (detail.event_location || btn.dataset.venue || 'Not specified'),
+        eventType: hasDetailField('event_type') ? (detail.event_type || 'Booking') : (btn.dataset.eventType || 'Booking'),
         specificName: (detail.package && detail.package.name) || detail.event_name || detail.event_type || 'Booking',
         guestCount: detail.guest_count || btn.dataset.guestCount || 0,
         totalRawAmount: detail.total_amount != null ? detail.total_amount : (btn.dataset.totalRawAmount || 0),
@@ -1291,7 +1294,9 @@ function hydrateButtonDataset(btn, detail) {
         equipmentItemsJson: JSON.stringify(detail.equipment_items || []),
         preparationStatus: detail.preparation_status || 'not_started',
         requests: detail.special_requests || btn.dataset.requests || '',
-        motif: detail.motif_theme || detail.motif || btn.dataset.motif || '',
+        motif: hasDetailField('motif_theme')
+            ? (detail.motif_theme || '')
+            : (detail.motif || btn.dataset.motif || ''),
         documentType: detail.document_type || '',
         bookingRef: detail.booking_ref || detail.booking_reference || btn.dataset.bookingRef || '',
         proofUrl: detail.payment_proof_url || '',

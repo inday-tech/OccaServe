@@ -2962,8 +2962,6 @@ async def caterer_payments(
         paid_val = float(b._pay_verified or 0.0)
         pending_val = float(b._pay_pending or 0.0)
         balance_val = float(b._pay_balance or 0.0)
-        cust_name = f"{b.user.first_name} {b.user.last_name}".strip() if b.user and b.user.first_name else (b.customer_name or b.customer_ref or "Customer")
-        
         has_records = False
         if b.payment_records and len(b.payment_records) > 0:
             for rec in b.payment_records:
@@ -2999,7 +2997,6 @@ async def caterer_payments(
                     "payment_id_num": rec.id,
                     "booking_id": b.id,
                     "booking_ref": b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:06d}"),
-                    "customer_name": cust_name,
                     "customer_ref": b.customer_ref or getattr(b, "display_customer_ref", None) or _booking_customer_reference(b),
                     "event_name": b.event_name or b.event_type or "Catering Event",
                     "payment_type": p_type,
@@ -3075,7 +3072,6 @@ async def caterer_payments(
                 "payment_id_num": b.id,
                 "booking_id": b.id,
                 "booking_ref": b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:06d}"),
-                "customer_name": cust_name,
                 "customer_ref": b.customer_ref or getattr(b, "display_customer_ref", None) or _booking_customer_reference(b),
                 "event_name": b.event_name or b.event_type or "Catering Event",
                 "payment_type": p_type,
@@ -3877,15 +3873,30 @@ async def get_booking_details_api(
     else:
         booking_channel = "OccaServe Website"
 
-    # Celebrant Name
-    celebrant_name = custom_reqs.get("celebrant_name") or ""
+    def clean_display_value(value):
+        cleaned = str(value).strip() if value is not None else ""
+        return cleaned or None
+
+    # Prefer the dedicated booking columns. Keep JSON values as compatibility
+    # fallbacks for older records that predate those columns.
+    celebrant_name = clean_display_value(booking.celebrant_name) or clean_display_value(
+        custom_reqs.get("celebrant_name")
+    ) or ""
     if not celebrant_name and booking.event_type and booking.event_type.lower() == "wedding":
         b_name = custom_reqs.get("bride_name")
         g_name = custom_reqs.get("groom_name")
         if b_name and g_name:
             celebrant_name = f"{b_name} & {g_name}"
     if not celebrant_name and custom_reqs.get("representative_name"):
-        celebrant_name = custom_reqs.get("representative_name")
+        celebrant_name = clean_display_value(custom_reqs.get("representative_name")) or ""
+
+    motif_theme = (
+        clean_display_value(booking.motif_theme)
+        or clean_display_value(custom_reqs.get("theme_motif"))
+        or clean_display_value(custom_reqs.get("motif_theme"))
+        or ""
+    )
+    event_location = clean_display_value(booking.event_location)
 
     # Contract Info
     contract_info = None
@@ -4032,15 +4043,18 @@ async def get_booking_details_api(
         "customer_is_verified": bool(booking.user and booking.user.is_verified),
         "status": booking.status,
         "event_name": booking.event_name,
-        "event_type": booking.event_type,
+        "event_type": clean_display_value(booking.event_type),
         "celebrant_name": celebrant_name,
         "event_date": booking.event_date.isoformat() if booking.event_date else None,
         "event_time": booking.event_time.strftime("%I:%M %p") if booking.event_time else None,
         "event_end_time": booking.event_end_time.strftime("%I:%M %p") if booking.event_end_time else None,
         "guest_count": booking.guest_count or 0,
-        "venue": booking.event_address or booking.venue_address or booking.event_location,
+        "event_location": event_location,
+        "venue": clean_display_value(booking.event_address)
+            or clean_display_value(booking.venue_address)
+            or event_location,
         "special_requests": booking.special_requests,
-        "motif_theme": custom_reqs.get("theme_motif") or custom_reqs.get("motif_theme") or "",
+        "motif_theme": motif_theme,
         "booking_source": "Manual Booking" if is_manual else (booking.booking_source or "Online Booking"),
         "source_kind": source_kind,
         "source_label": source_label,
