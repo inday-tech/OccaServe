@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const amt = parseFloat(amtText) || 0;
                 totalPrice += amt;
                 
-                const custName = (row.querySelector('.pay-customer-name') ? row.querySelector('.pay-customer-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const customerRef = row.getAttribute('data-customer-ref') || row.getAttribute('data-customer') || '';
                 const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
                 const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
                 const ptype = row.getAttribute('data-type') || 'Payment';
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return [
                     payId,
                     bkId,
-                    custName,
+                    customerRef,
                     ptype.toUpperCase(),
                     `₱${amt.toLocaleString(undefined, {minimumFractionDigits: 2})}`, 
                     method,
@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             doc.autoTable({
                 startY: 36,
-                head: [['PAYMENT ID', 'BOOKING', 'CUSTOMER', 'TYPE', 'AMOUNT', 'METHOD', 'DATE', 'STATUS']],
+                head: [['PAYMENT ID', 'BOOKING', 'CUSTOMER REFERENCE', 'TYPE', 'AMOUNT', 'METHOD', 'DATE', 'STATUS']],
                 body: tableData,
                 theme: 'grid',
                 headStyles: { 
@@ -288,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const amt = parseFloat(amtText) || 0;
                 totalAmt += amt;
 
-                const custName = (row.querySelector('.pay-customer-name') ? row.querySelector('.pay-customer-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const customerRef = row.getAttribute('data-customer-ref') || row.getAttribute('data-customer') || '';
                 const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
                 const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
                 const ptype = row.getAttribute('data-type') || 'Payment';
@@ -298,7 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return [
                     payId,
                     bkId,
-                    custName,
+                    customerRef,
                     ptype,
                     amt,
                     method,
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             const data = [
-                ['Payment ID', 'Booking Ref', 'Customer', 'Payment Type', 'Amount (PHP)', 'Method', 'Date', 'Status'],
+                ['Payment ID', 'Booking Ref', 'Customer Reference', 'Payment Type', 'Amount (PHP)', 'Method', 'Date', 'Status'],
                 ...dataRows,
                 ['', '', '', 'TOTAL COLLECTED', totalAmt, '', '', '']
             ];
@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet(data);
             ws['!cols'] = [
-                {wch: 15}, {wch: 15}, {wch: 25}, {wch: 18}, {wch: 16}, {wch: 15}, {wch: 18}, {wch: 20}
+                {wch: 15}, {wch: 15}, {wch: 24}, {wch: 18}, {wch: 16}, {wch: 15}, {wch: 18}, {wch: 20}
             ];
 
             XLSX.utils.book_append_sheet(wb, ws, 'Payments');
@@ -330,11 +330,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Export CSV
     window.exportToCSV = function() {
         try {
-            let csv = 'Payment ID,Booking Ref,Customer,Payment Type,Amount,Method,Date,Status\n';
+            let csv = 'Payment ID,Booking Ref,Customer Reference,Payment Type,Amount,Method,Date,Status\n';
             filteredRows.forEach(row => {
                 const amtEl = row.querySelector('.amount-pro');
                 const amtText = amtEl ? amtEl.textContent.replace('₱', '').replace(/,/g, '').trim() : '0';
-                const custName = (row.querySelector('.pay-customer-name') ? row.querySelector('.pay-customer-name').textContent.trim() : '') || row.getAttribute('data-customer') || 'Customer';
+                const customerRef = row.getAttribute('data-customer-ref') || row.getAttribute('data-customer') || '';
                 const payId = (row.querySelector('.pay-id') ? row.querySelector('.pay-id').textContent.trim() : '') || row.getAttribute('data-payment-id') || '';
                 const bkId = (row.querySelector('.pay-booking-ref') ? row.querySelector('.pay-booking-ref').textContent.trim() : '') || ('BK-' + row.getAttribute('data-booking-id'));
                 const ptype = row.getAttribute('data-type') || 'Payment';
@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = [
                     payId,
                     bkId,
-                    custName,
+                    customerRef,
                     ptype,
                     amtText,
                     method,

@@ -637,7 +637,7 @@
                             {{ booking.admin_customer_label }}</div>
                         <div style="font-size: 0.7rem; color: #64748b; font-weight: 700;">Customer ID {{ booking.admin_customer_ref }}</div>
                         {% if not booking.admin_is_walkin %}
-                        <div style="font-size: 0.7rem; color: #64748b;">{{ booking.user.email if booking.user else (booking.customer_email or 'No email on file') }}</div>
+                        <div style="font-size: 0.7rem; color: #64748b;">{{ booking.admin_customer_email }}</div>
                         {% endif %}
                     </td>
                     <td>
@@ -653,7 +653,7 @@
                     <td>
                         <div
                             style="font-family: 'Poppins', sans-serif; font-weight: 800; color: var(--adm-navy); font-size: 1rem;">
-                            ₱{{ "{:,.2f}".format(booking.total_amount) if booking.total_amount else '0.00' }}</div>
+                            ₱{{ "{:,.2f}".format(booking.admin_booking_amount) }}</div>
                         <div
                             style="font-size: 0.6rem; color: var(--adm-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
                             Total booking value</div>

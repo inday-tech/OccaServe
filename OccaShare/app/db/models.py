@@ -656,6 +656,8 @@ class Booking(Base):
     package_id = Column(Integer, ForeignKey("catering_packages.id"), nullable=True)
     event_name = Column(String, nullable=True) # e.g. "Garcia Family Wedding"
     event_type = Column(String, nullable=True) # Wedding, Birthday, Corporate, Private Party
+    celebrant_name = Column(String, nullable=True)
+    motif_theme = Column(String, nullable=True)
     event_date = Column(Date)
     event_time = Column(Time, nullable=True)
     event_end_time = Column(Time, nullable=True)

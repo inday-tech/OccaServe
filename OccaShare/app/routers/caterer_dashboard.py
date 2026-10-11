@@ -4,7 +4,7 @@ from datetime import datetime, date, timedelta
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from ..db import database, models, schemas
 from ..core import security as auth
@@ -2962,8 +2962,6 @@ async def caterer_payments(
         paid_val = float(b._pay_verified or 0.0)
         pending_val = float(b._pay_pending or 0.0)
         balance_val = float(b._pay_balance or 0.0)
-        cust_name = f"{b.user.first_name} {b.user.last_name}".strip() if b.user and b.user.first_name else (b.customer_name or b.customer_ref or "Customer")
-        
         has_records = False
         if b.payment_records and len(b.payment_records) > 0:
             for rec in b.payment_records:
@@ -2999,7 +2997,6 @@ async def caterer_payments(
                     "payment_id_num": rec.id,
                     "booking_id": b.id,
                     "booking_ref": b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:06d}"),
-                    "customer_name": cust_name,
                     "customer_ref": b.customer_ref or getattr(b, "display_customer_ref", None) or _booking_customer_reference(b),
                     "event_name": b.event_name or b.event_type or "Catering Event",
                     "payment_type": p_type,
@@ -3075,7 +3072,6 @@ async def caterer_payments(
                 "payment_id_num": b.id,
                 "booking_id": b.id,
                 "booking_ref": b.booking_ref or getattr(b, "display_booking_ref", f"BK-{b.id:06d}"),
-                "customer_name": cust_name,
                 "customer_ref": b.customer_ref or getattr(b, "display_customer_ref", None) or _booking_customer_reference(b),
                 "event_name": b.event_name or b.event_type or "Catering Event",
                 "payment_type": p_type,
@@ -3877,15 +3873,30 @@ async def get_booking_details_api(
     else:
         booking_channel = "OccaServe Website"
 
-    # Celebrant Name
-    celebrant_name = custom_reqs.get("celebrant_name") or ""
+    def clean_display_value(value):
+        cleaned = str(value).strip() if value is not None else ""
+        return cleaned or None
+
+    # Prefer the dedicated booking columns. Keep JSON values as compatibility
+    # fallbacks for older records that predate those columns.
+    celebrant_name = clean_display_value(booking.celebrant_name) or clean_display_value(
+        custom_reqs.get("celebrant_name")
+    ) or ""
     if not celebrant_name and booking.event_type and booking.event_type.lower() == "wedding":
         b_name = custom_reqs.get("bride_name")
         g_name = custom_reqs.get("groom_name")
         if b_name and g_name:
             celebrant_name = f"{b_name} & {g_name}"
     if not celebrant_name and custom_reqs.get("representative_name"):
-        celebrant_name = custom_reqs.get("representative_name")
+        celebrant_name = clean_display_value(custom_reqs.get("representative_name")) or ""
+
+    motif_theme = (
+        clean_display_value(booking.motif_theme)
+        or clean_display_value(custom_reqs.get("theme_motif"))
+        or clean_display_value(custom_reqs.get("motif_theme"))
+        or ""
+    )
+    event_location = clean_display_value(booking.event_location)
 
     # Contract Info
     contract_info = None
@@ -4032,15 +4043,18 @@ async def get_booking_details_api(
         "customer_is_verified": bool(booking.user and booking.user.is_verified),
         "status": booking.status,
         "event_name": booking.event_name,
-        "event_type": booking.event_type,
+        "event_type": clean_display_value(booking.event_type),
         "celebrant_name": celebrant_name,
         "event_date": booking.event_date.isoformat() if booking.event_date else None,
         "event_time": booking.event_time.strftime("%I:%M %p") if booking.event_time else None,
         "event_end_time": booking.event_end_time.strftime("%I:%M %p") if booking.event_end_time else None,
         "guest_count": booking.guest_count or 0,
-        "venue": booking.event_address or booking.venue_address or booking.event_location,
+        "event_location": event_location,
+        "venue": clean_display_value(booking.event_address)
+            or clean_display_value(booking.venue_address)
+            or event_location,
         "special_requests": booking.special_requests,
-        "motif_theme": custom_reqs.get("theme_motif") or custom_reqs.get("motif_theme") or "",
+        "motif_theme": motif_theme,
         "booking_source": "Manual Booking" if is_manual else (booking.booking_source or "Online Booking"),
         "source_kind": source_kind,
         "source_label": source_label,
@@ -4923,49 +4937,93 @@ async def caterer_customers(
 ):
     from collections import defaultdict
     from datetime import datetime, timezone
-    from app.services.id_service import sync_and_standardize_caterer_ids, get_caterer_code
+    from sqlalchemy.orm import joinedload, selectinload
+    from app.services.id_service import get_caterer_code
+    from app.services.payment_service import PaymentService
 
     profile = user.caterer_profile
     if not profile:
         return RedirectResponse(url="/caterer/setup")
 
-    sync_and_standardize_caterer_ids(db, profile.id)
     c_code = get_caterer_code(profile, db=db)
 
-    # 1. Fetch only bookings for THIS caterer (ensures strict caterer data isolation)
-    cat_bookings = db.query(models.Booking).filter(
+    # Read this caterer's active customer bookings without mutating booking or
+    # customer references. NULL archive/status values remain visible as legacy rows.
+    cat_bookings = db.query(models.Booking).options(
+        joinedload(models.Booking.user),
+        selectinload(models.Booking.payment_records),
+    ).filter(
         models.Booking.caterer_id == profile.id,
-        models.Booking.status != 'draft',
-        models.Booking.is_archived == False
+        func.lower(func.trim(func.coalesce(models.Booking.status, ""))) != "draft",
+        or_(models.Booking.is_archived.is_(False), models.Booking.is_archived.is_(None)),
     ).order_by(models.Booking.id.asc()).all()
 
     now = datetime.now(timezone.utc)
     first_of_month = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
 
-    # 2. Group bookings by customer reference
+    # 2. Group bookings by account identity first, then legacy contact details.
     cust_bookings_map = defaultdict(list)
+    account_key_by_email = {}
+    account_key_by_phone = {}
+    for booking in cat_bookings:
+        if not booking.user_id:
+            continue
+        account_key = f"user:{booking.user_id}"
+        if booking.customer_email and booking.customer_email.strip():
+            account_key_by_email.setdefault(booking.customer_email.strip().casefold(), account_key)
+        if booking.customer_contact and booking.customer_contact.strip():
+            phone_digits = re.sub("[^0-9]", "", booking.customer_contact)
+            if phone_digits:
+                account_key_by_phone.setdefault(phone_digits, account_key)
+
     for b in cat_bookings:
-        cref = b.customer_ref
-        if not cref:
-            cref = f"{c_code}-C-{b.id:03d}"
-        cust_bookings_map[cref].append(b)
+        if b.user_id:
+            customer_key = f"user:{b.user_id}"
+        elif b.customer_email and b.customer_email.strip():
+            normalized_email = b.customer_email.strip().casefold()
+            customer_key = account_key_by_email.get(normalized_email, f"email:{normalized_email}")
+        elif b.customer_contact and b.customer_contact.strip():
+            phone_digits = re.sub("[^0-9]", "", b.customer_contact)
+            customer_key = account_key_by_phone.get(phone_digits, f"phone:{phone_digits}")
+        elif b.customer_name and b.customer_name.strip():
+            customer_key = f"name:{' '.join(b.customer_name.casefold().split())}"
+        elif b.customer_ref and b.customer_ref.strip():
+            customer_key = f"ref:{b.customer_ref.strip().casefold()}"
+        else:
+            customer_key = f"booking:{b.id}"
+        cust_bookings_map[customer_key].append(b)
 
     customers = []
     vip_count = 0
     new_count = 0
     repeat_count = 0
 
-    for cref, b_list in cust_bookings_map.items():
-        b_list.sort(key=lambda x: x.event_date or datetime.min.date(), reverse=True)
-        completed_bookings = [b for b in b_list if b.status == 'completed']
+    for _customer_key, b_list in cust_bookings_map.items():
+        def activity_key(booking):
+            created_at = booking.created_at
+            if created_at is None:
+                return (0.0, booking.id)
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            return (created_at.timestamp(), booking.id)
+
+        b_list.sort(key=activity_key, reverse=True)
+        normalized_status = lambda booking: (booking.status or "").strip().casefold()
+        completed_bookings = [b for b in b_list if normalized_status(b) == 'completed']
         completed_count = len(completed_bookings)
         total_b_count = len(b_list)
-        total_spent = sum(float(b.total_price or b.total_amount or 0.0) for b in completed_bookings)
+        total_spent = sum(
+            PaymentService.get_payment_summary(booking)["verified_paid"]
+            for booking in completed_bookings
+        )
         last_booking = b_list[0] if b_list else None
         first_booking = b_list[-1] if b_list else None
 
         # Check blacklist status from associated user record if present
-        is_blacklisted = any(b.user and b.user.status == 'blacklisted' for b in b_list)
+        is_blacklisted = any(
+            b.user and (b.user.status or "").strip().casefold() == 'blacklisted'
+            for b in b_list
+        )
 
         # Status Logic
         if is_blacklisted:
@@ -4975,7 +5033,7 @@ async def caterer_customers(
             status = "VIP"
             tier_label = "VIP Elite"
             vip_count += 1
-        elif first_booking and first_booking.created_at and first_booking.created_at >= first_of_month:
+        elif first_booking and first_booking.created_at and activity_key(first_booking)[0] >= first_of_month.timestamp():
             status = "NEW"
             tier_label = "New Client"
             new_count += 1
@@ -4986,12 +5044,19 @@ async def caterer_customers(
         if total_b_count > 1:
             repeat_count += 1
 
-        cancelled_count = sum(1 for b in b_list if b.status in ('cancelled', 'rejected'))
+        cancelled_count = sum(
+            1 for b in b_list
+            if normalized_status(b) in ('cancelled', 'canceled', 'rejected')
+        )
+        customer_ref = next(
+            (booking.customer_ref for booking in b_list if booking.customer_ref),
+            f"{c_code}-C-{last_booking.id:03d}" if last_booking else f"{c_code}-C-000",
+        )
 
         # Strictly non-sensitive customer management summary (NO name, email, phone, or address)
         customers.append({
             "id": last_booking.id if last_booking else 0,
-            "customer_ref": cref,
+            "customer_ref": customer_ref,
             "status": status,
             "tier_label": tier_label,
             "total_spent": total_spent,
