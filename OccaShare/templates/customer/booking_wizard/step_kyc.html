@@ -1483,26 +1483,13 @@
                 <div class="scanner-center-icon"><i class="fas fa-shield-alt"></i></div>
             </div>
 
-            <h2 class="processing-title">Processing Your Data</h2>
-            <p class="processing-subtitle">Aming sinusuri ang iyong mga dokumento at biometrics. Sandali lamang ito.</p>
+            <h2 class="processing-title">Verifying Your Identity</h2>
+            <p class="processing-subtitle">We’re securely checking your ID and selfie. This may take a few moments.</p>
 
             <div class="processing-checklist">
-                <span class="checklist-title">Verification Steps</span>
                 <div class="checklist-item active" id="step-enc">
                     <i class="fas fa-circle-notch fa-spin"></i>
-                    <span>Encrypting personal details</span>
-                </div>
-                <div class="checklist-item" id="step-doc">
-                    <i class="far fa-circle"></i>
-                    <span>Checking document authenticity</span>
-                </div>
-                <div class="checklist-item" id="step-face">
-                    <i class="far fa-circle"></i>
-                    <span>Matching face & biometric data</span>
-                </div>
-                <div class="checklist-item" id="step-final">
-                    <i class="far fa-circle"></i>
-                    <span>Running compliance evaluation</span>
+                    <span>Securely validating your ID and selfie</span>
                 </div>
             </div>
 
@@ -1513,7 +1500,7 @@
                 
                 <button onclick="resetKycStatus()" class="btn btn-outline-secondary btn-sm mt-3"
                     style="border-radius: 0.75rem; font-weight: 600; padding: 0.5rem 1.25rem;">
-                    <i class="fas fa-sync-alt mr-1"></i> Cancel and Try Again
+                    <i class="fas fa-sync-alt mr-1"></i> Restart Verification
                 </button>
             </div>
         </div>
@@ -1524,50 +1511,9 @@
                     const res = await fetch(`/api/bookings/kyc/reset`, { method: 'POST' });
                     if (res.ok) window.location.reload();
                 } catch (e) {
-                    alert("Failed to reset status.");
+                    alert("Could not restart verification. Please try again.");
                 }
             }
-
-            // Simple animated checklist loader
-            document.addEventListener('DOMContentLoaded', () => {
-                const stepEnc = document.getElementById('step-enc');
-                const stepDoc = document.getElementById('step-doc');
-                const stepFace = document.getElementById('step-face');
-                const stepFinal = document.getElementById('step-final');
-
-                if (stepEnc && stepDoc && stepFace && stepFinal) {
-                    // Start sequence
-                    setTimeout(() => {
-                        // Complete step 1
-                        stepEnc.className = 'checklist-item completed';
-                        stepEnc.querySelector('i').className = 'fas fa-check-circle';
-                        
-                        // Start step 2
-                        stepDoc.className = 'checklist-item active';
-                        stepDoc.querySelector('i').className = 'fas fa-circle-notch fa-spin';
-                    }, 2000);
-
-                    setTimeout(() => {
-                        // Complete step 2
-                        stepDoc.className = 'checklist-item completed';
-                        stepDoc.querySelector('i').className = 'fas fa-check-circle';
-                        
-                        // Start step 3
-                        stepFace.className = 'checklist-item active';
-                        stepFace.querySelector('i').className = 'fas fa-circle-notch fa-spin';
-                    }, 5000);
-
-                    setTimeout(() => {
-                        // Complete step 3
-                        stepFace.className = 'checklist-item completed';
-                        stepFace.querySelector('i').className = 'fas fa-check-circle';
-                        
-                        // Start step 4
-                        stepFinal.className = 'checklist-item active';
-                        stepFinal.querySelector('i').className = 'fas fa-circle-notch fa-spin';
-                    }, 8500);
-                }
-            });
         </script>
         {% endif %}
 
