@@ -109,7 +109,7 @@
     }
 
     .page-header-clean h1 {
-        font-size: 1.65rem;
+        font-size: 1.4rem;
         font-weight: 800;
         color: var(--dm-secondary);
         letter-spacing: -0.02em;
@@ -330,6 +330,10 @@
         transform: none;
     }
 
+    .terminal-panel {
+        scroll-margin-top: 1rem;
+    }
+
     /* Audit Logs Tab */
     .audit-list {
         display: flex;
@@ -404,6 +408,62 @@
         .intel-grid { grid-template-columns: 1fr; }
     }
 
+    @media (max-width: 600px) {
+        .main-content { padding: 1rem !important; }
+        .terminal-container { gap: 1rem; }
+        .terminal-nav { padding: 1rem; border-radius: 1.25rem; }
+        .nav-header { padding: 0 0.25rem 0.75rem; margin-bottom: 0.75rem; }
+        .terminal-nav .terminal-btn {
+            display: grid;
+            grid-template-columns: 1rem minmax(0, 1fr);
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            min-height: 3.5rem;
+            margin: 0;
+            padding: 0.65rem 0.6rem;
+            border-radius: 0.75rem;
+            font-size: 0.72rem;
+            line-height: 1.25;
+            transform: none !important;
+            text-align: left;
+        }
+        .terminal-nav .terminal-btn i {
+            width: 1rem;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .terminal-nav {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: minmax(3.5rem, auto);
+            align-items: stretch;
+            gap: 0.5rem;
+        }
+        .terminal-nav .nav-header { grid-column: 1 / -1; }
+        .terminal-display { border-radius: 1.25rem; min-height: 0; }
+        .display-header { padding: 1.25rem; }
+        .display-header h2 { font-size: 1.15rem; }
+        .display-body { padding: 1.25rem; }
+        .display-footer {
+            display: flex;
+            gap: 0.6rem;
+            padding: 1rem;
+        }
+        .display-footer .terminal-btn,
+        .display-footer .btn-sync {
+            width: auto !important;
+            min-width: 0;
+            flex: 1 1 0;
+            justify-content: center;
+            margin: 0;
+            padding: 0.8rem 0.5rem;
+            border-radius: 0.8rem;
+            font-size: 0.82rem;
+            white-space: nowrap;
+        }
+    }
+
     /* Modal Polyfill */
     .occ-modal-overlay {
         display: none;
@@ -460,7 +520,7 @@
 <div class="page-header-clean">
     <div class="header-title-area">
         <h1>Site Settings</h1>
-        <p>Manage the platform's core behaviors, logo, social links, and security.</p>
+        <p>Manage platform information, financial settings, branding, landing page content, social links, maintenance, and security.</p>
     </div>
 </div>
 
@@ -487,7 +547,7 @@
         <button class="terminal-btn" onclick="switchTab('security', this)">
             <i class="fas fa-shield-halved"></i> Security & Password
         </button>
-        <button class="terminal-btn" onclick="switchTab('audit', this)" style="border-top: 1px solid var(--dm-border); margin-top: 1rem; padding-top: 1.5rem;">
+        <button class="terminal-btn" onclick="switchTab('audit', this)">
             <i class="fas fa-clock-rotate-left"></i> Change History
         </button>
     </aside>
@@ -504,11 +564,11 @@
                     <div class="intel-grid">
                         <div class="input-wrapper">
                             <label class="label-premium">Platform Name</label>
-                            <input type="text" name="site_name" class="input-premium" value="{{ config.site_name }}" required>
+                            <input type="text" name="site_name" class="input-premium" value="{{ config.site_name }}" disabled>
                         </div>
                         <div class="input-wrapper">
                             <label class="label-premium">Support Email</label>
-                            <input type="email" name="support_email" class="input-premium" value="{{ config.support_email }}" required>
+                            <input type="email" name="support_email" class="input-premium" value="{{ config.support_email }}" disabled>
                         </div>
                     </div>
                     <div class="intel-grid">
@@ -722,9 +782,9 @@
             </div>
 
             <div class="display-footer" id="formActions">
-                <button type="button" class="terminal-btn" style="width: auto; margin-bottom: 0;" onclick="window.location.reload()">Discard Changes</button>
+                <button type="button" class="terminal-btn" style="width: auto; margin-bottom: 0;" onclick="window.location.reload()">Cancel</button>
                 <button type="submit" class="btn-sync" id="syncBtn">
-                    <i class="fas fa-cloud-arrow-up"></i> Sync Configuration
+                    <i class="fas fa-cloud-arrow-up"></i> Save
                 </button>
             </div>
         </form>
@@ -793,10 +853,14 @@
         btn.classList.add('active');
 
         document.querySelectorAll('.terminal-panel').forEach(p => p.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
+        const panel = document.getElementById(tabId);
+        panel.classList.add('active');
 
         // Hide/Show Sync button for Audit tab
         document.getElementById('formActions').style.display = (tabId === 'audit') ? 'none' : 'flex';
+        if (window.matchMedia('(max-width: 600px)').matches) {
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 
     function toggleMaint(el) {
@@ -985,4 +1049,3 @@
 </script>
 
 {% endblock %}
-

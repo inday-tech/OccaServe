@@ -97,34 +97,34 @@
 
 <!-- KPI Matrix (TOP) -->
 <div class="kpi-grid-clean">
-    <div class="kpi-card-clean">
+    <a class="kpi-card-clean kpi-interactive-card kpi-card-link" href="/admin/customers" aria-label="View customer management">
         <div class="kpi-info">
             <h4>Total Users</h4>
             <span class="kpi-value">{{ metrics.user_count }}</span>
             <span class="trend-badge trend-up"><i class="fas fa-users"></i> Registered</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </a>
+    <a class="kpi-card-clean kpi-interactive-card kpi-card-link" href="/admin/caterers" aria-label="View caterer management">
         <div class="kpi-info">
             <h4>Total Caterers</h4>
             <span class="kpi-value">{{ metrics.total_caterers }}</span>
             <span class="trend-badge trend-up"><i class="fas fa-utensils"></i> Partners</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </a>
+    <a class="kpi-card-clean kpi-interactive-card kpi-card-link" href="/admin/bookings" aria-label="View all bookings">
         <div class="kpi-info">
             <h4>Total Bookings</h4>
             <span class="kpi-value">{{ metrics.booking_count }}</span>
             <span class="trend-badge trend-up"><i class="fas fa-calendar-check"></i> Platform</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </a>
+    <a class="kpi-card-clean kpi-interactive-card kpi-card-link" href="/admin/reports" aria-label="View reports and analytics">
         <div class="kpi-info">
             <h4>Platform Revenue</h4>
             <span class="kpi-value">₱{{ "{:,.0f}".format(metrics.platform_earnings) }}</span>
             <span class="trend-badge trend-up"><i class="fas fa-coins"></i> {{ metrics.commission_rate }}% Comm.</span>
         </div>
-    </div>
+    </a>
 </div>
 
 <!-- Analytics Split (MIDDLE) -->

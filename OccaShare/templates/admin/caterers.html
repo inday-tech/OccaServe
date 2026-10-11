@@ -80,43 +80,6 @@
         cursor: pointer;
     }
 
-    .caterer-filter-card {
-        width: 100%;
-        min-width: 0;
-        min-height: 104px !important;
-        height: auto !important;
-        padding: 1.15rem !important;
-        align-items: center !important;
-        justify-content: flex-start !important;
-        border: var(--adm-border) !important;
-        border-radius: var(--adm-radius) !important;
-        background: var(--adm-card-bg) !important;
-        box-shadow: var(--adm-shadow-sm) !important;
-        color: inherit;
-        font: inherit;
-        text-align: left;
-        cursor: pointer;
-    }
-
-    .caterer-filter-card .kpi-info {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .caterer-filter-card:hover {
-        transform: translateY(-3px);
-        border-color: var(--adm-primary) !important;
-        box-shadow: var(--adm-shadow) !important;
-    }
-
-    .caterer-filter-card[aria-pressed="true"] {
-        border-color: var(--adm-primary);
-        box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12);
-    }
-
     .caterer-filter-card:focus-visible,
     .caterer-status-filter:focus-visible,
     .caterer-add-button:focus-visible {
@@ -999,28 +962,28 @@
 
 <!-- KPI Metrics Cluster -->
 <div class="kpi-grid-clean">
-    <button type="button" class="kpi-card-clean caterer-filter-card" data-caterer-filter="all" aria-pressed="true" onclick="setCatererStatusFilter('all')">
+    <button type="button" class="kpi-card-clean kpi-interactive-card caterer-filter-card" data-caterer-filter="all" aria-pressed="true" onclick="setCatererStatusFilter('all')">
         <div class="kpi-info">
             <h4>Total Caterers</h4>
             <span class="kpi-value">{{ metrics.total_caterers }}</span>
             <span class="trend-badge trend-up">All Accounts</span>
         </div>
     </button>
-    <button type="button" class="kpi-card-clean caterer-filter-card" data-caterer-filter="pending" aria-pressed="false" onclick="setCatererStatusFilter('pending')">
+    <button type="button" class="kpi-card-clean kpi-interactive-card caterer-filter-card" data-caterer-filter="pending" aria-pressed="false" onclick="setCatererStatusFilter('pending')">
         <div class="kpi-info">
             <h4>Needs Review</h4>
             <span class="kpi-value">{{ metrics.pending_caterers_count }}</span>
             <span class="trend-badge" style="background: #fef3c7; color: #92400e;">Action Needed</span>
         </div>
     </button>
-    <button type="button" class="kpi-card-clean caterer-filter-card" data-caterer-filter="verified" aria-pressed="false" onclick="setCatererStatusFilter('verified')">
+    <button type="button" class="kpi-card-clean kpi-interactive-card caterer-filter-card" data-caterer-filter="verified" aria-pressed="false" onclick="setCatererStatusFilter('verified')">
         <div class="kpi-info">
             <h4>Verified</h4>
             <span class="kpi-value">{{ metrics.approved_caterers_count }}</span>
             <span class="trend-badge trend-up">Approved</span>
         </div>
     </button>
-    <button type="button" class="kpi-card-clean caterer-filter-card" data-caterer-filter="suspended" aria-pressed="false" onclick="setCatererStatusFilter('suspended')">
+    <button type="button" class="kpi-card-clean kpi-interactive-card caterer-filter-card" data-caterer-filter="suspended" aria-pressed="false" onclick="setCatererStatusFilter('suspended')">
         <div class="kpi-info">
             <h4>Suspended</h4>
             <span class="kpi-value">{{ metrics.suspended_caterers_count }}</span>

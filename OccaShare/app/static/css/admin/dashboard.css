@@ -105,6 +105,54 @@ textarea {
     border-color: var(--adm-primary);
 }
 
+.kpi-interactive-card {
+    width: 100%;
+    min-width: 0;
+    min-height: 104px !important;
+    height: auto !important;
+    padding: 1.15rem !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.kpi-interactive-card .kpi-info {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.kpi-interactive-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--adm-primary);
+    box-shadow: var(--adm-shadow);
+}
+
+.kpi-interactive-card[aria-pressed="true"] {
+    border-color: var(--adm-primary);
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.12);
+}
+
+.kpi-interactive-card:focus-visible {
+    outline: 3px solid rgba(249, 115, 22, 0.35);
+    outline-offset: 2px;
+}
+
+.kpi-card-link {
+    display: flex;
+    text-decoration: none;
+}
+
+.kpi-card-link:hover,
+.kpi-card-link:focus-visible {
+    color: inherit;
+}
+
 .kpi-icon-box {
     width: 48px;
     height: 48px;

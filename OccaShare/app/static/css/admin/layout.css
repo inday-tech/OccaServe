@@ -124,6 +124,18 @@ html, body {
     padding: 0.85rem 1rem;
     display: flex; align-items: center; gap: 10px;
     flex-shrink: 0;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+.sidebar-admin-card:hover {
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.14);
+}
+.sidebar-admin-card:focus-visible {
+    outline: 2px solid rgba(249,115,22,0.7);
+    outline-offset: 2px;
 }
 .admin-avatar {
     position: relative;

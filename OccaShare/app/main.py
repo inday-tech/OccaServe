@@ -43,6 +43,8 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_contact VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_name VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_type VARCHAR",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS celebrant_name VARCHAR",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS motif_theme VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_time TIME",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_end_time TIME",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS venue_address TEXT",

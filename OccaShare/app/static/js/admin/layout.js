@@ -324,6 +324,8 @@
             }
             syncingSearchInputs = false;
 
+            if (window.location.pathname === '/admin/bookings') return;
+
             clearTimeout(searchTimeout);
             searchRequestId += 1;
             if (searchController) searchController.abort();
@@ -340,6 +342,7 @@
         });
 
         input.addEventListener('focus', () => {
+            if (window.location.pathname === '/admin/bookings') return;
             if (input.value.trim().length >= 2 && (desktopSearchScroller?.childElementCount || mobileSearchScroller?.childElementCount)) {
                 (input === mobileSearchInput ? mobileSearchPanel : desktopSearchPanel)?.classList.add('active');
             }
