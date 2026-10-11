@@ -28,7 +28,13 @@ def is_pre_deployment_manual_booking(booking: models.Booking) -> bool:
 def get_commission_rate_percent(config: Optional[models.WebsiteConfig]) -> float:
     if not config or config.commission_rate is None:
         return DEFAULT_COMMISSION_RATE_PERCENT
-    return float(config.commission_rate)
+    configured_rate = float(config.commission_rate)
+    # WebsiteConfig has historically held both percent values (10) and a
+    # fractional rate (0.10). Normalize the latter to the percent contract
+    # used by calculate_booking_commission and the admin settings form.
+    if 0 < configured_rate <= 1:
+        return configured_rate * 100.0
+    return configured_rate
 
 
 def calculate_booking_commission(booking_amount: float, rate_percent: float) -> float:

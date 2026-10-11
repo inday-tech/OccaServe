@@ -11,7 +11,7 @@ from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy
 from ..services.email import EmailService
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote
-from sqlalchemy import case, func, String, or_
+from sqlalchemy import and_, case, func, String, or_
 import json, re, asyncio
 from ..services.realtime import manager
 from ..services.verification import verification_service
@@ -20,6 +20,7 @@ from ..services.commission import (
     get_commission_rate_percent,
     is_pre_deployment_manual_booking,
 )
+from ..services.payment_service import PaymentService
 from ..services.reminders import billing_period_due_date
 from sqlalchemy import or_
 
@@ -43,6 +44,52 @@ def _format_manila_timestamp(value, date_format="%b %d, %Y %I:%M:%S %p PHT"):
 def _search_like_pattern(query: str) -> str:
     escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return f"%{escaped_query}%"
+
+
+def _not_archived(column):
+    return or_(column.is_(False), column.is_(None))
+
+
+def _booking_total_amount(booking) -> float:
+    # total_price is the amount consumed by PaymentService; total_amount is
+    # the legacy/current booking column fallback. Never use amount_paid here.
+    return float(booking.total_price or booking.total_amount or 0.0)
+
+
+def _tracked_platform_commissions(db: Session) -> float:
+    """Sum commission ledger entries once, using invoices before payout items."""
+    from sqlalchemy.orm import joinedload
+
+    commission_statuses = ("pending", "processing", "overdue", "paid", "settled")
+    invoice_rows = db.query(models.BillingInvoice).options(
+        joinedload(models.BillingInvoice.booking)
+    ).filter(
+        models.BillingInvoice.booking_id.isnot(None),
+        func.lower(func.trim(func.coalesce(models.BillingInvoice.status, ""))).in_(commission_statuses),
+    ).all()
+
+    invoice_total = 0.0
+    invoiced_booking_ids = set()
+    for invoice in invoice_rows:
+        if invoice.booking and is_pre_deployment_manual_booking(invoice.booking):
+            continue
+        invoiced_booking_ids.add(invoice.booking_id)
+        invoice_total += float(invoice.amount or 0.0)
+
+    payout_rows = db.query(models.PayoutItem).options(
+        joinedload(models.PayoutItem.booking)
+    ).filter(
+        func.lower(func.trim(func.coalesce(models.PayoutItem.status, ""))).in_(("ready", "released")),
+    ).all()
+    payout_total = 0.0
+    for item in payout_rows:
+        if item.booking_id in invoiced_booking_ids:
+            continue
+        if item.booking and is_pre_deployment_manual_booking(item.booking):
+            continue
+        payout_total += float(item.commission_amount or 0.0)
+
+    return invoice_total + payout_total
 
 
 def _get_darwin_profile(db: Session):
@@ -528,15 +575,16 @@ async def admin_dashboard(
 ):
 
     # Platform Metrics
-    user_count = db.query(models.User).filter(models.User.is_archived == False).count()
-    customer_count = db.query(models.User).filter(models.User.role == 'customer', models.User.is_archived == False).count()
+    active_user_filter = _not_archived(models.User.is_archived)
+    user_count = db.query(models.User).filter(active_user_filter).count()
+    customer_count = db.query(models.User).filter(models.User.role == 'customer', active_user_filter).count()
     
     # Caterer Metrics
-    total_caterers = db.query(models.CatererProfile).join(models.User).filter(models.User.is_archived == False).count()
-    pending_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), models.User.is_archived == False).order_by(models.CatererProfile.id.desc()).limit(5).all()
-    approved_caterers_count = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).count()
-    approved_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", models.User.is_archived == False).order_by(models.CatererProfile.rating.desc()).limit(5).all()
-    rejected_caterers_count = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", models.User.is_archived == False).count()
+    total_caterers = db.query(models.CatererProfile).join(models.User).filter(active_user_filter).count()
+    pending_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status.in_(["Pending", "Pending Review"]), active_user_filter).order_by(models.CatererProfile.id.desc()).limit(5).all()
+    approved_caterers_count = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", active_user_filter).count()
+    approved_caterers = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Verified", active_user_filter).order_by(models.CatererProfile.rating.desc()).limit(5).all()
+    rejected_caterers_count = db.query(models.CatererProfile).join(models.User).filter(models.CatererProfile.verification_status == "Rejected", active_user_filter).count()
     
     # Keep dashboard aggregates in SQL; materializing every booking and then
     # making 12 more month queries made this page scale with database history.
@@ -546,28 +594,25 @@ async def admin_dashboard(
             "%b %d, %Y",
         )
 
-    booking_amount = func.coalesce(models.Booking.total_amount, models.Booking.total_price, 0.0)
+    booking_amount = func.coalesce(func.nullif(models.Booking.total_price, 0), models.Booking.total_amount, 0.0)
+    normalized_booking_status = func.lower(func.trim(func.coalesce(models.Booking.status, "")))
     excluded_sales_statuses = ['cancelled', 'inquiry', 'negotiating', 'quoted']
-    booking_count, total_sales, total_revenue = db.query(
+    active_booking_filter = _not_archived(models.Booking.is_archived)
+    booking_count, total_sales = db.query(
         func.count(models.Booking.id),
         func.coalesce(func.sum(case(
-            (models.Booking.status.not_in(excluded_sales_statuses), booking_amount),
+            (~normalized_booking_status.in_(excluded_sales_statuses), booking_amount),
             else_=0.0,
         )), 0.0),
-        func.coalesce(func.sum(case(
-            (models.Booking.payment_status == 'paid', booking_amount),
-            else_=0.0,
-        )), 0.0),
-    ).filter(models.Booking.is_archived == False).one()
+    ).filter(active_booking_filter).one()
     booking_count = int(booking_count or 0)
     total_sales = float(total_sales or 0.0)
-    total_revenue = float(total_revenue or 0.0)
     
     # Dynamic commission check 
     config = db.query(models.WebsiteConfig).first()
-    commission_rate = get_commission_rate_percent(config) / 100.0
-    
-    platform_earnings = total_revenue * commission_rate
+    commission_rate_percent = get_commission_rate_percent(config)
+    commission_rate = commission_rate_percent / 100.0
+    platform_earnings = _tracked_platform_commissions(db)
 
     # --- Analytics Chart Data (Last 6 Months) ---
     chart_data = {"months": [], "sales": [], "earnings": [], "bookings": [], "new_users": []}
@@ -584,15 +629,15 @@ async def admin_dashboard(
         month_bucket.label('month'),
         func.count(models.Booking.id).label('booking_count'),
         func.coalesce(func.sum(case(
-            (models.Booking.status.not_in(excluded_sales_statuses), booking_amount), else_=0.0
+            (~normalized_booking_status.in_(excluded_sales_statuses), booking_amount), else_=0.0
         )), 0.0).label('sales'),
         func.coalesce(func.sum(case(
-            (models.Booking.payment_status == 'paid', booking_amount), else_=0.0
+            (func.lower(func.trim(func.coalesce(models.Booking.payment_status, ""))) == 'paid', booking_amount), else_=0.0
         )), 0.0).label('paid_sales'),
     ).filter(
         models.Booking.created_at >= month_starts[0],
         models.Booking.created_at < month_range_end,
-        models.Booking.is_archived == False,
+        active_booking_filter,
     ).group_by(month_bucket).all()
     monthly_bookings_by_key = {(row.month.year, row.month.month): row for row in monthly_bookings}
 
@@ -603,7 +648,7 @@ async def admin_dashboard(
     ).filter(
         models.User.created_at >= month_starts[0],
         models.User.created_at < month_range_end,
-        models.User.is_archived == False,
+        active_user_filter,
     ).group_by(user_month_bucket).all()
     monthly_users_by_key = {(row.month.year, row.month.month): row.user_count for row in monthly_users}
 
@@ -619,16 +664,16 @@ async def admin_dashboard(
         chart_data["new_users"].append(int(monthly_users_by_key.get(key, 0) or 0))
 
     # --- Extra Stats for Analytics Cards ---
-    avg_rating_result = db.query(func.avg(models.Review.rating)).filter(models.Review.is_archived == False).scalar()
+    avg_rating_result = db.query(func.avg(models.Review.rating)).filter(_not_archived(models.Review.is_archived)).scalar()
     avg_rating = round(float(avg_rating_result), 1) if avg_rating_result else 0.0
-    total_reviews = db.query(models.Review).filter(models.Review.is_archived == False).count()
+    total_reviews = db.query(models.Review).filter(_not_archived(models.Review.is_archived)).count()
 
     booking_status_rows = db.query(
-        models.Booking.status,
+        normalized_booking_status.label("normalized_status"),
         func.count(models.Booking.id),
     ).filter(
-        models.Booking.is_archived == False,
-    ).group_by(models.Booking.status).order_by(models.Booking.status).all()
+        active_booking_filter,
+    ).group_by(normalized_booking_status).order_by(normalized_booking_status).all()
     booking_status_chart = {
         "labels": [
             " ".join((status or "unknown").replace("_", " ").split()).title()
@@ -670,8 +715,8 @@ async def admin_dashboard(
     recent_yields = db.query(models.Booking).options(
         joinedload(models.Booking.caterer)
     ).filter(
-        models.Booking.payment_status == 'paid',
-        models.Booking.status.not_in(['cancelled', 'inquiry', 'negotiating', 'quoted'])
+        func.lower(func.trim(func.coalesce(models.Booking.payment_status, ""))).in_(['paid', 'fully_paid']),
+        ~normalized_booking_status.in_(['cancelled', 'inquiry', 'negotiating', 'quoted'])
     ).order_by(models.Booking.created_at.desc()).limit(10).all()
 
     return templates.TemplateResponse("admin/dashboard.html", {
@@ -2669,34 +2714,28 @@ async def admin_reports(
     user: models.User = Depends(admin_only)
 ):
     from calendar import month_abbr
-    now = datetime.utcnow()
+    from sqlalchemy.orm import joinedload, selectinload
+    now = datetime.now(MANILA_TIMEZONE)
 
     # ── Shared definitions (kept in sync with the rest of the admin panel) ──
     # Bookings in these states never converted into platform revenue.
     NON_REVENUE_STATUSES = [
-        'cancelled', 'inquiry', 'pending_review', 'negotiating', 'quoted',
+        'cancelled', 'canceled', 'rejected', 'inquiry', 'pending', 'pending_payment',
+        'awaiting_payment', 'pending_review', 'negotiating', 'quoted',
         'pending_quotation', 'awaiting_customer', 'awaiting_caterer', 'draft', 'expired'
     ]
     # Bookings are "settled" when the flag says so, or when the amount collected
     # already covers the contract value (identical rule to PaymentService).
-    SETTLED_PAYMENT_STATUSES = ['paid', 'fully_paid']
-
-    def _is_settled(b) -> bool:
-        if (b.payment_status or '').lower() in SETTLED_PAYMENT_STATUSES:
-            return True
-        total = float(b.total_amount or 0.0)
-        return total > 0 and float(b.amount_paid or 0.0) >= total - 0.009
-
     # --- Monthly Growth (live platform accounts) ---
     this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
 
     new_users_this_month = db.query(models.User).filter(
-        models.User.is_archived == False,
+        _not_archived(models.User.is_archived),
         models.User.created_at >= this_month_start
     ).count()
     new_users_last_month = db.query(models.User).filter(
-        models.User.is_archived == False,
+        _not_archived(models.User.is_archived),
         models.User.created_at >= last_month_start,
         models.User.created_at < this_month_start
     ).count()
@@ -2707,23 +2746,45 @@ async def admin_reports(
         monthly_growth_pct = 100.0 if new_users_this_month > 0 else 0.0
 
     # --- User Satisfaction (Average Review Rating) ---
-    avg_rating_result = db.query(func.avg(models.Review.rating)).filter(models.Review.is_archived == False).scalar()
+    avg_rating_result = db.query(func.avg(models.Review.rating)).filter(
+        _not_archived(models.Review.is_archived)
+    ).scalar()
     avg_rating = round(float(avg_rating_result), 1) if avg_rating_result else 0.0
-    total_reviews = db.query(models.Review).filter(models.Review.is_archived == False).count()
+    total_reviews = db.query(models.Review).filter(_not_archived(models.Review.is_archived)).count()
 
     # --- Booking Summary ---
-    # Total Bookings = every live booking record (cancelled included, for volume).
-    all_live_bookings = db.query(models.Booking).filter(models.Booking.is_archived == False).all()
+    # Count every active booking for volume; exclude archived rows, include NULL flags.
+    active_booking_filter = _not_archived(models.Booking.is_archived)
+    all_live_bookings = db.query(models.Booking).options(
+        selectinload(models.Booking.payment_records),
+        joinedload(models.Booking.quotation),
+    ).filter(active_booking_filter).all()
     total_bookings = len(all_live_bookings)
-    cancelled_bookings = sum(1 for b in all_live_bookings if (b.status or '').lower() == 'cancelled')
+    normalized_status = lambda booking: (booking.status or "").strip().lower().replace(" ", "_")
+    cancelled_bookings = sum(1 for b in all_live_bookings if normalized_status(b) in {"cancelled", "canceled"})
 
     # Revenue metrics ignore cancelled / never-converted bookings.
-    revenue_bookings = [b for b in all_live_bookings if (b.status or '').lower() not in NON_REVENUE_STATUSES]
-    # Gross contract value of the bookings that actually pushed through.
-    total_revenue = float(sum(float(b.total_amount or 0.0) for b in revenue_bookings) or 0.0)
-    # Cash actually collected for those bookings.
-    total_collected = float(sum(float(b.amount_paid or 0.0) for b in revenue_bookings) or 0.0)
-    paid_bookings = sum(1 for b in revenue_bookings if _is_settled(b))
+    revenue_bookings = [b for b in all_live_bookings if normalized_status(b) not in NON_REVENUE_STATUSES]
+    # Match PaymentService's canonical total field (total_price, then total_amount).
+    total_revenue = sum(_booking_total_amount(b) for b in revenue_bookings)
+    payment_summaries = {
+        b.id: PaymentService.get_payment_summary(b)
+        for b in all_live_bookings
+    }
+    # PaymentService reconciles transaction rows with legacy amount_paid using
+    # verified_paid (max, never sum), excluding pending customer submissions.
+    # Pending/partially paid bookings still contribute verified cash. Exclude
+    # cancelled/expired bookings under the existing revenue treatment.
+    cash_eligible_statuses = {"cancelled", "canceled", "expired"}
+    total_collected = sum(
+        payment_summaries[b.id]["verified_paid"]
+        for b in all_live_bookings
+        if normalized_status(b) not in cash_eligible_statuses
+    )
+    paid_bookings = sum(
+        1 for b in revenue_bookings
+        if payment_summaries[b.id].get("is_fully_paid")
+    )
 
     # --- Monthly Bookings Trend (last 6 months) ---
     monthly_bookings = []
@@ -2736,7 +2797,7 @@ async def admin_reports(
     for month_start in reversed(month_starts):
         month_end = (month_start + timedelta(days=32)).replace(day=1)
         count = db.query(models.Booking).filter(
-            models.Booking.is_archived == False,
+            active_booking_filter,
             models.Booking.created_at >= month_start,
             models.Booking.created_at < month_end
         ).count()
@@ -2749,9 +2810,9 @@ async def admin_reports(
         .join(models.Booking, models.Booking.caterer_id == models.CatererProfile.id)
         .join(models.User, models.User.id == models.CatererProfile.user_id)
         .filter(
-            models.User.is_archived == False,
-            models.Booking.is_archived == False,
-            func.lower(func.coalesce(models.Booking.status, '')).notin_(NON_REVENUE_STATUSES)
+            _not_archived(models.User.is_archived),
+            active_booking_filter,
+            func.lower(func.trim(func.coalesce(models.Booking.status, ''))).notin_(NON_REVENUE_STATUSES)
         )
         .group_by(models.CatererProfile.id)
         .order_by(func.count(models.Booking.id).desc())
@@ -2760,30 +2821,9 @@ async def admin_reports(
     )
     top_caterers = [{"name": c.business_name, "bookings": b} for c, b in top_caterers_raw]
 
-    # --- Total Platform Commissions ---
-    # Commissions are recorded in two places: caterer billing invoices (caterer
-    # settles the platform cut) and payout items (platform cut withheld from a
-    # payout). A booking is only counted once, through whichever exists first.
-    INVOICE_COMMISSION_STATUSES = ['pending', 'processing', 'settled', 'paid']
-    invoice_commission = db.query(func.sum(models.BillingInvoice.amount)).filter(
-        models.BillingInvoice.status.in_(INVOICE_COMMISSION_STATUSES),
-        models.BillingInvoice.booking_id.isnot(None)
-    ).scalar() or 0.0
-    invoiced_booking_ids = {
-        row[0] for row in db.query(models.BillingInvoice.booking_id).filter(
-            models.BillingInvoice.status.in_(INVOICE_COMMISSION_STATUSES),
-            models.BillingInvoice.booking_id.isnot(None)
-        ).all()
-    }
-    payout_commission = 0.0
-    for item in db.query(models.PayoutItem).filter(
-        models.PayoutItem.status.in_(['ready', 'released'])
-    ).all():
-        if item.booking_id in invoiced_booking_ids:
-            continue
-        payout_commission += float(item.commission_amount or 0.0)
-
-    total_commission = float(invoice_commission) + payout_commission
+    # Existing invoice ledger is the source of assessed commission; a payout
+    # fee is included only where no booking invoice already accounts for it.
+    total_commission = _tracked_platform_commissions(db)
 
     return templates.TemplateResponse("admin/reports.html", {
         "request": request,
@@ -3139,6 +3179,7 @@ async def admin_bookings(
     ).filter(active_booking_filter).distinct().order_by(models.CatererProfile.business_name).all()
 
     for booking in bookings:
+        booking.admin_booking_amount = _booking_total_amount(booking)
         linked_user_name = " ".join(filter(None, [
             booking.user.first_name if booking.user else None,
             booking.user.last_name if booking.user else None,
@@ -3185,63 +3226,78 @@ async def admin_customers(
     # Show customer accounts linked to an active Darwin booking, including
     # caterer CRM customers. Unlinked manual CRM entries remain out of this list.
     darwin_profile = _get_darwin_profile(db)
-    if not darwin_profile:
-        darwin_customer_ids = db.query(models.Booking.user_id).filter(False).subquery()
-    else:
-        active_darwin_bookings = db.query(models.Booking).filter(
-            models.Booking.caterer_id == darwin_profile.id,
-            or_(models.Booking.is_archived.is_(False), models.Booking.is_archived.is_(None)),
-        )
-        darwin_customer_ids = active_darwin_bookings.filter(
-            models.Booking.user_id.isnot(None)
-        ).with_entities(models.Booking.user_id).distinct().subquery()
-
     base_filters = [
         models.User.role == "customer",
-        models.User.is_archived == False,
-        models.User.id.in_(darwin_customer_ids),
+        _not_archived(models.User.is_archived),
         models.User.email.isnot(None),
         func.trim(models.User.email) != "",
     ]
-
-    customers = db.query(models.User).filter(*base_filters).order_by(models.User.created_at.desc()).all()
-    booking_counts = {}
     if darwin_profile:
-        booking_counts = dict(db.query(
-            models.Booking.user_id,
-            func.count(models.Booking.id),
-        ).filter(
+        darwin_booking_filters = [
             models.Booking.caterer_id == darwin_profile.id,
-            models.Booking.user_id.in_([customer.id for customer in customers]),
-            or_(models.Booking.is_archived.is_(False), models.Booking.is_archived.is_(None)),
-        ).group_by(models.Booking.user_id).all())
+            _not_archived(models.Booking.is_archived),
+        ]
+        # Prefer the booking's foreign key; use email only for legacy rows
+        # whose user_id is absent. DISTINCT prevents one account per booking.
+        customer_booking_link = or_(
+            models.Booking.user_id == models.User.id,
+            and_(
+                models.Booking.user_id.is_(None),
+                func.lower(func.trim(models.Booking.customer_email))
+                == func.lower(func.trim(models.User.email)),
+            ),
+        )
+        customer_query = db.query(models.User).join(
+            models.Booking, customer_booking_link
+        ).filter(*base_filters, *darwin_booking_filters).distinct()
+        customers = customer_query.order_by(models.User.created_at.desc()).all()
+    else:
+        darwin_booking_filters = []
+        customer_query = db.query(models.User).filter(False)
+        customers = []
+
+    customer_ids = {customer.id for customer in customers}
+    customer_ids_by_email = {}
     for customer in customers:
-        customer.admin_booking_count = booking_counts.get(customer.id, 0)
+        normalized_email = (customer.email or "").strip().casefold()
+        if normalized_email:
+            customer_ids_by_email.setdefault(normalized_email, set()).add(customer.id)
+    booking_ids_by_customer = {customer_id: set() for customer_id in customer_ids}
+    if customer_ids:
+        darwin_bookings = db.query(
+            models.Booking.id,
+            models.Booking.user_id,
+            models.Booking.customer_email,
+        ).filter(*darwin_booking_filters).all()
+        for booking_id, booking_user_id, booking_email in darwin_bookings:
+            linked_customer_ids = set()
+            if booking_user_id in customer_ids:
+                linked_customer_ids.add(booking_user_id)
+            elif booking_email:
+                linked_customer_ids.update(
+                    customer_ids_by_email.get(booking_email.strip().casefold(), set())
+                )
+            for customer_id in linked_customer_ids:
+                booking_ids_by_customer[customer_id].add(booking_id)
+    for customer in customers:
+        customer.admin_booking_count = len(booking_ids_by_customer.get(customer.id, ()))
 
     verified_customers = [customer for customer in customers if customer.is_verified]
     pending_verification_customers = [customer for customer in customers if not customer.is_verified]
 
-    pending_customers = db.query(models.User).filter(
-        *base_filters,
-        models.User.is_verified == False
-    ).count()
-
-    # Metrics use the exact same population as the table so the numbers always match.
+    # Metrics use the exact same distinct accounts as the table.
     metrics = {
-        "total_customers": db.query(models.User).filter(*base_filters).count(),
-        "verified_customers": db.query(models.User).filter(
-            *base_filters,
-            models.User.is_verified == True
-        ).count(),
-        "pending_customers": pending_customers,
-        "suspended_customers": db.query(models.User).filter(
-            *base_filters,
-            func.lower(func.coalesce(models.User.status, "")) == "suspended"
-        ).count(),
-        "flagged_customers": db.query(models.User).filter(
-            *base_filters,
-            func.lower(func.coalesce(models.User.status, "")) == "flagged"
-        ).count()
+        "total_customers": len(customers),
+        "verified_customers": sum(1 for customer in customers if customer.is_verified),
+        "pending_customers": sum(1 for customer in customers if not customer.is_verified),
+        "suspended_customers": sum(
+            1 for customer in customers
+            if (customer.status or "").strip().casefold() == "suspended"
+        ),
+        "flagged_customers": sum(
+            1 for customer in customers
+            if (customer.status or "").strip().casefold() == "flagged"
+        ),
     }
 
     return templates.TemplateResponse("admin/customers.html", {
