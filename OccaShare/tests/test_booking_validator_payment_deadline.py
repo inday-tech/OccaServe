@@ -11,6 +11,9 @@ class EmptyQuery:
     def first(self):
         return None
 
+    def get(self, _record_id):
+        return None
+
 
 class EmptyDatabase:
     def query(self, _model):
@@ -31,10 +34,11 @@ def make_confirmed_booking(event_date):
         expires_at=datetime.now() - timedelta(hours=1),
         caterer_id=1,
         caterer_notes=None,
+        payment_status="deposit_paid",
     )
 
 
-def test_confirmed_balance_payment_ignores_old_booking_deadline():
+def test_confirmed_balance_payment_ignores_automatic_booking_deadline():
     booking = make_confirmed_booking(date.today())
 
     is_valid, message = BookingValidator.validate_booking_state(
@@ -47,22 +51,51 @@ def test_confirmed_balance_payment_ignores_old_booking_deadline():
     assert message == "Booking is valid."
 
 
-def test_balance_payment_still_rejected_after_event_date():
+def test_balance_payment_is_allowed_after_event_date():
     booking = make_confirmed_booking(date.today() - timedelta(days=1))
 
     is_valid, message = BookingValidator.validate_booking_state(
         EmptyDatabase(),
         booking,
-        ignore_booking_deadline=True,
     )
 
-    assert is_valid is False
-    assert "event date has already passed" in message
-    assert booking.status == "expired"
+    assert is_valid is True
+    assert message == "Booking is valid."
+    assert booking.status == "confirmed"
 
 
-def test_other_payment_flows_still_honor_booking_deadline():
+def test_event_day_payment_request_is_not_expired_by_lead_time():
+    booking = make_confirmed_booking(date.today())
+    booking.status = "pending"
+    booking.payment_status = "cash_payment_requested"
+
+    is_valid, message = BookingValidator.validate_booking_state(
+        EmptyDatabase(),
+        booking,
+    )
+
+    assert is_valid is True
+    assert message == "Booking is valid."
+    assert booking.status == "pending"
+
+
+def test_confirmed_booking_is_not_expired_by_old_payment_deadline():
     booking = make_confirmed_booking(date.today() + timedelta(days=1))
+
+    is_valid, message = BookingValidator.validate_booking_state(
+        EmptyDatabase(),
+        booking,
+    )
+
+    assert is_valid is True
+    assert message == "Booking is valid."
+    assert booking.status == "confirmed"
+
+
+def test_only_unfinished_drafts_honor_draft_expiration():
+    booking = make_confirmed_booking(date.today() + timedelta(days=1))
+    booking.status = "draft"
+    booking.payment_status = "pending"
 
     is_valid, message = BookingValidator.validate_booking_state(
         EmptyDatabase(),

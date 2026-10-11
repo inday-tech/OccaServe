@@ -130,11 +130,6 @@ async def payment_webhook(
                 if pay_type == "dp":
                     booking.status = "confirmed"
                     booking.expires_at = None
-                    if booking.payment_status == "deposit_paid" and booking.event_date:
-                        booking.balance_due_date = datetime.combine(
-                            booking.event_date,
-                            datetime.min.time(),
-                        )
                 # Note: booking.payment_status is now set by the service
                 
                 booking.payment_reference = external_ref
@@ -208,14 +203,14 @@ async def expire_booking(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    if booking.status == "draft" or booking.status == "pending":
+    if booking.status == "draft":
         if booking.expires_at and datetime.now(timezone.utc) > booking.expires_at.replace(tzinfo=timezone.utc):
             booking.status = "expired"
             
             history = models.BookingHistory(
                 booking_id=booking_id,
                 status="expired",
-                notes="Booking expired due to non-payment within 24 hours"
+                notes="Unfinished booking draft expired after its continuation window."
             )
             db.add(history)
             db.commit()
@@ -226,11 +221,11 @@ async def expire_booking(
 @router.post("/internal/cleanup-expired")
 async def cleanup_expired_bookings(db: Session = Depends(database.get_db)):
     """
-    Finds and marks all overdue draft/pending bookings as expired.
+    Finds and marks only overdue unfinished booking drafts as expired.
     """
     now = datetime.now(timezone.utc)
     expired_bookings = db.query(models.Booking).filter(
-        models.Booking.status.in_(["draft", "pending"]),
+        models.Booking.status == "draft",
         models.Booking.expires_at < now
     ).all()
     
@@ -240,7 +235,7 @@ async def cleanup_expired_bookings(db: Session = Depends(database.get_db)):
         history = models.BookingHistory(
             booking_id=booking.id,
             status="expired",
-            notes="Bulk cleanup marked as expired"
+            notes="Unfinished booking draft expired after its continuation window."
         )
         db.add(history)
         count += 1

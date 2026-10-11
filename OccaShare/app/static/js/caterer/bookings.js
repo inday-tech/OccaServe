@@ -1272,7 +1272,9 @@ function hydrateButtonDataset(btn, detail) {
         paymentPlan: detail.payment_plan || btn.dataset.paymentPlan || 'downpayment',
         paymentRef: detail.payment_reference || btn.dataset.paymentRef || '',
         bookedOn: detail.created_at ? new Date(detail.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : (btn.dataset.bookedOn || '—'),
-        balanceDue: detail.balance_due_date ? detail.balance_due_date.slice(0, 10) : (btn.dataset.balanceDue || ''),
+        balanceDue: detail.balance_due_date_is_manual === false
+            ? ''
+            : (detail.balance_due_date ? detail.balance_due_date.slice(0, 10) : (btn.dataset.balanceDue || '')),
         actualCost: detail.actual_cost || 0,
         hasRegisteredCustomer: String(Boolean(detail.has_registered_customer)),
         isPackage: detail.is_package != null ? String(detail.is_package) : (btn.dataset.isPackage || 'true'),
@@ -3481,8 +3483,8 @@ function toggleDueDateEdit() {
 
 async function saveDueDate() {
     const dueDateInput = document.getElementById('balanceDueDateInput');
-    const eventDueDate = (dueDateInput && dueDateInput.value) || currentEventDate;
-    if (!eventDueDate) { window.showToast('This booking has no event date.', 'error'); return; }
+    const eventDueDate = dueDateInput ? dueDateInput.value : '';
+    if (!eventDueDate) { window.showToast('Choose a balance due date before saving.', 'error'); return; }
     
     const cleanId = String(currentBookingId || '').replace(/\D/g, '');
     const data = await window.apiAction('/caterer/api/bookings/' + cleanId + '/set-due-date', {

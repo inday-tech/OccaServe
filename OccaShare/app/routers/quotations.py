@@ -506,11 +506,16 @@ async def set_balance_due_date(
 
     try:
         from datetime import date as date_cls
-        requested_due = date_cls.fromisoformat(str(payload.get("due_date") or booking.event_date).strip())
+        requested_due = date_cls.fromisoformat(str(payload.get("due_date") or "").strip())
         if requested_due < date_cls.today():
             raise ValueError("Due date cannot be in the past.")
         due_date_str = requested_due.isoformat()
         booking.balance_due_date = datetime.combine(requested_due, datetime.min.time())
+        db.add(models.BookingHistory(
+            booking_id=booking.id,
+            status=booking.status,
+            notes=f"Balance due date set to {due_date_str} by caterer."
+        ))
         db.commit()
         
         # --- Trigger Notification ---

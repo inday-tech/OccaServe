@@ -436,31 +436,39 @@
 <div id="tab-overview" class="tab-pane active">
     {% set balance_payment_open = booking.preparation_status == 'completed' %}
     <!-- ── OUTSTANDING BALANCE BANNER ── -->
-    {% if balance_payment_open and booking.payment_plan != 'full' and booking.event_date and booking.payment_status not in ['paid', 'fully_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_balance_requested', 'balance_reupload_requested'] %}
+    {% if booking.payment_plan != 'full' and booking.event_date and booking.payment_status not in ['paid', 'fully_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_balance_requested', 'balance_reupload_requested'] %}
         {% set total_val = booking.total_amount|float %}
         {% set res_fee = booking.reservation_fee|float if booking.reservation_fee else 0.0 %}
         {% set paid_now = payment_summary.verified_paid|float if payment_summary is defined else (booking.amount_paid|float if booking.amount_paid else res_fee) %}
         {% set balance_val = total_val - paid_now %}
-        {% set balance_due = booking.balance_due_date.date() if booking.balance_due_date else booking.event_date %}
-        
+        {% set balance_due = booking.balance_due_date.date() if balance_due_date_is_manual and booking.balance_due_date else none %}
         {% set days_until_due = (balance_due - now.date()).days if balance_due and now else 9999 %}
-        {% if balance_val > 0 and days_until_due <= 3 %}
+        {% set days_until_event = (booking.event_date - now.date()).days if now else 9999 %}
+        {% set show_balance_reminder = (balance_due and days_until_due <= 3) or (not balance_due and 0 <= days_until_event <= 3) %}
+        {% if balance_val > 0 and show_balance_reminder %}
         <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #f97316; border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 6px 20px rgba(249, 115, 22, 0.1); flex-wrap: wrap; gap: 1rem;">
             <div style="display: flex; gap: 1rem; align-items: center;">
                 <div style="width: 48px; height: 48px; background: #ffedd5; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ea580c; font-size: 1.35rem; flex-shrink: 0;">
-                    <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fas fa-wallet"></i>
                 </div>
                 <div>
-                    <h3 style="margin: 0 0 4px 0; color: #9a3412; font-size: 1.05rem; font-weight: 850;">Action Required: Outstanding Balance</h3>
+                    <h3 style="margin: 0 0 4px 0; color: #9a3412; font-size: 1.05rem; font-weight: 850;">Balance Payment Reminder</h3>
                     <p style="margin: 0; color: #c2410c; font-size: 0.85rem; font-weight: 500;">
-                        You have a remaining balance of <strong style="font-weight: 850;">₱{{ "{:,.2f}".format(balance_val) }}</strong>. 
-                        Pay this balance by <strong style="font-weight: 850;">{{ balance_due.strftime('%B %d, %Y') if balance_due else 'the agreed due date' }}</strong>. You may pay online via GCash or Bank, or request cash payment from your caterer.
+                        Remaining balance: <strong style="font-weight: 850;">₱{{ "{:,.2f}".format(balance_val) }}</strong>.
+                        {% if balance_due %}
+                            Your caterer set the payment deadline to <strong style="font-weight: 850;">{{ balance_due.strftime('%B %d, %Y') }}</strong>.
+                        {% else %}
+                            Please prepare the balance for the event day or the payment timing agreed with your caterer. This is a reminder, not a payment deadline.
+                        {% endif %}
+                        You may pay online or request cash payment from your caterer.
                     </p>
                 </div>
             </div>
+            {% if balance_payment_open %}
             <a href="/bookings/step/payment/{{ booking.id }}?balance=true" class="btn-action-elite btn-primary-orange" style="width: auto; padding: 0.75rem 1.75rem; font-size: 0.85rem; background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%) !important; border: none; box-shadow: 0 4px 15px rgba(234, 88, 12, 0.35);">
                 Settle Balance Now <i class="fas fa-wallet"></i>
             </a>
+            {% endif %}
         </div>
 
         {% endif %}

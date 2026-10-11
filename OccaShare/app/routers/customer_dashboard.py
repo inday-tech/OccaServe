@@ -459,6 +459,11 @@ async def manage_booking(
     if PaymentService.heal_premature_completion(booking, db):
         db.refresh(booking)
     payment_summary = PaymentService.get_payment_summary(booking)
+    balance_due_date_is_manual = any(
+        (history.notes or "").startswith("Balance due date set to ")
+        and (history.notes or "").endswith(" by caterer.")
+        for history in booking.history
+    )
     
     # Calculate status progress for timeline
     current_status = (booking.status or "pending").lower()
@@ -563,6 +568,7 @@ async def manage_booking(
         "today": date_cls.today(),
         "now": datetime_cls.now(),
         "payment_summary": payment_summary,
+        "balance_due_date_is_manual": balance_due_date_is_manual,
     })
 
 @router.get("/bookings/{booking_id}/contract", response_class=HTMLResponse)

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from ..db import models
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime
 
 class QuotationService:
     def create_quotation(self, db: Session, booking: models.Booking, downpayment_percent: int = 30) -> models.Quotation:
@@ -224,7 +224,8 @@ class QuotationService:
 
         db.flush()
 
-        booking.expires_at = datetime.now() + timedelta(hours=24)
+        if booking.status != "draft":
+            booking.expires_at = None
         booking.reservation_fee = total_amount * Decimal(str(downpayment_percent / 100))
         booking.total_amount = float(total_amount)
         booking.total_price = float(total_amount)
@@ -357,7 +358,8 @@ class QuotationService:
 
         db.flush()
 
-        booking.expires_at = datetime.now() + timedelta(hours=24)
+        if booking.status != "draft":
+            booking.expires_at = None
         booking.reservation_fee = total_amount * Decimal(str(downpayment_percent / 100))
         booking.total_amount = float(total_amount)
 

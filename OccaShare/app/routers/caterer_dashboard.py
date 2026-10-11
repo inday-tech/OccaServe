@@ -3249,9 +3249,6 @@ async def _confirm_booking_logic(db: Session, booking: models.Booking, caterer_u
             booking.amount_paid = verify_amt or float(booking.reservation_fee or (total_amt * 0.5))
         booking.status = 'confirmed'
         booking.expires_at = None
-        if booking.payment_status == 'deposit_paid' and booking.event_date:
-            booking.balance_due_date = datetime.combine(booking.event_date, datetime.min.time())
-        
         # Initialize operations checklist
         create_default_booking_tasks(db, booking.id)
         
@@ -3541,8 +3538,6 @@ async def confirm_cash_payment(
         if verified_total >= required_deposit > 0:
             booking.status = 'confirmed'
             booking.expires_at = None
-        if booking.payment_status == 'deposit_paid' and booking.event_date:
-            booking.balance_due_date = datetime.combine(booking.event_date, datetime.min.time())
         history_note = f"Cash payment recorded by caterer. Amount received: ₱{amount_received:,.2f}. Verified total: ₱{verified_total:,.2f}."
         if caterer_notes:
             history_note += f" Notes: {caterer_notes}"
@@ -3733,7 +3728,7 @@ async def set_balance_due_date(
 
     try:
         from datetime import date as date_cls
-        requested_due_date = date_cls.fromisoformat(str(req.due_date).strip()) if req.due_date else booking.event_date
+        requested_due_date = date_cls.fromisoformat(str(req.due_date).strip())
         if requested_due_date < date_cls.today():
             raise ValueError("Due date cannot be in the past.")
         due_datetime = datetime.combine(requested_due_date, datetime.min.time())
@@ -4022,6 +4017,11 @@ async def get_booking_details_api(
     elif booking.payment_verification_data:
         sanitized_verification_data = booking.payment_verification_data
 
+    balance_due_date_is_manual = any(
+        (history.notes or "").startswith("Balance due date set to ")
+        and (history.notes or "").endswith(" by caterer.")
+        for history in booking.history
+    )
     return {
         "id": booking.id,
         "booking_ref": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or f"BK-{booking.id:06d}",
@@ -4072,7 +4072,12 @@ async def get_booking_details_api(
         "payment_method": booking.payment_method,
         "payment_plan": booking.payment_plan,
         "payment_reference": booking.payment_reference,
-        "balance_due_date": booking.balance_due_date.isoformat() if booking.balance_due_date else None,
+        "balance_due_date": (
+            booking.balance_due_date.isoformat()
+            if booking.balance_due_date and balance_due_date_is_manual
+            else None
+        ),
+        "balance_due_date_is_manual": balance_due_date_is_manual,
         "payment_proof_url": booking.payment_proof_url,
         "balance_proof_url": booking.balance_proof_url,
         "payment_verification_data": sanitized_verification_data,
@@ -8386,6 +8391,7 @@ async def get_calendar_events(
     user: models.User = Depends(auth.get_current_user_optional)
 ):
     from datetime import date, timedelta
+    from ..services.payment_service import PaymentService
     today_date = date.today()
 
     # Use provided caterer_id (for customers) or user's caterer profile (for caterers themselves)
@@ -8419,6 +8425,17 @@ async def get_calendar_events(
     
     # Check if we should show full details (only for the caterer owner)
     is_owner = user and user.role == 'caterer' and user.caterer_profile.id == target_caterer_id
+    manually_set_due_date_booking_ids = set()
+    if is_owner:
+        booking_ids = [booking.id for booking in bookings]
+        if booking_ids:
+            manually_set_due_date_booking_ids = {
+                row[0]
+                for row in db.query(models.BookingHistory.booking_id).filter(
+                    models.BookingHistory.booking_id.in_(booking_ids),
+                    models.BookingHistory.notes.like("Balance due date set to % by caterer."),
+                ).all()
+            }
     
     # Get capacity settings
     caterer_profile = None
@@ -8581,18 +8598,44 @@ async def get_calendar_events(
                     }
                 })
                 
-            # Sub-event: Payment Reminder (if unpaid/partial and event is in future)
-            if b.payment_status in ['pending', 'unpaid', 'deposit_paid', 'partial', 'pending_verification'] and b.event_date and b.event_date > today_date:
+            payment_summary = PaymentService.get_payment_summary(b)
+            has_balance = payment_summary["remaining_balance"] > 0.009
+
+            if (
+                has_balance
+                and b.balance_due_date
+                and b.id in manually_set_due_date_booking_ids
+            ):
+                due_date = b.balance_due_date.date() if isinstance(b.balance_due_date, datetime) else b.balance_due_date
+                events.append({
+                    "id": f"pay-due-{b.id}",
+                    "start": due_date.isoformat(),
+                    "allDay": True,
+                    "backgroundColor": "#f59e0b",
+                    "borderColor": "#d97706",
+                    "title": f"Balance Deadline: {customer_first_name}",
+                    "extendedProps": {
+                        "recordType": "reminder",
+                        "reminderType": "manual_payment_deadline",
+                        "customer": customer_name,
+                        "booking_id": b.id,
+                    }
+                })
+
+            # A preparation reminder is not a payment deadline and does not
+            # set balance_due_date or notify the customer of a due date.
+            if has_balance and b.event_date and b.event_date > today_date:
                 deadline_date = b.event_date - timedelta(days=3)
                 if deadline_date >= today_date:
                     events.append({
-                        "id": f"pay-{b.id}",
+                        "id": f"payment-prep-{b.id}",
                         "start": str(deadline_date),
                         "backgroundColor": "#f59e0b",
                         "borderColor": "#f59e0b",
-                        "title": f"Payment Due: {customer_first_name}",
+                        "title": f"Prepare Balance: {customer_first_name}",
                         "extendedProps": {
                             "recordType": "reminder",
+                            "reminderType": "payment_preparation",
                             "customer": customer_name,
                             "booking_id": b.id
                         }

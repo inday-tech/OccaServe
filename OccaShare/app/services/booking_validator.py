@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime
 from sqlalchemy.orm import Session
 from app.db import models
 
@@ -43,17 +43,35 @@ class BookingValidator:
 
         now = datetime.now()
         current_date = now.date()
+        pre_acceptance_statuses = ["draft", "pending", "pending_quotation", "awaiting_caterer"]
+        payment_activity_statuses = {
+            "cash_payment_requested",
+            "cash_balance_requested",
+            "proof_submitted",
+            "balance_proof_submitted",
+            "balance_reupload_requested",
+            "pending_verification",
+            "deposit_paid",
+            "partially_paid",
+            "paid",
+            "fully_paid",
+        }
         
-        # 2. Check Event Date Passed. Remaining balance settlement is allowed
-        # after the event; completion still requires verified full payment.
-        if booking.event_date < current_date and not ignore_booking_deadline:
+        # Accepted or actively paid bookings remain open for event-day and
+        # post-event balance settlement.
+        payment_status = getattr(booking, "payment_status", None)
+        if (
+            booking.event_date < current_date
+            and booking.status in pre_acceptance_statuses
+            and payment_status not in payment_activity_statuses
+            and not ignore_booking_deadline
+        ):
             BookingValidator._expire_booking(db, booking, "Event date has already passed", update_if_expired)
             return False, "The scheduled event date has already passed. This booking cannot be continued."
 
         # 3. Check Minimum Lead Time (Only if booking is not yet confirmed/paid)
         # If the booking is already accepted or contract signed, we assume the caterer agreed to the timeline.
-        pre_acceptance_statuses = ["draft", "pending", "pending_quotation", "awaiting_caterer"]
-        if booking.status in pre_acceptance_statuses:
+        if booking.status in pre_acceptance_statuses and payment_status not in payment_activity_statuses:
             caterer = db.query(models.CatererProfile).get(booking.caterer_id)
             if caterer:
                 lead_time_days = caterer.booking_lead_time or 0
@@ -65,6 +83,7 @@ class BookingValidator:
         # 4. Check Booking General Expiration (if set)
         if (
             not ignore_booking_deadline
+            and booking.status == "draft"
             and booking.expires_at
             and booking.expires_at.replace(tzinfo=None) < now
         ):
