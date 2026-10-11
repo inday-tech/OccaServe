@@ -3446,7 +3446,7 @@ class VerificationService:
                 failure_reason = "Verification Under Review | Your identity verification requires additional review."
             else:
                 # Liveness passed. Check face match score.
-                # Thresholds: >= 80 VERIFIED, 70-79 pending_manual_review, < 70 rejected
+                # Thresholds: >= 80 VERIFIED, 70-79 pending_manual_review, < 70 face mismatch.
                 if face_match_score >= 80:
                     status = "verified"
                     failure_reason = None
@@ -3454,8 +3454,8 @@ class VerificationService:
                     status = "pending_manual_review"
                     failure_reason = "Face Match Review | Face match score is slightly low. Your ID verification will be manually reviewed."
                 else:
-                    status = "rejected"
-                    failure_reason = "Identity Verification Failed | Your selfie does not match the photo on your ID. Please upload a clear photo of yourself."
+                    status = "liveliness_failed"
+                    failure_reason = "Face Mismatch | The face in your selfie does not match the photo on your ID. Please use your own ID and try again with a clear selfie."
 
             return {
                 "status": status,
