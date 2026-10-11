@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body, BackgroundTasks, Query
 from typing import Optional, List
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
@@ -3993,11 +3993,20 @@ async def get_booking_details_api(
             service_name = item.custom_name or item.service.name
             service_key = str(service_name).strip().casefold()
             if service_key in service_names:
+                # The booking's saved selection price is authoritative over
+                # any legacy copy of the service in custom_requirements.
+                existing_service = next(
+                    service for service in services_list
+                    if str(service.get("name") or "").strip().casefold() == service_key
+                )
+                existing_service["price"] = float(item.price or 0)
                 continue
             service_names.add(service_key)
             services_list.append({
                 "name": service_name,
-                "price": float(item.price or item.service.selling_price or 0),
+                # Use the amount saved on this booking selection. A zero or
+                # missing saved price means no itemized service fee to show.
+                "price": float(item.price or 0),
                 "category": item.service.category or "Service",
                 "is_selected": True
             })
@@ -4132,6 +4141,10 @@ async def get_booking_details_api(
         "balance_proof_url": booking.balance_proof_url,
         "payment_verification_data": sanitized_verification_data,
         "preparation_status": booking.preparation_status,
+        "preparation_updated_at": (
+            booking.preparation_updated_at.isoformat()
+            if booking.preparation_updated_at else None
+        ),
         "preparation_date": booking.preparation_date.isoformat() if booking.preparation_date else None,
         "preparation": build_prep_summary(booking),
         "actual_cost": float(booking.actual_cost or 0),
@@ -8957,7 +8970,9 @@ async def update_booking_preparation_status(
             detail="Preparation status cannot move backward. Choose the current or next stage.",
         )
 
-    booking.preparation_status = new_key
+    if old_key != new_key:
+        booking.preparation_status = new_key
+        booking.preparation_updated_at = datetime.now(timezone.utc)
 
     # Sync related booking lifecycle status when safe / meaningful
     mapped_booking_status = new_meta.get("booking_status")

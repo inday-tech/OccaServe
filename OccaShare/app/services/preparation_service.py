@@ -112,7 +112,8 @@ def build_prep_summary(booking) -> Dict[str, Any]:
         getattr(booking, "status", None),
     )
     meta = get_prep_meta(key)
-    updated = getattr(booking, "updated_at", None) or getattr(booking, "created_at", None)
+    updated = getattr(booking, "preparation_updated_at", None)
+    updated_iso = updated.isoformat() if updated else None
     return {
         "status": key,
         "label": meta["label"],
@@ -121,7 +122,8 @@ def build_prep_summary(booking) -> Dict[str, Any]:
         "bg": meta["bg"],
         "emoji": meta["emoji"],
         "booking_status": getattr(booking, "status", None),
-        "last_updated": updated.isoformat() if updated else None,
+        "preparation_updated_at": updated_iso,
+        "last_updated": updated_iso,
         "statuses": [
             {
                 "key": s["key"],
