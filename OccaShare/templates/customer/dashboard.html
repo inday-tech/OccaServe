@@ -125,6 +125,15 @@
         margin-bottom: 0.75rem;
     }
 
+    .spotlight-manage-btn {
+        width: fit-content !important;
+        min-width: 0 !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        padding: 0 1.1rem !important;
+        font-size: 0.88rem !important;
+    }
+
     .spotlight-meta {
         display: flex;
         flex-direction: column;
@@ -873,8 +882,8 @@
                         TBD' }}</span></div>
             </div>
             <div style="margin-top: 1.25rem;">
-                <a href="/customer/bookings/manage/{{ latest_booking.id }}" class="btn-action-primary"
-                    style="width: 100%; text-decoration: none; padding: 0.6rem;">Manage Order</a>
+                <a href="/customer/bookings/manage/{{ latest_booking.id }}" class="btn-action-primary spotlight-manage-btn"
+                    style="text-decoration: none;">Manage Booking</a>
             </div>
         </div>
         <div class="spotlight-progress">
