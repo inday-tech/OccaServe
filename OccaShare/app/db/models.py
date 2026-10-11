@@ -684,6 +684,7 @@ class Booking(Base):
     payment_method = Column(String, nullable=True) # GCash, Credit Card, etc.
     amount_paid = Column(Float, default=0.0)
     preparation_status = Column(String, default="not_started") # not_started, scheduled, in_preparation, ready, completed
+    preparation_updated_at = Column(DateTime(timezone=True), nullable=True)
     preparation_date = Column(Date, nullable=True)
     customer_archived = Column(Boolean, default=False)
     customer_deleted = Column(Boolean, default=False)  # [SECURITY] Soft-delete: hides booking from customer view without destroying audit trail

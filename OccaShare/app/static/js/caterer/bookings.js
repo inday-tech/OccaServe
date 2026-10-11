@@ -1537,6 +1537,11 @@ function showBookingDetails(btn) {
     data.balance = String(balanceValue);
 
     currentBookingId = cleanId;
+    if (previousBookingId !== cleanId) {
+        window._prepCache = { status: 'not_started', progress: 0, label: 'Not Started', statuses: [] };
+        var prepLastUpdated = document.getElementById('prepLastUpdated');
+        if (prepLastUpdated) prepLastUpdated.innerText = '—';
+    }
     window.currentBookingBalance = balanceValue;
     window.currentBookingStatus = data.status;
     currentEventDate = data.eventDate;
@@ -4246,7 +4251,7 @@ function _prepFormatUpdated(iso) {
         if (isNaN(d.getTime())) return '—';
         return d.toLocaleString('en-US', {
             month: 'long', day: 'numeric', year: 'numeric',
-            hour: 'numeric', minute: '2-digit'
+            hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila'
         });
     } catch (e) { return '—'; }
 }
@@ -4324,6 +4329,7 @@ async function loadBookingTasks(bookingId) {
         });
         if (!res.ok) throw new Error('Failed to load preparation status');
         const prep = await res.json();
+        if (String(currentBookingId || '') !== cleanId) return;
         _renderPrepStatusUI(prep);
     } catch (err) {
         console.error('Error loading preparation status:', err);

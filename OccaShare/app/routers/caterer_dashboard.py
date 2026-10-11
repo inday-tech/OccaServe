@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, UploadFile, File, Body, BackgroundTasks, Query
 from typing import Optional, List
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
@@ -4123,6 +4123,10 @@ async def get_booking_details_api(
         "balance_proof_url": booking.balance_proof_url,
         "payment_verification_data": sanitized_verification_data,
         "preparation_status": booking.preparation_status,
+        "preparation_updated_at": (
+            booking.preparation_updated_at.isoformat()
+            if booking.preparation_updated_at else None
+        ),
         "preparation_date": booking.preparation_date.isoformat() if booking.preparation_date else None,
         "preparation": build_prep_summary(booking),
         "actual_cost": float(booking.actual_cost or 0),
@@ -8948,7 +8952,9 @@ async def update_booking_preparation_status(
             detail="Preparation status cannot move backward. Choose the current or next stage.",
         )
 
-    booking.preparation_status = new_key
+    if old_key != new_key:
+        booking.preparation_status = new_key
+        booking.preparation_updated_at = datetime.now(timezone.utc)
 
     # Sync related booking lifecycle status when safe / meaningful
     mapped_booking_status = new_meta.get("booking_status")
