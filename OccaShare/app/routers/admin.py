@@ -3182,10 +3182,8 @@ async def admin_customers(
     user: models.User = Depends(admin_only)
 ):
     # ── Customer Directory ────────────────────────────────────────────────────
-    # Only accounts that were genuinely created on the website are listed here.
-    # "Manual entry" records (walk-in customers encoded by a caterer) have no
-    # login credentials of their own, so they are intentionally excluded — they
-    # are managed through the caterer's own client list, not platform accounts.
+    # Show customer accounts linked to an active Darwin booking, including
+    # caterer CRM customers. Unlinked manual CRM entries remain out of this list.
     darwin_profile = _get_darwin_profile(db)
     if not darwin_profile:
         darwin_customer_ids = db.query(models.Booking.user_id).filter(False).subquery()
@@ -3204,7 +3202,6 @@ async def admin_customers(
         models.User.id.in_(darwin_customer_ids),
         models.User.email.isnot(None),
         func.trim(models.User.email) != "",
-        func.coalesce(models.User.auth_provider, "email") != "manual_entry",
     ]
 
     customers = db.query(models.User).filter(*base_filters).order_by(models.User.created_at.desc()).all()
