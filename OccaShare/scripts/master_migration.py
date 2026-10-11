@@ -22,6 +22,8 @@ def master_migration():
         # Bookings Table
         booking_cols = [
             ("event_end_time", "TIME"),
+            ("celebrant_name", "VARCHAR"),
+            ("motif_theme", "VARCHAR"),
             ("venue_province", "VARCHAR"),
             ("venue_city", "VARCHAR"),
             ("venue_barangay", "VARCHAR"),
