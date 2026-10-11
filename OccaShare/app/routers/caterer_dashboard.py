@@ -6014,7 +6014,7 @@ def _sync_package_relational_inclusions(db: Session, package: models.CateringPac
 async def add_package(
     request: Request,
     name: str = Form(...),
-    description: str = Form(...),
+    description: Optional[str] = Form(None),
     service_type: str = Form("General"),
     other_category: Optional[str] = Form(None),
     pricing_mode: str = Form("per_pax"),
@@ -6146,7 +6146,7 @@ async def add_package(
     new_pkg = models.CateringPackage(
         caterer_id=user.caterer_profile.id,
         name=name,
-        description=description,
+        description=(description or "").strip(),
         service_type=service_type,
         pricing_mode=pricing_mode,
         service_duration=service_duration,
@@ -7040,7 +7040,7 @@ async def update_package(
     request: Request,
     package_id: int,
     name: str = Form(...),
-    description: str = Form(...),
+    description: Optional[str] = Form(None),
     service_type: str = Form("General"),
     other_category: Optional[str] = Form(None),
     pricing_mode: str = Form("per_pax"),
@@ -7167,7 +7167,7 @@ async def update_package(
         profile.default_excess_guest_price = additional_guest_price
 
     package.name = name
-    package.description = description
+    package.description = (description or "").strip()
     package.service_type = service_type
     package.pricing_mode = pricing_mode
     package.service_duration = service_duration
@@ -8472,7 +8472,7 @@ async def get_calendar_events(
                     "guests": 0,
                     "venue": "TBD",
                     "package": "N/A",
-                    "time": str(b.event_time) if b.event_time else "TBD",
+                    "time": b.event_time.strftime("%I:%M %p").lstrip("0") if b.event_time else "TBD",
                     "status": "confirmed",
                     "payment_status": "N/A",
                     "preparation_status": "N/A",
@@ -8494,7 +8494,8 @@ async def get_calendar_events(
             
         event_data = {
             "id": str(b.id),
-            "start": start_dt,
+            "start": str(b.event_date),
+            "allDay": True,
             "backgroundColor": mapped_color,
             "borderColor": mapped_color,
         }
@@ -8551,7 +8552,7 @@ async def get_calendar_events(
                 "package": b.package.name if b.package else (b.event_name or "Custom Package"),
                 "inclusions": inclusions,
                 "custom_requirements": b.custom_requirements or {},
-                "time": str(b.event_time) if b.event_time else "TBD",
+                "time": b.event_time.strftime("%I:%M %p").lstrip("0") if b.event_time else "TBD",
                 "status": b.status,
                 "payment_status": b.payment_status or "pending",
                 "preparation_status": b.preparation_status or "not_started",
@@ -8598,7 +8599,6 @@ async def get_calendar_events(
                     })
         else:
             event_data["title"] = "BOOKED"
-            event_data["display"] = "background"
             event_data["overlap"] = False
             events.append(event_data)
 
@@ -8657,6 +8657,7 @@ async def get_calendar_events(
                 "recordType": rType,
                 "customer": "Internal",
                 "eventType": s.schedule_type,
+                "time": s.time.strftime("%I:%M %p").lstrip("0") if s.time else "TBD",
                 "internalId": str(s.id),
                 "isPinned": s.is_pinned
             }

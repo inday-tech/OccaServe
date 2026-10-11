@@ -154,29 +154,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
             eventContent: function(arg) {
                 const status = arg.event.extendedProps.status;
-                const time = arg.event.extendedProps.time || '';
-                const title = arg.event.title || '';
+                const eventEl = document.createElement('div');
+                eventEl.className = `fc-custom-event${status === 'completed' ? ' completed-event' : ''}`;
 
+                const dot = document.createElement('span');
+                dot.className = 'fc-custom-event-dot';
+                dot.style.backgroundColor = arg.event.backgroundColor || arg.event.borderColor || 'var(--primary-color)';
+                dot.setAttribute('aria-hidden', 'true');
+
+                const title = document.createElement('span');
+                title.className = 'fc-custom-event-title';
+                title.textContent = arg.event.title || '';
+
+                eventEl.append(dot, title);
                 if (status === 'completed') {
-                    return {
-                        html: `
-                            <div class="fc-custom-event completed-event">
-                                ${time && time !== 'TBD' ? `<strong>${time}</strong> ` : ''}
-                                <span>${title}</span>
-                                <div class="completed-label">✓ Completed</div>
-                            </div>
-                        `
-                    };
+                    const completedLabel = document.createElement('span');
+                    completedLabel.className = 'completed-label';
+                    completedLabel.textContent = 'Completed';
+                    eventEl.appendChild(completedLabel);
                 }
 
-                return {
-                    html: `
-                        <div class="fc-custom-event">
-                            ${time && time !== 'TBD' ? `<strong>${time}</strong> ` : ''}
-                            <span>${title}</span>
-                        </div>
-                    `
-                };
+                return { domNodes: [eventEl] };
             },
 
             selectAllow: function (selectInfo) {

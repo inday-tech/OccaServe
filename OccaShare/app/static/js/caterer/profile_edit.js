@@ -195,16 +195,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const mMainBody = document.getElementById('mockMainBody');
         const mCards = mockup.querySelectorAll('.mock-mini-card, .mock-card-large');
         const mBtn = document.getElementById('mockActionBtn');
+        const radiusLabel = document.getElementById('brandRadiusValue');
 
-        if (mSidebar) mSidebar.style.background = '#ffffff';
-        if (mHeader) mHeader.style.background = '#ffffff';
-        
-        if (mMainBody) mMainBody.className = 'mock-content-body texture-' + (textureSelect?.value || 'none');
+        if (mSidebar) mSidebar.style.background = colors.secondary;
+        if (mHeader) mHeader.style.background = colors.highlight;
+
+        if (mMainBody) {
+            mMainBody.className = 'mock-content-body texture-' + (textureSelect?.value || 'none');
+            mMainBody.style.backgroundColor = colors.highlight;
+        }
         
         mockup.classList.remove('glass-active');
         mockup.style.fontFamily = fontSelect?.value || 'Inter';
         const radius = radiusInput?.value || 12;
         mockup.style.setProperty('--preview-radius', radius + 'px');
+        if (radiusLabel) radiusLabel.textContent = radius;
 
         const sDecor = sidebarDecorSelect?.value || 'none';
         const hDecor = headerDecorSelect?.value || 'none';
@@ -257,7 +262,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (mBtn) mBtn.style.borderRadius = (radius * 0.8) + 'px';
         const mSearch = mockup.querySelector('.mock-search-bar');
         if (mSearch) mSearch.style.borderRadius = radius + 'px';
+
+        mockup.querySelectorAll('.mock-menu-item.active, .mock-stat-mark, .mock-chart span, .mock-preview-list > span > i')
+            .forEach(el => { el.style.backgroundColor = colors.primary; });
+        mockup.querySelectorAll('.mock-mini-card strong, .mock-preview-list b')
+            .forEach(el => { el.style.color = colors.secondary; });
+        const logoPreview = document.getElementById('logoPreviewImg');
+        const mockLogo = document.getElementById('mockLogoImage');
+        if (mockLogo) {
+            mockLogo.src = logoPreview?.style.display !== 'none' ? logoPreview.src : '';
+            mockLogo.style.display = logoPreview?.style.display !== 'none' && logoPreview?.src ? 'block' : 'none';
+        }
     }
+    window.updateBrandPreview = updateMockup;
 
     // Event Listeners for Live Preview
     [fontSelect, radiusInput, textureSelect, sidebarDecorSelect, headerDecorSelect].forEach(el => {
@@ -266,7 +283,7 @@ document.addEventListener('DOMContentLoaded', function () {
         el.addEventListener(evt, () => {
             if (el === radiusInput) document.documentElement.style.setProperty('--border-radius', radiusInput.value + 'px');
             if (el === fontSelect) document.documentElement.style.setProperty('--font-family', fontSelect.value);
-            updateMockup();
+            window.updateBrandPreview?.();
         });
     });
 
@@ -283,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.documentElement.style.setProperty(cssVar, input.value);
             const rgb = hexToRgbGlobal(input.value);
             if (rgb) document.documentElement.style.setProperty(`${cssVar}-rgb`, `${rgb.r}, ${rgb.g}, ${rgb.b}`);
-            updateMockup();
+            window.updateBrandPreview?.();
         });
     });
 
@@ -343,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         const btnOriginalHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        btn.textContent = 'Analyzing...';
         btn.disabled = true;
 
         const processImage = (imgSrc) => {
@@ -773,6 +790,7 @@ window.previewSelectedImage = function(input, type) {
         }
 
         triggerSettingsDirty();
+        if (type === 'logo') window.updateBrandPreview?.();
     };
     reader.readAsDataURL(file);
 };
@@ -809,6 +827,7 @@ window.removeImage = function(type) {
         if (sidebarLogo) {
             sidebarLogo.src = '/static/images/default-avatar.png';
         }
+        window.updateBrandPreview?.();
     }
 
     triggerSettingsDirty();

@@ -669,7 +669,7 @@ window.gm_authFailure = function() {
                     <div class="payment-method-picker">
                         <label for="paymentMethodEditor">Payment method</label>
                         <select id="paymentMethodEditor" class="filter-select-pro" aria-controls="paymentMethodCards">
-                            <option value="" {% if not active_payment_method %}selected{% endif %}>Choose a payment method</option>
+                            <option value="" disabled {% if not active_payment_method %}selected{% endif %}>Choose a payment method</option>
                             <option value="gcash" {% if active_payment_method == 'gcash' %}selected{% endif %}>GCash</option>
                             <option value="maya" {% if active_payment_method == 'maya' %}selected{% endif %}>Maya</option>
                             <option value="bank" {% if active_payment_method == 'bank' %}selected{% endif %}>Bank Transfer</option>
@@ -1285,7 +1285,7 @@ window.gm_authFailure = function() {
             <!-- Section: Brand Colors & Style -->
             <div class="settings-section" id="section-brand">
                 <!-- Profile Media: Business Logo & Cover Image -->
-                <div class="business-details-card" style="margin-bottom: 1.5rem;">
+                <div class="business-details-card brand-media-section" style="margin-bottom: 1.5rem;">
                     <div class="business-details-header">
                         <h4 class="business-details-title">
                             <i class="fas fa-images" style="color: var(--primary-color);"></i> Profile Media &amp; Visual Assets
@@ -1295,16 +1295,17 @@ window.gm_authFailure = function() {
 
                     <div class="branding-grid">
                         <!-- Card A: Business Logo -->
-                        <div class="branding-card">
-                            <div class="branding-card-header">
+                        <details class="branding-card branding-media-dropdown">
+                            <summary class="branding-card-header">
                                 <h5 class="branding-card-title">
-                                    <i class="fas fa-image" style="color: var(--primary-color);"></i> Business Logo
+                                    Business Logo
                                 </h5>
                                 <span id="logoStatusBadge" class="{% if profile.logo_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
                                     {% if profile.logo_url %}<i class="fas fa-check-circle"></i> Saved{% else %}No Logo{% endif %}
                                 </span>
-                            </div>
+                            </summary>
 
+                            <div class="branding-media-content">
                             <div class="logo-preview-box">
                                 <img id="logoPreviewImg" 
                                      src="{{ profile.logo_url if profile.logo_url else '' }}" 
@@ -1333,48 +1334,51 @@ window.gm_authFailure = function() {
                             <div class="branding-helper-text">
                                 Used on your public profile, checkout, and contracts. <span style="font-weight: 600; color: #475569;">Accepted: PNG, JPG, WebP</span>.
                             </div>
-                        </div>
+                            </div>
+                        </details>
 
                         <!-- Card B: Cover Image -->
-                        <div class="branding-card">
-                            <div class="branding-card-header">
+                        <details class="branding-card branding-media-dropdown">
+                            <summary class="branding-card-header">
                                 <h5 class="branding-card-title">
-                                    <i class="fas fa-panorama" style="color: var(--primary-color);"></i> Cover Image
+                                    Cover Image
                                 </h5>
                                 <span id="coverStatusBadge" class="{% if profile.cover_image_url %}status-badge-saved{% else %}status-badge-empty{% endif %}">
                                     {% if profile.cover_image_url %}<i class="fas fa-check-circle"></i> Saved{% else %}No Cover{% endif %}
                                 </span>
-                            </div>
+                            </summary>
 
-                            <div class="cover-preview-box">
-                                <img id="coverPreviewImg" 
-                                     src="{{ profile.cover_image_url if profile.cover_image_url else '' }}" 
-                                     alt="Cover Image" 
-                                     style="width: 100%; height: 100%; object-fit: cover; {% if not profile.cover_image_url %}display: none;{% endif %}"
-                                     onerror="handleImageFallback(this, 'cover')">
-                                <div id="coverPlaceholder" style="text-align: center; color: #94a3b8; font-size: 0.8rem; {% if profile.cover_image_url %}display: none;{% endif %}">
-                                    <i class="fas fa-mountain-sun" style="font-size: 2rem; display: block; margin-bottom: 6px; color: #cbd5e1;"></i>
-                                    Upload Cover Image
+                            <div class="branding-media-content">
+                                <div class="cover-preview-box">
+                                    <img id="coverPreviewImg"
+                                         src="{{ profile.cover_image_url if profile.cover_image_url else '' }}"
+                                         alt="Cover Image"
+                                         style="width: 100%; height: 100%; object-fit: cover; {% if not profile.cover_image_url %}display: none;{% endif %}"
+                                         onerror="handleImageFallback(this, 'cover')">
+                                    <div id="coverPlaceholder" style="text-align: center; color: #94a3b8; font-size: 0.8rem; {% if profile.cover_image_url %}display: none;{% endif %}">
+                                        <i class="fas fa-mountain-sun" style="font-size: 2rem; display: block; margin-bottom: 6px; color: #cbd5e1;"></i>
+                                        Upload Cover Image
+                                    </div>
+                                </div>
+
+                                <div class="branding-actions-row">
+                                    <input type="file" name="cover_image" id="coverFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'cover')">
+                                    <input type="hidden" name="remove_cover_image" id="removeCoverFlag" value="0">
+
+                                    <button type="button" class="btn-media-replace" onclick="document.getElementById('coverFileInput').click()">
+                                        <i class="fas fa-arrow-up-from-bracket"></i> <span id="coverActionText">{% if profile.cover_image_url %}Change / Replace Cover{% else %}Upload Cover{% endif %}</span>
+                                    </button>
+
+                                    <button type="button" id="btnRemoveCover" class="btn-media-remove" onclick="removeImage('cover')" style="display: {% if profile.cover_image_url %}inline-flex{% else %}none{% endif %};">
+                                        <i class="fas fa-trash-can"></i> Remove Cover
+                                    </button>
+                                </div>
+
+                                <div class="branding-helper-text">
+                                    Displayed at the top of your public profile. <span style="font-weight: 600; color: #475569;">Accepted: PNG, JPG, WebP</span>.
                                 </div>
                             </div>
-
-                            <div class="branding-actions-row">
-                                <input type="file" name="cover_image" id="coverFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'cover')">
-                                <input type="hidden" name="remove_cover_image" id="removeCoverFlag" value="0">
-
-                                <button type="button" class="btn-media-replace" onclick="document.getElementById('coverFileInput').click()">
-                                    <i class="fas fa-arrow-up-from-bracket"></i> <span id="coverActionText">{% if profile.cover_image_url %}Change / Replace Cover{% else %}Upload Cover{% endif %}</span>
-                                </button>
-
-                                <button type="button" id="btnRemoveCover" class="btn-media-remove" onclick="removeImage('cover')" style="display: {% if profile.cover_image_url %}inline-flex{% else %}none{% endif %};">
-                                    <i class="fas fa-trash-can"></i> Remove Cover
-                                </button>
-                            </div>
-
-                            <div class="branding-helper-text">
-                                Displayed at the top of your public profile. <span style="font-weight: 600; color: #475569;">Accepted: PNG, JPG, WebP</span>.
-                            </div>
-                        </div>
+                        </details>
                     </div>
                 </div>
 
@@ -1383,21 +1387,20 @@ window.gm_authFailure = function() {
                             <!-- Theme & Colors Section -->
                             <div class="brand-settings-card">
                                 <div class="brand-card-header" style="background: linear-gradient(to right, var(--primary-color), var(--secondary-color)); color: white;">
-                                    <i class="fas fa-wand-magic-sparkles"></i>
                                     <span>Logo AI Color Extraction</span>
                                 </div>
                                 <div class="brand-card-body">
-                                    <p class="field-hint" style="margin-top: 0; margin-bottom: 1.25rem;">Upload your logo and let our AI analyze and apply your brand colors across your entire dashboard automatically.</p>
+                                    <p class="field-hint" style="margin-top: 0; margin-bottom: 0.85rem;">Upload your logo and let our AI analyze and apply your brand colors across your entire dashboard automatically.</p>
                                     <div class="logo-extraction-row">
                                         <div class="form-group" style="flex: 1; margin-bottom: 0;">
                                             <input type="file" name="logo_brand" accept="image/*"
                                                 class="form-file-input logo-input-shared">
                                         </div>
                                         <button type="button" class="magic-extract-btn magic-extract-shared" style="background: var(--secondary-color); pointer-events: auto !important; position: relative; z-index: 999; cursor: pointer;">
-                                            <i class="fas fa-microchip"></i> Analyze & Apply
+                                            Analyze &amp; Apply
                                         </button>
                                     </div>
-                                    <div class="palette-presets-container" style="margin-top: 1.5rem;">
+                                    <div class="palette-presets-container" style="margin-top: 0.9rem;">
                                         <label class="config-sub-label">Recommended Presets</label>
                                         <div class="preset-flex">
                                             <div class="preset-item" data-primary="var(--primary-color)" data-secondary="#2D4059"
@@ -1433,8 +1436,8 @@ window.gm_authFailure = function() {
                                             <label>Primary</label>
                                             <div class="color-input-wrapper">
                                                 <input type="color" name="primary_color"
-                                                    value="{{ profile.primary_color or 'var(--primary-color)' }}">
-                                                <span class="color-code">{{ profile.primary_color or 'var(--primary-color)' }}</span>
+                                                    value="{{ profile.primary_color or '#FF7B54' }}">
+                                                <span class="color-code">{{ profile.primary_color or '#FF7B54' }}</span>
                                             </div>
                                         </div>
                                         <div class="color-control">
@@ -1472,8 +1475,8 @@ window.gm_authFailure = function() {
                                     <span>UI Style & Texture</span>
                                 </div>
                                 <div class="brand-card-body">
-                                    <div class="form-row-two-col" style="gap: 1.5rem; align-items: end;">
-                                        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                    <div class="brand-style-controls">
+                                        <div class="form-group brand-style-field">
                                             <label>Background Texture</label>
                                             <select name="dashboard_texture" class="filter-select-pro">
                                                 <option value="none" {% if profile.dashboard_texture=='none' %}selected{% endif %}>Clean & Solid</option>
@@ -1486,8 +1489,8 @@ window.gm_authFailure = function() {
                                                 <option value="circuit" {% if profile.dashboard_texture=='circuit' %}selected{% endif %}>Digital Circuit</option>
                                             </select>
                                         </div>
-                                        <div class="control-group" style="flex: 1;">
-                                            <label>Corner Radius: {{ profile.border_radius or 12 }}px</label>
+                                        <div class="control-group brand-style-field brand-style-radius">
+                                            <label>Corner Radius: <span id="brandRadiusValue">{{ profile.border_radius or 12 }}</span>px</label>
                                             <input type="range" name="border_radius" min="0" max="24" step="2" 
                                                 value="{{ profile.border_radius or 12 }}" class="pro-range-slider">
                                         </div>
@@ -1521,33 +1524,59 @@ window.gm_authFailure = function() {
                                     <span>Real-time Dashboard Preview</span>
                                 </div>
                                 <div class="brand-card-body">
-                                    <div class="preview-mockup-pro" id="mockupContainer" style="width: 100%; max-width: 500px; margin: 0 auto;">
+                                    <div class="preview-mockup-pro" id="mockupContainer">
                                         <div class="mock-sidebar" id="mockSidebar">
-                                            <div class="mock-logo"></div>
+                                            <div class="mock-logo"><img id="mockLogoImage" alt=""></div>
                                             <div class="mock-menu">
-                                                <div class="mock-menu-item active"></div>
-                                                <div class="mock-menu-item"></div>
-                                                <div class="mock-menu-item"></div>
+                                                <div class="mock-menu-item active"><span></span></div>
+                                                <div class="mock-menu-item"><span></span></div>
+                                                <div class="mock-menu-item"><span></span></div>
+                                                <div class="mock-menu-item"><span></span></div>
                                             </div>
                                         </div>
                                         <div class="mock-main-area">
-                                            <div class="mock-header" id="mockHeader"></div>
+                                            <div class="mock-header" id="mockHeader">
+                                                <span class="mock-header-title">Business Overview</span>
+                                                <span class="mock-avatar"></span>
+                                            </div>
                                             <div class="mock-content-body" id="mockMainBody">
+                                                <div class="mock-welcome">
+                                                    <div>
+                                                        <strong>Welcome back!</strong>
+                                                        <span>Your business at a glance</span>
+                                                    </div>
+                                                    <div class="mock-btn-pro" id="mockActionBtn">New booking</div>
+                                                </div>
                                                 <div class="mock-stats-row">
-                                                    <div class="mock-mini-card"></div>
-                                                    <div class="mock-mini-card"></div>
+                                                    <div class="mock-mini-card">
+                                                        <span>Total bookings</span>
+                                                        <strong>128</strong>
+                                                        <i class="mock-stat-mark"></i>
+                                                    </div>
+                                                    <div class="mock-mini-card">
+                                                        <span>Revenue</span>
+                                                        <strong>₱86,400</strong>
+                                                        <i class="mock-stat-mark"></i>
+                                                    </div>
                                                 </div>
                                                 <div class="mock-card-large" id="mockLargeCard">
-                                                    <div class="mock-btn-pro" id="mockActionBtn">Action</div>
-                                                    <div class="mock-line"></div>
-                                                    <div class="mock-line" style="width: 60%;"></div>
+                                                    <div class="mock-preview-card-heading">
+                                                        <strong>Revenue performance</strong>
+                                                        <span>This month</span>
+                                                    </div>
+                                                    <div class="mock-chart">
+                                                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                                                    </div>
+                                                    <div class="mock-preview-list">
+                                                        <span><i></i> Upcoming event</span>
+                                                        <b>₱12,500</b>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="preview-info" style="margin-top: 1rem; text-align: center;">
-                                        <i class="fas fa-circle-info"></i>
-                                        <span>Changes apply instantly to your entire portal upon saving.</span>
+                                    <div class="preview-info">
+                                        <span>Preview updates as you change brand colors, texture, typography, and corner radius. Save Changes to publish.</span>
                                     </div>
                                 </div>
                             </div>
@@ -1634,7 +1663,6 @@ window.gm_authFailure = function() {
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">ID Type <span style="color: #ef4444;">*</span></label>
                                         <select id="verif_id_type" class="form-control" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;">
-                                            <option value="National ID">National ID</option>
                                             <option value="Driver's License">Driver's License</option>
                                             <option value="Passport">Passport</option>
                                             <option value="UMID">UMID</option>
@@ -1971,8 +1999,8 @@ window.gm_authFailure = function() {
             <!-- End Section: Verification -->
 
             <!-- Sticky Bottom Action Bar -->
-            <div class="sticky-settings-action-bar">
-                <div class="action-bar-buttons" style="margin-left: auto;">
+            <div class="sticky-settings-action-bar settings-form-footer">
+                <div class="action-bar-buttons settings-form-footer-buttons">
                     <a href="/caterer/dashboard" class="btn-bar-cancel">Cancel</a>
                     <button type="submit" id="btnSaveAllSettings" class="btn-bar-save">
                         <i class="fas fa-floppy-disk"></i> <span>Save Changes</span>
