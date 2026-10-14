@@ -985,6 +985,8 @@ async def flag_caterer(
         caterer.user.status = "investigation"
         caterer.user.status_reason = reason
         caterer.verification_status = "Pending"
+        caterer.account_status = "RESTRICTED"
+        caterer.status = "Unpublished"
         
         # Log Audit
         audit = models.AuditLog(
@@ -1497,6 +1499,8 @@ async def approve_caterer(
     if not caterer: return {"success": False, "message": "Caterer not found"}
     caterer.verification_status = "Verified"
     caterer.account_status = "Active"
+    if caterer.status == "Published":
+        caterer.status = "Unpublished"
     
     audit = models.AuditLog(user_id=caterer.user_id, action="caterer_approved", notes=f"Admin {admin.first_name} verified caterer account.")
     db.add(audit)
@@ -1513,6 +1517,8 @@ async def reject_caterer(
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer: return {"success": False, "message": "Caterer not found"}
     caterer.verification_status = "Rejected"
+    caterer.account_status = "RESTRICTED"
+    caterer.status = "Unpublished"
     
     audit = models.AuditLog(user_id=caterer.user_id, action="caterer_rejected", notes=f"Admin {admin.first_name} rejected caterer application. Reason: {reason}")
     db.add(audit)
@@ -1654,6 +1660,7 @@ def verify_caterer(
     if action == "approve":
         caterer.verification_status = "Verified"
         caterer.is_verified = True
+        caterer.account_status = "Active"
         # Explicitly activate the associated user account and clear all barriers
         if caterer.user_id:
             caterer_user = db.query(models.User).get(caterer.user_id)
@@ -1664,11 +1671,15 @@ def verify_caterer(
     elif action == "reject":
         caterer.verification_status = "Rejected"
         caterer.is_verified = False
+        caterer.account_status = "RESTRICTED"
+        caterer.status = "Unpublished"
         # Optional: Store rejection reason if we added a field for it, 
         # or send a notification/email to the caterer.
     elif action == "revision":
         caterer.verification_status = "Revision Requested"
         caterer.is_verified = False
+        caterer.account_status = "RESTRICTED"
+        caterer.status = "Unpublished"
     
     db.commit()
     
@@ -2590,6 +2601,9 @@ async def kyc_manual_action(
         # If caterer, also update profile status
         if target_user.role == "caterer" and target_user.caterer_profile:
             target_user.caterer_profile.verification_status = "Verified"
+            target_user.caterer_profile.account_status = "Active"
+            if target_user.caterer_profile.status == "Published":
+                target_user.caterer_profile.status = "Unpublished"
             if target_user.caterer_profile.permit_url:
                 target_user.caterer_profile.permit_status = "Verified"
             
@@ -2603,6 +2617,7 @@ async def kyc_manual_action(
         
         if target_user.role == "caterer" and target_user.caterer_profile:
             target_user.caterer_profile.verification_status = "Rejected"
+            target_user.caterer_profile.status = "Unpublished"
             if target_user.caterer_profile.permit_url:
                 target_user.caterer_profile.permit_status = "Rejected"
             
@@ -3756,13 +3771,17 @@ async def kyc_manual_action(
             cat_prof.verification_status = "Verified"
             cat_prof.is_verified = True
             cat_prof.account_status = "Active"
+            if cat_prof.status == "Published":
+                cat_prof.status = "Unpublished"
             target_user.is_verified = True
         elif action == "resubmit":
             cat_prof.verification_status = "Pending"
             cat_prof.is_verified = False
+            cat_prof.status = "Unpublished"
         else:
             cat_prof.verification_status = "Rejected"
             cat_prof.is_verified = False
+            cat_prof.status = "Unpublished"
             
         # Update specific CatererVerification record if it exists
         latest_caterer_ver = db.query(models.CatererVerification).filter_by(caterer_id=cat_prof.id).order_by(models.CatererVerification.id.desc()).first()
@@ -4184,6 +4203,8 @@ async def submit_caterer_review(
             profile.permit_status = "Verified"
     else:
         profile.is_verified = False
+        if profile.status == "Published":
+            profile.status = "Unpublished"
         if profile.user:
             profile.user.is_verified = False
             profile.user.is_kyc_complete = False

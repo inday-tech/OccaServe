@@ -411,13 +411,13 @@
                     </div>
 
                     <div class="dp-selector-clean">
-                        {% set dp_options = [30, 40, 50, 60, 70, 80, 90, 100] %}
-                        {% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent in dp_options else 30 %}
+                        {% set dp_options = (booking.caterer.accepted_payment_terms or [30])|map('int')|list %}
+                        {% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent in dp_options else dp_options[0] %}
                         <label for="dp-percent-select" class="fin-label-bold" style="display:block; margin-bottom:.5rem;">Deposit percentage</label>
                         <select id="dp-percent-select" class="control-pro dp-percent-select" onchange="setDPTier(parseInt(this.value, 10))" {% if quotation.customer_signature or quotation.caterer_signature %}disabled{% endif %}>
                             {% for term in dp_options %}
                             <option value="{{ term }}" {% if initial_term|int == term %}selected{% endif %}>
-                                {% if term == 100 %}100% &mdash; Full payment{% else %}{{ term }}% &mdash; Pay remaining balance by event date{% endif %}
+                                {% if term == 100 %}100% - Full payment{% else %}{{ term }}% - Deposit, balance due by event date{% endif %}
                             </option>
                             {% endfor %}
                         </select>

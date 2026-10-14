@@ -131,6 +131,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS city_code VARCHAR",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS brgy_code VARCHAR",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS address_details TEXT",
+        "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS custom_payment_details JSONB",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS team_size INTEGER DEFAULT 1",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS min_pax INTEGER DEFAULT 0",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS latitude FLOAT",

@@ -109,6 +109,7 @@ class CatererProfile(Base):
     payout_method = Column(String, nullable=True) # General field (legacy/fallback)
     payout_account_name = Column(String, nullable=True) # General field (legacy/fallback)
     payout_account_number = Column(String, nullable=True) # General field (legacy/fallback)
+    custom_payment_details = Column(JSONB, nullable=True)
 
     # Expanded Payout Fields
     gcash_number = Column(String, nullable=True)

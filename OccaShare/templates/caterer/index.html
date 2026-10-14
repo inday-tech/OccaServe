@@ -17,8 +17,9 @@
         <div class="dash-greeting-row">
             <div class="greeting-text">
                 <h1 class="dashboard-greeting-title">Welcome, {{ user.first_name }}.</h1>
-                <p>Here's what needs your attention today.</p>
+                <p>{% if listing_is_live %}Here's what needs your attention today.{% else %}Complete your setup to make your profile visible to customers.{% endif %}</p>
             </div>
+            {% if listing_is_live %}
             <div class="quick-actions-dropdown">
                 <button class="btn-quick-dropdown-toggle" id="quickActionsDropdownBtn" type="button"
                     onclick="window.toggleQuickActionsMenu(event)" aria-expanded="false" aria-controls="quickActionsMenu">
@@ -30,95 +31,43 @@
                     <a href="/caterer/packages" class="dropdown-item"><i class="fas fa-box-open" aria-hidden="true"></i><span>Create Package</span></a>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 
-    {% if profile.status != 'Published' %}
-    {% set verification_pending = (profile.verification_status or '')|lower in ['pending', 'pending review', 'submitted', 'under review'] %}
-    {% set onboarding_step = 1 if not is_identity_verified else (2 if not has_description else 3) %}
-    <section class="onboarding-panel" id="onboarding" aria-labelledby="onboarding-title">
+    {% if not listing_is_live %}
+    <section class="onboarding-panel" id="onboarding" aria-labelledby="onboarding-title" data-publish-ready="{{ 'true' if can_publish else 'false' }}" data-profile-id="{{ profile.id }}" data-profile-status="{{ profile.status or 'Draft' }}">
         <div class="onboarding-intro">
-            <span class="onboarding-eyebrow"><i class="fas fa-store"></i> Your caterer setup</span>
-            <h2 id="onboarding-title">Letâ€™s get your business ready for customers</h2>
-            <p>Follow these steps to get verified and publish your profile. Your dashboard tools will appear here once your listing is live.</p>
+            <span class="onboarding-eyebrow"><i class="fas fa-store"></i> Profile setup</span>
+            <h2 id="onboarding-title">Prepare your profile for customers</h2>
+            <p>Complete the important setup items below. Each link takes you directly to the page you need.</p>
         </div>
         <div class="onboarding-progress" role="status">
-            <div><strong>Step {{ onboarding_step }} of 3</strong><span>{% if not is_identity_verified %}Identity verification{% elif not has_description %}Complete your profile{% else %}Ready to publish{% endif %}</span></div>
-            <div class="onboarding-progress-track"><span style="width: {{ (onboarding_step / 3 * 100)|int }}%"></span></div>
+            <div><strong>{{ setup_completed_count }} of {{ setup_total_count }} complete</strong><span>{% if can_publish %}Everything is ready. Review and confirm to publish.{% else %}Your profile stays private until every required item is complete.{% endif %}</span></div>
+            <div class="onboarding-progress-track"><span style="width: {{ completion_percentage }}%"></span></div>
         </div>
         <ol class="onboarding-steps">
-            <li class="onboarding-step {{ 'is-done' if is_identity_verified }} {{ 'is-current' if not is_identity_verified }}">
-                <span class="onboarding-step-number">{% if is_identity_verified %}<i class="fas fa-check"></i>{% else %}1{% endif %}</span>
-                <div class="onboarding-step-copy"><h3>Verify your business identity</h3>
-                    <p>{% if is_identity_verified %}Your identity has been verified.{% elif verification_pending %}Your documents are under review. You can check or update them in Business Settings.{% else %}Upload a valid ID and the requested business documents so our team can review your account.{% endif %}</p>
-                    {% if not is_identity_verified and not verification_pending %}<a class="onboarding-action" href="/caterer/profile#section-verification">Upload verification documents <i class="fas fa-arrow-right"></i></a>{% elif verification_pending %}<a class="onboarding-action onboarding-action-secondary" href="/caterer/profile#section-verification">Check verification status <i class="fas fa-arrow-right"></i></a>{% endif %}
+            {% for item in setup_requirements %}
+            <li class="onboarding-step {{ 'is-done' if item.complete }} {{ 'is-pending' if item.pending }}">
+                <span class="onboarding-step-number">{% if item.complete %}<i class="fas fa-check"></i>{% elif item.pending %}<i class="fas fa-clock"></i>{% else %}{{ loop.index }}{% endif %}</span>
+                <div class="onboarding-step-copy">
+                    <h3>{{ item.title }}</h3>
+                    <p>{% if item.pending %}Your documents are with the review team. Publishing will unlock after approval.{% elif item.complete %}Complete.{% else %}{{ item.description }}{% endif %}</p>
+                    {% if not item.complete %}<a class="onboarding-action {{ 'onboarding-action-secondary' if item.pending }}" href="{{ item.url }}">{{ item.action }} <i class="fas fa-arrow-right"></i></a>{% endif %}
                 </div>
-                <span class="onboarding-step-status">{% if is_identity_verified %}Done{% elif verification_pending %}In review{% else %}Required{% endif %}</span>
+                <span class="onboarding-step-status">{% if item.complete %}Done{% elif item.pending %}Under review{% else %}To do{% endif %}</span>
             </li>
-            <li class="onboarding-step {{ 'is-done' if has_description }} {{ 'is-current' if is_identity_verified and not has_description }}">
-                <span class="onboarding-step-number">{% if has_description %}<i class="fas fa-check"></i>{% else %}2{% endif %}</span>
-                <div class="onboarding-step-copy"><h3>Complete your public profile</h3>
-                    <p>{% if has_description %}Your business description is ready. Add a logo, cover photo, services, and packages to help customers choose you.{% else %}Add a business description. Customers will see it when your profile is published.{% endif %}</p>
-                    {% if not has_description %}<a class="onboarding-action {{ 'onboarding-action-secondary' if not is_identity_verified }}" href="/caterer/profile#section-general">Add business description <i class="fas fa-arrow-right"></i></a>{% endif %}
-                </div>
-                <span class="onboarding-step-status">{% if has_description %}Done{% else %}Required{% endif %}</span>
-            </li>
-            <li class="onboarding-step {{ 'is-current' if is_identity_verified and has_description }}">
-                <span class="onboarding-step-number">3</span>
-                <div class="onboarding-step-copy"><h3>Publish your profile</h3>
-                    <p>Once verification is approved and your description is added, publish your listing so customers can find and view your profile.</p>
-                    {% if can_publish %}<button type="button" class="onboarding-action onboarding-publish-button" onclick="window.toggleCatererPublish(this)">Publish my profile <i class="fas fa-arrow-right"></i></button>{% else %}<span class="onboarding-locked"><i class="fas fa-lock"></i> Complete steps 1 and 2 to unlock publishing</span>{% endif %}
-                </div>
-                <span class="onboarding-step-status">{% if can_publish %}Ready{% else %}Locked{% endif %}</span>
-            </li>
+            {% endfor %}
         </ol>
-        <a class="onboarding-help-link" href="/caterer/profile">Open Business Settings <i class="fas fa-arrow-right"></i></a>
+        <div class="onboarding-publish-row">
+            <button type="button" class="onboarding-action onboarding-publish-button" onclick="window.toggleCatererPublish(this)" {% if not can_publish %}disabled aria-disabled="true" title="Complete all setup items to enable publishing"{% endif %}>
+                <i class="fas fa-rocket"></i> Publish to customers
+            </button>
+            {% if not can_publish %}<span class="onboarding-locked"><i class="fas fa-lock"></i> Publishing unlocks when all items above are complete.</span>{% endif %}
+        </div>
+        <a class="onboarding-help-link" href="/caterer/profile">Go to Business Settings <i class="fas fa-arrow-right"></i></a>
     </section>
     {% else %}
-    <!-- Complete Your Business Listing Progress Bar -->
-    <div class="dash-card-clean" style="padding: 1rem 1.25rem; background: #ffffff;">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <div
-                    style="position: relative; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <svg style="width: 48px; height: 48px; transform: rotate(-90deg);" viewBox="0 0 48 48">
-                        <circle cx="24" cy="24" r="19" stroke="#f1f5f9" stroke-width="4.5" fill="transparent" />
-                        <circle cx="24" cy="24" r="19" stroke="var(--primary-color)" stroke-width="4.5" fill="transparent"
-                            stroke-dasharray="119.3"
-                            stroke-dashoffset="{{ 119.3 - (119.3 * (completion_percentage or 0) / 100) }}"
-                            stroke-linecap="round" style="transition: stroke-dashoffset 0.8s ease;" />
-                    </svg>
-                    <span style="position: absolute; font-size: 0.82rem; font-weight: 900; color: #0f172a;">{{
-                        completion_percentage or 0 }}%</span>
-                </div>
-                <div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 2px;">
-                        <h2 style="margin: 0; font-size: 0.98rem; font-weight: 800; color: #0f172a;">Complete Your
-                            Business Listing</h2>
-                        <span
-                            style="background: #fee2e2; color: #b91c1c; font-size: 0.62rem; font-weight: 800; padding: 1px 6px; border-radius: 99px; text-transform: uppercase;">OFFLINE</span>
-                    </div>
-                    <p style="margin: 0; font-size: 0.78rem; color: #64748b;">Complete required setup steps to publish
-                        your services online.</p>
-                </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <a href="/caterer/profile#general" class="btn-secondary-pro"
-                    style="padding: 0.3rem 0.75rem; font-size: 0.75rem; font-weight: 700;">Edit Profile &rarr;</a>
-                <label class="publish-switch"
-                    style="position: relative; display: inline-block; width: 40px; height: 20px; margin: 0; cursor: pointer;">
-                    <input type="checkbox" id="mainPublishToggle" {% if profile.status=='Published' %}checked{% endif %}
-                        onchange="window.toggleCatererPublish(this)" style="opacity: 0; width: 0; height: 0;">
-                    <span class="publish-slider"
-                        style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: {% if profile.status == 'Published' %}#10b981{% else %}#cbd5e1{% endif %}; transition: .3s; border-radius: 34px;">
-                        <span
-                            style="position: absolute; content: ''; height: 14px; width: 14px; left: {% if profile.status == 'Published' %}22px{% else %}3px{% endif %}; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%;"></span>
-                    </span>
-                </label>
-            </div>
-        </div>
-    </div>
-    {% endif %}
     <!-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <!-- 2. TODAY'S BUSINESS SNAPSHOT (5 EQUAL METRIC CARDS + QA)    -->
     <!-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
@@ -161,7 +110,6 @@
             </div>
         </div>
     </div>
-    {% endif %}
     <!-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
     <!-- 3. ACTION CENTER (URGENT NOTIFICATIONS & ALERTS)            -->
     <!-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
@@ -313,11 +261,11 @@
         </div>
     </div>
 
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
-    {% endif %}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
 <script>
     // Global Quick Actions Dropdown Toggle Function
@@ -342,6 +290,22 @@
 
     // Mini Calendar & Search Initialization
     document.addEventListener('DOMContentLoaded', function () {
+        const setupPanel = document.getElementById('onboarding');
+        if (setupPanel?.dataset.publishReady === 'true' && setupPanel.dataset.profileStatus !== 'Unpublished') {
+            const promptKey = `caterer-publish-prompt-shown-${setupPanel.dataset.profileId}`;
+            try {
+                if (!localStorage.getItem(promptKey)) {
+                    localStorage.setItem(promptKey, 'shown');
+                    const publishButton = setupPanel.querySelector('.onboarding-publish-button');
+                    window.setTimeout(() => window.toggleCatererPublish?.(publishButton), 400);
+                }
+            } catch (error) {
+                console.warn('Could not store the one-time publish prompt state.', error);
+                const publishButton = setupPanel.querySelector('.onboarding-publish-button');
+                window.setTimeout(() => window.toggleCatererPublish?.(publishButton), 400);
+            }
+        }
+
         var calendarEl = document.getElementById('miniCalendar');
         if (calendarEl) {
             var calendar = new FullCalendar.Calendar(calendarEl, {

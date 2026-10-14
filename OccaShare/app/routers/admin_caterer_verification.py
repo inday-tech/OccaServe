@@ -136,6 +136,8 @@ async def api_review_verification(
         caterer.verification_status = "Verified"
         caterer.account_status = "Active"
         caterer.is_verified = True
+        if caterer.status == "Published":
+            caterer.status = "Unpublished"
         if caterer.user:
             caterer.user.is_verified = True
         audit_action = "Approved Verification"
@@ -157,6 +159,7 @@ async def api_review_verification(
         verification.rejection_reason = reason
         caterer.verification_status = "REJECTED"
         caterer.account_status = "RESTRICTED"
+        caterer.status = "Unpublished"
         audit_action = "Rejected Verification"
         
     elif action == "resubmit":
@@ -164,6 +167,7 @@ async def api_review_verification(
         verification.rejection_reason = reason
         caterer.verification_status = "RESUBMISSION_REQUIRED"
         caterer.account_status = "RESTRICTED"
+        caterer.status = "Unpublished"
         audit_action = "Requested Resubmission"
         
     verification.reviewed_by = admin.id
@@ -214,6 +218,7 @@ async def cron_check_permit_expiration(db: Session = Depends(database.get_db)):
         # Update statuses
         caterer.account_status = 'RESTRICTED'
         caterer.verification_status = 'EXPIRED'
+        caterer.status = 'Unpublished'
         
         # Send notification
         if caterer.user_id:

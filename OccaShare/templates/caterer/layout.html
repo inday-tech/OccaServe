@@ -253,6 +253,31 @@
             margin-left: 0 !important;
         }
 
+        .caterer-page-history {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            flex-wrap: nowrap;
+            min-width: 0;
+            overflow-x: auto;
+            margin: 0 0 .8rem;
+            color: #718096;
+            font-size: .78rem;
+            font-weight: 650;
+            white-space: nowrap;
+            scrollbar-width: none;
+        }
+        .caterer-page-history::-webkit-scrollbar { display: none; }
+        .caterer-page-history a { display: inline-flex; align-items: center; gap: .4rem; color: #526174; text-decoration: none; }
+        .caterer-page-history a:hover,
+        .caterer-page-history a:focus-visible { color: var(--primary-color, #9f343d); }
+        .caterer-page-history [aria-current="page"] { color: #27364a; }
+        .caterer-page-history-separator { flex: 0 0 auto; color: #a0a9b6; font-size: .62rem; }
+        @media (max-width: 600px) {
+            .main-content { padding: 1rem .75rem !important; }
+            .caterer-page-history { gap: .45rem; margin-bottom: .65rem; font-size: .73rem; }
+        }
+
         .caterer-business-name {
             font-size: var(--text-sm) !important;
             font-weight: 700 !important;
@@ -911,12 +936,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem 1rem;
+            padding: 1rem;
             border-bottom: 1px solid #f1f5f9;
             flex-shrink: 0;
             text-align: center;
             position: relative;
-            min-height: 80px;
+            min-height: 68px;
         }
 
         .brand-info {
@@ -972,15 +997,25 @@
 
         /* IDENTITY CARD */
         .sidebar-admin-card {
-            margin: 1rem 1rem 0.5rem;
+            margin: 0.65rem 0.75rem 0.4rem;
             background: #f8fafc;
             border: 1px solid #f1f5f9;
             border-radius: var(--border-radius, 12px);
-            padding: 0.85rem 1rem;
+            padding: 0.65rem 0.75rem;
             display: flex;
             align-items: center;
             gap: 10px;
             flex-shrink: 0;
+            color: inherit;
+            text-decoration: none;
+            transition: background .18s ease, border-color .18s ease;
+        }
+
+        .sidebar-admin-card:hover,
+        .sidebar-admin-card:focus-visible {
+            background: #f1f5f9;
+            border-color: #dbe3ed;
+            outline: none;
         }
 
         .admin-avatar {
@@ -1039,7 +1074,7 @@
         .sidebar-nav {
             flex: 1;
             overflow-y: auto;
-            padding: 0.75rem 0.75rem;
+            padding: 0.45rem 0.65rem;
             scrollbar-width: none;
         }
 
@@ -1054,7 +1089,7 @@
             text-transform: uppercase;
             letter-spacing: 0.1em;
             color: #94a3b8;
-            padding: 1.25rem 0.75rem 0.5rem;
+            padding: 0.85rem 0.75rem 0.35rem;
             opacity: 0.8;
         }
 
@@ -1068,7 +1103,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 0.75rem 1rem;
+            padding: 0.6rem 0.8rem;
             border-radius: var(--border-radius, 10px);
             color: #64748b;
             text-decoration: none;
@@ -1114,15 +1149,57 @@
 
         .sidebar-is-mini .brand-text-label,
         .sidebar-is-mini .nav-label,
-        .sidebar-is-mini .sidebar-admin-card,
         .sidebar-is-mini .nav-section-label,
-        .sidebar-is-mini .sidebar-footer {
+        .sidebar-is-mini .admin-identity {
             display: none !important;
         }
 
         .sidebar-is-mini .sidebar-brand {
-            padding: 1.25rem 0;
-            min-height: auto;
+            min-height: 58px;
+            padding: 0.5rem 0.35rem;
+            gap: 0.35rem;
+        }
+
+        .sidebar-is-mini .sidebar-admin-card {
+            display: flex;
+            align-self: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            box-sizing: border-box;
+            margin: 0.55rem auto 0.35rem;
+            padding: 3px;
+            border-radius: 12px;
+            background: #f8fafc;
+        }
+
+        .sidebar-is-mini .admin-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+        }
+
+        .sidebar-is-mini .admin-status-dot { width: 9px; height: 9px; }
+
+        .sidebar-is-mini .sidebar-nav { padding: 0.35rem 0.25rem; }
+
+        .sidebar-is-mini .nav-item {
+            box-sizing: border-box;
+            width: 44px;
+            height: 44px;
+            justify-content: center;
+            gap: 0;
+            margin: 0 auto 4px;
+            padding: 0;
+            border-radius: 11px;
+        }
+
+        .sidebar-is-mini .nav-icon {
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1;
         }
 
         .sidebar-is-mini .sidebar-collapse-btn {
@@ -1218,8 +1295,7 @@
 
         /* SIDEBAR FOOTER & LOGOUT */
         .sidebar-footer {
-            padding: 1rem 0.75rem 2rem 0.75rem;
-            /* Added extra bottom padding */
+            padding: 0.65rem 0.65rem 0.8rem;
             border-top: 1px solid #f1f5f9;
             flex-shrink: 0;
             background: #fff;
@@ -1233,12 +1309,28 @@
         }
 
         .sidebar-is-mini .sidebar-footer {
-            padding: 1rem 0.5rem;
+            display: block !important;
+            padding: 0.5rem 0.25rem 0.65rem;
         }
 
         .sidebar-is-mini .logout-link {
             justify-content: center;
-            padding: 0.85rem 0;
+            width: 44px;
+            height: 44px;
+            margin: 0 auto !important;
+            padding: 0;
+            border-radius: 11px;
+        }
+
+        .sidebar-is-mini .logout-link .nav-icon {
+            width: 22px;
+            height: 22px;
+            color: inherit;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar-is-mini .sidebar-admin-card { display: flex; }
+            .sidebar-is-mini .sidebar-footer { display: block !important; }
         }
 
         /* =========================================
@@ -1642,7 +1734,7 @@
             </div>
 
             <!-- Caterer Identity Card -->
-            <div class="sidebar-admin-card">
+            <a href="/caterer/profile" class="sidebar-admin-card" title="Business Settings and profile" aria-label="Open caterer profile and Business Settings">
                 <div class="admin-avatar">
                     {% if user and user.caterer_profile and user.caterer_profile.logo_url %}
                     <img src="{{ '/' ~ user.caterer_profile.logo_url if not user.caterer_profile.logo_url.startswith('http') and not user.caterer_profile.logo_url.startswith('/') and not user.caterer_profile.logo_url.startswith('data:') else user.caterer_profile.logo_url }}"
@@ -1657,13 +1749,18 @@
                 <div class="admin-identity">
                     <span class="admin-name">{{ user.caterer_profile.business_name if user and user.caterer_profile else
                         'Business Name' }}</span>
-                    {% if user and user.caterer_profile and user.caterer_profile.verification_status == 'Verified' %}
+                    {% set nav_verification_status = ((user.caterer_profile.verification_status or 'Not Submitted')|lower|replace('_', ' ')|replace('-', ' ')) if user and user.caterer_profile else 'not submitted' %}
+                    {% if nav_verification_status in ['verified', 'approved'] %}
                     <span class="admin-rank"><i class="fas fa-certificate"></i> Verified Partner</span>
-                    {% else %}
+                    {% elif nav_verification_status in ['pending', 'pending review', 'submitted', 'under review', 'pending manual review'] %}
                     <span class="admin-rank" style="color: #f39c12;"><i class="fas fa-clock"></i> Pending Review</span>
+                    {% elif nav_verification_status in ['rejected', 'resubmission required', 'requires revision'] %}
+                    <span class="admin-rank" style="color: #dc2626;"><i class="fas fa-exclamation-circle"></i> Action Required</span>
+                    {% else %}
+                    <span class="admin-rank" style="color: #64748b;"><i class="fas fa-circle-info"></i> Verification Needed</span>
                     {% endif %}
                 </div>
-            </div>
+            </a>
 
             <!-- Navigation Hub -->
             <nav class="sidebar-nav">
@@ -1675,8 +1772,15 @@
                             <span class="nav-label">Dashboard</span>
                         </a>
                     </li>
+                    <li>
+                        <a href="/caterer/services?tab=packages" class="nav-item {{ 'active' if active_page == 'services' }}">
+                            <div class="nav-icon"><i class="fas fa-box-open"></i></div>
+                            <span class="nav-label">Packages</span>
+                        </a>
+                    </li>
                 </ul>
 
+                {% if not user.caterer_profile or user.caterer_profile.status == 'Published' %}
                 <span class="nav-section-label">Operations</span>
                 <ul class="nav-list">
                     <li>
@@ -1689,12 +1793,6 @@
                         <a href="/caterer/calendar" class="nav-item {{ 'active' if active_page == 'calendar' }}">
                             <div class="nav-icon"><i class="fas fa-calendar-alt"></i></div>
                             <span class="nav-label">Calendar</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="/caterer/services" class="nav-item {{ 'active' if active_page == 'services' }}">
-                            <div class="nav-icon"><i class="fas fa-concierge-bell"></i></div>
-                            <span class="nav-label">Services</span>
                         </a>
                     </li>
                     <li>
@@ -1733,6 +1831,7 @@
                     </li>
 
                 </ul>
+                {% endif %}
 
                 <span class="nav-section-label">System</span>
                 <ul class="nav-list">
@@ -1742,12 +1841,12 @@
                             <span class="nav-label">Business Settings</span>
                         </a>
                     </li>
-                    <li>
+                    {% if not user.caterer_profile or user.caterer_profile.status == 'Published' %}<li>
                         <a href="/caterer/archives" class="nav-item {{ 'active' if active_page == 'archives' }}">
                             <div class="nav-icon"><i class="fas fa-archive"></i></div>
                             <span class="nav-label">Archives</span>
                         </a>
-                    </li>
+                    </li>{% endif %}
                 </ul>
             </nav>
 
@@ -2031,18 +2130,8 @@
 
             <!-- Main Content Area -->
             <main class="main-content">
-                {% if user and user.caterer_profile and user.caterer_profile.verification_status != 'Verified' and
-                active_page != 'dashboard' and active_page != 'settings' %}
-                <div class="unverified-banner"
-                    style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px 20px; border-radius: var(--border-radius, 8px); margin-bottom: 20px; display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 1.2rem; color: #dc2626; margin-top: 3px;"></i>
-                    <div style="flex: 1; min-width: 200px;">
-                        <strong style="display: block; font-size: 0.95rem; margin-bottom: 2px;">Account Verification Required</strong>
-                        <span style="font-size: 0.85rem;">Your account is currently unverified. Your profile is hidden from the public and you cannot receive bookings.</span>
-                    </div>
-                    <a href="/caterer/profile" class="btn-primary-pro"
-                        style="background: #ef4444; border-color: #ef4444; color: white; padding: 6px 14px; font-size: 0.8rem; text-decoration: none; border-radius: 6px; flex-shrink: 0; box-shadow: none; white-space: nowrap; height: fit-content; align-self: center;">Verify Account</a>
-                </div>
+                {% if active_page not in ['dashboard', 'settings'] %}
+                <nav class="caterer-page-history" id="catererHistoryTrail" aria-label="Breadcrumb"></nav>
                 {% endif %}
                 {% block content %}{% endblock %}
             </main>
@@ -2727,15 +2816,33 @@
     </script>
     <script>
         window.toggleCatererPublish = async function(btn) {
-            const isCheckbox = btn && btn.type === 'checkbox';
-            const origChecked = isCheckbox ? !btn.checked : false;
-            const origHtml = (!isCheckbox && btn) ? btn.innerHTML : '';
-            
+            if (btn?.disabled) return;
+            const isUnpublishing = Boolean(btn?.classList.contains('is-published') || btn?.textContent.toLowerCase().includes('unpublish'));
+            const originalHtml = btn ? btn.innerHTML : '';
+            let confirmed = false;
+            if (typeof Swal !== 'undefined') {
+                const result = await Swal.fire({
+                    title: isUnpublishing ? 'Unpublish your profile?' : 'Publish your profile to customers?',
+                    text: isUnpublishing
+                        ? 'Customers will no longer be able to find or book your profile.'
+                        : 'Your business details, location, package, payment options, and booking policies will be visible to customers.',
+                    icon: isUnpublishing ? 'warning' : 'question',
+                    showCancelButton: true,
+                    confirmButtonText: isUnpublishing ? 'Unpublish profile' : 'Publish profile',
+                    cancelButtonText: 'Review first',
+                    confirmButtonColor: isUnpublishing ? '#64748b' : '#9f343d',
+                });
+                confirmed = result.isConfirmed;
+            } else {
+                confirmed = window.confirm(isUnpublishing
+                    ? 'Unpublish your profile from customers?'
+                    : 'Publish your profile to customers?');
+            }
+            if (!confirmed) return;
+
             if (btn) {
                 btn.disabled = true;
-                if (!isCheckbox) {
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-                }
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             }
             try {
                 const res = await fetch('/caterer/toggle-publish', {
@@ -2744,38 +2851,102 @@
                 });
                 const data = await res.json();
                 if (res.ok && data.success) {
-                    Swal.fire({
-                        title: data.status === 'Published' ? 'Listing Published!' : 'Listing Unpublished',
-                        text: data.message,
-                        icon: 'success',
-                        timer: 1800,
-                        showConfirmButton: false
-                    }).then(() => {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: data.status === 'Published' ? 'Listing Published!' : 'Listing Unpublished',
+                            text: data.message,
+                            icon: 'success',
+                            confirmButtonText: 'Continue'
+                        }).then(() => window.location.reload());
+                    } else {
+                        window.alert(data.message);
                         window.location.reload();
-                    });
+                    }
                 } else {
-                    if (isCheckbox) btn.checked = origChecked;
-                    Swal.fire({
-                        title: 'Unable to Publish',
-                        text: data.message || 'Please complete all required profile details.',
+                    const requirements = data.requirements || [];
+                    const result = typeof Swal !== 'undefined' ? await Swal.fire({
+                        title: 'Finish profile setup first',
+                        text: requirements.length
+                            ? `${data.message || 'Complete these items:'} ${requirements.map(item => item.title).join(', ')}`
+                            : (data.message || 'Please complete all required profile details.'),
                         icon: 'warning',
-                        confirmButtonText: 'Review Requirements'
-                    });
+                        showCancelButton: requirements.length > 0,
+                        confirmButtonText: requirements.length ? 'Open first item' : 'Review requirements',
+                        cancelButtonText: 'Close'
+                    }) : null;
+                    if (!result && typeof Swal === 'undefined') window.alert(data.message || 'Please complete all required profile details.');
+                    if (result?.isConfirmed && requirements[0]?.url) window.location.href = requirements[0].url;
                     if (btn) {
                         btn.disabled = false;
-                        if (!isCheckbox) btn.innerHTML = origHtml;
+                        btn.innerHTML = originalHtml;
                     }
                 }
             } catch (err) {
                 console.error("Publish toggle error:", err);
-                if (isCheckbox) btn.checked = origChecked;
-                Swal.fire('Error', 'A network error occurred. Please try again.', 'error');
+                if (typeof Swal !== 'undefined') Swal.fire('Error', 'A network error occurred. Please try again.', 'error');
+                else window.alert('A network error occurred. Please try again.');
                 if (btn) {
                     btn.disabled = false;
-                    if (!isCheckbox) btn.innerHTML = origHtml;
+                    btn.innerHTML = originalHtml;
                 }
             }
         };
+    </script>
+    <script>
+        (function () {
+            const trailEl = document.getElementById('catererHistoryTrail');
+            const storageKey = `catererPageHistory:{{ user.id if user else 'guest' }}`;
+            const currentUrl = window.location.pathname + window.location.search;
+            const pageHeading = document.querySelector('main h1');
+            const isDashboard = {{ 'true' if active_page == 'dashboard' else 'false' }};
+            const currentLabel = (isDashboard ? 'Dashboard' : (pageHeading?.textContent || document.title || 'Page')).trim();
+            const page = { url: currentUrl, label: currentLabel };
+            let history = [];
+            try {
+                history = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                if (!Array.isArray(history)) history = [];
+            } catch (_) {
+                history = [];
+            }
+
+            const previousIndex = history.findIndex(item => item.url === currentUrl);
+            if (previousIndex >= 0) history = history.slice(0, previousIndex);
+            history.push(page);
+            history = history.slice(-10);
+            try { localStorage.setItem(storageKey, JSON.stringify(history)); } catch (_) { /* Navigation still works for this page. */ }
+
+            if (!trailEl || isDashboard) return;
+
+            const dashboardPage = history.find(item => item.label === 'Dashboard') || { url: '/caterer/dashboard', label: 'Dashboard' };
+            const previousPages = history.filter(item => item.url !== currentUrl && item.label !== 'Dashboard').slice(-2);
+            const crumbs = [dashboardPage, ...previousPages, page];
+            crumbs.forEach((item, index) => {
+                if (index > 0) {
+                    const separator = document.createElement('i');
+                    separator.className = 'fas fa-chevron-right caterer-page-history-separator';
+                    separator.setAttribute('aria-hidden', 'true');
+                    trailEl.appendChild(separator);
+                }
+                if (index === crumbs.length - 1) {
+                    const current = document.createElement('span');
+                    current.setAttribute('aria-current', 'page');
+                    current.textContent = item.label;
+                    trailEl.appendChild(current);
+                } else {
+                    const link = document.createElement('a');
+                    link.href = item.url;
+                    if (item.label === 'Dashboard') {
+                        const homeIcon = document.createElement('i');
+                        homeIcon.className = 'fas fa-house';
+                        homeIcon.setAttribute('aria-hidden', 'true');
+                        link.appendChild(homeIcon);
+                        link.appendChild(document.createTextNode(' '));
+                    }
+                    link.appendChild(document.createTextNode(item.label));
+                    trailEl.appendChild(link);
+                }
+            });
+        })();
     </script>
 </body>
 

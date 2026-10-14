@@ -182,8 +182,8 @@ class QuotationService:
 
         total_amount = customized_subtotal + travel_fee
 
-        # Accept deposit choices from 30% to 100% in 10% increments.
-        if downpayment_percent not in range(30, 101, 10):
+        # Accept whole 5% deposit steps from 20% through full payment.
+        if downpayment_percent < 20 or downpayment_percent > 100 or downpayment_percent % 5:
             downpayment_percent = 30
 
         package_details = {
@@ -335,8 +335,8 @@ class QuotationService:
 
         total_amount = base_amount + addon_total
 
-        # Accept deposit choices from 30% to 100% in 10% increments.
-        if downpayment_percent not in range(30, 101, 10):
+        # Accept whole 5% deposit steps from 20% through full payment.
+        if downpayment_percent < 20 or downpayment_percent > 100 or downpayment_percent % 5:
             downpayment_percent = 30
 
         if existing_quote:

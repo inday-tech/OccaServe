@@ -17,6 +17,19 @@ from ..services.booking_validator import BookingValidator
 router = APIRouter(prefix="/api/bookings", tags=["quotations"])
 
 
+def get_caterer_payment_terms(caterer):
+    raw_terms = getattr(caterer, "accepted_payment_terms", None) or [30]
+    terms = set()
+    for raw_term in raw_terms:
+        try:
+            term = int(raw_term)
+        except (TypeError, ValueError):
+            continue
+        if 20 <= term <= 100 and term % 5 == 0:
+            terms.add(term)
+    return sorted(terms) or [30]
+
+
 def get_session_user(request: Request, db: Session):
     """Helper for session-based auth in wizard routes"""
     token = request.cookies.get("access_token")
@@ -105,8 +118,8 @@ async def calculate_quotation(
 
     if guest_count < 1 or guest_count > 999:
         raise HTTPException(status_code=400, detail="Number of guests must be between 1 and 999.")
-    if downpayment_percent not in range(30, 101, 10):
-        raise HTTPException(status_code=400, detail="Deposit percentage must be 30% to 100% in 10% increments.")
+    if downpayment_percent < 20 or downpayment_percent > 100 or downpayment_percent % 5:
+        raise HTTPException(status_code=400, detail="Deposit percentage must be in 5% steps from 20% to 100%.")
 
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
@@ -116,6 +129,8 @@ async def calculate_quotation(
     is_caterer = bool(current_user.caterer_profile and booking.caterer_id == current_user.caterer_profile.id)
     if not is_owner and not is_caterer and current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="Unauthorized")
+    if downpayment_percent not in get_caterer_payment_terms(booking.caterer):
+        raise HTTPException(status_code=400, detail="Choose one of this caterer's accepted deposit options.")
     
     package = booking.package
     is_customizable = (package and getattr(package, 'pricing_mode', '') == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') or (booking.quotation and booking.quotation.package_details and booking.quotation.package_details.get('package_type') == 'customizable')
@@ -197,8 +212,8 @@ async def generate_quotation(
     
     try:
         # Dynamic downpayment percent from caterer profile
-        if booking.caterer.accepted_payment_terms:
-            downpayment_percent = min(booking.caterer.accepted_payment_terms)
+        if booking.caterer:
+            downpayment_percent = min(get_caterer_payment_terms(booking.caterer))
             
         quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
         
@@ -264,8 +279,10 @@ async def sign_contract(
             downpayment_percent = int(downpayment_percent)
         except (TypeError, ValueError):
             raise HTTPException(status_code=400, detail="Invalid downpayment percentage.")
-        if downpayment_percent not in range(30, 101, 10):
-            raise HTTPException(status_code=400, detail="Downpayment must be 30% to 100% in 10% increments.")
+        if downpayment_percent < 20 or downpayment_percent > 100 or downpayment_percent % 5:
+            raise HTTPException(status_code=400, detail="Downpayment must be in 5% steps from 20% to 100%.")
+        if downpayment_percent not in get_caterer_payment_terms(booking.caterer):
+            raise HTTPException(status_code=400, detail="Choose one of this caterer's accepted deposit options.")
         if has_prior_signature and quotation.downpayment_percent is not None and downpayment_percent != quotation.downpayment_percent:
             raise HTTPException(status_code=409, detail="The downpayment terms cannot change after either party has signed.")
         quotation.downpayment_percent = downpayment_percent
@@ -432,8 +449,10 @@ async def update_dp(
             raise ValueError("percentage must be a whole number")
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Invalid deposit percentage.")
-    if percent not in range(30, 101, 10):
-        raise HTTPException(status_code=400, detail="Deposit percentage must be 30% to 100% in 10% increments.")
+    if percent < 20 or percent > 100 or percent % 5:
+        raise HTTPException(status_code=400, detail="Deposit percentage must be in 5% steps from 20% to 100%.")
+    if percent not in get_caterer_payment_terms(booking.caterer):
+        raise HTTPException(status_code=400, detail="Choose one of this caterer's accepted deposit options.")
     quotation.downpayment_percent = percent
     
     from decimal import Decimal

@@ -106,7 +106,7 @@ def get_caterer_profile(
         return RedirectResponse(url=f"/customer/marketplace/{caterer_id}")
         
     # Check if profile is public, otherwise restrict to owner
-    is_verified = (caterer.verification_status == 'Verified') or (caterer.is_verified == True)
+    is_verified = (caterer.verification_status or '').strip().casefold() == 'verified'
     is_public = (caterer.status == 'Published' and is_verified and caterer.account_status == 'Active')
     if not is_public:
         if not user or user.id != caterer.user_id:
@@ -286,7 +286,7 @@ def get_caterer_by_slug(
         return RedirectResponse(url=f"/customer/marketplace/{caterer.id}")
 
     # Check if profile is public, otherwise restrict to owner
-    is_verified = (caterer.verification_status == 'Verified') or (caterer.is_verified == True)
+    is_verified = (caterer.verification_status or '').strip().casefold() == 'verified'
     is_public = (caterer.status == 'Published' and is_verified and caterer.account_status == 'Active')
     if not is_public:
         if not user or user.id != caterer.user_id:

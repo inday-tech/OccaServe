@@ -52,10 +52,15 @@ window.gm_authFailure = function() {
 {% endblock %}
 
 {% block content %}
+<nav class="settings-breadcrumbs" aria-label="Breadcrumb">
+    <a href="/caterer/dashboard"><i class="fas fa-house"></i> Dashboard</a>
+    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+    <span id="settingsBreadcrumbCurrent">Business Details</span>
+</nav>
 <div class="page-header">
     <div class="header-title-group">
-        <h1>Settings</h1>
-        <p>Manage your business profile, payments, customization, and account preferences.</p>
+        <h1>Business Settings</h1>
+        <p>Update your profile, verification documents, and business preferences.</p>
     </div>
 </div>
 
@@ -85,15 +90,15 @@ window.gm_authFailure = function() {
                     {{ addr | join(', ') if addr else 'Add Address' }}
                 </p>
                 <div class="settings-status-badge
-                    {% if profile.verification_status == 'Verified' %} status-verified
-                    {% elif profile.verification_status == 'Pending Review' %} status-pending
+                    {% if verification_status_display == 'Verified' %} status-verified
+                    {% elif verification_status_display == 'Pending Review' %} status-pending
                     {% else %} status-unverified{% endif %}">
-                    {% if profile.verification_status == 'Verified' %}
-                        <i class="fas fa-check-circle"></i> Verified
-                    {% elif profile.verification_status == 'Pending Review' %}
-                        <i class="fas fa-clock"></i> Pending Review
+                    {% if verification_status_display == 'Verified' %}
+                        <i class="fas fa-check-circle"></i> Verification: Verified
+                    {% elif verification_status_display == 'Pending Review' %}
+                        <i class="fas fa-clock"></i> Verification: Pending Review
                     {% else %}
-                        <i class="fas fa-info-circle"></i> {{ profile.verification_status or 'Unverified' }}
+                        <i class="fas fa-info-circle"></i> Verification: {{ verification_status_display }}
                     {% endif %}
                 </div>
             </div>
@@ -101,18 +106,19 @@ window.gm_authFailure = function() {
             <!-- Marketplace Listing Status & Publish Toggle -->
             <div class="settings-publish-control">
                 <div class="settings-publish-status">
-                    <span>Marketplace listing</span>
-                    {% if profile.status == 'Published' %}
+                    <span>Marketplace listing status</span>
+                    {% if listing_is_live %}
                         <span class="settings-listing-badge is-live"><i class="fas fa-circle"></i> LIVE</span>
                     {% else %}
-                        <span class="settings-listing-badge">{{ profile.status or 'Draft' }}</span>
+                        <span class="settings-listing-badge">Not published</span>
                     {% endif %}
                 </div>
                 <button type="button"
                     onclick="window.toggleCatererPublish && window.toggleCatererPublish(this)"
                     id="btnSidebarPublish"
-                    class="settings-publish-button {% if profile.status == 'Published' %}is-published{% endif %}">
-                    {% if profile.status == 'Published' %}
+                    class="settings-publish-button {% if listing_is_live %}is-published{% endif %}"
+                    {% if not listing_is_live and not can_publish %}disabled aria-disabled="true" title="Complete all dashboard setup items to enable publishing"{% endif %}>
+                    {% if listing_is_live %}
                         <i class="fas fa-eye-slash"></i> Unpublish Listing
                     {% else %}
                         <i class="fas fa-rocket"></i> Publish to Customers
@@ -134,7 +140,7 @@ window.gm_authFailure = function() {
                 </button>
                 <div class="snav-group-items">
                     <button type="button" class="snav-item active" data-section="general">
-                        <i class="fas fa-store"></i> Business Info
+                        <i class="fas fa-store"></i> Business Details
                     </button>
                     <button type="button" class="snav-item" data-section="location">
                         <i class="fas fa-map-marked-alt"></i> Location & Contact
@@ -144,13 +150,13 @@ window.gm_authFailure = function() {
 
             <!-- Group: Payments & Policies -->
             <div class="snav-group" id="grp-payments">
-                <button type="button" class="snav-group-header" onclick="toggleNavGroup('grp-payments')">
+                <button type="button" class="snav-group-header expanded" onclick="toggleNavGroup('grp-payments')">
                     <span class="snav-group-label">
                         <i class="fas fa-wallet"></i> Payments & Policies
                     </span>
                     <i class="fas fa-chevron-down snav-chevron"></i>
                 </button>
-                <div class="snav-group-items" style="display:none;">
+                <div class="snav-group-items">
                     <button type="button" class="snav-item" data-section="payment-methods">
                         <i class="fas fa-credit-card"></i> Payment Methods
                     </button>
@@ -158,26 +164,11 @@ window.gm_authFailure = function() {
                         <i class="fas fa-file-signature"></i> Booking Policies
                     </button>
                     <button type="button" class="snav-item" data-section="availability">
-                        <i class="fas fa-calendar-check"></i> Booking/Event Availability
+                        <i class="fas fa-calendar-check"></i> Availability
                     </button>
                 </div>
             </div>
             
-            <!-- Group: Delivery -->
-            <div class="snav-group" id="grp-delivery">
-                <button type="button" class="snav-group-header" onclick="toggleNavGroup('grp-delivery')">
-                    <span class="snav-group-label">
-                        Delivery Zones & Fees
-                    </span>
-                    <i class="fas fa-chevron-down snav-chevron"></i>
-                </button>
-                <div class="snav-group-items" style="display:none;">
-                    <button type="button" class="snav-item" data-section="delivery-settings">
-                    Delivery Zones & Fees
-                    </button>
-                </div>
-            </div>
-
             <!-- Group: Branding -->
             <div class="snav-group" id="grp-brand">
                 <button type="button" class="snav-group-header" onclick="toggleNavGroup('grp-brand')">
@@ -199,7 +190,7 @@ window.gm_authFailure = function() {
             <!-- Standalone: Verification -->
             <button type="button" class="snav-item snav-standalone" data-section="verification">
                 <i class="fas fa-shield-halved"></i> Verification Center
-                {% set v_status = profile.verification_status or 'Not Submitted' %}
+                {% set v_status = verification_status_display %}
                 {% if v_status == 'Pending Review' %}
                     <span class="snav-badge badge-warning">Review</span>
                 {% elif v_status == 'Verified' %}
@@ -236,30 +227,26 @@ window.gm_authFailure = function() {
             <!-- Content Panel Section Header -->
             <div class="content-panel-header" id="contentPanelHeader">
                 <div>
-                    <h2 class="content-panel-title" id="contentPanelTitle">Business Info</h2>
-                    <p class="content-panel-subtitle" id="contentPanelSubtitle">Core identity details of your catering business.</p>
+                    <h2 class="content-panel-title" id="contentPanelTitle">Business Details</h2>
+                    <p class="content-panel-subtitle" id="contentPanelSubtitle"></p>
                 </div>
             </div>
 
             <form action="/caterer/profile?success_msg=Business+profile+updated+successfully" method="POST" enctype="multipart/form-data" class="profile-edit-form" id="catererSettingsForm" novalidate onsubmit="handleFormSubmitState(event)">
+                <input type="hidden" name="return_section" id="returnSettingsSection" value="general">
+                <input type="hidden" name="base_delivery_fee" value="{{ profile.base_delivery_fee or 150.0 }}">
+                <input type="hidden" name="out_of_coverage_action" value="{{ profile.out_of_coverage_action or 'reject' }}">
                 <!-- Section: Business Information -->
                 <div class="settings-section active" id="section-general">
                     <div class="business-details-card">
-                        <div class="business-details-header">
-                            <h4 class="business-details-title">
-                                <i class="fas fa-store" style="color: var(--primary-color);"></i> Business Details
-                            </h4>
-                            <p class="business-details-subtitle">Manage the basic identity and details customers see about your catering business.</p>
-                        </div>
-
                         <div class="form-row-two-col">
                             <div class="form-group">
                                 <label><i class="fas fa-signature"></i> Business Name</label>
-                                <input type="text" name="business_name" value="{{ profile.business_name }}" placeholder="Enter your business name" required oninput="triggerSettingsDirty()">
+                                <input type="text" id="businessNameInput" name="business_name" value="{{ profile.business_name }}" placeholder="Enter your business name" required oninput="triggerSettingsDirty()">
                             </div>
                             <div class="form-group">
                                 <label><i class="fas fa-tags"></i> Business Category / Type</label>
-                                <select name="business_type" class="filter-select-pro" onchange="triggerSettingsDirty()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.9rem; background: #ffffff;">
+                                <select id="businessTypeInput" name="business_type" class="filter-select-pro" onchange="triggerSettingsDirty()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.9rem; background: #ffffff;">
                                     <option value="Full-Service Catering" {% if profile.business_type == 'Full-Service Catering' or not profile.business_type %}selected{% endif %}>Full-Service Catering</option>
                                     <option value="Buffet & Packed Meals" {% if profile.business_type == 'Buffet & Packed Meals' %}selected{% endif %}>Buffet & Packed Meals</option>
                                     <option value="Event Styling & Catering" {% if profile.business_type == 'Event Styling & Catering' %}selected{% endif %}>Event Styling & Catering</option>
@@ -301,7 +288,7 @@ window.gm_authFailure = function() {
                             <h4><i class="fas fa-globe" style="color: var(--primary-color);"></i> Public Profile</h4>
                             <p>Your business information appears on your public caterer profile.</p>
                         </div>
-                        <button type="button" class="btn-secondary-pro" onclick="openProfilePreviewModal('{{ profile.id }}')" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: var(--primary-color); border: 1.5px solid var(--primary-color); background: #ffffff;">
+                        <button type="button" class="btn-secondary-pro business-profile-preview-button" onclick="openProfilePreviewModal('{{ profile.id }}')" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; color: var(--primary-color); border: 1.5px solid var(--primary-color); background: #ffffff;">
                             <i class="fas fa-arrow-up-right-from-square"></i> View Public Profile
                         </button>
                     </div>
@@ -310,15 +297,16 @@ window.gm_authFailure = function() {
 
             <!-- Section: Location & Contact -->
             <div class="settings-section" id="section-location">
+                <div class="location-details-card">
                     <div class="location-picker-card" style="margin-top: 0;">
-                        <label><i class="fas fa-crosshairs"></i> Interactive Street Map</label>
-                        <p class="field-hint">Search for your official Google Business Profile to lock your coordinates. If you are not on Google Maps yet, click 'Use My Location' while at your kitchen.</p>
+                        <label><i class="fas fa-crosshairs"></i> Business Location</label>
+                        <p class="field-hint">Search and choose a result, click the map, drag the pin, or use your current location.</p>
 
-                        <div class="location-picker-wrapper">
+                        <div class="location-picker-wrapper" id="location-pin">
                             <div class="map-search-group" style="display:flex;gap:0.5rem;align-items:center;">
                                 <div style="position:relative;flex:1;">
                                     <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;z-index:2;"></i>
-                                    <input type="text" id="mapSearchInput" placeholder="Search your Business Name or Landmark on Google Maps..." autocomplete="off" style="padding-left:38px;width:100%;">
+                                    <input type="text" id="mapSearchInput" placeholder="Search a business, address, or landmark..." autocomplete="off" style="padding-left:38px;width:100%;">
                                 </div>
                                 <button type="button" id="gpsLocateBtn" style="background:var(--primary-color,#800000);color:#fff;border:none;padding:10px 16px;border-radius: var(--border-radius, 8px);cursor:pointer;font-size:0.85rem;white-space:nowrap;display:flex;align-items:center;gap:6px;" title="Use GPS to pin your exact location">
                                     <i class="fas fa-crosshairs"></i> Use My Location
@@ -333,12 +321,6 @@ window.gm_authFailure = function() {
 
                         <input type="hidden" name="latitude" id="latInput" value="{{ profile.latitude or '' }}">
                         <input type="hidden" name="longitude" id="lonInput" value="{{ profile.longitude or '' }}">
-                    </div>
-
-                    <!-- Address Components -->
-                    <div class="section-header-compact" style="margin-top: 2rem;">
-                        <h3><i class="fas fa-home"></i> Address Components</h3>
-                        <p>Complete address information for your business location.</p>
                     </div>
 
                     <div class="form-row-two-col">
@@ -371,8 +353,12 @@ window.gm_authFailure = function() {
                             <input type="hidden" name="barangay" id="brgyNameHidden" value="">
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-phone"></i> Business Hotline</label>
-                            <input type="text" name="contact_phone" value="{{ profile.contact_phone }}" required maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '');" placeholder="09xxxxxxxxx">
+                            <label><i class="fas fa-phone"></i> Contact Number</label>
+                            <div class="phone-input-control contact-number-control">
+                                <span class="phone-country-code" aria-hidden="true">+63</span>
+                                <input type="tel" id="catererContactNumber" name="contact_phone" class="phone-national-input" value="{{ profile.contact_phone or '' }}" required inputmode="numeric" autocomplete="tel-national" maxlength="16" pattern="9[0-9]{9}" placeholder="9XXXXXXXXX" title="Enter 10 digits starting with 9; +63 is already added." oninput="formatCatererContactNumber(this)">
+                            </div>
+                            <span class="field-hint">Enter 10 digits after +63.</span>
                         </div>
                     </div>
 
@@ -383,7 +369,7 @@ window.gm_authFailure = function() {
                     </div>
                     <div class="form-group">
                         <label><i class="fas fa-map-marked-alt"></i> Service Areas</label>
-                        <div class="service-area-picker" data-service-area-picker>
+                        <div class="service-area-picker" id="serviceAreasPicker" data-service-area-picker>
                             <input type="hidden" name="coverage_area" value="{{ profile.coverage_area or '' }}">
                             <div class="service-area-control">
                                 <button type="button" class="service-area-trigger" aria-expanded="false">
@@ -398,6 +384,7 @@ window.gm_authFailure = function() {
                         </div>
                         <span class="field-hint">Choose every province where you accept bookings.</span>
                     </div>
+                </div>
             </div>
             <!-- End Section: Location & Contact -->
 
@@ -422,7 +409,7 @@ window.gm_authFailure = function() {
                     <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                         <div class="form-group">
                             <label><i class="fas fa-calendar-alt"></i> Date of Birth</label>
-                            <input type="date" name="dob" value="{{ user.dob or '' }}" required>
+                            <input type="date" id="catererDob" name="dob" value="{{ user.dob or '' }}" min="1966-01-01" max="2008-12-31" required>
                             <span class="field-hint">Required for KYC and Admin Verification.</span>
                         </div>
                         <div class="form-group">
@@ -581,122 +568,34 @@ window.gm_authFailure = function() {
             </div>
             <!-- End Section: Account -->
 
-            <!-- Section: Delivery Settings -->
-            <div class="settings-section" id="section-delivery-settings">
-                <div class="delivery-settings-header">
-                    <h3>Delivery Zones &amp; Fees</h3>
-                    <p>Set delivery fees by service area and choose how to handle locations outside those areas. Changes are saved automatically and apply to new booking estimates.</p>
-                </div>
 
-                <!-- Global Settings -->
-                <div class="delivery-settings-fields">
-                    <div class="form-group">
-                        <label>Fallback delivery fee (₱)</label>
-                        <input type="text" inputmode="decimal" maxlength="10" name="base_delivery_fee" class="js-format-comma" value="{{ profile.base_delivery_fee or 150.0 }}" aria-describedby="baseDeliveryFeeValidation">
-                        <span class="delivery-fee-validation" id="baseDeliveryFeeValidation" aria-live="polite">Enter up to 6 whole-number digits and 2 decimal places (maximum ₱999,999.99).</span>
-                        <span class="field-hint">Used when a customer’s location has no matching delivery zone and you choose to use the fallback fee.</span>
-                    </div>
-                    <div class="form-group">
-                        <label>Bookings outside your delivery zones</label>
-                        <select name="out_of_coverage_action" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                            <option value="reject" {% if profile.out_of_coverage_action == 'reject' %}selected{% endif %}>Do not accept the booking</option>
-                            <option value="base_fee" {% if profile.out_of_coverage_action == 'base_fee' %}selected{% endif %}>Accept using the fallback delivery fee</option>
-                            <option value="manual" {% if profile.out_of_coverage_action == 'manual' %}selected{% endif %}>Accept and confirm the delivery fee with the customer</option>
-                        </select>
-                        <span class="field-hint">Choose what customers see when their location does not match a zone below.</span>
-                    </div>
-                    <div class="delivery-settings-save-state" id="deliverySettingsSaveState" role="status" aria-live="polite">Changes save automatically.</div>
-                </div>
-
-                <!-- Delivery Zones List -->
-                <div class="delivery-zones-container">
-                    <div class="delivery-zones-heading">
-                        <div>
-                            <h4>Service areas</h4>
-                            <p>Customers in these locations will see the fee set for that zone.</p>
-                        </div>
-                        <button type="button" class="btn-primary delivery-zone-add-button" onclick="openAddZoneModal()">
-                            Add service area
-                        </button>
-                    </div>
-
-                    <div class="delivery-zones-table-scroll" role="region" aria-label="Configured delivery service areas" tabindex="0">
-                        <table class="table-modern delivery-zones-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Province</th>
-                                    <th scope="col">City / Municipality</th>
-                                    <th scope="col">Delivery fee</th>
-                                    <th scope="col">Amount</th>
-                                    <th scope="col">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="deliveryZonesTableBody">
-                                {% if profile.delivery_zones %}
-                                    {% for zone in profile.delivery_zones %}
-                                    <tr data-zone-id="{{ zone.id }}" data-province="{{ zone.province }}" data-city="{{ zone.city_municipality }}" data-manual="{{ 'true' if zone.is_manual_quote else 'false' }}" data-fee="{{ zone.fee }}">
-                                        <td>{{ zone.province }}</td>
-                                        <td>{{ zone.city_municipality }}</td>
-                                        <td class="zone-fee-type">
-                                            {% if zone.is_manual_quote %}
-                                                Confirm with customer
-                                            {% else %}
-                                                Fixed fee
-                                            {% endif %}
-                                        </td>
-                                        <td class="zone-fee-amount">
-                                            {% if zone.is_manual_quote %}
-                                                To be confirmed
-                                            {% else %}
-                                                ₱{{ "{:,.2f}".format(zone.fee) }}
-                                            {% endif %}
-                                        </td>
-                                        <td class="delivery-zone-actions">
-                                            <button type="button" class="btn-secondary-pro" onclick="openEditZoneModalFromRow(this)">
-                                                Edit
-                                            </button>
-                                            <button type="button" class="btn-danger-outline" onclick="deleteDeliveryZone({{ zone.id }})">
-                                                Delete
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                {% else %}
-                                    <tr class="delivery-zones-empty-row">
-                                        <td colspan="5">
-                                            No service areas yet. Add one to set a location-specific delivery fee.
-                                        </td>
-                                    </tr>
-                                {% endif %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <p class="delivery-zones-scroll-hint">On mobile, swipe the table sideways to view all columns.</p>
-                </div>
-            </div>
-            <!-- End Section: Delivery Settings -->
 
             <!-- Section: Payment Methods -->
             <div class="settings-section" id="section-payment-methods">
 
+                    {% set standard_payment_methods = ['gcash', 'maya', 'bank', 'bank transfer', 'card', 'debit / credit card', 'cash', 'cash / manual'] %}
+                    {% set saved_custom_payment_method = profile.payout_method if profile.payout_method and profile.payout_method|lower|trim not in standard_payment_methods else '' %}
+                    {% set saved_custom_payment_details = profile.custom_payment_details or {} %}
                     {% set active_payment_method = '' %}
-                    {% if profile.gcash_number or profile.gcash_qr_url %}{% set active_payment_method = 'gcash' %}
-                    {% elif profile.maya_number or profile.maya_qr_url %}{% set active_payment_method = 'maya' %}
-                    {% elif profile.bank_name or profile.bank_account_number or profile.bank_qr_url %}{% set active_payment_method = 'bank' %}
-                    {% elif profile.card_bank or profile.card_holder_name or profile.card_number %}{% set active_payment_method = 'card' %}
-                    {% elif profile.cash_instructions %}{% set active_payment_method = 'cash' %}
+                    {% if saved_custom_payment_method %}{% set active_payment_method = 'other' %}
+                    {% elif profile.gcash_number or profile.gcash_qr_url or (profile.payout_method or '')|lower|trim == 'gcash' %}{% set active_payment_method = 'gcash' %}
+                    {% elif profile.maya_number or profile.maya_qr_url or (profile.payout_method or '')|lower|trim == 'maya' %}{% set active_payment_method = 'maya' %}
+                    {% elif profile.bank_name or profile.bank_account_number or profile.bank_qr_url or (profile.payout_method or '')|lower|trim in ['bank', 'bank transfer'] %}{% set active_payment_method = 'bank' %}
+                    {% elif profile.card_bank or profile.card_holder_name or profile.card_number or (profile.payout_method or '')|lower|trim in ['card', 'debit / credit card'] %}{% set active_payment_method = 'card' %}
+                    {% elif profile.cash_instructions or (profile.payout_method or '')|lower|trim in ['cash', 'cash / manual'] %}{% set active_payment_method = 'cash' %}
                     {% endif %}
                     <div class="payment-method-picker">
                         <label for="paymentMethodEditor">Payment method</label>
-                        <select id="paymentMethodEditor" class="filter-select-pro" aria-controls="paymentMethodCards">
+                        <select id="paymentMethodEditor" name="payment_method_editor" class="filter-select-pro" aria-controls="paymentMethodCards">
                             <option value="" disabled {% if not active_payment_method %}selected{% endif %}>Choose a payment method</option>
                             <option value="gcash" {% if active_payment_method == 'gcash' %}selected{% endif %}>GCash</option>
                             <option value="maya" {% if active_payment_method == 'maya' %}selected{% endif %}>Maya</option>
                             <option value="bank" {% if active_payment_method == 'bank' %}selected{% endif %}>Bank Transfer</option>
                             <option value="card" {% if active_payment_method == 'card' %}selected{% endif %}>Debit / Credit Card</option>
                             <option value="cash" {% if active_payment_method == 'cash' %}selected{% endif %}>Cash / Manual</option>
+                            <option value="other" {% if active_payment_method == 'other' %}selected{% endif %}>Other</option>
                         </select>
-                        <p class="field-hint">Choose a method to edit its details. Other saved payment methods stay available to customers.</p>
+                        <p class="field-hint">Choose a payment method to update its details.</p>
                     </div>
 
                     <div class="payment-methods-tabs-grid" id="paymentMethodCards">
@@ -729,7 +628,7 @@ window.gm_authFailure = function() {
                                         </div>
                                     </div>
                                     <div class="payment-qr-actions">
-                                        <input type="file" name="gcash_qr" id="gcash_qrFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'gcash_qr')">
+                                        <input type="file" name="gcash_qr" id="gcash_qrFileInput" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="previewSelectedImage(this, 'gcash_qr')">
                                         <input type="hidden" name="remove_gcash_qr" id="remove_gcash_qr_flag" value="0">
                                         <button type="button" class="btn-media-replace" onclick="document.getElementById('gcash_qrFileInput').click()">
                                             <i class="fas fa-arrow-up-from-bracket"></i> <span id="gcash_qrActionText">{% if profile.gcash_qr_url %}Change QR{% else %}Upload QR{% endif %}</span>
@@ -738,7 +637,7 @@ window.gm_authFailure = function() {
                                             <i class="fas fa-trash-can"></i> Remove QR
                                         </button>
                                     </div>
-                                    <span style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; display: block; text-align: center;">Accepted: PNG, JPG, WebP</span>
+                                    <span class="payment-upload-note">PNG, JPG, or JPEG. Maximum {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB.</span>
                                 </div>
                             </div>
                         </div>
@@ -772,7 +671,7 @@ window.gm_authFailure = function() {
                                         </div>
                                     </div>
                                     <div class="payment-qr-actions">
-                                        <input type="file" name="maya_qr" id="maya_qrFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'maya_qr')">
+                                        <input type="file" name="maya_qr" id="maya_qrFileInput" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="previewSelectedImage(this, 'maya_qr')">
                                         <input type="hidden" name="remove_maya_qr" id="remove_maya_qr_flag" value="0">
                                         <button type="button" class="btn-media-replace" onclick="document.getElementById('maya_qrFileInput').click()">
                                             <i class="fas fa-arrow-up-from-bracket"></i> <span id="maya_qrActionText">{% if profile.maya_qr_url %}Change QR{% else %}Upload QR{% endif %}</span>
@@ -781,7 +680,7 @@ window.gm_authFailure = function() {
                                             <i class="fas fa-trash-can"></i> Remove QR
                                         </button>
                                     </div>
-                                    <span style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; display: block; text-align: center;">Accepted: PNG, JPG, WebP</span>
+                                    <span class="payment-upload-note">PNG, JPG, or JPEG. Maximum {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB.</span>
                                 </div>
                             </div>
                         </div>
@@ -831,7 +730,7 @@ window.gm_authFailure = function() {
                                         </div>
                                     </div>
                                     <div class="payment-qr-actions">
-                                        <input type="file" name="bank_qr" id="bank_qrFileInput" accept=".png,.jpg,.jpeg,.webp" style="display: none;" onchange="previewSelectedImage(this, 'bank_qr')">
+                                        <input type="file" name="bank_qr" id="bank_qrFileInput" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="previewSelectedImage(this, 'bank_qr')">
                                         <input type="hidden" name="remove_bank_qr" id="remove_bank_qr_flag" value="0">
                                         <button type="button" class="btn-media-replace" onclick="document.getElementById('bank_qrFileInput').click()">
                                             <i class="fas fa-arrow-up-from-bracket"></i> <span id="bank_qrActionText">{% if profile.bank_qr_url %}Change QR{% else %}Upload QR{% endif %}</span>
@@ -840,7 +739,7 @@ window.gm_authFailure = function() {
                                             <i class="fas fa-trash-can"></i> Remove QR
                                         </button>
                                     </div>
-                                    <span style="font-size: 0.72rem; color: #64748b; margin-top: 0.2rem; display: block; text-align: center;">Accepted: PNG, JPG, WebP</span>
+                                    <span class="payment-upload-note">PNG, JPG, or JPEG. Maximum {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB.</span>
                                 </div>
                             </div>
                         </div>
@@ -876,6 +775,37 @@ window.gm_authFailure = function() {
                                     placeholder="e.g. Pay at our office or upon delivery...">{{ profile.cash_instructions or '' }}</textarea>
                             </div>
                         </div>
+
+                        <div class="payment-box-compact full-width" data-payment-method="other" {% if active_payment_method != 'other' %}hidden{% endif %}>
+                            <h4><i class="fas fa-wallet"></i> Other Payment Method</h4>
+                            <div class="form-row-two-col custom-payment-details-grid">
+                              <div class="form-group">
+                                <label for="customPaymentMethodName">Payment method name</label>
+                                <input type="text" id="customPaymentMethodName" name="payout_method" maxlength="60" value="{{ saved_custom_payment_method }}" placeholder="Enter the exact payment method name">
+                              </div>
+                              <div class="form-group">
+                                <label for="customPaymentNumber">Account or payment number <span class="optional-label">Optional</span></label>
+                                <input type="tel" id="customPaymentNumber" name="custom_payment_number" value="{{ saved_custom_payment_details.get('number', '') }}" maxlength="40" placeholder="Enter a number if this method uses one" autocomplete="off">
+                              </div>
+                              <div class="form-group full-width custom-payment-qr-group">
+                                <label>Payment QR <span class="optional-label">Optional</span></label>
+                                <div class="payment-qr-wrap">
+                                    <div class="qr-preview-box" id="custom_payment_qrPreviewBox">
+                                        <img id="custom_payment_qrPreviewImg" src="{{ saved_custom_payment_details.get('qr_url', '') }}" alt="Custom payment QR" style="{% if not saved_custom_payment_details.get('qr_url') %}display:none;{% endif %}" onerror="this.style.display='none';document.getElementById('custom_payment_qrPlaceholder').style.display='flex';">
+                                        <div id="custom_payment_qrPlaceholder" style="display:{% if saved_custom_payment_details.get('qr_url') %}none{% else %}flex{% endif %};flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#94a3b8;font-size:.75rem"><i class="fas fa-qrcode" style="font-size:1.8rem;margin-bottom:4px;color:#cbd5e1"></i>No QR</div>
+                                    </div>
+                                    <div class="payment-qr-actions">
+                                        <input type="file" name="custom_payment_qr" id="custom_payment_qrFileInput" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden onchange="previewSelectedImage(this, 'custom_payment_qr')">
+                                        <input type="hidden" name="remove_custom_payment_qr" id="remove_custom_payment_qr_flag" value="0">
+                                        <button type="button" class="btn-media-replace" onclick="document.getElementById('custom_payment_qrFileInput').click()"><i class="fas fa-arrow-up-from-bracket"></i><span id="custom_payment_qrActionText">{% if saved_custom_payment_details.get('qr_url') %}Change QR{% else %}Upload QR{% endif %}</span></button>
+                                        <button type="button" id="btnRemove_custom_payment_qr" class="btn-media-remove" onclick="removeImage('custom_payment_qr')" style="display:{% if saved_custom_payment_details.get('qr_url') %}inline-flex{% else %}none{% endif %}"><i class="fas fa-trash-can"></i> Remove QR</button>
+                                    </div>
+                                    <span class="payment-upload-note">PNG, JPG, or JPEG. Maximum {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB.</span>
+                                </div>
+                              </div>
+                            </div>
+                            <span class="field-hint">Your name, number, and QR will be saved for this payment method.</span>
+                        </div>
                     </div>
             </div>
             <!-- End Section: Payment Methods -->
@@ -891,63 +821,47 @@ window.gm_authFailure = function() {
                 {% set pr = rules.get('package_rules', {'min_event_duration': 4, 'max_event_duration': 6, 'setup_time_hours': 2, 'cleanup_time_hours': 1, 'turnover_time_hours': 6}) %}
                 {% set policies = rules.get('policies', {}) %}
 
-                    <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="booking-policy-pricing-row" style="display: grid; grid-template-columns: minmax(0, 420px); gap: 1rem;">
                         <div class="form-group">
                             <label><i class="fas fa-tags"></i> Starting Price (₱)</label>
-                            <input type="text" inputmode="numeric" name="starting_price" class="js-format-comma" min="0" value="{{ profile.starting_price or 0 }}">
+                            <input type="text" inputmode="numeric" name="starting_price" id="startingPriceInput" class="js-format-comma" min="0" value="{{ profile.starting_price or 0 }}">
                             <span class="field-hint">Per-guest base rate. Used to calculate the included base total for fixed packages and the starting price for customizable packages.</span>
                         </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-user-plus"></i> Default Extra Guest Rate (₱ / guest)</label>
-                            <input type="text" inputmode="numeric" name="default_excess_guest_price" class="js-format-comma" min="0" value="{{ profile.default_excess_guest_price if profile.default_excess_guest_price is not none else (profile.starting_price or 0) }}">
-                            <span class="field-hint">Applied to each guest above a fixed package's included guest count. Saving a fixed package updates this default.</span>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-calendar-plus"></i> Max Advance Booking (Days)</label>
-                            <input type="number" name="max_advance_booking_days" value="{{ bk.get('max_advance_booking_days', 365) }}" min="1">
-                            <span class="field-hint">How far in the future can clients book?</span>
-                        </div>
                     </div>
                     
 
 
-                    <div class="form-group" style="margin-top: 1.5rem;">
+                    <div class="form-group" id="accepted-payment-terms" style="margin-top: 1.5rem;">
                         <label><i class="fas fa-hand-holding-dollar"></i> Accepted Payment Terms</label>
-                        <p class="field-hint" style="margin-bottom: 0.75rem;">Select the payment structures you allow for customer bookings. 100% Full Payment is always recommended.</p>
-                        <div class="payment-terms-checkboxes" style="display: flex; gap: 2rem; flex-wrap: wrap;">
-                            <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; user-select: none;">
-                                <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <input type="checkbox" name="payment_terms" value="30" {% if profile.accepted_payment_terms and (30 in profile.accepted_payment_terms or '30' in profile.accepted_payment_terms) %}checked{% endif %} style="width: 20px; height: 20px; margin: 0; accent-color: var(--primary-color); cursor: pointer;">
+                        <p class="field-hint" style="margin-bottom: 0.75rem;">Choose the deposit customers pay to confirm a booking. The remaining balance is due before the event.</p>
+                        {% set saved_payment_terms = (profile.accepted_payment_terms or [100])|map('int')|list %}
+                        <div class="payment-terms-picker" id="acceptedPaymentTermsPicker">
+                            <div class="payment-terms-control">
+                                <button type="button" class="payment-terms-trigger" aria-expanded="false" aria-controls="acceptedPaymentTermsOptions">
+                                    <span id="acceptedPaymentTermsSummary">Choose deposit options</span>
+                                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                </button>
+                                <div class="payment-terms-menu" id="acceptedPaymentTermsOptions" hidden>
+                                    <div class="payment-terms-options" role="group" aria-label="Deposit options customers may choose">
+                                {% for term in range(20, 101, 5) %}
+                                        <div class="payment-term-option-wrap">
+                                            <input type="hidden" name="payment_terms" value="{{ term }}" {% if term not in saved_payment_terms %}disabled{% endif %}>
+                                            <button type="button" class="payment-term-option" data-term-value="{{ term }}" aria-pressed="{{ 'true' if term in saved_payment_terms else 'false' }}">{% if term == 100 %}100% - Full payment{% else %}{{ term }}% - Deposit{% endif %}</button>
+                                        </div>
+                                {% endfor %}
+                                    </div>
                                 </div>
-                                <span style="font-weight: 800; font-size: 0.85rem; color: var(--up-slate-800); text-transform: uppercase; letter-spacing: 0.05em;">30% Downpayment</span>
-                            </label>
-                            
-                            <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; user-select: none;">
-                                <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <input type="checkbox" name="payment_terms" value="50" {% if profile.accepted_payment_terms and (50 in profile.accepted_payment_terms or '50' in profile.accepted_payment_terms) %}checked{% endif %} style="width: 20px; height: 20px; margin: 0; accent-color: var(--primary-color); cursor: pointer;">
-                                </div>
-                                <span style="font-weight: 800; font-size: 0.85rem; color: var(--up-slate-800); text-transform: uppercase; letter-spacing: 0.05em;">50% Downpayment</span>
-                            </label>
-                            
-                            <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; user-select: none;">
-                                <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <input type="checkbox" name="payment_terms" value="100" {% if not profile.accepted_payment_terms or (100 in profile.accepted_payment_terms or '100' in profile.accepted_payment_terms) %}checked{% endif %} style="width: 20px; height: 20px; margin: 0; accent-color: var(--primary-color); cursor: pointer;">
-                                </div>
-                                <span style="font-weight: 800; font-size: 0.85rem; color: var(--up-slate-800); text-transform: uppercase; letter-spacing: 0.05em;">100% Full Payment</span>
-                            </label>
+                            </div>
+                            <div class="payment-terms-selected" id="acceptedPaymentTermsSelected" aria-live="polite"></div>
                         </div>
+                        <span class="field-hint payment-term-note">Choose one or more options customers can use. Select at least one.</span>
                     </div>
 
-                    <div class="section-header-compact" style="margin-top: 2rem;">
-                        <h3><i class="fas fa-file-contract"></i> Detailed Business Policies</h3>
-                        <p>Configure specific policies for your catering services.</p>
-                    </div>
-                    
                     <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 1rem;">
                         <div class="form-group full-width">
                             <label><i class="fas fa-clipboard-check"></i> General Terms & Policies</label>
                             <textarea name="general_terms" rows="6" placeholder="Write your general rules, cancellation policy, refund policy, and other terms here. This will be displayed to the customer during checkout.">{{ profile.general_terms or profile.terms_and_conditions or '' }}</textarea>
-                            <span class="field-hint" style="display:block; margin-top:0.5rem;">These policies will automatically generate your digital contracts and checkout terms, ensuring a Single Source of Truth.</span>
+                            <span class="field-hint" style="display:block; margin-top:0.5rem;">Shown to customers during checkout and included in booking contracts.</span>
                         </div>
                     </div>
             </div>
@@ -964,12 +878,6 @@ window.gm_authFailure = function() {
                 {% set max_adv_val = event_avail.get('max_advance_booking_days', rules.get('booking_rules', {}).get('max_advance_booking_days', 365)) %}
                 {% set max_events_val = event_avail.get('max_events_per_day', profile.max_bookings_per_day or 2) %}
                 {% set blocked_dates_val = event_avail.get('blocked_dates', []) %}
-
-                <!-- Section Header -->
-                <div class="settings-section-intro">
-                    <h3><i class="fas fa-calendar-check" style="color: var(--primary-color);"></i> Booking &amp; Event Availability</h3>
-                    <p>Control when customers can request bookings and define the scheduling limits for your business.</p>
-                </div>
 
                 <!-- 1. Booking Status -->
                 <div class="avail-card">
@@ -1315,7 +1223,7 @@ window.gm_authFailure = function() {
 
                     <div class="branding-grid">
                         <!-- Card A: Business Logo -->
-                        <details class="branding-card branding-media-dropdown">
+                        <details class="branding-card branding-media-dropdown" id="brand-logo">
                             <summary class="branding-card-header">
                                 <h5 class="branding-card-title">
                                     Business Logo
@@ -1358,7 +1266,7 @@ window.gm_authFailure = function() {
                         </details>
 
                         <!-- Card B: Cover Image -->
-                        <details class="branding-card branding-media-dropdown">
+                        <details class="branding-card branding-media-dropdown" id="brand-cover">
                             <summary class="branding-card-header">
                                 <h5 class="branding-card-title">
                                     Cover Image
@@ -1618,25 +1526,15 @@ window.gm_authFailure = function() {
             </div>
             <!-- End Section: Brand -->
 
-            <!-- Section: Verification Center -->
+            <!-- Section: Verification -->
             <div class="settings-section" id="section-verification">
-                    
-                    <!-- Section Header -->
-                    <div class="settings-section-intro">
-                        <h3><i class="fas fa-shield-halved" style="color: var(--primary-color);"></i> Verification Center</h3>
-                        <p>Submit and manage the documents required to verify your identity and business.</p>
-                    </div>
-
                     <!-- Top Status & Privacy Banner -->
-                    <div class="verif-summary-banner">
+                    <div class="verif-summary-banner" id="verificationStatusSummary">
                         <div>
-                            <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Verification Status</div>
-                            <div style="font-size: 1.1rem; font-weight: 800; color: #1e293b;">
-                                Compliance &amp; Standing
-                            </div>
+                            <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Current status</div>
                         </div>
                         <div>
-                            {% set v_status = profile.verification_status or 'Not Submitted' %}
+                            {% set v_status = verification_status_display %}
                             {% if v_status == 'Verified' %}
                                 <span class="status-badge-saved" style="font-size: 0.88rem; padding: 6px 14px;">
                                     <i class="fas fa-check-circle"></i> Verified
@@ -1656,8 +1554,9 @@ window.gm_authFailure = function() {
                     <!-- Private Document Notice -->
                     <div class="verif-private-notice">
                         <i class="fas fa-lock" style="font-size: 1rem; color: #15803d; flex-shrink: 0;"></i>
-                        <span>These documents are private and are only used for verification. They are not visible to customers.</span>
+                        <span>These files are only used to verify your account. Customers cannot see them.</span>
                     </div>
+                    <p class="verification-file-note">Accepted formats: PNG, JPG, or JPEG. Maximum size: {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB per image.</p>
 
                     {% if profile.admin_remarks %}
                     <div style="margin-bottom: 1.5rem; padding: 0.85rem 1.25rem; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; font-size: 0.85rem; color: #7f1d1d;">
@@ -1675,25 +1574,28 @@ window.gm_authFailure = function() {
                                     <h5 class="branding-card-title">
                                         <i class="fas fa-id-card" style="color: var(--primary-color);"></i> Identity Verification
                                     </h5>
-                                    <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 99px;">Step 1 of 2</span>
+                                    <span class="verification-step-badge">Step 1 of 2</span>
                                 </div>
 
                                 <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                                     <!-- ID Type Selection -->
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">ID Type <span style="color: #ef4444;">*</span></label>
-                                        <select id="verif_id_type" class="form-control" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;">
-                                            <option value="Driver's License">Driver's License</option>
-                                            <option value="Passport">Passport</option>
-                                            <option value="UMID">UMID</option>
-                                            <option value="PhilSys ID">PhilSys ID</option>
-                                            <option value="Voter's ID">Voter's ID</option>
+                                        <label for="verif_id_type" class="verification-field-label">Government ID type <span class="verification-required" aria-label="Required">*</span></label>
+                                        {% set common_id_types = ["Driver's License", "Passport", "UMID", "PhilSys National ID", "SSS ID", "GSIS ID", "PRC ID", "Postal ID", "Voter's ID", "Senior Citizen ID", "PWD ID", "Barangay ID"] %}
+                                        <select id="verif_id_type" class="form-control" required onchange="toggleOtherIdType(this.value)" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;">
+                                            <option value="" disabled {% if not identity or not identity.verification_type %}selected{% endif %}>Select your ID type</option>
+                                            {% for id_choice in common_id_types %}<option value="{{ id_choice }}" {% if identity and identity.verification_type == id_choice %}selected{% endif %}>{{ id_choice }}</option>{% endfor %}
+                                            <option value="Other" {% if identity and identity.verification_type and identity.verification_type not in common_id_types %}selected{% endif %}>Other ID</option>
                                         </select>
+                                        <div class="verification-other-id" id="otherIdTypeWrap" style="display:{% if identity and identity.verification_type and identity.verification_type not in common_id_types %}block{% else %}none{% endif %};">
+                                            <label for="verif_id_type_other" class="verification-field-label">Name of ID <span class="verification-required" aria-label="Required">*</span></label>
+                                            <input type="text" id="verif_id_type_other" value="{% if identity and identity.verification_type and identity.verification_type not in common_id_types %}{{ identity.verification_type }}{% endif %}" maxlength="80" placeholder="Enter the exact name shown on your ID" class="form-control">
+                                        </div>
                                     </div>
 
                                     <!-- Front ID -->
                                     <div class="form-group" id="group_verif_id_front" style="margin-bottom: 0;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Front ID Image <span style="color: #ef4444;">*</span></label>
+                        <label class="verification-field-label">Front of government ID <span class="verification-required" aria-label="Required">*</span></label>
                                         {% if profile.gov_id_url or (identity and identity.document_url) %}
                                         {% set doc_url = profile.gov_id_url or (identity.document_url if identity else '') %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
@@ -1707,10 +1609,10 @@ window.gm_authFailure = function() {
                                             </div>
                                             <div class="uploaded-doc-actions">
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                    <i class="fas fa-external-link-alt"></i> View
                                                 </a>
                                                 <button type="button" onclick="enableFileReplacement('verif_id_front')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                    <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
                                         </div>
@@ -1718,8 +1620,8 @@ window.gm_authFailure = function() {
                                             <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_front').click()">
                                                 <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                                 <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement front ID</span>
-                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
-                                                <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_front')">
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
+                                                <input type="file" id="verif_id_front" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_front')">
                                                 <div id="selected_badge_verif_id_front" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                     <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                                 </div>
@@ -1730,8 +1632,8 @@ window.gm_authFailure = function() {
                                         <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_front').click()">
                                             <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                             <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Front ID</span>
-                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF (Max 10MB)</span>
-                                            <input type="file" id="verif_id_front" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_front')">
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG (Max {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB)</span>
+                                            <input type="file" id="verif_id_front" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_front')">
                                             <div id="selected_badge_verif_id_front" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                 <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                             </div>
@@ -1741,7 +1643,7 @@ window.gm_authFailure = function() {
 
                                     <!-- Back ID -->
                                     <div class="form-group" id="group_verif_id_back" style="margin-bottom: 0;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Back ID Image <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">(Optional)</span></label>
+                                        <label class="verification-field-label">Back of government ID <span class="verification-required" aria-label="Required">*</span></label>
                                         {% if identity and identity.document_back_url %}
                                         {% set doc_url = identity.document_back_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
@@ -1755,10 +1657,10 @@ window.gm_authFailure = function() {
                                             </div>
                                             <div class="uploaded-doc-actions">
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                    <i class="fas fa-external-link-alt"></i> View
                                                 </a>
                                                 <button type="button" onclick="enableFileReplacement('verif_id_back')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                    <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
                                         </div>
@@ -1766,8 +1668,8 @@ window.gm_authFailure = function() {
                                             <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_back').click()">
                                                 <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                                 <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement back ID</span>
-                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
-                                                <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_back')">
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
+                                                <input type="file" id="verif_id_back" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_back')">
                                                 <div id="selected_badge_verif_id_back" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                     <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                                 </div>
@@ -1777,9 +1679,9 @@ window.gm_authFailure = function() {
                                         {% else %}
                                         <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_back').click()">
                                             <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
-                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Back ID (Optional)</span>
-                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
-                                            <input type="file" id="verif_id_back" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_back')">
+                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload back of ID</span>
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
+                                            <input type="file" id="verif_id_back" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_back')">
                                             <div id="selected_badge_verif_id_back" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                 <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                             </div>
@@ -1789,7 +1691,7 @@ window.gm_authFailure = function() {
 
                                     <!-- Selfie / Liveness Check -->
                                     <div class="form-group" id="group_verif_selfie" style="margin-bottom: 0;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Selfie / Liveness Check <span style="color: #ef4444;">*</span></label>
+                                        <label class="verification-field-label">Selfie photo <span class="verification-required" aria-label="Required">*</span></label>
                                         {% if identity and identity.selfie_url %}
                                         {% set doc_url = identity.selfie_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
@@ -1803,10 +1705,10 @@ window.gm_authFailure = function() {
                                             </div>
                                             <div class="uploaded-doc-actions">
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                    <i class="fas fa-external-link-alt"></i> View
                                                 </a>
                                                 <button type="button" onclick="enableFileReplacement('verif_selfie')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                    <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
                                         </div>
@@ -1825,7 +1727,7 @@ window.gm_authFailure = function() {
                                         {% else %}
                                         <div class="upload-dropzone-box" onclick="document.getElementById('verif_selfie').click()">
                                             <i class="fas fa-camera" style="font-size: 1.5rem; color: var(--primary-color);"></i>
-                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Selfie / Liveness Photo</span>
+                                            <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload a clear photo of your face</span>
                                             <span style="font-size: 0.72rem; color: #94a3b8;">Clear face photo, JPG or PNG</span>
                                             <input type="file" id="verif_selfie" accept="image/jpeg,image/png" capture="user" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_selfie')">
                                             <div id="selected_badge_verif_selfie" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
@@ -1844,14 +1746,14 @@ window.gm_authFailure = function() {
                                     <h5 class="branding-card-title">
                                         <i class="fas fa-file-contract" style="color: var(--primary-color);"></i> Business Verification
                                     </h5>
-                                    <span style="font-size: 0.72rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 99px;">Step 2 of 2</span>
+                                    <span class="verification-step-badge">Step 2 of 2</span>
                                 </div>
 
                                 <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                                     
                                     <!-- Business Permit -->
                                     <div class="form-group" id="group_verif_permit" style="margin-bottom: 0;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Business / Mayor's Permit <span style="color: #ef4444;">*</span></label>
+                                        <label class="verification-field-label">Business or mayor’s permit <span class="verification-required" aria-label="Required">*</span></label>
                                         {% if profile.permit_url %}
                                         {% set doc_url = profile.permit_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
@@ -1865,10 +1767,10 @@ window.gm_authFailure = function() {
                                             </div>
                                             <div class="uploaded-doc-actions">
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                    <i class="fas fa-external-link-alt"></i> View
                                                 </a>
                                                 <button type="button" onclick="enableFileReplacement('verif_permit')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                    <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
                                         </div>
@@ -1876,8 +1778,8 @@ window.gm_authFailure = function() {
                                             <div class="upload-dropzone-box" onclick="document.getElementById('verif_permit').click()">
                                                 <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                                 <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement permit</span>
-                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
-                                                <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_permit')">
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
+                                                <input type="file" id="verif_permit" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_permit')">
                                                 <div id="selected_badge_verif_permit" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                     <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                                 </div>
@@ -1888,8 +1790,8 @@ window.gm_authFailure = function() {
                                         <div class="upload-dropzone-box" onclick="document.getElementById('verif_permit').click()">
                                             <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                             <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Business / Mayor's Permit</span>
-                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF (Max 10MB)</span>
-                                            <input type="file" id="verif_permit" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_permit')">
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG (Max {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB)</span>
+                                            <input type="file" id="verif_permit" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_permit')">
                                             <div id="selected_badge_verif_permit" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                 <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                             </div>
@@ -1899,8 +1801,8 @@ window.gm_authFailure = function() {
 
                                     <!-- Permit Expiration Date -->
                                     <div class="form-group" style="margin-bottom: 0;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">Permit Expiration Date</label>
-                                        <input type="date" id="verif_permit_expiry" value="{{ profile.permit_expiry_date or '' }}" class="form-control" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;" onchange="checkPermitExpiryWarning(this.value)">
+                                        <label for="verif_permit_expiry" class="verification-field-label">Permit expiration date <span class="verification-required" aria-label="Required">*</span></label>
+                                        <input type="date" id="verif_permit_expiry" value="{{ profile.permit_expiry_date or '' }}" required class="form-control" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;" onchange="checkPermitExpiryWarning(this.value)">
                                         
                                         <!-- Permit Expired Alert Banner -->
                                         <div id="permitExpiredWarning" class="permit-expired-warning" style="display: none;">
@@ -1911,7 +1813,7 @@ window.gm_authFailure = function() {
 
                                     <!-- DTI Registration -->
                                     <div class="form-group" id="group_verif_dti" style="margin-bottom: 0;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">DTI Registration <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">(Optional)</span></label>
+                                        <label class="verification-field-label">DTI business name registration <span class="verification-required" aria-label="Required">*</span></label>
                                         {% if profile.dti_url %}
                                         {% set doc_url = profile.dti_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
@@ -1925,10 +1827,10 @@ window.gm_authFailure = function() {
                                             </div>
                                             <div class="uploaded-doc-actions">
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                    <i class="fas fa-external-link-alt"></i> View
                                                 </a>
                                                 <button type="button" onclick="enableFileReplacement('verif_dti')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                    <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
                                         </div>
@@ -1936,8 +1838,8 @@ window.gm_authFailure = function() {
                                             <div class="upload-dropzone-box" onclick="document.getElementById('verif_dti').click()">
                                                 <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                                 <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement DTI file</span>
-                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
-                                                <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_dti')">
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
+                                                <input type="file" id="verif_dti" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_dti')">
                                                 <div id="selected_badge_verif_dti" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                     <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                                 </div>
@@ -1948,8 +1850,8 @@ window.gm_authFailure = function() {
                                         <div class="upload-dropzone-box" onclick="document.getElementById('verif_dti').click()">
                                             <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                             <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload DTI Registration</span>
-                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF (Max 10MB)</span>
-                                            <input type="file" id="verif_dti" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_dti')">
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG (Max {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB)</span>
+                                            <input type="file" id="verif_dti" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_dti')">
                                             <div id="selected_badge_verif_dti" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                 <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                             </div>
@@ -1959,7 +1861,7 @@ window.gm_authFailure = function() {
 
                                     <!-- BIR Registration -->
                                     <div class="form-group" id="group_verif_bir" style="margin-bottom: 0;">
-                                        <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin-bottom: 6px; display: block;">BIR Registration <span style="font-size: 0.75rem; color: #94a3b8; font-weight: normal;">(Optional)</span></label>
+                                        <label class="verification-field-label">BIR Certificate of Registration <span class="verification-required" aria-label="Required">*</span></label>
                                         {% if profile.bir_url %}
                                         {% set doc_url = profile.bir_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
@@ -1973,10 +1875,10 @@ window.gm_authFailure = function() {
                                             </div>
                                             <div class="uploaded-doc-actions">
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View File
+                                                    <i class="fas fa-external-link-alt"></i> View
                                                 </a>
                                                 <button type="button" onclick="enableFileReplacement('verif_bir')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace File
+                                                    <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
                                         </div>
@@ -1984,8 +1886,8 @@ window.gm_authFailure = function() {
                                             <div class="upload-dropzone-box" onclick="document.getElementById('verif_bir').click()">
                                                 <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                                 <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement BIR file</span>
-                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF</span>
-                                                <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_bir')">
+                                                <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
+                                                <input type="file" id="verif_bir" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_bir')">
                                                 <div id="selected_badge_verif_bir" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                     <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                                 </div>
@@ -1996,8 +1898,8 @@ window.gm_authFailure = function() {
                                         <div class="upload-dropzone-box" onclick="document.getElementById('verif_bir').click()">
                                             <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                             <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload BIR Registration</span>
-                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or PDF (Max 10MB)</span>
-                                            <input type="file" id="verif_bir" accept=".jpg,.jpeg,.png,.pdf" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_bir')">
+                                            <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG (Max {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB)</span>
+                                            <input type="file" id="verif_bir" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_bir')">
                                             <div id="selected_badge_verif_bir" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                 <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                             </div>
@@ -2009,9 +1911,9 @@ window.gm_authFailure = function() {
                             </div>
                         </div>
                         
-                        <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
-                            <button type="button" class="btn-primary" id="btnSubmitVerification" onclick="submitVerification()" style="padding: 10px 24px; font-size: 0.92rem; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; color: #ffffff; cursor: pointer;">
-                                <i class="fas fa-paper-plane"></i> Submit Verification Documents
+                        <div class="verification-submit-row" style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+                            <button type="button" class="btn-primary verification-submit-button" id="btnSubmitVerification" onclick="submitVerification()" style="padding: 10px 24px; font-size: 0.92rem; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; color: #ffffff; cursor: pointer;">
+                                <i class="fas fa-paper-plane"></i> <span class="submit-label-full">Submit verification documents</span><span class="submit-label-mobile">Submit documents</span>
                             </button>
                         </div>
                     </div>
@@ -2023,7 +1925,7 @@ window.gm_authFailure = function() {
                 <div class="action-bar-buttons settings-form-footer-buttons">
                     <a href="/caterer/dashboard" class="btn-bar-cancel">Cancel</a>
                     <button type="submit" id="btnSaveAllSettings" class="btn-bar-save">
-                        <i class="fas fa-floppy-disk"></i> <span>Save Changes</span>
+                        <span>Save Changes</span>
                     </button>
                 </div>
             </div>
@@ -2036,10 +1938,10 @@ window.gm_authFailure = function() {
     <div class="occ-modal-box sz-sm">
         <div class="occ-modal-header glass-header">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-key" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Update Password</h3>
+                <h3 class="occ-modal-title">Update Password</h3>
                 <div class="occ-modal-subtitle">Ensure your account stays secure with a strong password.</div>
             </div>
-            <button type="button" onclick="window.closeModal('passwordModal')" class="occ-modal-close">
+            <button type="button" aria-label="Close password dialog" onclick="window.closeModal('passwordModal')" class="occ-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -2096,9 +1998,9 @@ window.gm_authFailure = function() {
     <div class="occ-modal-box" style="max-width: 1200px; width: 95%; height: 90vh; display: flex; flex-direction: column; padding: 0;">
         <div class="occ-modal-header glass-header">
             <div>
-                <h3 class="occ-modal-title"><i class="fas fa-desktop" style="color: var(--primary-color); margin-right: 0.5rem;"></i> Public Profile Preview</h3>
+                <h3 class="occ-modal-title">Public Profile Preview</h3>
             </div>
-            <button type="button" onclick="window.closeModal('profilePreviewModal')" class="occ-modal-close">
+            <button type="button" aria-label="Close profile preview" onclick="window.closeModal('profilePreviewModal')" class="occ-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -2304,49 +2206,20 @@ function validateRequirements() {
     const newPass = newPassInput.value;
     const currentPass = currentPassInput.value;
     const confPass = confPassInput.value;
+    const setRequirement = (id, met, invalid = false) => {
+        const item = document.getElementById(id);
+        if (!item) return;
+        item.classList.toggle('is-met', met);
+        item.classList.toggle('is-invalid-requirement', invalid);
+        item.style.color = met ? '#15803d' : invalid ? '#dc2626' : '#64748b';
+        const icon = item.querySelector('i');
+        if (icon) icon.className = met ? 'fas fa-check-circle' : invalid ? 'fas fa-times-circle' : 'fas fa-circle';
+    };
     
-    // 1. Length Requirement
-    const reqLength = document.getElementById('req-length');
-    if (newPass.length >= 8) {
-        reqLength.style.color = 'var(--accent-color)';
-        reqLength.querySelector('i').className = 'fas fa-check-circle';
-    } else {
-        reqLength.style.color = newPass.length > 0 ? 'var(--accent-color)' : '#64748b';
-        reqLength.querySelector('i').className = 'fas fa-circle';
-    }
-    
-    // 2. Different from Current Requirement
-    const reqDiff = document.getElementById('req-different');
-    if (newPass && currentPass && newPass !== currentPass) {
-        reqDiff.style.color = 'var(--accent-color)';
-        reqDiff.querySelector('i').className = 'fas fa-check-circle';
-    } else if (newPass && currentPass && newPass === currentPass) {
-        reqDiff.style.color = '#ef4444';
-        reqDiff.querySelector('i').className = 'fas fa-times-circle';
-    } else {
-        reqDiff.style.color = '#64748b';
-        reqDiff.querySelector('i').className = 'fas fa-circle';
-    }
-    
-    // 3. Uppercase Requirement
-    const reqUpper = document.getElementById('req-upper');
-    if (/[A-Z]/.test(newPass)) {
-        reqUpper.style.color = 'var(--accent-color)';
-        reqUpper.querySelector('i').className = 'fas fa-check-circle';
-    } else {
-        reqUpper.style.color = newPass.length > 0 ? 'var(--accent-color)' : '#64748b';
-        reqUpper.querySelector('i').className = 'fas fa-circle';
-    }
-    
-    // 4. Special Character Requirement
-    const reqSpecial = document.getElementById('req-special');
-    if (/[^A-Za-z0-9]/.test(newPass)) {
-        reqSpecial.style.color = 'var(--accent-color)';
-        reqSpecial.querySelector('i').className = 'fas fa-check-circle';
-    } else {
-        reqSpecial.style.color = newPass.length > 0 ? 'var(--accent-color)' : '#64748b';
-        reqSpecial.querySelector('i').className = 'fas fa-circle';
-    }
+    setRequirement('req-length', newPass.length >= 8);
+    setRequirement('req-different', !!newPass && !!currentPass && newPass !== currentPass, !!newPass && !!currentPass && newPass === currentPass);
+    setRequirement('req-upper', /[A-Z]/.test(newPass));
+    setRequirement('req-special', /[^A-Za-z0-9]/.test(newPass));
     
     // 5. Matching Status
     const statusText = document.getElementById('matchIndicatorText');
@@ -2419,9 +2292,9 @@ currentPassInput.addEventListener('input', validateRequirements);
         marker = new google.maps.Marker({
             position: initialPos,
             map: map,
-            draggable: false, // DISABLED dragging to prevent location spoofing
+            draggable: true,
             animation: google.maps.Animation.DROP,
-            title: 'Naka-lock ang iyong lokasyon'
+            title: 'Drag to set your business location'
         });
 
         // Geocoder (for reverse geocoding on drag/click)
@@ -2440,6 +2313,9 @@ currentPassInput.addEventListener('input', validateRequirements);
                         marker.setPosition(loc);
                         marker.setAnimation(google.maps.Animation.DROP);
                         updateCoords(loc.lat(), loc.lng());
+                        if (results[0].address_components && window.applyGoogleAddressComponents) {
+                            window.applyGoogleAddressComponents(results[0].address_components);
+                        }
                     } else {
                         const parts = query.split(',');
                         if (parts.length > 2) {
@@ -2459,27 +2335,46 @@ currentPassInput.addEventListener('input', validateRequirements);
             document.getElementById('lonInput').value = lng.toFixed(6);
             document.getElementById('latDisplay').innerText = lat.toFixed(6);
             document.getElementById('lonDisplay').innerText = lng.toFixed(6);
+            window.catererLocationPinChanged = true;
+            window.catererLocationPinConfirmed = false;
+            if (window.triggerSettingsDirty) window.triggerSettingsDirty();
         }
 
         function reverseGeocode(lat, lng) {
-            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                if (status === 'OK' && results[0]) {
-                    const components = results[0].address_components;
-                    const cityInput = document.getElementById('cityNameHidden');
-                    const addressInput = document.getElementById('businessAddress');
-
-                    if (cityInput) {
-                        const city = components.find(c => c.types.includes('locality'))
-                            || components.find(c => c.types.includes('administrative_area_level_2'))
-                            || components.find(c => c.types.includes('administrative_area_level_1'));
-                        if (city) cityInput.value = city.long_name;
+            const updatePromise = new Promise(resolve => {
+                geocoder.geocode({ location: { lat, lng } }, async (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        const bestResult = (results || []).find(result => {
+                            const types = result.types || [];
+                            const names = (result.address_components || []).flatMap(component => component.types || []);
+                            return (types.some(type => ['street_address', 'premise', 'subpremise', 'route'].includes(type)) || names.includes('sublocality_level_1')) &&
+                                (names.includes('administrative_area_level_1') || names.includes('administrative_area_level_2'));
+                        }) || results[0];
+                        const components = bestResult.address_components || [];
+                        const addressInput = document.getElementById('businessAddress');
+                        if (addressInput && bestResult.formatted_address) addressInput.value = bestResult.formatted_address;
+                        if (window.applyGoogleAddressComponents) await window.applyGoogleAddressComponents(components);
+                        if (window.triggerSettingsDirty) window.triggerSettingsDirty();
+                        resolve(true);
+                    } else {
+                        resolve(false);
                     }
-                }
+                });
             });
+            window.catererAddressUpdatePromise = updatePromise;
+            return updatePromise;
         }
 
-        // Marker drag and Map click events have been REMOVED to prevent location spoofing.
-        // The user must use Google Places Autocomplete or the GPS locator button.
+        map.addListener('click', (event) => {
+            marker.setPosition(event.latLng);
+            map.panTo(event.latLng);
+            updateCoords(event.latLng.lat(), event.latLng.lng());
+            reverseGeocode(event.latLng.lat(), event.latLng.lng());
+        });
+        marker.addListener('dragend', (event) => {
+            updateCoords(event.latLng.lat(), event.latLng.lng());
+            reverseGeocode(event.latLng.lat(), event.latLng.lng());
+        });
 
         // ─── Google Places Autocomplete ───
         const searchInput = document.getElementById('mapSearchInput');
@@ -2510,17 +2405,13 @@ currentPassInput.addEventListener('input', validateRequirements);
             marker.setAnimation(google.maps.Animation.DROP);
             updateCoords(lat, lng);
 
-            // Auto-fill city and address
-            const cityInput = document.getElementById('cityNameHidden');
             const addressInput = document.getElementById('businessAddress');
             const components = place.address_components || [];
-
-            if (cityInput) {
-                const city = components.find(c => c.types.includes('locality'))
-                    || components.find(c => c.types.includes('administrative_area_level_2'))
-                    || components.find(c => c.types.includes('administrative_area_level_1'));
-                if (city) cityInput.value = city.long_name;
+            if (addressInput && place.formatted_address) addressInput.value = place.formatted_address;
+            if (window.applyGoogleAddressComponents) {
+                window.catererAddressUpdatePromise = window.applyGoogleAddressComponents(components);
             }
+            if (window.triggerSettingsDirty) window.triggerSettingsDirty();
         });
 
         // ─── GPS "Use My Location" Button ───
@@ -2575,9 +2466,7 @@ currentPassInput.addEventListener('input', validateRequirements);
             google.maps.event.trigger(map, 'resize');
             map.setCenter(marker.getPosition());
 
-            // If coordinates are missing/default, geocode the saved address
-            // NOTE: Only move the map — do NOT auto-save to latInput/lonInput
-            // Coordinates must be explicitly set by the user (drag, click, or GPS)
+            // If coordinates are missing, geocode the saved address and store the resulting pin.
             const hasValidCoords = initialLat !== 14.2811 && initialLng !== 121.4150 && initialLat !== 0 && initialLng !== 0;
             if (!hasValidCoords) {
                 const savedAddress = document.getElementById('businessAddress')?.value?.trim();
@@ -2659,6 +2548,111 @@ document.addEventListener('DOMContentLoaded', async () => {
     const savedProvCode = provCodeHidden.value;
     const savedCityCode = cityCodeHidden.value;
     const savedBrgyCode = brgyCodeHidden.value;
+    let addressDropdownsReady = false;
+    let pendingGoogleAddressComponents = null;
+    let pendingGoogleAddressResolver = null;
+
+    function getComponentName(components, type) {
+        return components.find(component => component.types.includes(type))?.long_name || '';
+    }
+
+    function findAddressOption(select, candidates) {
+        const normalize = value => value.toLocaleLowerCase().replace(/[^a-z0-9]/g, '');
+        const options = Array.from(select.options).filter(option => option.value);
+        for (const candidate of candidates.filter(Boolean)) {
+            const target = normalize(candidate);
+            if (['metromanila', 'ncr', 'nationalcapitalregion'].includes(target)) {
+                const metroManila = options.find(option => normalize(option.textContent).includes('ncr'));
+                if (metroManila) return metroManila;
+            }
+            const exact = options.find(option => normalize(option.textContent) === target);
+            if (exact) return exact;
+            const simplify = value => normalize(value).replace(/^(cityof|municipalityof|barangay|brgy|district)/, '').replace(/(city|municipality|town|district)$/, '');
+            const simplified = options.find(option => simplify(option.textContent) === simplify(candidate));
+            if (simplified) return simplified;
+        }
+        return null;
+    }
+
+    window.applyGoogleAddressComponents = async function(components) {
+        if (!addressDropdownsReady) {
+            pendingGoogleAddressComponents = components;
+            return new Promise(resolve => { pendingGoogleAddressResolver = resolve; });
+        }
+
+        const provinceCandidates = [
+            getComponentName(components, 'administrative_area_level_1'),
+            getComponentName(components, 'administrative_area_level_2'),
+            getComponentName(components, 'administrative_area_level_3')
+        ];
+        const provinceOption = findAddressOption(provSelect, provinceCandidates);
+        if (!provinceOption) {
+            provSelect.value = '';
+            provCodeHidden.value = '';
+            provNameHidden.value = '';
+            citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
+            citySelect.disabled = true;
+            cityCodeHidden.value = '';
+            cityNameHidden.value = '';
+            brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
+            brgySelect.disabled = true;
+            brgyCodeHidden.value = '';
+            brgyNameHidden.value = '';
+            if (window.triggerSettingsDirty) window.triggerSettingsDirty();
+            return false;
+        }
+
+        const provinceChanged = provSelect.value !== provinceOption.value;
+        provSelect.value = provinceOption.value;
+        provCodeHidden.value = provinceOption.value;
+        provNameHidden.value = provinceOption.textContent;
+        cityCodeHidden.value = '';
+        cityNameHidden.value = '';
+        brgyCodeHidden.value = '';
+        brgyNameHidden.value = '';
+        citySelect.value = '';
+        brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
+        brgySelect.disabled = true;
+        if (provinceChanged) {
+            citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
+            citySelect.disabled = true;
+        }
+        const cityCandidates = [
+            getComponentName(components, 'locality'),
+            getComponentName(components, 'postal_town'),
+            getComponentName(components, 'administrative_area_level_2'),
+            getComponentName(components, 'administrative_area_level_3'),
+            getComponentName(components, 'sublocality_level_1')
+        ];
+        const barangayCandidates = [
+            getComponentName(components, 'sublocality_level_1'),
+            getComponentName(components, 'sublocality_level_2'),
+            getComponentName(components, 'neighborhood'),
+            getComponentName(components, 'premise'),
+            getComponentName(components, 'administrative_area_level_4')
+        ];
+
+        if (provinceChanged || citySelect.disabled) {
+            await fetchCities(provinceOption.value, cityCandidates, barangayCandidates);
+        } else {
+            const cityOption = findAddressOption(citySelect, cityCandidates);
+            if (cityOption) {
+                citySelect.value = cityOption.value;
+                cityCodeHidden.value = cityOption.value;
+                cityNameHidden.value = cityOption.textContent;
+                await fetchBarangays(cityOption.value, barangayCandidates);
+            }
+        }
+
+        const barangayOption = findAddressOption(brgySelect, barangayCandidates);
+        if (barangayOption) {
+            brgySelect.value = barangayOption.value;
+            brgyCodeHidden.value = barangayOption.value;
+            brgyNameHidden.value = barangayOption.textContent;
+        }
+        if (window.triggerSettingsDirty) window.triggerSettingsDirty();
+        return true;
+    };
 
     try {
         // Fetch Provinces
@@ -2693,6 +2687,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             await fetchCities(activeProvCode, savedCityCode);
         }
+        addressDropdownsReady = true;
+        if (pendingGoogleAddressComponents) {
+            const pendingComponents = pendingGoogleAddressComponents;
+            pendingGoogleAddressComponents = null;
+            const applied = await window.applyGoogleAddressComponents(pendingComponents);
+            if (pendingGoogleAddressResolver) {
+                pendingGoogleAddressResolver(applied);
+                pendingGoogleAddressResolver = null;
+            }
+        }
         
         // Auto-geocode on load moved to after barangays are loaded to prevent race conditions
     } catch (e) { console.error('Failed to load provinces:', e); }
@@ -2722,6 +2726,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const name = e.target.options[e.target.selectedIndex]?.text || '';
         provCodeHidden.value = code;
         provNameHidden.value = name;
+        if (window.triggerSettingsDirty) window.triggerSettingsDirty();
         
         citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
         brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
@@ -2743,6 +2748,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const name = e.target.options[e.target.selectedIndex]?.text || '';
         cityCodeHidden.value = code;
         cityNameHidden.value = name;
+        if (window.triggerSettingsDirty) window.triggerSettingsDirty();
         
         brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
         brgySelect.disabled = true;
@@ -2758,12 +2764,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     brgySelect.addEventListener('change', (e) => {
         brgyCodeHidden.value = e.target.value;
         brgyNameHidden.value = e.target.options[e.target.selectedIndex]?.text || '';
+        if (window.triggerSettingsDirty) window.triggerSettingsDirty();
         if (brgyCodeHidden.value) {
             triggerAutoGeocode();
         }
     });
 
-    async function fetchCities(provCode, preSelectCode = null) {
+    async function fetchCities(provCode, preSelectCode = null, preSelectBarangay = savedBrgyCode) {
         if (!provCode) return;
         try {
             citySelect.disabled = true;
@@ -2787,18 +2794,28 @@ document.addEventListener('DOMContentLoaded', async () => {
             citySelect.disabled = false;
 
             let activeCityCode = preSelectCode;
-            if (preSelectCode && isNaN(preSelectCode)) {
-                const upName = preSelectCode.toUpperCase();
-                const found = cities.find(c => c.name.toUpperCase() === upName || c.name.toUpperCase().includes(upName));
-                if (found) { activeCityCode = found.code; cityCodeHidden.value = activeCityCode; }
+            if (Array.isArray(preSelectCode)) {
+                const match = findAddressOption(citySelect, preSelectCode);
+                activeCityCode = match?.value || null;
+            } else if (preSelectCode && isNaN(preSelectCode)) {
+                const match = findAddressOption(citySelect, [preSelectCode]);
+                activeCityCode = match?.value || null;
             }
 
             if (activeCityCode) {
                 citySelect.value = activeCityCode;
+                cityCodeHidden.value = activeCityCode;
                 if (citySelect.options[citySelect.selectedIndex]) {
                     cityNameHidden.value = citySelect.options[citySelect.selectedIndex].text;
                 }
-                await fetchBarangays(activeCityCode, savedBrgyCode);
+                await fetchBarangays(activeCityCode, preSelectBarangay);
+            } else if (Array.isArray(preSelectCode)) {
+                cityCodeHidden.value = '';
+                cityNameHidden.value = '';
+                brgyCodeHidden.value = '';
+                brgyNameHidden.value = '';
+                brgySelect.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
+                brgySelect.disabled = true;
             }
         } catch (e) {
             console.error('Failed to load cities:', e);
@@ -2825,17 +2842,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             brgySelect.disabled = false;
 
             let activeBrgyCode = preSelectCode;
-            if (preSelectCode && isNaN(preSelectCode)) {
-                const upName = preSelectCode.toUpperCase();
-                const found = brgys.find(b => b.name.toUpperCase() === upName || b.name.toUpperCase().includes(upName));
-                if (found) { activeBrgyCode = found.code; brgyCodeHidden.value = activeBrgyCode; }
+            if (Array.isArray(preSelectCode)) {
+                const match = findAddressOption(brgySelect, preSelectCode);
+                activeBrgyCode = match?.value || null;
+            } else if (preSelectCode && isNaN(preSelectCode)) {
+                const match = findAddressOption(brgySelect, [preSelectCode]);
+                activeBrgyCode = match?.value || null;
             }
 
             if (activeBrgyCode) {
                 brgySelect.value = activeBrgyCode;
+                brgyCodeHidden.value = activeBrgyCode;
                 if (brgySelect.options[brgySelect.selectedIndex]) {
                     brgyNameHidden.value = brgySelect.options[brgySelect.selectedIndex].text;
                 }
+            } else if (Array.isArray(preSelectCode)) {
+                brgyCodeHidden.value = '';
+                brgyNameHidden.value = '';
             }
 
             // After everything is fully loaded (Provinces -> Cities -> Barangays), check if we need to auto-geocode
@@ -2853,476 +2876,5 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 </script>
-<!-- ADD ZONE MODAL -->
-<div id="addZoneModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md occ-content-pop">
-        <form id="addZoneForm" onsubmit="submitAddZone(event)">
-            <div class="occ-modal-header">
-                <div>
-                    <h3 class="occ-modal-title">Add Service Area</h3>
-                </div>
-                <button type="button" class="occ-modal-close delivery-modal-close" onclick="closeAddZoneModal()" aria-label="Close">
-                    <i class="fas fa-times" aria-hidden="true"></i>
-                </button>
-            </div>
-            
-            <div class="occ-modal-body">
-                <div class="form-group">
-                    <label>Province</label>
-                    <select id="zoneProvince" name="province" class="form-control" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                        <option value="" disabled selected>Select Province</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Municipality / City</label>
-                    <select id="zoneCity" name="city_municipality" class="form-control" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;" disabled>
-                        <option value="" disabled selected>Select Municipality</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Fee Type</label>
-                    <select id="zoneFeeType" name="is_manual_quote" class="form-control" onchange="toggleZoneFeeInput()" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                        <option value="" disabled selected>Select fee type</option>
-                        <option value="false">Set a fixed delivery fee</option>
-                        <option value="true">Confirm the fee with the customer</option>
-                    </select>
-                </div>
-                <div class="form-group" id="zoneFeeGroup">
-                    <label>Delivery fee (₱)</label>
-                    <input type="text" inputmode="decimal" maxlength="10" id="zoneFeeInput" name="fee" class="form-control" required aria-describedby="zoneFeeValidation" autocomplete="off" placeholder="e.g. 150.00" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                    <span class="delivery-fee-validation" id="zoneFeeValidation" aria-live="polite">Enter up to 6 whole-number digits and 2 decimal places (maximum ₱999,999.99).</span>
-                </div>
-            </div>
-            
-            <div class="occ-modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeAddZoneModal()">Cancel</button>
-                <button type="submit" class="btn-primary" id="btnSaveZone" disabled>Add Zone</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- EDIT ZONE MODAL -->
-<div id="editZoneModal" class="occ-modal-overlay">
-    <div class="occ-modal-box sz-md occ-content-pop">
-        <form id="editZoneForm" onsubmit="submitEditZone(event)">
-            <input type="hidden" id="editZoneId">
-            <div class="occ-modal-header">
-                <div>
-                    <h3 class="occ-modal-title">Edit Delivery Fee</h3>
-                </div>
-                <button type="button" class="occ-modal-close delivery-modal-close" onclick="closeEditZoneModal()" aria-label="Close">
-                    <i class="fas fa-times" aria-hidden="true"></i>
-                </button>
-            </div>
-            
-            <div class="occ-modal-body">
-                <div class="form-group">
-                    <label>Location</label>
-                    <input type="text" id="editZoneLocation" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;" disabled>
-                </div>
-                <div class="form-group">
-                    <label>Fee Type</label>
-                    <select id="editZoneFeeType" class="form-control" onchange="toggleEditZoneFeeInput()" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                        <option value="false">Set a fixed delivery fee</option>
-                        <option value="true">Confirm the fee with the customer</option>
-                    </select>
-                </div>
-                <div class="form-group" id="editZoneFeeGroup">
-                    <label>Delivery fee (₱)</label>
-                    <input type="text" inputmode="decimal" maxlength="10" id="editZoneFeeInput" class="form-control" required aria-describedby="editZoneFeeValidation" autocomplete="off" placeholder="e.g. 150.00" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: 8px;">
-                    <span class="delivery-fee-validation" id="editZoneFeeValidation" aria-live="polite">Enter up to 6 whole-number digits and 2 decimal places (maximum ₱999,999.99).</span>
-                </div>
-            </div>
-            
-            <div class="occ-modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeEditZoneModal()">Cancel</button>
-                <button type="submit" class="btn-primary" id="btnSaveEditZone" disabled>Update Fee</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    // Delivery Zone Modal Logic
-    const deliveryZonesTableBody = document.getElementById('deliveryZonesTableBody');
-    const deliverySettingsSaveState = document.getElementById('deliverySettingsSaveState');
-    const baseDeliveryFeeInput = document.querySelector('[name="base_delivery_fee"]');
-    const outOfCoverageSelect = document.querySelector('[name="out_of_coverage_action"]');
-    let deliverySettingsSaveTimer;
-    const zoneProvinceSelect = document.getElementById('zoneProvince');
-    const zoneCitySelect = document.getElementById('zoneCity');
-    const zoneFeeTypeSelect = document.getElementById('zoneFeeType');
-    const zoneFeeInput = document.getElementById('zoneFeeInput');
-    const addZoneButton = document.getElementById('btnSaveZone');
-    const editZoneFeeTypeSelect = document.getElementById('editZoneFeeType');
-    const editZoneFeeInput = document.getElementById('editZoneFeeInput');
-    const editZoneButton = document.getElementById('btnSaveEditZone');
-    const maxDeliveryFee = 999999.99;
-    const deliveryFeeFormatMessage = 'Enter up to 6 whole-number digits and 2 decimal places (maximum ₱999,999.99).';
-
-    function parseDeliveryFee(value) {
-        const amount = String(value || '').trim();
-        if (!/^(?:\d{1,6}|\d{1,3},\d{3})(?:\.\d{1,2})?$/.test(amount)) return null;
-        const parsed = Number(amount.replace(/,/g, ''));
-        return Number.isFinite(parsed) && parsed <= maxDeliveryFee ? parsed : null;
-    }
-
-    function updateFeeValidation(input, feedback, isRequired) {
-        const fee = parseDeliveryFee(input.value);
-        const valid = !isRequired || fee !== null;
-        input.setAttribute('aria-invalid', String(!valid));
-        feedback.classList.toggle('is-error', !valid);
-        feedback.textContent = valid
-            ? (isRequired ? 'Valid delivery fee.' : 'A fee is not required for customer-confirmed quotes.')
-            : deliveryFeeFormatMessage;
-        return valid;
-    }
-
-    function updateBaseDeliveryFeeValidation() {
-        const valid = parseDeliveryFee(baseDeliveryFeeInput.value) !== null;
-        const feedback = document.getElementById('baseDeliveryFeeValidation');
-        baseDeliveryFeeInput.setAttribute('aria-invalid', String(!valid));
-        feedback.classList.toggle('is-error', !valid);
-        feedback.textContent = valid
-            ? 'Maximum ₱999,999.99; up to 2 decimal places.'
-            : deliveryFeeFormatMessage;
-        return valid;
-    }
-
-    function updateAddZoneValidation() {
-        const manualQuote = zoneFeeTypeSelect.value === 'true';
-        const feeTypeValid = zoneFeeTypeSelect.value === 'false' || manualQuote;
-        const feeValid = updateFeeValidation(zoneFeeInput, document.getElementById('zoneFeeValidation'), zoneFeeTypeSelect.value === 'false');
-        const locationValid = !!zoneProvinceSelect.value && !!zoneCitySelect.value && !zoneCitySelect.disabled;
-        addZoneButton.disabled = !(locationValid && feeTypeValid && feeValid);
-    }
-
-    function updateEditZoneValidation() {
-        const manualQuote = editZoneFeeTypeSelect.value === 'true';
-        const feeValid = updateFeeValidation(editZoneFeeInput, document.getElementById('editZoneFeeValidation'), !manualQuote);
-        editZoneButton.disabled = !feeValid;
-    }
-
-    function setDeliverySettingsSaveState(message, state = '') {
-        if (!deliverySettingsSaveState) return;
-        deliverySettingsSaveState.textContent = message;
-        deliverySettingsSaveState.classList.toggle('is-error', state === 'error');
-        deliverySettingsSaveState.classList.toggle('is-saved', state === 'saved');
-    }
-
-    async function saveDeliverySettings() {
-        const fee = parseDeliveryFee(baseDeliveryFeeInput.value);
-        if (fee === null) {
-            updateBaseDeliveryFeeValidation();
-            setDeliverySettingsSaveState(deliveryFeeFormatMessage, 'error');
-            return;
-        }
-
-        setDeliverySettingsSaveState('Saving…');
-        try {
-            const response = await fetch('/caterer/api/delivery-settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    base_delivery_fee: fee,
-                    out_of_coverage_action: outOfCoverageSelect.value
-                })
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.detail || 'Could not save delivery settings.');
-            setDeliverySettingsSaveState('Saved. New booking estimates will use these settings.', 'saved');
-        } catch (error) {
-            setDeliverySettingsSaveState(error.message || 'Could not save delivery settings. Try again.', 'error');
-        }
-    }
-
-    function queueDeliverySettingsSave() {
-        window.clearTimeout(deliverySettingsSaveTimer);
-        deliverySettingsSaveTimer = window.setTimeout(saveDeliverySettings, 500);
-    }
-
-    baseDeliveryFeeInput?.addEventListener('input', queueDeliverySettingsSave);
-    baseDeliveryFeeInput?.addEventListener('input', updateBaseDeliveryFeeValidation);
-    baseDeliveryFeeInput?.addEventListener('blur', saveDeliverySettings);
-    outOfCoverageSelect?.addEventListener('change', saveDeliverySettings);
-    updateBaseDeliveryFeeValidation();
-
-    function formatDeliveryFee(fee) {
-        return `₱${Number(fee || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-
-    function createDeliveryZoneRow(zone) {
-        const row = document.createElement('tr');
-        row.dataset.zoneId = zone.id;
-        row.dataset.province = zone.province;
-        row.dataset.city = zone.city_municipality;
-        row.dataset.manual = String(zone.is_manual_quote);
-        row.dataset.fee = String(zone.fee || 0);
-
-        [zone.province, zone.city_municipality].forEach(value => {
-            const cell = document.createElement('td');
-            cell.textContent = value;
-            row.appendChild(cell);
-        });
-
-        const feeTypeCell = document.createElement('td');
-        feeTypeCell.className = 'zone-fee-type';
-        feeTypeCell.textContent = zone.is_manual_quote ? 'Confirm with customer' : 'Fixed fee';
-        row.appendChild(feeTypeCell);
-
-        const amountCell = document.createElement('td');
-        amountCell.className = 'zone-fee-amount';
-        amountCell.textContent = zone.is_manual_quote ? 'To be confirmed' : formatDeliveryFee(zone.fee);
-        row.appendChild(amountCell);
-
-        const actionsCell = document.createElement('td');
-        actionsCell.className = 'delivery-zone-actions';
-        const editButton = document.createElement('button');
-        editButton.type = 'button';
-        editButton.className = 'btn-secondary-pro';
-        editButton.textContent = 'Edit';
-        editButton.addEventListener('click', () => openEditZoneModalFromRow(editButton));
-        const deleteButton = document.createElement('button');
-        deleteButton.type = 'button';
-        deleteButton.className = 'btn-danger-outline';
-        deleteButton.textContent = 'Delete';
-        deleteButton.addEventListener('click', () => deleteDeliveryZone(zone.id));
-        actionsCell.append(editButton, deleteButton);
-        row.appendChild(actionsCell);
-        return row;
-    }
-
-    function addDeliveryZoneRow(zone) {
-        deliveryZonesTableBody.querySelector('.delivery-zones-empty-row')?.remove();
-        deliveryZonesTableBody.appendChild(createDeliveryZoneRow(zone));
-    }
-
-    function showEmptyDeliveryZones() {
-        if (deliveryZonesTableBody.querySelector('tr[data-zone-id]')) return;
-        const row = document.createElement('tr');
-        row.className = 'delivery-zones-empty-row';
-        const cell = document.createElement('td');
-        cell.colSpan = 5;
-        cell.textContent = 'No service areas yet. Add one to set a location-specific delivery fee.';
-        row.appendChild(cell);
-        deliveryZonesTableBody.appendChild(row);
-    }
-
-    function openAddZoneModal() {
-        document.getElementById('addZoneModal').classList.add('active');
-        loadZoneProvinces();
-    }
-
-    function closeAddZoneModal() {
-        document.getElementById('addZoneModal').classList.remove('active');
-        document.getElementById('addZoneForm').reset();
-        zoneProvinceSelect.innerHTML = '<option value="" disabled selected>Select Province</option>';
-        zoneCitySelect.disabled = true;
-        zoneCitySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
-        document.getElementById('zoneFeeGroup').style.display = 'block';
-        zoneFeeInput.required = true;
-        zoneFeeTypeSelect.value = '';
-        zoneFeeTypeSelect.selectedIndex = 0;
-        zoneFeeInput.removeAttribute('aria-invalid');
-        document.getElementById('zoneFeeValidation').classList.remove('is-error');
-        addZoneButton.disabled = true;
-    }
-
-    function toggleZoneFeeInput() {
-        const isManual = zoneFeeTypeSelect.value === 'true';
-        document.getElementById('zoneFeeGroup').style.display = isManual ? 'none' : 'block';
-        zoneFeeInput.required = !isManual;
-        updateAddZoneValidation();
-    }
-
-    // Edit Zone Logic
-    function openEditZoneModal(id, province, city, isManual, fee) {
-        document.getElementById('editZoneId').value = id;
-        document.getElementById('editZoneLocation').value = `${city}, ${province}`;
-        document.getElementById('editZoneFeeType').value = isManual;
-        document.getElementById('editZoneFeeInput').value = fee;
-        toggleEditZoneFeeInput();
-        updateEditZoneValidation();
-        
-        document.getElementById('editZoneModal').classList.add('active');
-    }
-
-    function openEditZoneModalFromRow(button) {
-        const row = button.closest('tr[data-zone-id]');
-        if (!row) return;
-        openEditZoneModal(row.dataset.zoneId, row.dataset.province, row.dataset.city, row.dataset.manual, row.dataset.fee);
-    }
-
-    function closeEditZoneModal() {
-        document.getElementById('editZoneModal').classList.remove('active');
-        editZoneButton.disabled = true;
-    }
-
-    function toggleEditZoneFeeInput() {
-        const isManual = editZoneFeeTypeSelect.value === 'true';
-        document.getElementById('editZoneFeeGroup').style.display = isManual ? 'none' : 'block';
-        editZoneFeeInput.required = !isManual;
-        updateEditZoneValidation();
-    }
-
-    async function loadZoneProvinces() {
-        const provSelect = document.getElementById('zoneProvince');
-        if (provSelect.options.length > 1) return; // Already loaded
-
-        try {
-            // Lock to Laguna only
-            provSelect.innerHTML = '<option value="043400000" selected>Laguna</option>';
-            provSelect.dispatchEvent(new Event('change'));
-            updateAddZoneValidation();
-        } catch (e) {
-            console.error('Failed to load provinces:', e);
-        }
-    }
-
-    document.getElementById('zoneProvince')?.addEventListener('change', async (e) => {
-        const code = e.target.value;
-        const citySelect = document.getElementById('zoneCity');
-        citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
-        citySelect.disabled = true;
-        updateAddZoneValidation();
-
-        if (!code) return;
-
-        try {
-            citySelect.innerHTML = '<option value="">Loading...</option>';
-            let endpoint = `https://psgc.gitlab.io/api/provinces/${code}/cities-municipalities/`;
-            if (code === "130000000") {
-                endpoint = `https://psgc.gitlab.io/api/regions/${code}/cities-municipalities/`;
-            }
-            
-            const res = await fetch(endpoint);
-            const cities = await res.json();
-            
-            citySelect.innerHTML = '<option value="" disabled selected>Select Municipality</option>';
-            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.code;
-                opt.textContent = c.name;
-                citySelect.appendChild(opt);
-            });
-            citySelect.disabled = false;
-            updateAddZoneValidation();
-        } catch (e) {
-            console.error('Failed to load cities:', e);
-            updateAddZoneValidation();
-        }
-    });
-    zoneCitySelect.addEventListener('change', updateAddZoneValidation);
-    zoneFeeInput.addEventListener('input', updateAddZoneValidation);
-    zoneFeeTypeSelect.addEventListener('change', updateAddZoneValidation);
-    editZoneFeeInput.addEventListener('input', updateEditZoneValidation);
-    editZoneFeeTypeSelect.addEventListener('change', updateEditZoneValidation);
-
-    async function submitAddZone(e) {
-        e.preventDefault();
-        const btn = document.getElementById('btnSaveZone');
-        updateAddZoneValidation();
-        if (btn.disabled) return;
-        const origText = btn.innerHTML;
-        btn.innerHTML = 'Saving...';
-        btn.disabled = true;
-
-        const provSelect = document.getElementById('zoneProvince');
-        const citySelect = document.getElementById('zoneCity');
-        
-        const data = {
-            province: provSelect.options[provSelect.selectedIndex].text,
-            city_municipality: citySelect.options[citySelect.selectedIndex].text,
-            is_manual_quote: document.getElementById('zoneFeeType').value === 'true',
-            fee: zoneFeeTypeSelect.value === 'true' ? 0 : parseDeliveryFee(zoneFeeInput.value)
-        };
-
-        try {
-            const res = await fetch('/caterer/api/delivery-zones', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            if (res.ok) {
-                const result = await res.json();
-                addDeliveryZoneRow(result.zone);
-                closeAddZoneModal();
-                Swal.fire('Saved', 'Service area added.', 'success');
-            } else {
-                const err = await res.json();
-                Swal.fire('Error', err.detail || 'Failed to add zone', 'error');
-                btn.innerHTML = origText;
-                updateAddZoneValidation();
-            }
-        } catch (error) {
-            Swal.fire('Error', 'Network error', 'error');
-            btn.innerHTML = origText;
-            updateAddZoneValidation();
-        }
-    }
-
-    async function submitEditZone(e) {
-        e.preventDefault();
-        const btn = document.getElementById('btnSaveEditZone');
-        updateEditZoneValidation();
-        if (btn.disabled) return;
-        const origText = btn.innerHTML;
-        btn.innerHTML = 'Saving...';
-        btn.disabled = true;
-
-        const id = document.getElementById('editZoneId').value;
-        const data = {
-            is_manual_quote: document.getElementById('editZoneFeeType').value === 'true',
-            fee: editZoneFeeTypeSelect.value === 'true' ? 0 : parseDeliveryFee(editZoneFeeInput.value)
-        };
-
-        try {
-            const res = await fetch(`/caterer/api/delivery-zones/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            if (res.ok) {
-                const result = await res.json();
-                const row = deliveryZonesTableBody.querySelector(`tr[data-zone-id="${id}"]`);
-                if (row) {
-                    const updatedRow = createDeliveryZoneRow(result.zone);
-                    row.replaceWith(updatedRow);
-                }
-                closeEditZoneModal();
-                Swal.fire('Saved', 'Delivery fee updated.', 'success');
-            } else {
-                const err = await res.json();
-                Swal.fire('Error', err.detail || 'Failed to update zone', 'error');
-                btn.innerHTML = origText;
-                updateEditZoneValidation();
-            }
-        } catch (error) {
-            Swal.fire('Error', 'Network error', 'error');
-            btn.innerHTML = origText;
-            updateEditZoneValidation();
-        }
-    }
-
-    async function deleteDeliveryZone(id) {
-        if (!confirm('Are you sure you want to delete this zone?')) return;
-        
-        try {
-            const res = await fetch(`/caterer/api/delivery-zones/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                deliveryZonesTableBody.querySelector(`tr[data-zone-id="${id}"]`)?.remove();
-                showEmptyDeliveryZones();
-            } else {
-                Swal.fire('Error', 'Failed to delete zone', 'error');
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Network error', 'error');
-        }
-    }
-</script>
-
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}

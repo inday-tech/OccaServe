@@ -177,6 +177,12 @@
 {% block extra_js %}
 <script src="{{ url_for('static', path='/js/caterer/packages.js') }}?v={{ static_asset_version('js/caterer/packages.js') }}"></script>
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (new URLSearchParams(window.location.search).get('create') === '1') {
+            window.openAddPackageModal?.();
+        }
+    });
+
     // Listen to global header search
     window.addEventListener('globalSearch', function (e) {
         const hiddenInput = document.getElementById('packageSearchInput');

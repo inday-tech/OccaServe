@@ -42,6 +42,228 @@ def _booking_status_key(booking: models.Booking) -> str:
     return (booking.status or "").strip().lower()
 
 
+def _caterer_verification_label(profile: models.CatererProfile) -> str:
+    """Use the reviewed caterer profile status as the single source of truth."""
+    raw_status = (profile.verification_status or "Not Submitted").strip()
+    normalized = raw_status.casefold().replace("_", " ").replace("-", " ")
+    normalized = " ".join(normalized.split())
+    labels = {
+        "verified": "Verified",
+        "approved": "Verified",
+        "pending": "Pending Review",
+        "pending review": "Pending Review",
+        "submitted": "Pending Review",
+        "under review": "Pending Review",
+        "pending manual review": "Pending Review",
+        "not submitted": "Not Submitted",
+        "not verified": "Not Submitted",
+        "unverified": "Not Submitted",
+        "not submitted yet": "Not Submitted",
+        "resubmission required": "Action Required",
+        "requires revision": "Action Required",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "suspended": "Suspended",
+    }
+    return labels.get(normalized, raw_status or "Not Submitted")
+
+
+def _caterer_listing_is_live(profile: models.CatererProfile) -> bool:
+    return bool(
+        profile.status == "Published"
+        and _caterer_verification_label(profile) == "Verified"
+        and (profile.account_status or "").strip().casefold() == "active"
+    )
+
+
+def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> list:
+    """Return live, actionable requirements that must be met before publishing."""
+    verification_status = _caterer_verification_label(profile)
+    is_verified = verification_status == "Verified"
+    account_approved = (profile.account_status or "").strip().casefold() == "active"
+    verification_pending = verification_status == "Pending Review" or (is_verified and not account_approved)
+
+    has_logo = bool(profile.logo_url and profile.logo_url != "/static/images/default_caterer.png")
+    has_cover = bool(profile.cover_image_url)
+    business_complete = bool(
+        (profile.business_name or "").strip()
+        and (profile.business_type or "").strip()
+        and (profile.description or "").strip()
+    )
+
+    phone_digits = re.sub(r"\D", "", profile.contact_phone or "")
+    if phone_digits.startswith("63"):
+        phone_digits = phone_digits[2:]
+    if phone_digits.startswith("0"):
+        phone_digits = phone_digits[1:]
+    location_complete = bool(
+        re.fullmatch(r"9\d{9}", phone_digits)
+        and (profile.contact_address or "").strip()
+        and (profile.city or "").strip()
+        and profile.province_code
+        and profile.city_code
+        and profile.brgy_code
+        and profile.latitude is not None
+        and profile.longitude is not None
+        and -90 <= float(profile.latitude) <= 90
+        and -180 <= float(profile.longitude) <= 180
+        and not (float(profile.latitude) == 0 and float(profile.longitude) == 0)
+        and (profile.coverage_area or "").strip()
+    )
+
+    active_packages = db.query(models.CateringPackage).filter(
+        models.CateringPackage.caterer_id == profile.id,
+        models.CateringPackage.is_active.is_(True),
+        or_(models.CateringPackage.status.is_(None), models.CateringPackage.status != "archived"),
+    ).all()
+    has_complete_package = any(
+        (package.name or "").strip()
+        and (package.description or "").strip()
+        and float(package.price_per_head or package.price or package.min_contract_amount or 0) > 0
+        and bool(package.image_url)
+        for package in active_packages
+    )
+
+    payment_method = (profile.payout_method or "").strip().casefold()
+    custom_payment = profile.custom_payment_details or {}
+    if payment_method == "gcash":
+        payment_details_complete = bool(profile.gcash_number or profile.gcash_qr_url or profile.payout_account_number)
+    elif payment_method == "maya":
+        payment_details_complete = bool(profile.maya_number or profile.maya_qr_url or profile.payout_account_number)
+    elif payment_method in {"bank", "bank transfer"}:
+        payment_details_complete = bool(
+            profile.bank_name
+            and (profile.bank_account_name or profile.payout_account_name)
+            and (profile.bank_account_number or profile.payout_account_number)
+        )
+    elif payment_method in {"card", "debit / credit card"}:
+        payment_details_complete = bool(profile.card_bank and profile.card_holder_name and profile.card_number)
+    elif payment_method in {"cash", "cash / manual"}:
+        payment_details_complete = bool((profile.cash_instructions or "").strip())
+    else:
+        payment_details_complete = bool(
+            payment_method
+            and (custom_payment.get("number") or custom_payment.get("qr_url"))
+        )
+    has_payment_terms = any(
+        str(term).isdigit() and 20 <= int(term) <= 100 and int(term) % 5 == 0
+        for term in (profile.accepted_payment_terms or [])
+    )
+    payment_complete = payment_details_complete and has_payment_terms
+
+    has_starting_price = float(profile.starting_price or 0) > 0
+    has_booking_terms = bool((profile.general_terms or profile.terms_and_conditions or "").strip())
+    policies_complete = has_starting_price and has_booking_terms and has_payment_terms
+
+    rules = profile.scheduling_rules or {}
+    event_availability = rules.get("event_availability") or {}
+    business_hours = rules.get("business_hours") or {}
+    operating_days = event_availability.get("operating_days") or business_hours.get("operating_days") or []
+    open_time = event_availability.get("open_time") or business_hours.get("open_time")
+    close_time = event_availability.get("close_time") or business_hours.get("close_time")
+    try:
+        max_events_per_day = event_availability.get("max_events_per_day")
+        if max_events_per_day is None:
+            max_events_per_day = profile.max_bookings_per_day
+        availability_configured = bool(
+            operating_days and open_time and close_time
+            and datetime.strptime(open_time, "%H:%M") < datetime.strptime(close_time, "%H:%M")
+            and int(max_events_per_day or 0) > 0
+        )
+    except (TypeError, ValueError):
+        availability_configured = False
+
+    def requirement(title, description, url, complete, action="Open"):
+        return {
+            "title": title,
+            "description": description,
+            "url": url,
+            "complete": bool(complete),
+            "pending": title == "Identity and business verification" and verification_pending,
+            "action": action,
+        }
+
+    verification_url = "/caterer/profile#verification-status" if verification_pending else "/caterer/profile#verification-id"
+    business_url = "/caterer/profile#business-name"
+    if not (profile.business_name or "").strip():
+        business_url = "/caterer/profile#business-name"
+    elif not (profile.business_type or "").strip():
+        business_url = "/caterer/profile#business-type"
+    elif not (profile.description or "").strip():
+        business_url = "/caterer/profile#business-description"
+
+    location_url = "/caterer/profile#location-pin"
+    if not re.fullmatch(r"9\d{9}", phone_digits):
+        location_url = "/caterer/profile#contact-number"
+    elif not (profile.contact_address or "").strip():
+        location_url = "/caterer/profile#detailed-address"
+    elif not profile.province_code:
+        location_url = "/caterer/profile#location-province"
+    elif not profile.city_code:
+        location_url = "/caterer/profile#location-city"
+    elif not profile.brgy_code:
+        location_url = "/caterer/profile#location-barangay"
+    elif not (profile.coverage_area or "").strip():
+        location_url = "/caterer/profile#service-areas"
+
+    brand_url = "/caterer/profile#brand-logo" if not has_logo else "/caterer/profile#brand-cover"
+    policies_url = "/caterer/profile#starting-price" if not has_starting_price else "/caterer/profile#booking-policies"
+    if has_starting_price and not has_payment_terms:
+        policies_url = "/caterer/profile#accepted-payment-terms"
+    return [
+        requirement(
+            "Identity and business verification",
+            "Admin approval is required before customers can see your listing.",
+            verification_url,
+            is_verified and account_approved,
+            "Check status" if verification_pending else "Submit documents",
+        ),
+        requirement(
+            "Business details",
+            "Add your business name, category, and a description customers can understand.",
+            business_url,
+            business_complete,
+        ),
+        requirement(
+            "Location and contact details",
+            "Add a valid contact number, address, map pin, address components, and service areas.",
+            location_url,
+            location_complete,
+        ),
+        requirement(
+            "Business logo and cover photo",
+            "Add both images so customers can recognize your business profile.",
+            brand_url,
+            has_logo and has_cover,
+        ),
+        requirement(
+            "At least one complete service package",
+            "Create an active package with a name, description, price, and photo.",
+            "/caterer/services?tab=packages&create=1",
+            has_complete_package,
+            "Create package",
+        ),
+        requirement(
+            "Customer payment method",
+            "Choose a payment method and add the account number, instructions, or QR customers need.",
+            "/caterer/profile#payment-method",
+            payment_complete,
+        ),
+        requirement(
+            "Booking policies and pricing",
+            "Set a starting price, booking terms, and at least one accepted deposit option.",
+            policies_url,
+            policies_complete,
+        ),
+        requirement(
+            "Booking availability",
+            "Set at least one booking day, operating hours, and daily capacity.",
+            "/caterer/profile#availability",
+            availability_configured,
+        ),
+    ]
+
+
 def process_base64_image(content_bytes: bytes, max_size=(600, 600), quality=75, folder: str = "menu_images") -> str:
     """Uploads image bytes to Cloudinary and returns CDN URL."""
     from app.services.storage import upload_file_to_cloudinary
@@ -233,6 +455,7 @@ async def update_delivery_settings(
     profile = user.caterer_profile
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+
     validate_delivery_fee(settings.base_delivery_fee)
     if settings.out_of_coverage_action not in {"reject", "base_fee", "manual"}:
         raise HTTPException(status_code=400, detail="Choose a valid outside-coverage option.")
@@ -1890,45 +2113,25 @@ async def caterer_dashboard(
     stats['action_required_count'] = action_required_count
     stats['action_center_items'] = action_center_items[:6] # Top 6 items
     
-    # Calculate profile completion dynamically
+    # The profile verification status is the admin-reviewed source of truth.
+    verification_status_display = _caterer_verification_label(profile)
+    is_identity_verified = verification_status_display == "Verified"
+    listing_is_live = _caterer_listing_is_live(profile)
+    setup_requirements = _caterer_setup_requirements(db, profile)
+    setup_completed_count = sum(1 for item in setup_requirements if item["complete"])
+    setup_total_count = len(setup_requirements)
+    completion_pct = round(setup_completed_count / setup_total_count * 100) if setup_total_count else 0
+    can_publish = setup_total_count > 0 and setup_completed_count == setup_total_count
+
     has_logo = bool(profile.logo_url and profile.logo_url != "/static/images/default_caterer.png")
     has_cover = bool(profile.cover_image_url)
     has_description = bool(profile.description and profile.description.strip())
-    has_packages = len([p for p in profile.packages if getattr(p, 'is_archived', False) == False]) >= 1
+    has_packages = any("complete service package" in item["title"].lower() and item["complete"] for item in setup_requirements)
     has_portfolio = len([p for p in profile.portfolios if getattr(p, 'visibility', 'Public') == 'Public']) >= 1
     has_starting_price = bool(profile.starting_price and profile.starting_price > 0)
     has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) > 0
     has_permit = bool(profile.permit_url)
-    
-    # Check eligibility to publish: Identity Verified + Description
-    is_identity_verified = (profile.verification_status == 'Verified') or (getattr(user, 'is_verified', False) == True)
-    can_publish = is_identity_verified and has_description
-
-    completion_pct = 0
-    if is_identity_verified: completion_pct += 40
-    if has_logo: completion_pct += 10
-    if has_cover: completion_pct += 5
-    if has_description: completion_pct += 15
-    if has_starting_price: completion_pct += 10
-    if has_portfolio: completion_pct += 10
-    if has_permit: completion_pct += 10
-    
-    # Next Recommended Action Logic
-    next_action = None
-    if not is_identity_verified:
-        next_action = {"title": "Verify Business Identity", "desc": "Upload your valid ID to verify your catering business.", "url": "/caterer/profile#verification", "btn": "Verify Now"}
-    elif not has_description:
-        next_action = {"title": "Add Business Description", "desc": "Tell customers about your catering services and specialties.", "url": "/caterer/profile#general", "btn": "Add Description"}
-    elif not has_permit:
-        next_action = {"title": "Upload Business Permit", "desc": "Upload your permit to increase your trust rating.", "url": "/caterer/profile#verification", "btn": "Upload Permit"}
-    elif not has_logo:
-        next_action = {"title": "Upload Business Logo", "desc": "Make your profile stand out with a professional logo.", "url": "/caterer/profile#general", "btn": "Upload Logo"}
-    elif not has_cover:
-        next_action = {"title": "Upload Cover Image", "desc": "Add a beautiful banner image to attract customers.", "url": "/caterer/profile#general", "btn": "Upload Cover"}
-    elif not has_portfolio:
-        next_action = {"title": "Create Portfolio Event", "desc": "Showcase your past events and credibility by creating a portfolio project.", "url": "/caterer/portfolio", "btn": "Create Portfolio"}
-    elif profile.status == 'Draft' or profile.status == 'Identity Verified':
-        next_action = {"title": "Publish Listing", "desc": "You're all set! Publish your listing to start receiving bookings.", "url": "#", "btn": "Publish Now", "onclick": "window.toggleCatererPublish && window.toggleCatererPublish(this)"}
+    next_action = next((item for item in setup_requirements if not item["complete"]), None)
 
     total_bookings = len([b for b in all_bookings if _booking_status_key(b) not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled']])
     
@@ -2023,6 +2226,11 @@ async def caterer_dashboard(
         "has_permit": has_permit,
         "can_publish": can_publish,
         "is_identity_verified": is_identity_verified,
+        "verification_status_display": verification_status_display,
+        "listing_is_live": listing_is_live,
+        "setup_requirements": setup_requirements,
+        "setup_completed_count": setup_completed_count,
+        "setup_total_count": setup_total_count,
         "next_action": next_action,
         "total_bookings": total_bookings,
         "pinned_schedules": pinned_schedules,
@@ -2039,32 +2247,28 @@ async def toggle_publish(
     if not profile:
         return JSONResponse(status_code=404, content={"success": False, "message": "Profile not found"})
         
-    has_description = bool(profile.description and profile.description.strip())
-    is_identity_verified = (profile.verification_status == 'Verified') or (getattr(user, 'is_verified', False) == True)
-    
-    can_publish = is_identity_verified and has_description
-    
-    if profile.status == "Published":
-        profile.status = "Identity Verified"
+    if _caterer_listing_is_live(profile):
+        profile.status = "Unpublished"
         db.commit()
-        return {"success": True, "status": "Identity Verified", "message": "Listing successfully unpublished."}
+        return {"success": True, "status": "Unpublished", "message": "Listing successfully unpublished."}
     else:
-        if not can_publish:
-            missing = []
-            if not is_identity_verified: missing.append("Admin Verification (ID/Business Permit)")
-            if not has_description: missing.append("Business Description")
+        setup_requirements = _caterer_setup_requirements(db, profile)
+        missing = [item for item in setup_requirements if not item["complete"]]
+        if missing:
             return JSONResponse(
                 status_code=400, 
                 content={
                     "success": False, 
-                    "message": f"Cannot publish listing. Missing requirements: {', '.join(missing)}"
+                    "message": "Complete all profile setup items before publishing.",
+                    "requirements": [
+                        {"title": item["title"], "url": item["url"], "pending": item["pending"]}
+                        for item in missing
+                    ],
                 }
             )
         
         profile.status = "Published"
         profile.account_status = "Active"
-        if not profile.is_verified and is_identity_verified:
-            profile.is_verified = True
         db.commit()
         return {"success": True, "status": "Published", "message": "Listing successfully published to marketplace!"}
 
@@ -5894,12 +6098,22 @@ async def edit_profile(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
+    identity = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == user.id,
+        models.IdentityVerification.verification_type != "business_permit",
+    ).order_by(models.IdentityVerification.id.desc()).first()
+    profile = user.caterer_profile
+    setup_requirements = _caterer_setup_requirements(db, profile) if profile else []
+    can_publish = bool(setup_requirements) and all(item["complete"] for item in setup_requirements)
+    listing_is_live = _caterer_listing_is_live(profile) if profile else False
     return templates.TemplateResponse("caterer/profile_edit.html", {
         "request": request,
         "user": user,
-        "profile": user.caterer_profile,
+        "profile": profile,
         "identity": identity,
+        "verification_status_display": _caterer_verification_label(profile) if profile else "Not Submitted",
+        "can_publish": can_publish,
+        "listing_is_live": listing_is_live,
         "active_page": "settings"
     })
 
@@ -6595,6 +6809,9 @@ async def update_profile(
     bank_account_number: Optional[str] = Form(None),
     bank_qr: Optional[UploadFile] = File(None),
     remove_bank_qr: Optional[str] = Form(None),
+    custom_payment_number: Optional[str] = Form(None),
+    custom_payment_qr: Optional[UploadFile] = File(None),
+    remove_custom_payment_qr: Optional[str] = Form(None),
     card_bank: Optional[str] = Form(None),
     card_holder_name: Optional[str] = Form(None),
     card_number: Optional[str] = Form(None),
@@ -6626,6 +6843,8 @@ async def update_profile(
     contact_address: Optional[str] = Form(None),
     coverage_area: Optional[str] = Form(None),
     payout_method: Optional[str] = Form(None),
+    payment_method_editor: Optional[str] = Form(None),
+    return_section: Optional[str] = Form("general"),
     province: Optional[str] = Form(None),
     municipality: Optional[str] = Form(None),
     barangay: Optional[str] = Form(None),
@@ -6677,6 +6896,26 @@ async def update_profile(
     profile = user.caterer_profile
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+
+    normalized_contact_phone = None
+    if contact_phone is not None:
+        import re as _re
+        phone_digits = _re.sub(r"\D", "", contact_phone)
+        if phone_digits.startswith("63"):
+            phone_digits = phone_digits[2:]
+        if phone_digits.startswith("0"):
+            phone_digits = phone_digits[1:]
+        if not _re.fullmatch(r"9\d{9}", phone_digits):
+            raise HTTPException(status_code=400, detail="Enter 10 digits starting with 9 after +63.")
+        normalized_contact_phone = "0" + phone_digits
+    if payment_method_editor == "other" and not (payout_method or "").strip():
+        raise HTTPException(status_code=400, detail="Enter the name of the other payment method.")
+    try:
+        selected_payment_terms = sorted({int(term) for term in payment_terms})
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Choose at least one deposit percentage from 20% to 100%.")
+    if not selected_payment_terms or any(term < 20 or term > 100 or term % 5 for term in selected_payment_terms):
+        raise HTTPException(status_code=400, detail="Choose deposit options in 5% steps from 20% to 100%.")
 
     def _to_int(val, default=0):
         if val is None: return default
@@ -6836,12 +7075,18 @@ async def update_profile(
     if middle_name is not None:
         user.middle_name = middle_name.strip() if middle_name.strip() else None
     
-    if dob and str(dob).strip():
-        try:
-            from datetime import datetime as _dt
-            user.dob = _dt.strptime(str(dob).strip(), "%Y-%m-%d").date()
-        except Exception:
-            pass
+    if not dob or not str(dob).strip():
+        raise HTTPException(status_code=400, detail="Date of birth is required.")
+    try:
+        from datetime import datetime as _dt
+        parsed_dob = _dt.strptime(str(dob).strip(), "%Y-%m-%d").date()
+        today = _dt.now().date()
+        age = today.year - parsed_dob.year - ((today.month, today.day) < (parsed_dob.month, parsed_dob.day))
+        if age < 18 or age > 60:
+            raise HTTPException(status_code=400, detail="Date of birth must show an age from 18 to 60.")
+        user.dob = parsed_dob
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Enter a valid date of birth.")
 
     if personal_address is not None:
         user.address = personal_address.strip() if personal_address.strip() else None
@@ -6861,24 +7106,34 @@ async def update_profile(
         profile.contact_address = contact_address.strip()
     if coverage_area is not None:
         profile.coverage_area = coverage_area.strip()
-    if contact_phone is not None and contact_phone.strip():
-        profile.contact_phone = contact_phone.strip()
-    if payout_method is not None:
+    if normalized_contact_phone is not None:
+        profile.contact_phone = normalized_contact_phone
+    if payment_method_editor == "other" and payout_method is not None:
         profile.payout_method = payout_method
-    if payment_terms:
-        profile.accepted_payment_terms = payment_terms
+        custom_payment_details = dict(profile.custom_payment_details or {})
+        custom_payment_details["number"] = (custom_payment_number or "").strip() or None
+        profile.custom_payment_details = custom_payment_details
+        if remove_custom_payment_qr in ("1", "true", "True"):
+            custom_payment_details["qr_url"] = None
+            profile.custom_payment_details = custom_payment_details
+    elif payment_method_editor in {"gcash", "maya", "bank", "card", "cash"}:
+        profile.payout_method = {
+            "gcash": "GCash", "maya": "Maya", "bank": "Bank Transfer",
+            "card": "Debit / Credit Card", "cash": "Cash / Manual"
+        }[payment_method_editor]
+    profile.accepted_payment_terms = selected_payment_terms
 
     # Update address components
-    if province_code:
-        profile.province_code = province_code
-    if city_code:
-        profile.city_code = city_code
-    if brgy_code:
-        profile.brgy_code = brgy_code
+    if province_code is not None:
+        profile.province_code = province_code.strip() or None
+    if city_code is not None:
+        profile.city_code = city_code.strip() or None
+    if brgy_code is not None:
+        profile.brgy_code = brgy_code.strip() or None
 
     # Save human-readable name parts
-    if municipality and municipality != city_code:
-        profile.city = municipality
+    if municipality is not None:
+        profile.city = municipality.strip() or None
     
     # Build a clean composite address_details from all parts
     # This becomes the single source of truth for display across all views
@@ -6960,7 +7215,14 @@ async def update_profile(
     logo_file = logo if (logo and logo.filename) else logo_brand
     # Size limits: logo/cover 400px, QR codes 300px, permit stored raw (PDF support)
     size_map = {"logo": (400, 400), "cover_image": (1200, 600), "gcash_qr": (300, 300), "maya_qr": (300, 300), "bank_qr": (300, 300)}
-    for field_name, file_obj in [("logo", logo_file), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr), ("permit", permit_file)]:
+    from ..core.upload_limits import _configured_max_upload_mb
+    max_payment_qr_mb = _configured_max_upload_mb()
+    payment_qr_signatures = {
+        ".png": b"\x89PNG\r\n\x1a\n",
+        ".jpg": b"\xff\xd8\xff",
+        ".jpeg": b"\xff\xd8\xff",
+    }
+    for field_name, file_obj in [("logo", logo_file), ("cover_image", cover_image), ("gcash_qr", gcash_qr), ("maya_qr", maya_qr), ("bank_qr", bank_qr), ("custom_payment_qr", custom_payment_qr), ("permit", permit_file)]:
         if file_obj and file_obj.filename:
             try:
                 content_bytes = await file_obj.read()
@@ -6968,6 +7230,14 @@ async def update_profile(
                     if field_name == 'permit':
                         return RedirectResponse(url="/caterer/profile?error_msg=The+uploaded+business+permit+file+is+empty.+Please+upload+a+valid+document.", status_code=303)
                     continue
+
+                if field_name in {"gcash_qr", "maya_qr", "bank_qr", "custom_payment_qr"}:
+                    if len(content_bytes) > max_payment_qr_mb * 1024 * 1024:
+                        raise HTTPException(status_code=413, detail=f"Payment QR image must be {max_payment_qr_mb} MB or smaller.")
+                    extension = "." + file_obj.filename.rsplit(".", 1)[-1].lower() if "." in file_obj.filename else ""
+                    expected_signature = payment_qr_signatures.get(extension)
+                    if not expected_signature or not content_bytes.startswith(expected_signature):
+                        raise HTTPException(status_code=400, detail="Payment QR images must be valid PNG, JPG, or JPEG files.")
 
                 if field_name == 'permit':
                     import base64
@@ -6985,6 +7255,8 @@ async def update_profile(
                     profile.permit_status = 'Pending Review'
                     profile.verification_status = 'Pending Review'
                     profile.is_verified = False
+                    if profile.status == "Published":
+                        profile.status = "Unpublished"
                     if profile.user:
                         profile.user.is_verified = False
                         
@@ -7015,12 +7287,20 @@ async def update_profile(
                 else:
                     max_size = size_map.get(field_name, (600, 600))
                     data_url = process_base64_image(content_bytes, max_size=max_size)
-                    attr_name = 'logo_url' if field_name == 'logo' else f"{field_name}_url"
-                    setattr(profile, attr_name, data_url)
+                    if field_name == "custom_payment_qr":
+                        custom_payment_details = dict(profile.custom_payment_details or {})
+                        custom_payment_details["qr_url"] = data_url
+                        profile.custom_payment_details = custom_payment_details
+                    else:
+                        attr_name = 'logo_url' if field_name == 'logo' else f"{field_name}_url"
+                        setattr(profile, attr_name, data_url)
                     if field_name == 'logo':
                         db_user = db.query(models.User).filter(models.User.id == user.id).first()
                         if db_user:
                             db_user.profile_image_url = data_url
+            except HTTPException:
+                db.rollback()
+                raise
             except Exception as e:
                 import traceback
                 print(f"[IMAGE UPLOAD ERROR] Failed on {field_name}: {str(e)}")
@@ -7050,7 +7330,15 @@ async def update_profile(
     from ..core import utils
     if background_tasks:
         background_tasks.add_task(utils.background_geocode, profile.id)
-    return RedirectResponse(url="/caterer/profile?success_msg=Business+profile+updated+successfully", status_code=303)
+    valid_settings_sections = {
+        "general", "location", "payment-methods", "booking-policies", "availability",
+        "brand", "verification", "account"
+    }
+    redirect_section = return_section if return_section in valid_settings_sections else "general"
+    return RedirectResponse(
+        url=f"/caterer/profile?success_msg=Business+profile+updated+successfully#{redirect_section}",
+        status_code=303
+    )
 
 @router.get("/packages/{package_id}/details")
 async def get_package_details_api(
@@ -10740,7 +11028,38 @@ async def submit_verification(
     if not profile:
         return JSONResponse(status_code=400, content={"success": False, "message": "Profile not found."})
 
+    identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
+    required_documents = [
+        (id_front, (identity.document_url if identity else None) or profile.gov_id_url, "Front of government ID"),
+        (id_back, identity.document_back_url if identity else None, "Back of government ID"),
+        (selfie, identity.selfie_url if identity else None, "Selfie photo"),
+        (permit, profile.permit_url, "Business or mayor’s permit"),
+        (dti, profile.dti_url, "DTI business name registration"),
+        (bir, profile.bir_url, "BIR Certificate of Registration"),
+    ]
+    missing_documents = [label for upload, saved_url, label in required_documents
+                         if not (upload and upload.filename) and not saved_url]
+    if not permit_expiry and not profile.permit_expiry_date:
+        missing_documents.append("Permit expiration date")
+    if not id_type.strip():
+        missing_documents.insert(0, "Government ID type")
+    if permit_expiry:
+        from datetime import datetime
+        try:
+            datetime.strptime(permit_expiry, "%Y-%m-%d")
+        except ValueError:
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "message": "Enter a valid permit expiration date."
+            })
+    if missing_documents:
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "message": "Please provide the required documents: " + ", ".join(missing_documents) + "."
+        })
+
     from ..core.utils import validate_file_type_and_size
+    from ..core.upload_limits import _configured_max_upload_mb
     import shutil
     import os
     import time
@@ -10749,13 +11068,21 @@ async def submit_verification(
     os.makedirs(upload_dir, exist_ok=True)
     
     from ..core.encryption import encrypt_data
+    max_upload_mb = _configured_max_upload_mb()
     
     def save_file(file_obj, prefix):
         if not file_obj or not file_obj.filename: return None
         
         content = file_obj.file.read()
-        from ..core.utils import validate_file_type_and_size
-        error = validate_file_type_and_size(content, file_obj.filename)
+        extension = os.path.splitext(file_obj.filename)[1].lower()
+        allowed_signatures = {
+            ".png": content.startswith(b"\x89PNG\r\n\x1a\n"),
+            ".jpg": content.startswith(b"\xff\xd8\xff"),
+            ".jpeg": content.startswith(b"\xff\xd8\xff"),
+        }
+        if extension not in allowed_signatures or not allowed_signatures[extension]:
+            raise ValueError("Only PNG, JPG, and JPEG image files are accepted.")
+        error = validate_file_type_and_size(content, file_obj.filename, max_size_mb=max_upload_mb)
         if error:
             raise ValueError(error)
             
@@ -10790,11 +11117,12 @@ async def submit_verification(
         # Update Verification Status
         profile.verification_status = "Pending Review"
         profile.is_verified = False
+        if profile.status == "Published":
+            profile.status = "Unpublished"
         if profile.user:
             profile.user.is_verified = False
         
         # Identity Verification
-        identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
         if not identity:
             identity = models.IdentityVerification(user_id=user.id, verification_type=id_type, verification_status="Pending Review")
             db.add(identity)
@@ -10975,6 +11303,9 @@ async def submit_verification(
             }))
             
         return JSONResponse(content={"success": True, "message": "Verification submitted successfully."})
+    except ValueError as e:
+        db.rollback()
+        return JSONResponse(status_code=400, content={"success": False, "message": str(e)})
     except Exception as e:
         db.rollback()
         return JSONResponse(status_code=500, content={"success": False, "message": str(e)})

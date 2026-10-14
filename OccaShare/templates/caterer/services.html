@@ -1,7 +1,7 @@
 {% set active_page = 'services' %}
 {% extends "caterer/layout.html" %}
 
-{% block title %}Services - OccaServe Caterer{% endblock %}
+{% block title %}Packages - OccaServe Caterer{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/menu.css') }}?v={{ static_asset_version('css/caterer/menu.css') }}">
@@ -11,7 +11,7 @@
 {% block content %}
 <div class="page-header">
     <div class="header-title-group">
-        <h1>Services</h1>
+        <h1>Packages</h1>
         <p>Manage your catering packages.</p>
     </div>
     <div class="menu-header-actions">
@@ -1495,6 +1495,13 @@
         if (hiddenInput && typeof window.filterPackages === 'function') {
             hiddenInput.value = e.detail.value;
             window.filterPackages();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('create') === '1') {
+            window.setTimeout(() => window.openAddPackageModal?.(), 200);
         }
     });
 </script>

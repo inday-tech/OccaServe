@@ -5,14 +5,13 @@
 
 // ─── Section Metadata ───
 const SECTION_META = {
-    'general':          { title: 'Business Information',   subtitle: 'Manage the basic information customers see about your business.' },
-    'location':         { title: 'Location & Contact',     subtitle: 'Your official business address used for search and bookings.' },
+    'general':          { title: 'Business Details',       subtitle: '' },
+    'location':         { title: 'Location & Contact',     subtitle: 'Set your business location and contact details so customers can find and reach you.' },
     'payment-methods':  { title: 'Payment Methods',        subtitle: 'Configure how customers can pay you and where you\'ll receive your earnings.' },
     'booking-policies': { title: 'Booking Policies',       subtitle: 'Set clear expectations for bookings, payments, and cancellations.' },
-    'availability':     { title: 'Booking & Event Availability', subtitle: 'Control when customers can request bookings and define the scheduling limits for your business.' },
-    'delivery-settings':{ title: 'Delivery Zones & Fees',  subtitle: 'Set delivery fees by service area and choose how to handle locations outside your coverage.' },
+    'availability':     { title: 'Availability', subtitle: 'Set your booking days, hours, and limits.' },
     'brand':            { title: 'Branding',               subtitle: 'Manage your visual identity, logo, cover image, and theme styling.' },
-    'verification':     { title: 'Verification Center',    subtitle: 'Submit your compliance documents. These are private and never visible to customers.' },
+    'verification':     { title: 'Verification Center',    subtitle: 'Upload the required identity and business documents.' },
     'account':          { title: 'Account & Security',     subtitle: 'Manage your personal info, notifications, and account preferences.' },
 };
 
@@ -29,8 +28,11 @@ window.switchSettingsSection = function(sectionId) {
     const meta = SECTION_META[sectionId] || {};
     const titleEl = document.getElementById('contentPanelTitle');
     const subtitleEl = document.getElementById('contentPanelSubtitle');
+    const breadcrumbCurrent = document.getElementById('settingsBreadcrumbCurrent');
     if (titleEl) titleEl.textContent = meta.title || sectionId;
     if (subtitleEl) subtitleEl.textContent = meta.subtitle || '';
+    if (breadcrumbCurrent) breadcrumbCurrent.textContent = meta.title || sectionId;
+    document.body.classList.toggle('settings-verification-active', sectionId === 'verification');
 
     history.replaceState(null, null, '#' + sectionId);
 
@@ -81,16 +83,98 @@ window.toggleNavGroup = function(groupId) {
 };
 
 document.addEventListener('DOMContentLoaded', function () {
+    const contactNumberInput = document.getElementById('catererContactNumber');
+    if (contactNumberInput) {
+        const digits = contactNumberInput.value.replace(/\D/g, '');
+        const nationalDigits = digits.startsWith('63') ? digits.slice(2) : digits.startsWith('0') ? digits.slice(1) : digits;
+        contactNumberInput.value = nationalDigits.slice(0, 10);
+    }
+
     const paymentMethodSelect = document.getElementById('paymentMethodEditor');
     if (paymentMethodSelect) {
         const paymentCards = document.querySelectorAll('[data-payment-method]');
+        const customPaymentMethodName = document.getElementById('customPaymentMethodName');
         const showPaymentMethod = () => {
             paymentCards.forEach(card => {
                 card.hidden = card.dataset.paymentMethod !== paymentMethodSelect.value;
             });
+            const isOther = paymentMethodSelect.value === 'other';
+            const customCard = document.querySelector('[data-payment-method="other"]');
+            if (customCard) customCard.querySelectorAll('input').forEach(input => { input.disabled = !isOther; });
+            if (customPaymentMethodName) customPaymentMethodName.required = isOther;
         };
         paymentMethodSelect.addEventListener('change', showPaymentMethod);
         showPaymentMethod();
+    }
+
+    const paymentTermsPicker = document.getElementById('acceptedPaymentTermsPicker');
+    if (paymentTermsPicker) {
+        const termOptions = Array.from(paymentTermsPicker.querySelectorAll('.payment-term-option'));
+        const menu = paymentTermsPicker.querySelector('.payment-terms-menu');
+        const trigger = paymentTermsPicker.querySelector('.payment-terms-trigger');
+        const summary = document.getElementById('acceptedPaymentTermsSummary');
+        const selectedList = document.getElementById('acceptedPaymentTermsSelected');
+        const valueFor = option => option.closest('.payment-term-option-wrap')?.querySelector('input[name="payment_terms"]');
+        const updatePaymentTermsSummary = () => {
+            const selected = termOptions.filter(option => option.getAttribute('aria-pressed') === 'true');
+            if (summary) summary.textContent = selected.length
+                ? `${selected.length} deposit option${selected.length === 1 ? '' : 's'} selected`
+                : 'Choose deposit options';
+            if (selectedList) {
+                selectedList.replaceChildren();
+                selected.forEach(option => {
+                    const chip = document.createElement('span');
+                    chip.className = 'payment-term-chip';
+                    chip.append(document.createTextNode(`${option.dataset.termValue}%`));
+                    const remove = document.createElement('button');
+                    remove.type = 'button';
+                    remove.setAttribute('aria-label', `Remove ${option.dataset.termValue}% deposit option`);
+                    remove.textContent = '\u00d7';
+                    remove.addEventListener('click', () => togglePaymentTerm(option, false));
+                    chip.append(remove);
+                    selectedList.append(chip);
+                });
+            }
+        };
+        const togglePaymentTerm = (option, selected) => {
+            option.setAttribute('aria-pressed', String(selected));
+            const valueInput = valueFor(option);
+            if (valueInput) valueInput.disabled = !selected;
+            updatePaymentTermsSummary();
+            window.triggerSettingsDirty?.();
+        };
+        termOptions.forEach(option => option.addEventListener('click', () => {
+            togglePaymentTerm(option, option.getAttribute('aria-pressed') !== 'true');
+        }));
+        trigger?.addEventListener('click', () => {
+            if (!menu || !trigger) return;
+            const opening = menu.hidden;
+            menu.hidden = !opening;
+            trigger.setAttribute('aria-expanded', String(opening));
+            if (opening) {
+                const bounds = trigger.getBoundingClientRect();
+                const roomBelow = window.innerHeight - bounds.bottom;
+                menu.classList.toggle('opens-up', roomBelow < 260 && bounds.top > 260);
+                termOptions[0]?.focus();
+            } else {
+                menu.classList.remove('opens-up');
+            }
+        });
+        document.addEventListener('click', event => {
+            if (!paymentTermsPicker.contains(event.target) && menu && trigger) {
+                menu.hidden = true;
+                trigger.setAttribute('aria-expanded', 'false');
+                menu.classList.remove('opens-up');
+            }
+        });
+        paymentTermsPicker.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && menu && trigger) {
+                menu.hidden = true;
+                trigger.setAttribute('aria-expanded', 'false');
+                trigger.focus();
+            }
+        });
+        updatePaymentTermsSummary();
     }
 
     // 1. Sidebar Nav Click Handlers
@@ -114,8 +198,29 @@ document.addEventListener('DOMContentLoaded', function () {
     // Restore Section from Hash
     function handleHashRoute() {
         const currentHash = window.location.hash.substring(1);
-        if (currentHash && SECTION_META[currentHash]) {
-            const navItem = document.querySelector(`.snav-item[data-section="${currentHash}"]`);
+        const deepLinks = {
+            'business-name': { section: 'general', target: '#businessNameInput', focus: true },
+            'business-type': { section: 'general', target: '#businessTypeInput', focus: true },
+            'business-description': { section: 'general', target: '#businessDescriptionInput', focus: true },
+            'location-pin': { section: 'location', target: '#location-pin' },
+            'contact-number': { section: 'location', target: '#catererContactNumber', focus: true },
+            'detailed-address': { section: 'location', target: '#businessAddress', focus: true },
+            'location-province': { section: 'location', target: '#locationProvince', focus: true },
+            'location-city': { section: 'location', target: '#locationMunicipality' },
+            'location-barangay': { section: 'location', target: '#locationBarangay' },
+            'service-areas': { section: 'location', target: '#serviceAreasPicker' },
+            'payment-method': { section: 'payment-methods', target: '#paymentMethodEditor', focus: true },
+            'starting-price': { section: 'booking-policies', target: '#startingPriceInput', focus: true },
+            'accepted-payment-terms': { section: 'booking-policies', target: '#accepted-payment-terms' },
+            'brand-logo': { section: 'brand', target: '#brand-logo' },
+            'brand-cover': { section: 'brand', target: '#brand-cover' },
+            'verification-id': { section: 'verification', target: '#group_verif_id_front' },
+            'verification-status': { section: 'verification', target: '#verificationStatusSummary' }
+        };
+        const deepLink = deepLinks[currentHash];
+        const sectionId = deepLink ? deepLink.section : currentHash;
+        if (sectionId && SECTION_META[sectionId]) {
+            const navItem = document.querySelector(`.snav-item[data-section="${sectionId}"]`);
             if (navItem) {
                 const parentGroup = navItem.closest('.snav-group');
                 if (parentGroup) {
@@ -127,7 +232,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             }
-            switchSettingsSection(currentHash);
+            switchSettingsSection(sectionId);
+            if (deepLink) {
+                window.setTimeout(() => {
+                    const target = document.querySelector(deepLink.target);
+                    if (!target) return;
+                    if (target instanceof HTMLDetailsElement) target.open = true;
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    if (deepLink.focus) target.focus({ preventScroll: true });
+                }, 350);
+            }
         }
     }
 
@@ -634,9 +748,69 @@ function cancelFileReplacement(fieldId) {
     if (card) card.style.display = 'flex';
 }
 
-// Submit Verification Center documents via AJAX
+window.toggleOtherIdType = function(value) {
+    const wrap = document.getElementById('otherIdTypeWrap');
+    const input = document.getElementById('verif_id_type_other');
+    const isOther = value === 'Other';
+    if (wrap) wrap.style.display = isOther ? 'block' : 'none';
+    if (input) {
+        input.required = isOther;
+        if (!isOther) input.value = '';
+    }
+};
+
+window.formatCatererContactNumber = function(input) {
+    let digits = String(input.value || '').replace(/\D/g, '');
+    if (digits.startsWith('63')) digits = digits.slice(2);
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    input.value = digits.slice(0, 10);
+    window.triggerSettingsDirty?.();
+};
+
+function getVerificationRequirements() {
+    const idType = document.getElementById('verif_id_type')?.value || '';
+    const idTypeOther = document.getElementById('verif_id_type_other')?.value.trim() || '';
+    const resolvedIdType = idType === 'Other' ? idTypeOther : idType;
+    const files = [
+        ['verif_id_front', 'card_verif_id_front', 'Front of government ID'],
+        ['verif_id_back', 'card_verif_id_back', 'Back of government ID'],
+        ['verif_selfie', 'card_verif_selfie', 'Selfie photo'],
+        ['verif_permit', 'card_verif_permit', 'Business or mayor’s permit'],
+        ['verif_dti', 'card_verif_dti', 'DTI business name registration'],
+        ['verif_bir', 'card_verif_bir', 'BIR Certificate of Registration']
+    ];
+    const missing = files.filter(([inputId, cardId]) =>
+        !document.getElementById(inputId)?.files?.[0] && !document.getElementById(cardId)
+    ).map(([, , label]) => label);
+    const expiryInput = document.getElementById('verif_permit_expiry');
+    if (!expiryInput?.value) missing.push('Permit expiration date');
+    if (!idType) missing.unshift('Government ID type');
+    else if (idType === 'Other' && !idTypeOther) missing.unshift('Name of ID');
+    if (missing.length) {
+        const message = `Please complete: ${missing.join(', ')}.`;
+        if (window.showToast) window.showToast(message, 'warning');
+        else alert(message);
+        if (!idType) {
+            document.getElementById('verif_id_type')?.focus();
+        } else if (idType === 'Other' && !idTypeOther) {
+            document.getElementById('verif_id_type_other')?.focus();
+        } else if (!expiryInput?.value) {
+            expiryInput?.focus();
+        }
+        const firstMissing = files.find(([inputId, cardId]) =>
+            !document.getElementById(inputId)?.files?.[0] && !document.getElementById(cardId)
+        );
+        if (firstMissing) document.getElementById(`group_${firstMissing[0]}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return null;
+    }
+    return resolvedIdType;
+}
+
+// Submit verification documents
 async function submitVerification() {
     const btn = document.getElementById('btnSubmitVerification');
+    const resolvedIdType = getVerificationRequirements();
+    if (!resolvedIdType) return;
     const idFrontInput = document.getElementById('verif_id_front');
     const permitInput = document.getElementById('verif_permit');
     const selfieInput = document.getElementById('verif_selfie');
@@ -649,19 +823,8 @@ async function submitVerification() {
     const permit = permitInput?.files?.[0];
     const selfie = selfieInput?.files?.[0];
 
-    if (!idFront && !hasExistingId) { 
-        if (window.showToast) window.showToast('Government ID (Front) is required.', 'warning');
-        else alert("Government ID (Front) is required."); 
-        return; 
-    }
-    if (!permit && !hasExistingPermit) { 
-        if (window.showToast) window.showToast('Business Permit is required.', 'warning');
-        else alert("Business Permit is required."); 
-        return; 
-    }
-
     const formData = new FormData();
-    formData.append('id_type', document.getElementById('verif_id_type').value);
+    formData.append('id_type', resolvedIdType);
     if (idFront) formData.append('id_front', idFront);
     
     const idBack = document.getElementById('verif_id_back')?.files?.[0];
@@ -715,6 +878,85 @@ async function submitVerification() {
 }
 
 window.handleFormSubmitState = function(event) {
+    const form = event.currentTarget;
+    const sectionField = document.getElementById('returnSettingsSection');
+    const currentSection = window.location.hash.replace(/^#/, '');
+    if (sectionField && currentSection) sectionField.value = currentSection;
+    const paymentTermOptions = document.querySelectorAll('#acceptedPaymentTermsPicker input[name="payment_terms"]:not(:disabled)');
+    if (!paymentTermOptions.length) {
+        event.preventDefault();
+        window.switchSettingsSection?.('booking-policies');
+        const picker = document.getElementById('acceptedPaymentTermsPicker');
+        if (picker) picker.open = true;
+        if (window.showToast) window.showToast('Select at least one deposit option for customers.', 'warning');
+        else if (window.showError) window.showError('Select at least one deposit option for customers.');
+        document.getElementById('acceptedPaymentTermsPicker')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    const dobInput = document.getElementById('catererDob');
+    if (dobInput) {
+        const dob = dobInput.value ? new Date(`${dobInput.value}T00:00:00`) : null;
+        const now = new Date();
+        let age = dob ? now.getFullYear() - dob.getFullYear() : -1;
+        if (dob && (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate()))) age--;
+        if (!dob || Number.isNaN(dob.getTime()) || age < 18 || age > 60) {
+            event.preventDefault();
+            window.switchSettingsSection?.('account');
+            dobInput.focus();
+            if (window.showToast) window.showToast('Date of birth must be valid and show an age from 18 to 60.', 'warning');
+            else if (window.showError) window.showError('Date of birth must be valid and show an age from 18 to 60.');
+            return;
+        }
+    }
+    if (window.catererLocationPinChanged && !window.catererLocationPinConfirmed) {
+        event.preventDefault();
+        if (window.catererLocationConfirmationPending) return;
+        window.catererLocationConfirmationPending = true;
+        const submitAfterConfirm = (confirmed) => {
+            window.catererLocationConfirmationPending = false;
+            if (confirmed) {
+                window.catererLocationPinConfirmed = true;
+                form.requestSubmit();
+                return;
+            }
+            const saveButton = document.getElementById('btnSaveAllSettings');
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.innerHTML = '<span>Save Changes</span>';
+                saveButton.style.opacity = '';
+            }
+        };
+
+        (async () => {
+            const pendingAddressUpdate = window.catererAddressUpdatePromise;
+            if (pendingAddressUpdate) {
+                await Promise.race([pendingAddressUpdate, new Promise(resolve => setTimeout(resolve, 5000))]);
+            }
+            const province = document.getElementById('provinceNameHidden')?.value || '';
+            const city = document.getElementById('cityNameHidden')?.value || '';
+            const barangay = document.getElementById('brgyNameHidden')?.value || '';
+            const landmark = document.getElementById('businessAddress')?.value?.trim() || '';
+            const lat = document.getElementById('latInput')?.value || '';
+            const lng = document.getElementById('lonInput')?.value || '';
+            const locationSummary = [barangay, city, province, landmark].filter(Boolean).join(', ');
+            const message = `Save this map pin and address?${locationSummary ? `\n${locationSummary}` : ''}\nCoordinates: ${lat}, ${lng}`;
+            if (window.Swal) {
+                window.Swal.fire({
+                    title: 'Confirm business location',
+                    text: message,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Save location',
+                    cancelButtonText: 'Review location',
+                    reverseButtons: true
+                }).then(result => submitAfterConfirm(result.isConfirmed));
+            } else {
+                submitAfterConfirm(window.confirm(message));
+            }
+        })();
+        return;
+    }
+
     const btn = document.querySelector('.btn-save-changes') || document.getElementById('btnSaveAllSettings');
     if (btn) {
         btn.disabled = true;
@@ -741,17 +983,30 @@ window.previewSelectedImage = function(input, type) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
 
-    // Upload validation: PNG, JPG, WebP
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    const isPaymentQr = ['gcash_qr', 'maya_qr', 'bank_qr', 'custom_payment_qr'].includes(type);
+    const allowedTypes = isPaymentQr
+        ? ['image/png', 'image/jpeg', 'image/jpg']
+        : ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     const ext = file.name.split('.').pop().toLowerCase();
-    const allowedExts = ['png', 'jpg', 'jpeg', 'webp'];
+    const allowedExts = isPaymentQr ? ['png', 'jpg', 'jpeg'] : ['png', 'jpg', 'jpeg', 'webp'];
 
     if (!allowedTypes.includes(file.type) && !allowedExts.includes(ext)) {
-        const msg = 'Invalid file format. Please upload a PNG, JPG, or WebP image.';
+        const msg = isPaymentQr
+            ? 'Choose a PNG, JPG, or JPEG image for the payment QR.'
+            : 'Invalid file format. Please upload a PNG, JPG, or WebP image.';
         if (window.showToast) window.showToast(msg, 'warning');
         else alert(msg);
         input.value = '';
         return;
+    }
+    if (isPaymentQr) {
+        const maxSizeMb = Math.max(1, Number(window.MAX_UPLOAD_SIZE_MB) || 5);
+        if (file.size > maxSizeMb * 1024 * 1024) {
+            const message = `This image is larger than the ${maxSizeMb} MB upload limit.`;
+            if (window.showToast) window.showToast(message, 'warning'); else alert(message);
+            input.value = '';
+            return;
+        }
     }
 
     const reader = new FileReader();
@@ -844,6 +1099,20 @@ window.handleImageFallback = function(img, type) {
 window.handleDropzoneFileChange = function(input, fieldId) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (!['png', 'jpg', 'jpeg'].includes(ext)) {
+        input.value = '';
+        const message = 'Choose a PNG, JPG, or JPEG image.';
+        if (window.showToast) window.showToast(message, 'warning'); else alert(message);
+        return;
+    }
+    const maxSizeMb = Math.max(1, Number(window.MAX_UPLOAD_SIZE_MB) || 5);
+    if (file.size > maxSizeMb * 1024 * 1024) {
+        input.value = '';
+        const message = `This image is larger than the ${maxSizeMb} MB upload limit.`;
+        if (window.showToast) window.showToast(message, 'warning'); else alert(message);
+        return;
+    }
     const badge = document.getElementById('selected_badge_' + fieldId);
     if (badge) {
         const filenameSpan = badge.querySelector('.selected-filename') || badge;
@@ -872,6 +1141,8 @@ window.checkPermitExpiryWarning = function(dateStr) {
 
 window.submitVerificationDocs = async function(btn) {
     if (!btn) return;
+    const resolvedIdType = getVerificationRequirements();
+    if (!resolvedIdType) return;
     const idFront = document.getElementById('verif_id_front')?.files?.[0];
     const selfie = document.getElementById('verif_selfie')?.files?.[0];
     const permit = document.getElementById('verif_permit')?.files?.[0];
@@ -879,19 +1150,8 @@ window.submitVerificationDocs = async function(btn) {
     const hasExistingId = !!document.getElementById('card_verif_id_front');
     const hasExistingPermit = !!document.getElementById('card_verif_permit');
 
-    if (!idFront && !hasExistingId) { 
-        if (window.showToast) window.showToast('Government ID (Front) is required.', 'warning');
-        else alert("Government ID (Front) is required."); 
-        return; 
-    }
-    if (!permit && !hasExistingPermit) { 
-        if (window.showToast) window.showToast('Business Permit is required.', 'warning');
-        else alert("Business Permit is required."); 
-        return; 
-    }
-
     const formData = new FormData();
-    formData.append('id_type', document.getElementById('verif_id_type').value);
+    formData.append('id_type', resolvedIdType);
     if (idFront) formData.append('id_front', idFront);
     
     const idBack = document.getElementById('verif_id_back')?.files?.[0];
