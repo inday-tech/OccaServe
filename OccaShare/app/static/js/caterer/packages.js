@@ -201,13 +201,25 @@ window.togglePricingMode = function (mode) {
     const minGuestsInput = document.querySelector('#packageForm [name="min_guests"]');
     const basePaxInput = document.querySelector('#packageForm [name="base_pax"]');
     const pricingLabelText = document.getElementById('pkgPricingLabelText');
+    const pricingUnitHint = document.getElementById('pkgPriceUnitHint');
+    const extraGuestRateInput = document.getElementById('pkgExtraGuestRate');
+    const startingPriceFloor = Math.max(0, Number(window.CATERER_STARTING_PRICE) || 0);
+
+    if (extraGuestRateInput) {
+        extraGuestRateInput.min = String(startingPriceFloor);
+        const currentExtraRate = Number(extraGuestRateInput.value) || 0;
+        if (isFixed && currentExtraRate < startingPriceFloor) {
+            extraGuestRateInput.value = String(startingPriceFloor);
+        }
+    }
 
     if (pricingCard) {
         pricingCard.style.display = 'block';
     }
 
     if (isCustomizable) {
-        if (pricingLabelText) pricingLabelText.textContent = 'Starting price (₱) *';
+        if (pricingLabelText) pricingLabelText.textContent = 'Starting price per guest (₱) *';
+        if (pricingUnitHint) pricingUnitHint.textContent = 'Customers can choose options at this rate per guest.';
         if (priceInput) {
             priceInput.readOnly = false;
             priceInput.placeholder = 'e.g. 350.00';
@@ -218,14 +230,16 @@ window.togglePricingMode = function (mode) {
             }
         }
     } else if (mode === 'fixed') {
-        if (pricingLabelText) pricingLabelText.textContent = 'Package price (base total, auto-calculated) *';
+        if (pricingLabelText) pricingLabelText.textContent = 'Package price (base total) *';
+        if (pricingUnitHint) pricingUnitHint.textContent = 'Included guests × Business Settings rate per guest.';
         if (priceInput) {
             priceInput.readOnly = true;
             priceInput.placeholder = '0.00';
             priceInput.required = true;
         }
     } else {
-        if (pricingLabelText) pricingLabelText.textContent = 'Package price (₱ / guest) *';
+        if (pricingLabelText) pricingLabelText.textContent = 'Price per guest (₱) *';
+        if (pricingUnitHint) pricingUnitHint.textContent = 'Charged for each guest included in this package.';
         if (priceInput) {
             priceInput.readOnly = false;
             priceInput.placeholder = '0.00';
@@ -310,8 +324,9 @@ window.openAddPackageModal = async function () {
         form.base_pax.min = String(globalMinPax);
     }
     if (form.service_duration) form.service_duration.value = String(serviceDuration);
-    const defaultExcessGuestPrice = Math.max(0, Number(window.CATERER_DEFAULT_EXCESS_GUEST_PRICE) || 0);
+    const defaultExcessGuestPrice = Math.max(startingPrice, Number(window.CATERER_DEFAULT_EXCESS_GUEST_PRICE) || 0);
     if (form.additional_guest_price) form.additional_guest_price.value = String(defaultExcessGuestPrice);
+    if (form.additional_guest_price) form.additional_guest_price.min = String(startingPrice);
     if (form.price_per_head) form.price_per_head.value = '';
     const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
     const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
@@ -421,7 +436,10 @@ window.editPackage = async function (pkgId) {
         }
         if (form.service_duration) form.service_duration.value = pkg.service_duration || window.CATERER_SERVICE_DURATION || 4;
         if (form.additional_guest_price) {
-            form.additional_guest_price.value = pkg.additional_guest_price ?? window.CATERER_DEFAULT_EXCESS_GUEST_PRICE ?? '';
+            const rateFloor = Math.max(0, Number(window.CATERER_STARTING_PRICE) || 0);
+            const savedExtraRate = Number(pkg.additional_guest_price ?? window.CATERER_DEFAULT_EXCESS_GUEST_PRICE) || 0;
+            form.additional_guest_price.min = String(rateFloor);
+            form.additional_guest_price.value = String(Math.max(savedExtraRate, rateFloor));
         }
         if (form.status) form.status.value = pkg.status || 'active';
         if (form.booking_lead_time) form.booking_lead_time.value = pkg.booking_lead_time || 7;

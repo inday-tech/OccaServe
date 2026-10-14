@@ -152,8 +152,9 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
     payment_complete = payment_details_complete and has_payment_terms
 
     has_starting_price = float(profile.starting_price or 0) > 0
+    has_minimum_guests = 1 <= int(profile.min_pax or 0) <= 99
     has_booking_terms = bool((profile.general_terms or profile.terms_and_conditions or "").strip())
-    policies_complete = has_starting_price and has_booking_terms and has_payment_terms
+    policies_complete = has_starting_price and has_minimum_guests and has_booking_terms and has_payment_terms
 
     rules = profile.scheduling_rules or {}
     event_availability = rules.get("event_availability") or {}
@@ -208,7 +209,9 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
 
     brand_url = "/caterer/profile#brand-logo" if not has_logo else "/caterer/profile#brand-cover"
     policies_url = "/caterer/profile#starting-price" if not has_starting_price else "/caterer/profile#booking-policies"
-    if has_starting_price and not has_payment_terms:
+    if has_starting_price and not has_minimum_guests:
+        policies_url = "/caterer/profile#minimum-guests"
+    elif has_starting_price and not has_payment_terms:
         policies_url = "/caterer/profile#accepted-payment-terms"
     return [
         requirement(
@@ -251,7 +254,7 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
         ),
         requirement(
             "Booking policies and pricing",
-            "Set a starting price, booking terms, and at least one accepted deposit option.",
+            "Set minimum guests, a starting price, booking terms, and a deposit option.",
             policies_url,
             policies_complete,
         ),
@@ -5602,7 +5605,7 @@ async def caterer_calendar(
         "max_booking_date": max_booking_date,
         "business_open": business_open,
         "business_close": business_close,
-        "min_pax": user.caterer_profile.min_pax or 20,
+        "min_pax": user.caterer_profile.min_pax or 1,
         "active_page": "calendar"
     })
 
@@ -5707,13 +5710,9 @@ async def manage_services(
         "user": user,
         "items": items,
         "packages": active_packages,
-        "caterer_min_pax": profile.min_pax or 20,
+        "caterer_min_pax": profile.min_pax or 1,
         "caterer_starting_price": profile.starting_price or 0,
-        "caterer_default_excess_guest_price": (
-            profile.default_excess_guest_price
-            if profile.default_excess_guest_price is not None
-            else profile.starting_price or 0
-        ),
+        "caterer_default_excess_guest_price": profile.starting_price or 0,
         "caterer_service_duration": (profile.scheduling_rules or {}).get("package_rules", {}).get("min_event_duration", 4),
         "existing_package_categories": sorted({
             (package.service_type or "").strip()
@@ -6390,7 +6389,7 @@ async def add_package(
     errors = []
     name = name.strip()
     profile = user.caterer_profile
-    global_min_pax = max(1, profile.min_pax or 20)
+    global_min_pax = max(1, profile.min_pax or 1)
     package_rules = (profile.scheduling_rules or {}).get("package_rules", {})
     if service_duration is None:
         service_duration = package_rules.get("min_event_duration", 4)
@@ -6443,6 +6442,8 @@ async def add_package(
         errors.append("Extra guest rate must be between ₱0 and ₱99,999,999.99.")
     elif round(additional_guest_price, 2) != additional_guest_price:
         errors.append("Extra guest rate can have no more than 2 decimal places.")
+    elif pricing_mode == "fixed" and additional_guest_price < max(0, float(profile.starting_price or 0)):
+        errors.append("Extra guest rate cannot be lower than your Business Settings starting price.")
         
     global_lead_time = user.caterer_profile.booking_lead_time or 7
     if booking_lead_time < global_lead_time:
@@ -6464,9 +6465,6 @@ async def add_package(
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
         return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
-
-    if pricing_mode == "fixed":
-        profile.default_excess_guest_price = additional_guest_price
 
     import base64
     image_url = None
@@ -6817,7 +6815,7 @@ async def update_profile(
     card_number: Optional[str] = Form(None),
     cash_instructions: Optional[str] = Form(None),
     booking_lead_time: Optional[str] = Form("7"),
-    min_pax: Optional[str] = Form("50"),
+    min_pax: Optional[str] = Form(None),
     starting_price: Optional[str] = Form("0.0"),
     default_excess_guest_price: Optional[str] = Form(None),
     terms_and_conditions: Optional[str] = Form(None),
@@ -6932,6 +6930,10 @@ async def update_profile(
             return float(s) if s else default
         except (ValueError, TypeError):
             return default
+
+    saved_min_pax = _to_int(min_pax, profile.min_pax or 1)
+    if not 1 <= saved_min_pax <= 99:
+        raise HTTPException(status_code=400, detail="Minimum guests must be between 1 and 99.")
 
     # Handle image removals if requested
     if remove_logo in ("1", "true", "True"):
@@ -7162,7 +7164,7 @@ async def update_profile(
     profile.cash_instructions = cash_instructions
     profile.booking_lead_time = _to_int(booking_lead_time, 7)
     profile.equipment_turnover_hours = _to_int(package_turnover_time, 6)
-    profile.min_pax = _to_int(min_pax, 50)
+    profile.min_pax = saved_min_pax
     profile.starting_price = _to_float(starting_price, 0.0)
     if default_excess_guest_price is not None:
         profile.default_excess_guest_price = _to_float(
@@ -7500,7 +7502,7 @@ async def update_package(
     errors = []
     name = name.strip()
     profile = user.caterer_profile
-    global_min_pax = max(1, profile.min_pax or 20)
+    global_min_pax = max(1, profile.min_pax or 1)
     package_rules = (profile.scheduling_rules or {}).get("package_rules", {})
     if service_duration is None:
         service_duration = package_rules.get("min_event_duration", 4)
@@ -7553,6 +7555,8 @@ async def update_package(
         errors.append("Extra guest rate must be between ₱0 and ₱99,999,999.99.")
     elif round(additional_guest_price, 2) != additional_guest_price:
         errors.append("Extra guest rate can have no more than 2 decimal places.")
+    elif pricing_mode == "fixed" and additional_guest_price < max(0, float(profile.starting_price or 0)):
+        errors.append("Extra guest rate cannot be lower than your Business Settings starting price.")
         
     global_lead_time = user.caterer_profile.booking_lead_time or 7
     if booking_lead_time < global_lead_time:
@@ -7574,9 +7578,6 @@ async def update_package(
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
         return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
-
-    if pricing_mode == "fixed":
-        profile.default_excess_guest_price = additional_guest_price
 
     package.name = name
     package.description = (description or "").strip()

@@ -28,10 +28,8 @@ window.switchSettingsSection = function(sectionId) {
     const meta = SECTION_META[sectionId] || {};
     const titleEl = document.getElementById('contentPanelTitle');
     const subtitleEl = document.getElementById('contentPanelSubtitle');
-    const breadcrumbCurrent = document.getElementById('settingsBreadcrumbCurrent');
     if (titleEl) titleEl.textContent = meta.title || sectionId;
     if (subtitleEl) subtitleEl.textContent = meta.subtitle || '';
-    if (breadcrumbCurrent) breadcrumbCurrent.textContent = meta.title || sectionId;
     document.body.classList.toggle('settings-verification-active', sectionId === 'verification');
 
     history.replaceState(null, null, '#' + sectionId);
@@ -211,6 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'service-areas': { section: 'location', target: '#serviceAreasPicker' },
             'payment-method': { section: 'payment-methods', target: '#paymentMethodEditor', focus: true },
             'starting-price': { section: 'booking-policies', target: '#startingPriceInput', focus: true },
+            'minimum-guests': { section: 'booking-policies', target: '#businessMinPax', focus: true },
             'accepted-payment-terms': { section: 'booking-policies', target: '#accepted-payment-terms' },
             'brand-logo': { section: 'brand', target: '#brand-logo' },
             'brand-cover': { section: 'brand', target: '#brand-cover' },

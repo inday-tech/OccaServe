@@ -6,7 +6,7 @@
             <div>
                 <h3 class="occ-modal-title" id="packageModalTitle"
                     style="color: #0f172a; font-size: 1.25rem; font-weight: 800; margin: 0;">Create a Package</h3>
-                <div class="occ-modal-subtitle" style="color: #64748b; font-size: 0.85rem; margin-top: 4px;">Add the details, choose what's included, then review the customer-facing price before saving.</div>
+                <div class="occ-modal-subtitle" style="color: #64748b; font-size: 0.85rem; margin-top: 4px;">Add the details, choose inclusions, then review your price.</div>
             </div>
             <button class="btn-close-pro" onclick="window.closePackageModal()" type="button"><i
                     class="fas fa-times"></i></button>
@@ -59,19 +59,13 @@
                     <div class="tab-pane-pro active" id="tab-basic">
                         <div class="form-grid">
                             <div class="form-group-pro form-grid-full">
-                                <label class="pkg-label-with-help">Package name *
-                                    <button type="button" class="pkg-help-trigger" aria-label="Package name information" aria-expanded="false" aria-controls="pkgNameHelp"><i class="fas fa-info"></i></button>
-                                    <span class="pkg-field-help" id="pkgNameHelp" hidden>Choose a clear name customers can recognize. Package names must be unique in your catalog.</span>
-                                </label>
+                                <label>Package name *</label>
                                 <input class="control-pro" name="name" id="pkgNameInput" placeholder="e.g. Wedding Gold"
                                     required="" type="text" autocomplete="off" aria-describedby="packageNameValidationMessage" />
                                 <small id="packageNameValidationMessage" class="package-name-validation" aria-live="polite"></small>
                             </div>
                             <div class="form-group-pro" id="pkgCategoryGroup">
-                                <label class="pkg-label-with-help">Event category *
-                                    <button type="button" class="pkg-help-trigger" aria-label="Event category information" aria-expanded="false" aria-controls="pkgCategoryHelp"><i class="fas fa-info"></i></button>
-                                    <span class="pkg-field-help" id="pkgCategoryHelp" hidden>Choose the event this package is designed for. Select Other to enter and save a new category.</span>
-                                </label>
+                                <label>Event category *</label>
                                 <select class="control-pro" name="service_type" id="pkgServiceTypeSelect" required="">
                                     <option value="Wedding">Wedding</option>
                                     <option value="Birthday">Birthday</option>
@@ -90,99 +84,70 @@
                                 </select>
                             </div>
                             <div class="form-group-pro form-grid-full" id="pkgOtherCategoryGroup" style="display: none;">
-                                <label class="pkg-label-with-help" for="pkgOtherCategoryInput">Name your category *
-                                    <button type="button" class="pkg-help-trigger" aria-label="Custom category information" aria-expanded="false" aria-controls="pkgOtherCategoryHelp"><i class="fas fa-info"></i></button>
-                                    <span class="pkg-field-help" id="pkgOtherCategoryHelp" hidden>This category will be available in the list the next time you create a package.</span>
-                                </label>
+                                <label for="pkgOtherCategoryInput">Category name *</label>
                                 <input class="control-pro" id="pkgOtherCategoryInput" name="other_category" type="text" maxlength="60"
                                     placeholder="e.g. Graduation, Company Anniversary" autocomplete="off" />
                             </div>
                             <div class="form-group-pro" id="pkgPricingModeGroup">
-                                <label class="pkg-label-with-help">Pricing type *
-                                    <button type="button" class="pkg-help-trigger" aria-label="Pricing type information" aria-expanded="false" aria-controls="pkgPricingTypeHelp"><i class="fas fa-info"></i></button>
-                                    <span class="pkg-field-help" id="pkgPricingTypeHelp" hidden>Fixed packages include set items. Customizable packages let customers select from the options you provide.</span>
-                                </label>
+                                <label>Package type *</label>
                                 <select class="control-pro" name="pricing_mode" id="pkgPricingModeSelect"
                                     onchange="window.togglePricingMode(this.value)" required="">
                                     <option value="fixed" selected>Fixed Package</option>
                                     <option value="customizable">Customizable Package</option>
                                 </select>
                             </div>
-                            <div class="form-grid-full"
-                                style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1.25rem; border-radius: 12px;">
-                                <h5
-                                    style="margin: 0 0 1rem 0; font-size: 0.85rem; font-weight: 800; color: #475569; text-transform: uppercase;">
-                                    <i class="fas fa-users" style="margin-right: 6px;"></i> Guest Capacity Rules</h5>
+                            <div class="form-grid-full guest-capacity-card">
+                                <h5>Guest capacity</h5>
                                 <div class="form-row-pro" id="capacityRow" style="margin-bottom: 0;">
                                     <div class="form-group-pro capacity-per-pax" style="flex: 1; margin-bottom: 0;">
-                                        <label class="pkg-label-with-help">Minimum guests *
-                                            <button type="button" class="pkg-help-trigger" aria-label="Minimum guests information" aria-expanded="false" aria-controls="pkgMinGuestsHelp"><i class="fas fa-info"></i></button>
-                                            <span class="pkg-field-help" id="pkgMinGuestsHelp" hidden>The smallest guest count customers may book. It cannot be lower than your Business Settings minimum.</span>
-                                        </label>
-                                        <input class="control-pro" min="{{ caterer_min_pax or 20 }}" name="min_guests" type="number" value="{{ caterer_min_pax or 20 }}" required />
+                                        <label>Minimum guests *</label>
+                                        <input class="control-pro" min="{{ caterer_min_pax or 1 }}" name="min_guests" type="number" value="{{ caterer_min_pax or 1 }}" required />
                                     </div>
                                     <div class="form-group-pro capacity-additional"
                                         style="display: block; flex: 1; margin-bottom: 0;">
-                                        <label class="pkg-label-with-help">Included guests (base pax) *
-                                            <button type="button" class="pkg-help-trigger" aria-label="Included guests information" aria-expanded="false" aria-controls="pkgBasePaxHelp"><i class="fas fa-info"></i></button>
-                                            <span class="pkg-field-help" id="pkgBasePaxHelp" hidden>The number of guests covered by the fixed package's base total. Extra guest charges start above this count.</span>
-                                        </label>
+                                        <label>Included guests *</label>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <input class="control-pro" name="base_pax" placeholder="Guest count"
-                                                type="number" min="{{ caterer_min_pax or 20 }}" value="{{ caterer_min_pax or 20 }}" required style="flex: 1;" />
+                                                type="number" min="{{ caterer_min_pax or 1 }}" value="{{ caterer_min_pax or 1 }}" required style="flex: 1;" />
                                             <span
                                                 style="font-size: 0.85rem; font-weight: 700; color: #64748b;">Guests</span>
                                         </div>
                                     </div>
                                     <div class="form-group-pro capacity-fixed"
                                         style="display: none; flex: 1; margin-bottom: 0;">
-                                        <label class="pkg-label-with-help">Extra guest rate (₱ / guest)
-                                            <button type="button" class="pkg-help-trigger" aria-label="Extra guest rate information" aria-expanded="false" aria-controls="pkgExtraRateHelp"><i class="fas fa-info"></i></button>
-                                            <span class="pkg-field-help" id="pkgExtraRateHelp" hidden>Charged for each guest above the included count. Saving this fixed package also updates your Business Settings default.</span>
-                                        </label>
+                                        <label for="pkgExtraGuestRate">Extra guest rate (₱)</label>
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span style="font-size: 0.85rem; font-weight: 700; color: #64748b;">₱</span>
-                                            <input class="control-pro" name="additional_guest_price"
-                                                placeholder="e.g. 500" type="number" min="0" step="0.01" value="{{ caterer_default_excess_guest_price or '' }}" style="flex: 1;" />
+                                            <input class="control-pro" id="pkgExtraGuestRate" name="additional_guest_price"
+                                                placeholder="0.00" type="number" min="{{ caterer_starting_price or 0 }}" step="0.01" value="{{ caterer_starting_price or '' }}" style="flex: 1;" />
                                             <span
                                                 style="font-size: 0.85rem; font-weight: 700; color: #64748b; white-space: nowrap;">/
                                                 guest</span>
                                         </div>
+                                        <small class="pkg-inline-hint">Matches your Business Settings rate. You can set a higher rate.</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label class="pkg-label-with-help">Service duration (hours) *
-                                    <button type="button" class="pkg-help-trigger" aria-label="Service duration information" aria-expanded="false" aria-controls="pkgDurationHelp"><i class="fas fa-info"></i></button>
-                                    <span class="pkg-field-help" id="pkgDurationHelp" hidden>How many hours the package's catering service covers. Defaults to your Business Settings duration.</span>
-                                </label>
+                                <label>Service duration (hours) *</label>
                                 <input class="control-pro" min="1" max="24" name="service_duration"
-                                    placeholder="Enter the actual service hours (1-24)" required type="number"
+                                    placeholder="e.g. 4" required type="number"
                                     value="{{ caterer_service_duration or 4 }}" />
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label class="pkg-label-with-help">Package description (optional)
-                                    <button type="button" class="pkg-help-trigger" aria-label="Package description information" aria-expanded="false" aria-controls="pkgDescriptionHelp"><i class="fas fa-info"></i></button>
-                                    <span class="pkg-field-help" id="pkgDescriptionHelp" hidden>Briefly explain what makes this package useful or special. Customers can see this description.</span>
-                                </label>
+                                <label>Package description <span class="pkg-optional-label">Optional</span></label>
                                 <textarea class="control-pro" name="description"
-                                    placeholder="Describe what's special about this package."
+                                    placeholder="Describe what customers can expect."
                                     rows="2"></textarea>
                             </div>
 
-                            <div class="pricing-overview-card form-grid-full" id="pkgPricingCard"
-                                style="background: white; border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: var(--border-radius); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
-                                <div
-                                    style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                                    <h4 style="font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0;"><i
-                                            class="fas fa-tag" style="color: var(--primary-color);">                                            </i> Package price</h4>
+                            <div class="pricing-overview-card form-grid-full package-price-card" id="pkgPricingCard">
+                                <div class="package-price-card-heading">
+                                    <h4>Package price</h4>
                                 </div>
                                 <div class="form-row-pro">
                                     <div class="form-group-pro" style="flex: 1;">
-                                        <label class="pkg-label-with-help" id="lblPricingMain"><span id="pkgPricingLabelText">Package Price (Base Total, Auto-calculated) *</span>
-                                            <button type="button" class="pkg-help-trigger" aria-label="Package price calculation information" aria-expanded="false" aria-controls="pkgPriceHelp"><i class="fas fa-info"></i></button>
-                                            <span class="pkg-field-help" id="pkgPriceHelp" hidden>Base total = included guests × starting price per guest in Business Settings. Extra guest charges are separate.</span>
-                                        </label>
+                                        <label id="lblPricingMain"><span id="pkgPricingLabelText">Package price (base total) *</span></label>
                                         <div style="position: relative; display: flex; align-items: center;">
                                             <span
                                                 style="position: absolute; left: 12px; color: #64748b; font-weight: 700;">₱</span>
@@ -190,14 +155,12 @@
                                                 maxlength="12" name="price_per_head" placeholder="0.00" readonly required=""
                                                 style="padding-left: 28px; font-weight: 700;" type="text" />
                                         </div>
+                                        <small class="pkg-inline-hint" id="pkgPriceUnitHint">Calculated from included guests × starting price per guest.</small>
                                     </div>
                                 </div>
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label class="pkg-label-with-help">Package status
-                                    <button type="button" class="pkg-help-trigger" aria-label="Package status information" aria-expanded="false" aria-controls="pkgStatusHelp"><i class="fas fa-info"></i></button>
-                                    <span class="pkg-field-help" id="pkgStatusHelp" hidden>Choose whether customers can see and book this package, or keep it as a draft.</span>
-                                </label>
+                                <label>Package status</label>
                                 <select class="control-pro" name="status">
                                     <option value="active">Available (Published)</option>
                                     <option value="seasonal">Seasonal</option>
@@ -206,10 +169,7 @@
                                 </select>
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label class="pkg-label-with-help">Cover photo (optional)
-                                    <button type="button" class="pkg-help-trigger" aria-label="Cover photo information" aria-expanded="false" aria-controls="pkgPhotoHelp"><i class="fas fa-info"></i></button>
-                                    <span class="pkg-field-help" id="pkgPhotoHelp" hidden>Add a clear photo to help customers recognize this package.</span>
-                                </label>
+                                <label>Cover photo <span class="pkg-optional-label">Optional</span></label>
                                 <div style="display: flex; gap: 1.5rem; align-items: flex-start;">
                                     <div class="photo-upload-zone"
                                         onclick="document.getElementById('pkgImageInput').click()"
@@ -217,7 +177,7 @@
                                         <i class="fas fa-camera"
                                             style="font-size: 1.5rem; color: #94a3b8; margin-bottom: 0.5rem;"></i>
                                         <span
-                                            style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Choose photo</span>
+                                            style="font-size: 11px; font-weight: 700; color: #64748b;">Choose photo</span>
                                         <input accept="image/*" id="pkgImageInput" name="image"
                                             onchange="window.previewPackageImage(this)" style="display: none;"
                                             type="file" />
@@ -235,9 +195,8 @@
                                 </div>
                             </div>
                             <div class="form-group-pro form-grid-full">
-                                <label>Gallery Photos (Optional, Max 4)</label>
-                                <p style="font-size:0.75rem; color:#64748b; margin-top:-5px; margin-bottom:8px;">Add up
-                                    to 4 additional pictures for your package gallery.</p>
+                                <label>Gallery photos <span class="pkg-optional-label">Optional, up to 4</span></label>
+                                <p class="pkg-inline-hint">Add extra photos to show this package.</p>
                                 <div style="display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
                                     <div class="photo-upload-zone"
                                         onclick="document.getElementById('pkgGalleryInput').click()"
@@ -245,7 +204,7 @@
                                         <i class="fas fa-plus"
                                             style="font-size: 1.2rem; color: #94a3b8; margin-bottom: 0.25rem;"></i>
                                         <span
-                                            style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Photos</span>
+                                            style="font-size: 10px; font-weight: 700; color: #64748b;">Add photos</span>
                                         <input accept="image/*" id="pkgGalleryInput" multiple="" name="gallery_images"
                                             onchange="window.previewPackageGallery(this)" style="display: none;"
                                             type="file" />

@@ -2130,7 +2130,7 @@
 
             <!-- Main Content Area -->
             <main class="main-content">
-                {% if active_page not in ['dashboard', 'settings'] %}
+                {% if active_page != 'dashboard' %}
                 <nav class="caterer-page-history" id="catererHistoryTrail" aria-label="Breadcrumb"></nav>
                 {% endif %}
                 {% block content %}{% endblock %}
@@ -2897,10 +2897,11 @@
             const trailEl = document.getElementById('catererHistoryTrail');
             const storageKey = `catererPageHistory:{{ user.id if user else 'guest' }}`;
             const currentUrl = window.location.pathname + window.location.search;
+            const currentKey = window.location.pathname;
             const pageHeading = document.querySelector('main h1');
             const isDashboard = {{ 'true' if active_page == 'dashboard' else 'false' }};
             const currentLabel = (isDashboard ? 'Dashboard' : (pageHeading?.textContent || document.title || 'Page')).trim();
-            const page = { url: currentUrl, label: currentLabel };
+            const page = { key: currentKey, url: currentUrl, label: currentLabel };
             let history = [];
             try {
                 history = JSON.parse(localStorage.getItem(storageKey) || '[]');
@@ -2909,16 +2910,36 @@
                 history = [];
             }
 
-            const previousIndex = history.findIndex(item => item.url === currentUrl);
-            if (previousIndex >= 0) history = history.slice(0, previousIndex);
-            history.push(page);
-            history = history.slice(-10);
+            // Older versions stored the full URL, including query strings. Use
+            // the pathname as identity so tabs/filters on one page do not add
+            // duplicate breadcrumb entries.
+            const uniquePages = new Map();
+            history.forEach(item => {
+                if (!item || typeof item.url !== 'string') return;
+                let key = typeof item.key === 'string' ? item.key : '';
+                try { key = key || new URL(item.url, window.location.origin).pathname; } catch (_) { return; }
+                if (!key.startsWith('/')) return;
+                uniquePages.set(key, { key, url: item.url, label: String(item.label || 'Page').trim() || 'Page' });
+            });
+            const dashboardKey = '/caterer/dashboard';
+            const dashboardPage = uniquePages.get(dashboardKey) || { key: dashboardKey, url: dashboardKey, label: 'Dashboard' };
+            uniquePages.delete(dashboardKey);
+            // Dashboard is the home link in every trail. Visiting it starts a
+            // fresh trail, while revisiting another page moves that page to
+            // the end without creating a duplicate.
+            if (isDashboard) {
+                dashboardPage.url = currentUrl;
+                uniquePages.clear();
+            } else {
+                uniquePages.delete(currentKey);
+                uniquePages.set(currentKey, page);
+            }
+            history = [dashboardPage, ...Array.from(uniquePages.values())].slice(0, 10);
             try { localStorage.setItem(storageKey, JSON.stringify(history)); } catch (_) { /* Navigation still works for this page. */ }
 
             if (!trailEl || isDashboard) return;
 
-            const dashboardPage = history.find(item => item.label === 'Dashboard') || { url: '/caterer/dashboard', label: 'Dashboard' };
-            const previousPages = history.filter(item => item.url !== currentUrl && item.label !== 'Dashboard').slice(-2);
+            const previousPages = history.filter(item => item.key !== currentKey && item.key !== dashboardKey).slice(-2);
             const crumbs = [dashboardPage, ...previousPages, page];
             crumbs.forEach((item, index) => {
                 if (index > 0) {

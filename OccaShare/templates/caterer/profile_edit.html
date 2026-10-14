@@ -52,11 +52,6 @@ window.gm_authFailure = function() {
 {% endblock %}
 
 {% block content %}
-<nav class="settings-breadcrumbs" aria-label="Breadcrumb">
-    <a href="/caterer/dashboard"><i class="fas fa-house"></i> Dashboard</a>
-    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-    <span id="settingsBreadcrumbCurrent">Business Details</span>
-</nav>
 <div class="page-header">
     <div class="header-title-group">
         <h1>Business Settings</h1>
@@ -821,11 +816,16 @@ window.gm_authFailure = function() {
                 {% set pr = rules.get('package_rules', {'min_event_duration': 4, 'max_event_duration': 6, 'setup_time_hours': 2, 'cleanup_time_hours': 1, 'turnover_time_hours': 6}) %}
                 {% set policies = rules.get('policies', {}) %}
 
-                    <div class="booking-policy-pricing-row" style="display: grid; grid-template-columns: minmax(0, 420px); gap: 1rem;">
+                    <div class="booking-policy-pricing-row" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; max-width: 720px;">
                         <div class="form-group">
                             <label><i class="fas fa-tags"></i> Starting Price (₱)</label>
                             <input type="text" inputmode="numeric" name="starting_price" id="startingPriceInput" class="js-format-comma" min="0" value="{{ profile.starting_price or 0 }}">
                             <span class="field-hint">Per-guest base rate. Used to calculate the included base total for fixed packages and the starting price for customizable packages.</span>
+                        </div>
+                        <div class="form-group" id="minimum-guests">
+                            <label for="businessMinPax">Minimum guests (pax)</label>
+                            <input type="number" inputmode="numeric" name="min_pax" id="businessMinPax" min="1" max="99" step="1" value="{{ profile.min_pax or 1 }}" required>
+                            <span class="field-hint">Saved from registration and applied to every package.</span>
                         </div>
                     </div>
                     
@@ -1121,15 +1121,6 @@ window.gm_authFailure = function() {
                     <input type="hidden" name="package_min_duration" value="{{ pr.min_event_duration or 2 }}">
 
                     <div class="grid-two-col">
-                        <div>
-                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Minimum Guests</label>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" name="min_pax" id="req_min_pax" value="{{ profile.min_pax or 50 }}" min="1" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
-                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">Guests</span>
-                            </div>
-                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Minimum guest count accepted for an event.</span>
-                        </div>
-
                         <div>
                             <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Maximum Event Duration</label>
                             <div style="display: flex; gap: 8px; align-items: center;">
