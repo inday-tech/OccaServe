@@ -38,23 +38,27 @@ async def check_phone(phone: str, db: Session = Depends(database.get_db)):
     return {"available": True}
 
 @router.get("/check-business-name")
-async def check_business_name(name: str, db: Session = Depends(database.get_db)):
+async def check_business_name(
+    name: str,
+    email: Optional[str] = None,
+    db: Session = Depends(database.get_db)
+):
     """Check if business name is already taken (case-insensitively)."""
-    try:
-        stripped_name = (name or "").strip()
-        if not stripped_name:
-            return {"available": True}
-        existing = db.query(models.CatererProfile).filter(
-            func.lower(models.CatererProfile.business_name) == func.lower(stripped_name)
-        ).first()
-        if existing:
-            owner = db.query(models.User).filter(models.User.id == existing.user_id).first()
-            if owner and owner.is_email_verified:
-                return {"available": False, "message": "This business name is already registered."}
+    stripped_name = (name or "").strip()
+    if not stripped_name:
         return {"available": True}
-    except Exception as e:
-        print(f"[AUTH ERROR] Error checking business name '{name}': {e}")
-        return {"available": True}
+
+    query = db.query(models.CatererProfile).join(
+        models.User, models.User.id == models.CatererProfile.user_id
+    ).filter(
+        func.lower(models.CatererProfile.business_name) == func.lower(stripped_name)
+    )
+    if email and email.strip():
+        query = query.filter(func.lower(models.User.email) != email.strip().lower())
+
+    if query.first():
+        return {"available": False, "message": "This business name is already registered."}
+    return {"available": True}
 
 @router.post("/scan-document")
 async def scan_document(
@@ -199,7 +203,6 @@ async def register(
     pax_range: Optional[str] = Form(None),
     city: Optional[str] = Form(None), # RESTORED
     min_pax: Optional[int] = Form(None),
-    team_size: Optional[int] = Form(None),
     sample_menu: Optional[UploadFile] = File(None),
     logo: Optional[UploadFile] = File(None), # RESTORED
     permit: Optional[UploadFile] = File(None),
@@ -240,76 +243,25 @@ async def register(
 
     # Check if a user with this email already exists and is not verified
     user = db.query(models.User).filter(func.lower(models.User.email) == email.lower().strip()).first()
-    if user and not user.is_email_verified:
-        otp = utils.get_random_digits(6)
-        user.verification_code = otp
-        from datetime import datetime, timedelta, timezone
-        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
-        
-        # Update details if provided
-        if first_name and last_name:
-            user.first_name = first_name.strip()
-            user.last_name = last_name.strip()
-        if mobile_number:
-            user.phone_number = mobile_number.strip().replace(" ", "")
-        if address:
-            user.address = address.strip()
-        if province: user.province = province.strip()
-        if city_municipality: user.city_municipality = city_municipality.strip()
-        if barangay: user.barangay = barangay.strip()
-        if street_address: user.street_address = street_address.strip()
-        if dob:
-            from datetime import datetime
-            try:
-                user.dob = datetime.strptime(dob.strip(), "%Y-%m-%d").date()
-            except ValueError:
-                pass
-            
-        if role == "caterer":
-            profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
-            if profile:
-                if business_name:
-                    profile.business_name = business_name.strip()
-                if mobile_number:
-                    profile.contact_phone = mobile_number.strip().replace(" ", "")
-                if address:
-                    profile.contact_address = address.strip()
-                if min_pax:
-                    profile.min_pax = min_pax
-                actual_city = city or city_municipality
-                if actual_city:
-                    profile.city = actual_city
-                if coverage_area:
-                    profile.coverage_area = coverage_area
-        
-        db.commit()
-        
-        email_sent = False
-        try:
-            email_sent = EmailService.send_verification_email(user.email, otp)
-        except Exception as e:
-            print(f"[AUTH ERROR] Failed to send verification email: {e}")
-            
-        if is_ajax:
-            verify_url = f"/auth/verify?email={user.email}"
-            if next_url:
-                verify_url += f"&next={next_url}"
-            return JSONResponse(content={
-                "status": "success",
-                "email": user.email,
-                "redirect": verify_url,
-                "email_sent": email_sent,
-                "email_error": EmailService.get_last_error() if not email_sent else None
-            })
-        else:
-            verify_url = f"/auth/verify?email={user.email}"
-            if next_url:
-                verify_url += f"&next={next_url}"
-            return RedirectResponse(url=verify_url, status_code=status.HTTP_303_SEE_OTHER)
 
     # server‑side validation
     errors = {}
     import re
+    parsed_dob = None
+    if not dob:
+        errors["dob"] = "Date of birth is required"
+    else:
+        try:
+            parsed_dob = datetime.strptime(dob.strip(), "%Y-%m-%d").date()
+            today = datetime.now().date()
+            age = today.year - parsed_dob.year - (
+                (today.month, today.day) < (parsed_dob.month, parsed_dob.day)
+            )
+            if age < 18 or age > 60:
+                errors["dob"] = "You must be 18 to 60 years old"
+        except ValueError:
+            errors["dob"] = "Enter a valid date of birth"
+
     if not re.match(r'^[a-zA-Z0-9._%+-]+@gmail\.com$', email):
         errors["email"] = "Gmail only (@gmail.com)"
     else:
@@ -343,25 +295,25 @@ async def register(
             if existing_phone and existing_phone.is_email_verified and existing_phone.email.lower() != email.lower().strip():
                 errors["mobile_number"] = "This mobile number is already registered."
 
-    password_msgs = []
-    if len(password) < 8:
-        password_msgs.append("at least 8 chars")
-    
-    import re
-    if not re.search(r"[A-Z]", password):
-        password_msgs.append("uppercase")
-    if not re.search(r"[a-z]", password):
-        password_msgs.append("lowercase")
-    if not re.search(r"[0-9]", password):
-        password_msgs.append("number")
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
-        password_msgs.append("symbol")
+    if not user or user.auth_provider == "email":
+        password_msgs = []
+        if len(password) < 8:
+            password_msgs.append("at least 8 chars")
 
-    if password_msgs:
-        errors["password"] = "Password must include: " + ", ".join(password_msgs)
+        if not re.search(r"[A-Z]", password):
+            password_msgs.append("uppercase")
+        if not re.search(r"[a-z]", password):
+            password_msgs.append("lowercase")
+        if not re.search(r"[0-9]", password):
+            password_msgs.append("number")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            password_msgs.append("symbol")
 
-    if password != confirm_password:
-        errors["confirm_password"] = "Passwords do not match"
+        if password_msgs:
+            errors["password"] = "Password must include: " + ", ".join(password_msgs)
+
+        if password != confirm_password:
+            errors["confirm_password"] = "Passwords do not match"
 
     if role == "caterer":
         if not address or not address.strip():
@@ -370,6 +322,17 @@ async def register(
             addr_error = is_dummy_address(address)
             if addr_error:
                 errors["address"] = addr_error
+
+        for field, value, label in (
+            ("province", province, "Province"),
+            ("city_municipality", city_municipality, "City / Municipality"),
+            ("barangay", barangay, "Barangay"),
+        ):
+            if not value or not value.strip():
+                errors[field] = f"{label} is required"
+
+        if not coverage_area or not coverage_area.strip():
+            errors["coverage_area"] = "Service areas are required"
 
         if not business_name or not business_name.strip():
             errors["business_name"] = "Business name is required for caterers"
@@ -382,13 +345,14 @@ async def register(
                 errors["business_name"] = bn_error
 
             # Uniqueness Check (case-insensitive)
-            existing_biz = db.query(models.CatererProfile).filter(
-                func.lower(models.CatererProfile.business_name) == func.lower(business_name.strip())
+            matching_business = db.query(models.CatererProfile).join(
+                models.User, models.User.id == models.CatererProfile.user_id
+            ).filter(
+                func.lower(models.CatererProfile.business_name) == func.lower(business_name.strip()),
+                func.lower(models.User.email) != email.lower().strip()
             ).first()
-            if existing_biz:
-                biz_owner = db.query(models.User).filter(models.User.id == existing_biz.user_id).first()
-                if biz_owner and biz_owner.is_email_verified and biz_owner.email.lower() != email.lower().strip():
-                    errors["business_name"] = "This business name is already registered."
+            if matching_business:
+                errors["business_name"] = "This business name is already registered."
 
         if years_of_operation is not None and (years_of_operation < 0 or years_of_operation > 100):
             errors["years_of_operation"] = "Years of operation must be between 0 and 100"
@@ -396,8 +360,8 @@ async def register(
         # Default min_pax to 1 if not provided (for backward compat with older form versions)
         if min_pax is None:
             min_pax = 1
-        if min_pax < 1 or min_pax > 5000:
-            errors["min_pax"] = "Minimum Pax must be between 1 and 5,000"
+        if min_pax < 1 or min_pax > 99:
+            errors["min_pax"] = "Minimum Pax must be a whole number between 1 and 99"
 
     # Only return error if there ARE validation errors
     if errors:
@@ -408,6 +372,76 @@ async def register(
         if next_url:
             url += f"&next={next_url}"
         return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
+
+    if user and not user.is_email_verified:
+        otp = utils.get_random_digits(6)
+        user.verification_code = otp
+        from datetime import datetime, timedelta, timezone
+        user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+        user.first_name = first_name.strip() if first_name else None
+        user.middle_name = mn or None
+        user.last_name = last_name.strip() if last_name else None
+        user.phone_number = mobile_number.strip().replace(" ", "")
+        user.address = address.strip() if address else None
+        user.province = province.strip() if province else None
+        user.city_municipality = city_municipality.strip() if city_municipality else None
+        user.barangay = barangay.strip() if barangay else None
+        user.street_address = street_address.strip() if street_address else None
+        user.role = role
+        if dob:
+            user.dob = datetime.strptime(dob.strip(), "%Y-%m-%d").date()
+
+        if role == "caterer":
+            profile = db.query(models.CatererProfile).filter(
+                models.CatererProfile.user_id == user.id
+            ).first()
+            profile_data = {
+                "business_name": business_name.strip(),
+                "business_type": business_type,
+                "years_of_operation": years_of_operation or 0,
+                "description": business_description,
+                "coverage_area": (coverage_area or "").strip(),
+                "payout_method": payout_method,
+                "payout_account_name": payout_account_name,
+                "payout_account_number": account_number,
+                "contact_address": address.strip() if address else None,
+                "contact_phone": mobile_number.strip().replace(" ", ""),
+                "min_pax": min_pax,
+                "city": (city or city_municipality or "").strip(),
+                "province_code": (province or "").strip(),
+                "city_code": (city_municipality or "").strip(),
+                "brgy_code": (barangay or "").strip(),
+                "event_types": [item.strip() for item in (event_types or "").split(",") if item.strip()],
+                "latitude": latitude,
+                "longitude": longitude,
+                "status": "Pending Approval",
+            }
+            if profile:
+                for field, value in profile_data.items():
+                    setattr(profile, field, value)
+            else:
+                db.add(models.CatererProfile(user_id=user.id, **profile_data))
+
+        db.commit()
+
+        email_sent = False
+        try:
+            email_sent = EmailService.send_verification_email(user.email, otp)
+        except Exception as e:
+            print(f"[AUTH ERROR] Failed to send verification email: {e}")
+
+        verify_url = f"/auth/verify?email={user.email}"
+        if next_url:
+            verify_url += f"&next={next_url}"
+        if is_ajax:
+            return JSONResponse(content={
+                "status": "success",
+                "email": user.email,
+                "redirect": verify_url,
+                "email_sent": email_sent,
+                "email_error": EmailService.get_last_error() if not email_sent else None
+            })
+        return RedirectResponse(url=verify_url, status_code=status.HTTP_303_SEE_OTHER)
 
     user = db.query(models.User).filter(models.User.email == email).first()
     
@@ -518,15 +552,6 @@ async def register(
 
         from datetime import datetime, timedelta, timezone
         
-        # Parse DOB if provided
-        parsed_dob = None
-        if dob:
-            from datetime import datetime
-            try:
-                parsed_dob = datetime.strptime(dob.strip(), "%Y-%m-%d").date()
-            except ValueError:
-                pass
-                
         new_user = models.User(
             email=email, 
             password_hash=hashed_password,
@@ -559,7 +584,7 @@ async def register(
                 years_of_operation=years_of_operation or 0,
 
                 description=business_description,
-                coverage_area=coverage_area,
+                coverage_area=(coverage_area or "").strip(),
                 payout_method=payout_method,
                 payout_account_name=payout_account_name,
                 payout_account_number=account_number,
@@ -568,15 +593,17 @@ async def register(
                 logo_url=logo_url,
                 event_types=event_list,
                 min_pax=min_pax,
-                city=city,
+                city=(city or city_municipality or "").strip(),
+                province_code=(province or "").strip(),
+                city_code=(city_municipality or "").strip(),
+                brgy_code=(barangay or "").strip(),
                 sample_menu_url=sample_menu_url,
                 permit_url=permit_url,
                 gov_id_url=gov_id_url,
                 latitude=latitude,
                 longitude=longitude,
                 verification_status="Not Verified",
-                status="Pending Approval",
-                team_size=team_size
+                status="Pending Approval"
             )
             db.add(new_profile)
 

@@ -6624,6 +6624,7 @@ async def update_profile(
     longitude: Optional[str] = Form(None),
     years_of_operation: Optional[str] = Form(None),
     contact_address: Optional[str] = Form(None),
+    coverage_area: Optional[str] = Form(None),
     payout_method: Optional[str] = Form(None),
     province: Optional[str] = Form(None),
     municipality: Optional[str] = Form(None),
@@ -6858,6 +6859,8 @@ async def update_profile(
         profile.city = city.strip()
     if contact_address is not None:
         profile.contact_address = contact_address.strip()
+    if coverage_area is not None:
+        profile.coverage_area = coverage_area.strip()
     if contact_phone is not None and contact_phone.strip():
         profile.contact_phone = contact_phone.strip()
     if payout_method is not None:

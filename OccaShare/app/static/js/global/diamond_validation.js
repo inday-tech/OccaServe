@@ -153,10 +153,15 @@
             return { valid: true };
         },
         email: (email) => {
-            // Standard email validation regex
-            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
             if (!email) return { valid: false, message: "Required" };
-            if (!emailRegex.test(email)) return { valid: false, message: "Invalid email format" };
+            const trimmedEmail = email.trim();
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (trimmedEmail !== email || !emailRegex.test(email)) {
+                return {
+                    valid: false,
+                    message: "Use name@gmail.com format: 3+ characters before @, a domain, and a 2+ letter ending."
+                };
+            }
 
             // Anti-spam: No consecutive dots or special characters
             if (/\.{2,}/.test(email) || /_{2,}/.test(email) || /-{2,}/.test(email)) {
@@ -169,13 +174,13 @@
 
             // Minimum 3 characters for the prefix rule
             if (prefix.length < 3) {
-                return { valid: false, message: "Email prefix must be at least 3 characters" };
+                return { valid: false, message: "The part before @ must be at least 3 characters (e.g. maria@example.com)." };
             }
 
             // Block role-based and test emails
             const blockedPrefixes = ['admin', 'support', 'info', 'test', 'demo', 'noreply', 'no-reply', 'sysadmin', 'webmaster'];
             if (blockedPrefixes.includes(prefix)) {
-                return { valid: false, message: "Role-based/Test emails are not allowed" };
+                return { valid: false, message: "Use your personal business contact email, not a role/test address (e.g. maria@example.com)." };
             }
 
             // Block common disposable email domains for security
@@ -186,7 +191,7 @@
             ];
 
             if (disposableDomains.includes(domain)) {
-                return { valid: false, message: "Disposable emails are not allowed" };
+                return { valid: false, message: "Temporary email providers are not accepted. Use a regular email such as maria@gmail.com." };
             }
             return { valid: true };
         },
@@ -222,7 +227,7 @@
         },
         years: (v) => {
             const cleanV = String(v).replace(/,/g, '');
-            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Required" };
+            if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Enter at least 1 guest." };
             if (!/^[0-9]+$/.test(cleanV)) return { valid: false, message: "Numbers only." };
             const n = parseInt(cleanV);
             if (n < 0 || n > 100) return { valid: false, message: "Enter a valid number (0-100)." };
@@ -233,7 +238,32 @@
             if (cleanV === "" || cleanV === "null" || cleanV === "undefined") return { valid: false, message: "Required" };
             if (!/^[0-9]+$/.test(cleanV)) return { valid: false, message: "Whole numbers only." };
             const n = parseInt(cleanV);
-            if (n < 1 || n > 5000) return { valid: false, message: "Enter a valid number (1-5000)." };
+            if (n < 1 || n > 99) return { valid: false, message: "Enter a whole number from 1 to 99 (up to two digits)." };
+            return { valid: true };
+        },
+        dateOfBirth: (value) => {
+            if (!value) return { valid: false, message: "Required" };
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                return { valid: false, message: "Enter a valid date of birth." };
+            }
+
+            const [year, month, day] = value.split('-').map(Number);
+            const birthDate = new Date(year, month - 1, day);
+            if (birthDate.getFullYear() !== year
+                || birthDate.getMonth() !== month - 1
+                || birthDate.getDate() !== day) {
+                return { valid: false, message: "Enter a valid date of birth." };
+            }
+
+            const today = new Date();
+            let age = today.getFullYear() - year;
+            if (today.getMonth() + 1 < month
+                || (today.getMonth() + 1 === month && today.getDate() < day)) {
+                age -= 1;
+            }
+            if (age < 18 || age > 60) {
+                return { valid: false, message: "You must be 18 to 60 years old." };
+            }
             return { valid: true };
         }
     };
@@ -241,6 +271,13 @@
     // --- BINDING LOGIC ---
     window.initDiamondValidation = function (rootElement = document) {
         console.log("Diamond Validation Initializing...");
+
+        rootElement.querySelectorAll('.auth-modal-content form .input-wrapper > .error-drawer').forEach(drawer => {
+            const wrapper = drawer.parentElement;
+            if (wrapper?.matches('.input-wrapper')) {
+                wrapper.insertAdjacentElement('afterend', drawer);
+            }
+        });
 
         const emailInputs = Array.from(rootElement.querySelectorAll('input[type="email"]')).filter(el => !el.id.includes('login'));
         const mobileInputs = Array.from(rootElement.querySelectorAll('input[type="tel"], input[name="mobile_number"]')).filter(el => !el.id.includes('login'));
@@ -406,15 +443,23 @@
 
         // 1. Debounced Email Uniqueness Check (Fires instantly on error, debounces unique query)
         const checkEmailUniqueness = async (input, prefix) => {
+            const email = input.value.trim();
             try {
-                const response = await fetch(`/auth/check-email?email=${encodeURIComponent(input.value)}`);
+                const response = await fetch(`/auth/check-email?email=${encodeURIComponent(email)}`);
+                if (!response.ok) throw new Error(`Email check failed (${response.status})`);
                 const data = await response.json();
+                if (input.value.trim() !== email) return;
                 if (!data.available) {
                     window.setDiamondError(prefix, data.message || "Email already taken");
                 } else {
                     window.setDiamondError(prefix, "", false);
                 }
-            } catch (err) { console.error("Email check failed", err); }
+            } catch (err) {
+                console.error("Email check failed", err);
+                if (input.value.trim() === email) {
+                    window.setDiamondError(prefix, "Could not verify this email. Please try again.");
+                }
+            }
         };
         const debouncedEmailUnique = debounce(checkEmailUniqueness, 500);
 
@@ -641,12 +686,13 @@
 
         paxInputs.forEach(input => {
             let lastValidValue = input.value;
+            const errorId = input.id.includes('cat') ? 'minPaxCat' : 'minPax';
 
             input.addEventListener('input', function (e) {
                 let cleanVal = this.value.replace(/,/g, '');
                 if (cleanVal === '') {
                     lastValidValue = '';
-                    window.setDiamondError('minPax', "Required", true);
+                    window.setDiamondError(errorId, "Enter a whole number from 1 to 99 (up to two digits).", true);
                     return;
                 }
 
@@ -658,9 +704,21 @@
                 if (isNaN(num)) {
                     this.value = '';
                     lastValidValue = '';
-                } else if (num > 5000) {
+                } else if (num < 1) {
+                    this.value = '';
+                    lastValidValue = '';
+                    window.setDiamondError(errorId, "Enter a whole number from 1 to 99 (up to two digits).", true);
+                    return;
+                } else if (num > 99) {
                     this.value = lastValidValue;
+                    window.setDiamondError(
+                        errorId,
+                        "Enter a whole number from 1 to 99 (up to two digits).",
+                        true
+                    );
+                    return;
                 } else {
+                    cleanVal = String(num);
                     this.value = cleanVal;
                     lastValidValue = cleanVal;
                 }
@@ -670,7 +728,7 @@
                 }
 
                 const { valid, message } = window.diamondValidators.minPax(this.value);
-                window.setDiamondError('minPax', message, !valid);
+                window.setDiamondError(errorId, message, !valid);
             });
 
             input.addEventListener('keydown', function (e) {
@@ -682,15 +740,26 @@
 
         // 6. Debounced Business Name Uniqueness Check
         const checkBusinessUniqueness = async (input) => {
+            const businessName = input.value.trim();
+            const email = input.closest('form')?.querySelector('input[name="email"]')?.value.trim() || '';
             try {
-                const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(input.value)}`);
+                const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(businessName)}&email=${encodeURIComponent(email)}`);
+                if (!response.ok) throw new Error(`Business name check failed (${response.status})`);
                 const data = await response.json();
+                const currentEmail = input.closest('form')?.querySelector('input[name="email"]')?.value.trim() || '';
+                if (input.value.trim() !== businessName || currentEmail !== email) return;
                 if (!data.available) {
-                    window.setDiamondError('businessName', "Business name already registered");
+                    window.setDiamondError('businessName', data.message || "Business name already registered");
                 } else {
                     window.setDiamondError('businessName', "", false);
                 }
-            } catch (e) { console.warn("Uniqueness check failed", e); }
+            } catch (e) {
+                console.error("Business name check failed", e);
+                const currentEmail = input.closest('form')?.querySelector('input[name="email"]')?.value.trim() || '';
+                if (input.value.trim() === businessName && currentEmail === email) {
+                    window.setDiamondError('businessName', "Could not verify this business name. Please try again.");
+                }
+            }
         };
         const debouncedBusinessUnique = debounce(checkBusinessUniqueness, 500);
 
@@ -705,6 +774,61 @@
                 }
             });
         });
+        emailInputs.forEach(input => {
+            input.addEventListener('input', function () {
+                const businessInput = this.closest('form')?.querySelector('input[name="business_name"]');
+                if (!businessInput || !businessInput.value.trim()) return;
+
+                const { valid } = window.diamondValidators.businessNameFormat(businessInput.value);
+                if (valid) debouncedBusinessUnique(businessInput);
+            });
+        });
+
+        const requiredInputs = rootElement.querySelectorAll(
+            '.auth-modal-content form input[required]:not([type="hidden"]), .auth-modal-content form select[required], .auth-modal-content form textarea[required]'
+        );
+        requiredInputs.forEach(input => {
+            const validateRequired = () => {
+                input.classList.add('touched');
+                const wrapper = input.closest('.input-wrapper');
+                const fieldId = wrapper?.id.replace(/Wrapper$/, '');
+                if (!fieldId) return;
+
+                const requiredMessage = input.name === 'min_pax'
+                    ? 'Enter a whole number from 1 to 99 (up to two digits).'
+                    : 'Required';
+                if (!input.value.trim()) {
+                    window.setDiamondError(fieldId, requiredMessage);
+                } else {
+                    const drawer = document.getElementById(`${fieldId}Error`);
+                    if (drawer?.textContent.trim() === requiredMessage || drawer?.textContent.trim() === 'Required') {
+                        window.setDiamondError(fieldId, '', false);
+                    }
+                }
+            };
+            input.addEventListener('input', validateRequired);
+            input.addEventListener('change', validateRequired);
+            input.addEventListener('blur', validateRequired);
+        });
+
+        const dobInputs = rootElement.querySelectorAll(
+            '.auth-modal-content form input[type="date"][name="dob"]'
+        );
+        dobInputs.forEach(input => {
+            input.addEventListener('input', validateDateOfBirth);
+            input.addEventListener('change', validateDateOfBirth);
+            input.addEventListener('blur', validateDateOfBirth);
+        });
+
+        function validateDateOfBirth(event) {
+            const input = event.currentTarget;
+            const wrapper = input.closest('.input-wrapper');
+            const fieldId = wrapper?.id.replace(/Wrapper$/, '');
+            if (!fieldId || !input.value) return;
+
+            const { valid, message } = window.diamondValidators.dateOfBirth(input.value);
+            window.setDiamondError(fieldId, message, !valid);
+        }
     };
 
     // Initialize once globally

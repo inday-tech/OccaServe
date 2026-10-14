@@ -7,6 +7,19 @@
     let currentStepCat = 1;
     const totalStepsCat = 2;
 
+    function focusFirstStepError(step) {
+        const wrapper = step?.querySelector('.input-wrapper.error');
+        if (!wrapper) return;
+
+        const target = wrapper.querySelector(
+            'input:not([type="hidden"]):not([type="checkbox"]), select, textarea, button'
+        );
+        if (!target) return;
+
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.focus({ preventScroll: true });
+    }
+
     // Compose hidden full_name from separate fields (called by diamond_validation.js crossCheckNames)
     window.composeFullNameCat = function () {
         const fn = document.getElementById('first_name_cat')?.value.trim() || '';
@@ -39,7 +52,10 @@
         // Progress to next step only if current is valid
         if (n === 1) {
             const stepValid = await validateCurrentStepCat();
-            if (!stepValid) return;
+            if (!stepValid) {
+                focusFirstStepError(document.getElementById(`step-${currentStepCat}`));
+                return;
+            }
 
             if (currentStepCat === 2) {
                 submitCatererForm();
@@ -54,9 +70,15 @@
 
         // Update Progress Tracker
         pSteps.forEach((s, idx) => {
-            if (idx + 1 < currentStepCat) s.className = 'progress-step completed';
-            else if (idx + 1 === currentStepCat) s.className = 'progress-step active';
-            else s.className = 'progress-step';
+            s.removeAttribute('aria-current');
+            if (idx + 1 < currentStepCat) {
+                s.className = 'progress-step completed';
+            } else if (idx + 1 === currentStepCat) {
+                s.className = 'progress-step active';
+                s.setAttribute('aria-current', 'step');
+            } else {
+                s.className = 'progress-step';
+            }
         });
 
         // Update Buttons
@@ -112,6 +134,13 @@
                 if (!res.valid) valid = false;
             }
 
+            const dobEl = document.getElementById('dob_cat');
+            if (dobEl) {
+                const res = window.diamondValidators.dateOfBirth(dobEl.value);
+                window.setDiamondError('dobCat', res.message, !res.valid);
+                if (!res.valid) valid = false;
+            }
+
             const mnEl = document.getElementById('middle_name_cat');
             if (mnEl && mnEl.value.trim()) {
                 const res = window.diamondValidators.name(mnEl.value.trim());
@@ -163,13 +192,18 @@
             if (valid) {
                 if (bizNameEl && bizNameEl.value) {
                     try {
-                        const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(bizNameEl.value)}`);
+                        const email = document.getElementById('email_cat')?.value.trim() || '';
+                        const response = await fetch(`/auth/check-business-name?name=${encodeURIComponent(bizNameEl.value)}&email=${encodeURIComponent(email)}`);
                         const data = await response.json();
                         if (!data.available) {
-                            window.setDiamondError('businessName', "Business name already registered");
+                            window.setDiamondError('businessName', data.message || "Business name already registered");
                             valid = false;
                         }
-                    } catch (err) { console.error("Business uniqueness check failed", err); }
+                    } catch (err) {
+                        console.error("Business uniqueness check failed", err);
+                        window.setDiamondError('businessName', "Could not verify this business name. Please try again.");
+                        valid = false;
+                    }
                 }
                 if (emailEl && emailEl.value) {
                     try {
@@ -196,6 +230,14 @@
         }
 
         if (currentStepCat === 2) {
+            const provinceEl = document.getElementById('province_cat');
+            if (provinceEl && !provinceEl.value) {
+                window.setDiamondError('provinceCat', "Required");
+                valid = false;
+            } else {
+                window.setDiamondError('provinceCat', "", false);
+            }
+
             const cityEl = document.getElementById('city_cat');
             if (cityEl && (!cityEl.value || cityEl.value.trim() === '')) {
                 window.setDiamondError('cityCat', "Required");
@@ -231,9 +273,9 @@
 
             const minPaxEl = document.getElementById('min_pax_cat');
             if (minPaxEl) {
-                const pVal = parseInt(minPaxEl.value.replace(/,/g, ''), 10);
-                if (isNaN(pVal) || pVal < 1 || pVal > 5000) {
-                    window.setDiamondError('minPaxCat', "Must be between 1 and 5,000 guests");
+                const res = window.diamondValidators.minPax(minPaxEl.value);
+                if (!res.valid) {
+                    window.setDiamondError('minPaxCat', res.message);
                     valid = false;
                 } else {
                     window.setDiamondError('minPaxCat', "", false);
@@ -484,17 +526,66 @@
                             });
                         }
                     }
-                } else if (window.Swal) {
+                } else {
                     let errMsg = result.message || 'Please check your information.';
                     if (result.field_errors && typeof result.field_errors === 'object') {
                         const errList = Object.values(result.field_errors).filter(Boolean);
                         if (errList.length > 0) errMsg = errList.join('\n');
                     }
-                    Swal.fire({ icon: 'error', title: 'Registration Failed', text: errMsg, confirmButtonColor: '#FF7B54' });
+                    const fieldWrappers = {
+                        business_name: ['businessName'],
+                        full_name: ['firstNameCat', 'lastNameCat'],
+                        email: ['emailCat'],
+                        mobile_number: ['mobileCat'],
+                        password: ['passwordCat'],
+                        confirm_password: ['confirmCat'],
+                        dob: ['dobCat'],
+                        address: ['streetCat'],
+                        province: ['provinceCat'],
+                        city_municipality: ['cityCat'],
+                        barangay: ['barangayCat'],
+                        coverage_area: ['coverageAreaCat'],
+                        years_of_operation: ['years'],
+                        min_pax: ['minPaxCat']
+                    };
+                    const stepOneFields = ['business_name', 'full_name', 'email', 'mobile_number', 'password', 'confirm_password', 'dob'];
+                    const fieldErrors = result.field_errors || {};
+                    if (Object.keys(fieldErrors).some(field => stepOneFields.includes(field)) && currentStepCat !== 1) {
+                        await window.changeStepCat(1 - currentStepCat);
+                    }
+                    let firstServerErrorId = null;
+                    Object.entries(fieldErrors).forEach(([field, message]) => {
+                        (fieldWrappers[field] || []).forEach(fieldId => {
+                            firstServerErrorId = firstServerErrorId || fieldId;
+                            window.setDiamondError(fieldId, message);
+                        });
+                    });
+                    const firstErrorWrapper = firstServerErrorId
+                        ? document.getElementById(`${firstServerErrorId}Wrapper`)
+                        : form.querySelector('.input-wrapper.error');
+                    if (firstErrorWrapper) {
+                        const errorStep = firstErrorWrapper.closest('.form-step');
+                        if (errorStep) focusFirstStepError(errorStep);
+                    }
+                    if (window.Swal) {
+                        Swal.fire({ icon: 'error', title: 'Registration Failed', text: errMsg, confirmButtonColor: '#FF7B54' });
+                    } else {
+                        window.alert(errMsg);
+                    }
                 }
             }
         } catch (error) {
             console.error('Registration error:', error);
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Registration Failed',
+                    text: 'We could not submit your registration. Please try again.',
+                    confirmButtonColor: '#FF7B54'
+                });
+            } else {
+                window.alert('We could not submit your registration. Please try again.');
+            }
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
@@ -504,12 +595,12 @@
     }
 
     function updateAddressCat() {
-        const prov = "Laguna";
+        const prov = document.getElementById('province_cat')?.value;
         const city = document.getElementById('city_cat')?.value;
         const brgy = document.getElementById('barangay_cat')?.value;
         const street = document.getElementById('street_cat')?.value;
         const hiddenAddress = document.getElementById('address_cat_hidden');
-        if (hiddenAddress && city && brgy) {
+        if (hiddenAddress && prov && city && brgy) {
             hiddenAddress.value = [street, brgy, city, prov]
                 .map(part => (part || '').trim())
                 .filter(Boolean)
@@ -1314,39 +1405,35 @@
         }
 
         provSelect.addEventListener('change', () => {
-            citySelect.innerHTML = '<option value="">-- City --</option>';
-            if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+            citySelect.innerHTML = '<option value="" disabled selected hidden>-- City --</option>';
+            citySelect.disabled = true;
+            if (brgySelect) {
+                brgySelect.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';
+                brgySelect.disabled = true;
+            }
 
             const prov = provSelect.value;
             if (prov && window.LOCATION_DATA[prov]) {
                 const cities = Object.keys(window.LOCATION_DATA[prov]).sort();
+                citySelect.disabled = false;
                 cities.forEach(city => {
                     const opt = document.createElement('option');
                     opt.value = opt.textContent = city;
                     citySelect.appendChild(opt);
                 });
-
-                if (cities.length > 0 && brgySelect) {
-                    const firstCity = cities[0];
-                    citySelect.value = firstCity;
-
-                    if (window.LOCATION_DATA[prov][firstCity]) {
-                        window.LOCATION_DATA[prov][firstCity].sort().forEach(b => {
-                            const opt = document.createElement('option');
-                            opt.value = opt.textContent = b;
-                            brgySelect.appendChild(opt);
-                        });
-                    }
-                }
             }
         });
 
         citySelect.addEventListener('change', () => {
-            if (brgySelect) brgySelect.innerHTML = '<option value="">-- Barangay --</option>';
+            if (brgySelect) {
+                brgySelect.innerHTML = '<option value="" disabled selected hidden>-- Barangay --</option>';
+                brgySelect.disabled = true;
+            }
             const prov = provSelect.value;
             const city = citySelect.value;
 
             if (prov && city && window.LOCATION_DATA[prov] && window.LOCATION_DATA[prov][city]) {
+                if (brgySelect) brgySelect.disabled = false;
                 window.LOCATION_DATA[prov][city].sort().forEach(b => {
                     const opt = document.createElement('option');
                     opt.value = opt.textContent = b;

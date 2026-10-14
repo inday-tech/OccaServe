@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/profile_edit.css') }}?v={{ static_asset_version('css/caterer/profile_edit.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/global/service_area_picker.css') }}?v={{ static_asset_version('css/global/service_area_picker.css') }}">
 <style>
 .day-chip-box.active {
     background: var(--primary-color, #800000) !important;
@@ -45,6 +46,8 @@ window.gm_authFailure = function() {
 </script>
 <script defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/node-vibrant/3.1.6/vibrant.min.js"></script>
+<script src="{{ url_for('static', path='/js/auth/location_data.js') }}?v={{ static_asset_version('js/auth/location_data.js') }}"></script>
+<script src="{{ url_for('static', path='/js/global/service_area_picker.js') }}?v={{ static_asset_version('js/global/service_area_picker.js') }}"></script>
 <script src="{{ url_for('static', path='/js/caterer/profile_edit.js') }}?v={{ static_asset_version('js/caterer/profile_edit.js') }}"></script>
 {% endblock %}
 
@@ -377,6 +380,23 @@ window.gm_authFailure = function() {
                         <label><i class="fas fa-location-dot"></i> Landmark / Detailed Address</label>
                         <textarea name="contact_address" id="businessAddress" rows="3" placeholder="e.g. Near San Agustin Church, Beside Jollibee on Main Street" required>{{ profile.contact_address or '' }}</textarea>
                         <span class="field-hint">Include landmarks and specific directions to help customers find you easily.</span>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-map-marked-alt"></i> Service Areas</label>
+                        <div class="service-area-picker" data-service-area-picker>
+                            <input type="hidden" name="coverage_area" value="{{ profile.coverage_area or '' }}">
+                            <div class="service-area-control">
+                                <button type="button" class="service-area-trigger" aria-expanded="false">
+                                    <span class="service-area-trigger-label">Choose one or more provinces</span>
+                                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                </button>
+                                <div class="service-area-menu" hidden>
+                                    <div class="service-area-options" role="group" aria-label="Choose service provinces"></div>
+                                </div>
+                            </div>
+                            <div class="service-area-selected" aria-live="polite"></div>
+                        </div>
+                        <span class="field-hint">Choose every province where you accept bookings.</span>
                     </div>
             </div>
             <!-- End Section: Location & Contact -->

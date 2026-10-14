@@ -1,0 +1,46 @@
+.location-dropdown-menu {
+    position: fixed;
+    z-index: 1200;
+    max-height: min(260px, 32dvh);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.35rem;
+    background: #fff;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+    box-sizing: border-box;
+}
+
+.location-dropdown-menu[hidden] {
+    display: none;
+}
+
+.location-dropdown-option {
+    display: block !important;
+    width: 100% !important;
+    min-height: 2.25rem;
+    padding: 0.45rem 0.65rem;
+    margin: 0;
+    border: 0;
+    border-radius: 0.2rem;
+    background: #fff;
+    color: #334155;
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left !important;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.location-dropdown-option:hover,
+.location-dropdown-option:focus-visible {
+    outline: none;
+    background: #e8f0fe;
+}
+
+.location-dropdown-option[aria-selected="true"] {
+    background: #1a73e8;
+    color: #fff;
+}

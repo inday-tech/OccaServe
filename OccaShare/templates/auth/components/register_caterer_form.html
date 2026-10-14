@@ -10,7 +10,7 @@
 
     <!-- Progress Tracker (2 Steps: Account & Business) -->
     <div class="progress-container" style="max-width: 260px; margin: 0 auto 2.5rem;">
-        <div class="progress-step active" id="p-step-1">
+        <div class="progress-step active" id="p-step-1" aria-current="step">
             1
             <span class="step-label">Account</span>
         </div>
@@ -42,9 +42,9 @@
                 </div>
                 <!-- Contact Person Name (Last, First, Middle) -->
                 <input type="hidden" id="full_name_cat" name="full_name" value="">
-                <div class="form-group full-width">
-                    <label>Contact Person Name <span style="color:#ef4444;">*</span></label>
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.25rem;">
+                <div class="form-group full-width service-area-form-group">
+                    <label class="contact-person-heading">Contact Person Name <span style="color:#ef4444;">*</span></label>
+                    <div class="contact-person-fields" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-top: 0.25rem;">
                         <div>
                             <label for="last_name_cat" style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Last Name</label>
                             <div class="input-wrapper" id="lastNameCatWrapper">
@@ -60,7 +60,7 @@
                             </div>
                         </div>
                         <div>
-                            <label for="middle_name_cat" style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Middle Name</label>
+                            <label for="middle_name_cat" style="font-size: 0.75rem; color: #64748b; font-weight: 600;">Middle Name <span class="optional-label">(Optional)</span></label>
                             <div class="input-wrapper" id="middleNameCatWrapper">
                                 <input type="text" id="middle_name_cat" name="middle_name" class="minimal-input">
                                 <div id="middleNameCatError" class="error-drawer"></div>
@@ -71,8 +71,8 @@
                 <div class="form-group">
                     <label for="dob_cat">Date of Birth <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="dobCatWrapper">
-                        <input type="date" id="dob_cat" name="dob" class="minimal-input" required max="2008-12-31">
-                        <div id="dobCatError" class="error-drawer">Must be at least 18 years old</div>
+                        <input type="date" id="dob_cat" name="dob" class="minimal-input" min="1966-01-01" max="2008-12-31" required>
+                        <div id="dobCatError" class="error-drawer">You must be 18 to 60 years old</div>
                     </div>
                 </div>
                 <div class="form-group">
@@ -137,9 +137,9 @@
                 <div class="form-group" style="margin-top: 1.5rem;">
                     <label for="province_cat">Province <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="provinceCatWrapper">
-                        <select id="province_cat" name="province" class="minimal-input" required>
-                            <option value="">-- Province --</option>
-                            <option value="Laguna" selected>Laguna</option>
+                        <select id="province_cat" name="province" class="minimal-input" data-location-dropdown required>
+                            <option value="" disabled selected hidden>-- Province --</option>
+                            <option value="Laguna">Laguna</option>
                             <option value="Batangas">Batangas</option>
                             <option value="Cavite">Cavite</option>
                             <option value="Rizal">Rizal</option>
@@ -150,8 +150,8 @@
                 <div class="form-group" style="margin-top: 1.5rem;">
                     <label for="city_cat">City / Municipality <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="cityCatWrapper">
-                        <select name="city_municipality" id="city_cat" class="minimal-input" required>
-                            <option value="">-- City --</option>
+                        <select name="city_municipality" id="city_cat" class="minimal-input" data-location-dropdown required disabled>
+                            <option value="" disabled selected hidden>-- City --</option>
                         </select>
                         <input type="text" id="city_cat_text" class="minimal-input" style="display: none;">
                         <div id="cityCatError" class="error-drawer">Required</div>
@@ -160,26 +160,38 @@
                 <div class="form-group">
                     <label for="barangay_cat">Barangay <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="barangayCatWrapper">
-                        <select id="barangay_cat" name="barangay" class="minimal-input" required>
-                            <option value="">-- Barangay --</option>
+                        <select id="barangay_cat" name="barangay" class="minimal-input" data-location-dropdown required disabled>
+                            <option value="" disabled selected hidden>-- Barangay --</option>
                         </select>
                         <input type="text" id="barangay_cat_text" class="minimal-input" style="display: none;">
                         <div id="barangayCatError" class="error-drawer">Required</div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="street_cat">Street Address / Landmark (Optional)</label>
+                    <label for="street_cat">Street Address <span class="optional-label">(Optional)</span></label>
                     <div class="input-wrapper" id="streetCatWrapper">
-                        <input type="text" id="street_cat" name="street_address" class="minimal-input">
+                        <input type="text" id="street_cat" name="street_address" class="minimal-input" placeholder="Optional">
                     </div>
                 </div>
                 <input type="hidden" name="address" id="address_cat_hidden">
                 <div class="form-group full-width">
-                    <label for="coverage_area_cat">Service Areas <span style="color:#ef4444;">*</span></label>
+                    <label for="coverageAreaTrigger" id="coverageAreasLabel">Service Areas <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="coverageAreaCatWrapper">
-                        <input type="text" id="coverage_area_cat" name="coverage_area" class="minimal-input" required placeholder="e.g. Laguna, Cavite, Metro Manila">
-                        <div id="coverageAreaCatError" class="error-drawer">Required</div>
+                        <div class="service-area-picker" data-service-area-picker data-compact="true" role="group" aria-labelledby="coverageAreasLabel">
+                            <input type="hidden" id="coverage_area_cat" name="coverage_area" value="">
+                            <div class="service-area-control">
+                                <button type="button" id="coverageAreaTrigger" class="service-area-trigger" aria-expanded="false" aria-controls="serviceAreaMenuCat">
+                                    <span id="coverageAreaTriggerLabel" class="service-area-trigger-label">Choose one or more provinces</span>
+                                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                                </button>
+                                <div class="service-area-menu" id="serviceAreaMenuCat" hidden>
+                                    <div class="service-area-options" role="group" aria-label="Choose service provinces"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                    <div id="coverageAreaCatError" class="error-drawer">Select at least one service area.</div>
+                    <small class="field-hint">Select all provinces that your catering business serves.</small>
                 </div>
                 <div class="form-group">
                     <label for="years_of_operation">Years of Experience (Optional)</label>
@@ -187,18 +199,13 @@
                         <input type="number" id="years_of_operation" name="years_of_operation" class="minimal-input" min="0" max="100" placeholder="e.g. 5">
                         <div id="yearsError" class="error-drawer"></div>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="team_size_cat">Team Size (Optional)</label>
-                    <div class="input-wrapper" id="teamSizeCatWrapper">
-                        <input type="number" id="team_size_cat" name="team_size" class="minimal-input" min="1" placeholder="e.g. 5">
-                    </div>
+                    <small class="field-hint">Years of experience in catering and food service.</small>
                 </div>
                 <div class="form-group">
                     <label for="min_pax_cat">Minimum Pax Capacity <span style="color:#ef4444;">*</span></label>
                     <div class="input-wrapper" id="minPaxCatWrapper">
-                        <input type="number" id="min_pax_cat" name="min_pax" class="minimal-input" min="1" max="5000" placeholder="e.g. 50" required>
-                        <div id="minPaxCatError" class="error-drawer">Must be between 1 and 5,000 guests</div>
+                        <input type="number" id="min_pax_cat" name="min_pax" class="minimal-input" min="1" max="99" step="1" inputmode="numeric" placeholder="e.g. 50" required>
+                        <div id="minPaxCatError" class="error-drawer">Enter a whole number from 1 to 99 (up to two digits).</div>
                     </div>
                 </div>
             </div>

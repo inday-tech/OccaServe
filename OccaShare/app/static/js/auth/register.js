@@ -91,13 +91,15 @@
             const brgyEl = regForm.querySelector('#barangay_cust');
 
             // Force all fields to mark as touched and validate
-            [firstNameEl, middleNameEl, lastNameEl, emailEl, passEl, confirmEl, mobileEl, provEl, cityEl, brgyEl].forEach(input => {
+            const dobEl = regForm.querySelector('input[name="dob"]');
+            [firstNameEl, middleNameEl, lastNameEl, dobEl, emailEl, passEl, confirmEl, mobileEl, provEl, cityEl, brgyEl].forEach(input => {
                 if (input) {
                     input.classList.add('touched');
                     input.dispatchEvent(new Event('input', { bubbles: true }));
 
                     // If required select/input is empty, flag unified error drawer
-                    if (input.hasAttribute('required') && (!input.value || input.value.trim() === '')) {
+                    if ((input.hasAttribute('required') || input.dataset.required === 'true')
+                        && (!input.value || input.value.trim() === '')) {
                         let prefix = input.id;
                         if (input.id === 'first_name') prefix = 'firstName';
                         else if (input.id === 'middle_name') prefix = 'middleName';
@@ -139,7 +141,8 @@
             const errorWrappers = regForm.querySelectorAll('.input-wrapper.error');
             if (errorWrappers.length > 0) {
                 // Focus on the first error field
-                errorWrappers[0].querySelector('input, select')?.focus();
+                (errorWrappers[0].querySelector('.location-select-trigger')
+                    || errorWrappers[0].querySelector('input, select'))?.focus();
                 return false;
             }
 
@@ -283,6 +286,26 @@
                             if (result.field_errors && typeof result.field_errors === 'object') {
                                 const errList = Object.values(result.field_errors).filter(Boolean);
                                 if (errList.length > 0) errMsg = errList.join('\n');
+
+                                const fieldWrappers = {
+                                    dob: ['dob'],
+                                    email: ['email'],
+                                    mobile_number: ['mobile'],
+                                    password: ['password'],
+                                    confirm_password: ['confirm'],
+                                    province: ['provinceCust'],
+                                    city_municipality: ['cityCust'],
+                                    barangay: ['barangayCust'],
+                                    address: ['streetCust']
+                                };
+                                Object.entries(result.field_errors).forEach(([field, message]) => {
+                                    const wrappers = field === 'full_name'
+                                        ? ['firstName', 'lastName']
+                                        : (fieldWrappers[field] || []);
+                                    wrappers.forEach(wrapper => window.setDiamondError(wrapper, message));
+                                });
+                                (regForm.querySelector('.input-wrapper.error .location-select-trigger')
+                                    || regForm.querySelector('.input-wrapper.error input, .input-wrapper.error select'))?.focus();
                             }
                             if (window.Swal) {
                                 Swal.fire({
