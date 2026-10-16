@@ -1906,15 +1906,51 @@ async def add_caterer(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    business_name = business_name.strip()
+    email = email.strip().lower()
+    first_name = first_name.strip()
+    middle_name = middle_name.strip()
+    last_name = last_name.strip()
+    province = province.strip()
+    municipality = municipality.strip()
+    barangay = barangay.strip()
+    street = street.strip()
+
+    phone_digits = re.sub(r"\D", "", phone or "")
+    if phone_digits.startswith("63"):
+        phone_digits = phone_digits[2:]
+    if len(phone_digits) == 10 and phone_digits.startswith("9"):
+        phone = "0" + phone_digits
+    else:
+        phone = phone_digits
+
     # 1. Server-side Validation (High Fidelity Adjudication)
     errors = {}
+
+    for field_name, field_value in {
+        "business_name": business_name,
+        "email": email,
+        "first_name": first_name,
+        "last_name": last_name,
+        "phone": phone,
+        "province": province,
+        "municipality": municipality,
+        "barangay": barangay,
+        "street": street,
+    }.items():
+        if not field_value:
+            errors[field_name] = "This field is required."
+
+    for field_name, field_value in (("first_name", first_name), ("last_name", last_name)):
+        if field_value and is_valid_person_name(field_value):
+            errors[field_name] = is_valid_person_name(field_value)
     
     # Email check
     email_err = is_dummy_email(email)
     if email_err:
         errors['email'] = email_err
     else:
-        existing_user = db.query(models.User).filter(models.User.email == email).first()
+        existing_user = db.query(models.User).filter(func.lower(models.User.email) == email).first()
         if existing_user:
             errors['email'] = "This email identity is already registered."
 
@@ -1952,9 +1988,23 @@ async def add_caterer(
     try:
         parsed_events = json.loads(event_types)
         parsed_cuisines = json.loads(cuisine_types)
-    except:
-        parsed_events = []
-        parsed_cuisines = []
+    except json.JSONDecodeError:
+        return {
+            "success": False,
+            "message": "Event and cuisine selections must be valid lists.",
+        }
+    if (
+        not isinstance(parsed_events, list)
+        or not parsed_events
+        or not all(isinstance(item, str) and item.strip() for item in parsed_events)
+        or not isinstance(parsed_cuisines, list)
+        or not parsed_cuisines
+        or not all(isinstance(item, str) and item.strip() for item in parsed_cuisines)
+    ):
+        return {
+            "success": False,
+            "message": "Choose at least one valid event type and cuisine.",
+        }
 
 
     # Name formatting
@@ -4008,10 +4058,16 @@ async def dispatch_booking_alert(
     }
 
     for target_id in recipient_ids:
+        target_link = (
+            f"/caterer/bookings?open_booking={booking.id}"
+            if booking.caterer and target_id == booking.caterer.user_id
+            else f"/customer/bookings/manage/{booking.id}"
+        )
         db.add(models.Notification(
             user_id=target_id,
             title=f"System Notification: {category}",
             message=f"Regarding {reference}: {message}",
+            link=target_link,
             type="info"
         ))
             
@@ -4062,7 +4118,9 @@ async def get_caterer_documents(
 ):
     profile = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
     if not profile:
-        return {"success": False, "message": "Partner not found"}
+        profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == caterer_id).first()
+    if not profile:
+        return {"success": False, "message": f"Partner not found for ID {caterer_id}."}
         
     identity = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.user_id == profile.user_id,
@@ -4129,6 +4187,7 @@ async def get_caterer_documents(
         "mayors_permit_url": fix_url(profile.mayors_permit_url),
         "gov_id_url": fix_url(gov_id_url_raw),
         "gov_id_back_url": fix_url(identity.document_back_url) if identity else None,
+        "id_type": identity.verification_type if identity else None,
         "selfie_url": fix_url(selfie_url_raw),
         "selfie_2_url": fix_url(identity.selfie_2_url) if identity else None,
         "selfie_3_url": fix_url(identity.selfie_3_url) if identity else None,
@@ -4139,6 +4198,7 @@ async def get_caterer_documents(
                 if identity and identity.verification_status
                 else ("Submitted" if gov_id_url_raw else "Not submitted")
             ),
+            "id_type": identity.verification_type if identity else None,
             "business_status": (
                 business_review.status
                 if business_review and business_review.status
@@ -4161,7 +4221,313 @@ async def get_caterer_documents(
             "permit_expiry_date": str(profile.permit_expiry_date) if profile.permit_expiry_date else None,
         },
     }
+    file_sources = [
+        ("GOVERNMENT_ID", "Government ID (front)", gov_id_url_raw),
+        ("GOVERNMENT_ID_BACK", "Government ID (back)", identity.document_back_url if identity else None),
+        ("SELFIE", "Selfie photo", selfie_url_raw),
+        ("SELFIE_2", "Selfie / proof of life 2", identity.selfie_2_url if identity else None),
+        ("SELFIE_3", "Selfie / proof of life 3", identity.selfie_3_url if identity else None),
+        ("BUSINESS_PERMIT", "Business permit", profile.permit_url),
+        ("DTI_REGISTRATION", "DTI registration", profile.dti_url),
+        ("BIR_REGISTRATION", "BIR registration", profile.bir_url),
+        ("MAYORS_PERMIT", "Mayor's permit", profile.mayors_permit_url),
+    ]
+    verification_documents = {}
+    if business_review:
+        for document in sorted(business_review.documents, key=lambda item: item.id or 0):
+            verification_documents[document.document_type] = document
+    document_review_reasons = {}
+    if business_review:
+        audit_logs = sorted(
+            business_review.audit_logs,
+            key=lambda item: item.id or 0,
+            reverse=True,
+        )
+        for document_type, document in verification_documents.items():
+            latest_review = next(
+                (log for log in audit_logs if document_type in (log.action or "")),
+                None,
+            )
+            document_review_reasons[document_type] = latest_review.reason if latest_review else None
+    docs["files"] = [
+        {
+            "type": document_type,
+            "name": name,
+            "url": fix_url(file_path),
+            "status": (
+                verification_documents[document_type].status
+                if document_type in verification_documents
+                and verification_documents[document_type].secure_file_path == file_path
+                else "PENDING"
+            ),
+            "review_reason": document_review_reasons.get(document_type),
+        }
+        for document_type, name, file_path in file_sources
+        if file_path
+    ]
+    docs["caterer_id"] = profile.id
+    docs["caterer_name"] = profile.business_name or "Unnamed business"
+    docs["caterer_email"] = profile.user.email if profile.user else None
+    registrant = profile.user
+    registered_address = ""
+    if registrant:
+        structured_address = ", ".join(
+            part.strip() for part in (
+                registrant.street_address,
+                registrant.barangay,
+                registrant.city_municipality,
+                registrant.province,
+            ) if part and part.strip()
+        )
+        registered_address = (
+            (registrant.address or "").strip()
+            or structured_address
+            or (profile.contact_address or "").strip()
+        )
+    else:
+        registered_address = (profile.contact_address or "").strip()
+    docs["registrant"] = {
+        "first_name": (registrant.first_name or "").strip() if registrant else "",
+        "middle_name": (registrant.middle_name or "").strip() if registrant else "",
+        "last_name": (registrant.last_name or "").strip() if registrant else "",
+        "birthdate": registrant.dob.isoformat() if registrant and registrant.dob else None,
+        "address": registered_address,
+    }
     return {"success": True, "docs": docs}
+
+@router.post("/api/caterers/{caterer_id}/documents/{document_type}/review")
+async def review_caterer_document(
+    caterer_id: int,
+    document_type: str,
+    action: str = Form(...),
+    remarks: str = Form(""),
+    review_reason: str = Form(""),
+    db: Session = Depends(database.get_db),
+    admin: models.User = Depends(admin_only)
+):
+    profile = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
+    if not profile:
+        profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == caterer_id).first()
+    if not profile:
+        return {"success": False, "message": f"Partner not found for ID {caterer_id}."}
+
+    identity = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == profile.user_id,
+        models.IdentityVerification.verification_type != "business_permit",
+    ).order_by(
+        models.IdentityVerification.created_at.desc(),
+        models.IdentityVerification.id.desc(),
+    ).first()
+    file_sources = {
+        "GOVERNMENT_ID": ("Government ID (front)", (identity.document_url if identity else None) or profile.gov_id_url, "verif_id_front"),
+        "GOVERNMENT_ID_BACK": ("Government ID (back)", identity.document_back_url if identity else None, "verif_id_back"),
+        "SELFIE": ("Selfie photo", identity.selfie_url if identity else None, "verif_selfie"),
+        "SELFIE_2": ("Selfie / proof of life 2", identity.selfie_2_url if identity else None, "verif_selfie"),
+        "SELFIE_3": ("Selfie / proof of life 3", identity.selfie_3_url if identity else None, "verif_selfie"),
+        "BUSINESS_PERMIT": ("Business permit", profile.permit_url, "verif_permit"),
+        "DTI_REGISTRATION": ("DTI registration", profile.dti_url, "verif_dti"),
+        "BIR_REGISTRATION": ("BIR registration", profile.bir_url, "verif_bir"),
+        "MAYORS_PERMIT": ("Mayor's permit", profile.mayors_permit_url, "verif_permit"),
+    }
+    if document_type == "GOVERNMENT_ID":
+        id_type_label = (identity.verification_type or "Government ID") if identity else "Government ID"
+        selfie_types = [
+            selfie_type for selfie_type in ("SELFIE", "SELFIE_2", "SELFIE_3")
+            if file_sources[selfie_type][1]
+        ]
+        paired_id_files = {
+            "GOVERNMENT_ID": file_sources["GOVERNMENT_ID"],
+            "GOVERNMENT_ID_BACK": file_sources["GOVERNMENT_ID_BACK"],
+            **{selfie_type: file_sources[selfie_type] for selfie_type in selfie_types},
+        }
+        if not all(paired_id_files.get(item) and paired_id_files[item][1] for item in ("GOVERNMENT_ID", "GOVERNMENT_ID_BACK", "SELFIE")):
+            return {"success": False, "message": "The ID front, ID back, and selfie must all be submitted before identity review."}
+        field_id = "verif_id_front"
+    else:
+        paired_id_files = None
+    if document_type not in file_sources:
+        return {"success": False, "message": "Unknown verification document."}
+    if action not in {"approve", "request_revision"}:
+        return {"success": False, "message": "Choose approve or request revision."}
+    approval_reasons = {
+        "meets_requirements": "The document is readable, complete, and matches the required details."
+    }
+    replacement_reasons = {
+        "unreadable": "Image is blurry or unreadable",
+        "missing_details": "Required details are missing or cut off",
+        "wrong_document": "Wrong document type was submitted",
+        "details_mismatch": "Details do not match the caterer or business profile",
+        "altered_or_expired": "File appears altered, expired, or incomplete",
+    }
+    if action == "approve":
+        if review_reason not in approval_reasons:
+            return {"success": False, "message": "Choose the approval reason before approving this file."}
+        remarks = f"{approval_reasons[review_reason]} {remarks.strip()}".strip()
+    if action == "request_revision":
+        if review_reason not in replacement_reasons:
+            return {"success": False, "message": "Choose one valid replacement reason."}
+        reason_summary = replacement_reasons[review_reason]
+        remarks = f"{reason_summary}. {remarks.strip()}".strip()
+
+    if paired_id_files:
+        label = f"{id_type_label} and selfie"
+        file_paths_to_review = paired_id_files
+    else:
+        label, file_path, field_id = file_sources[document_type]
+        if not file_path:
+            return {"success": False, "message": "This verification file has not been submitted."}
+        file_paths_to_review = {document_type: (label, file_path, field_id)}
+
+    verification = db.query(models.CatererVerification).filter(
+        models.CatererVerification.caterer_id == profile.id
+    ).order_by(
+        models.CatererVerification.submitted_at.desc(),
+        models.CatererVerification.id.desc(),
+    ).first()
+    if not verification:
+        verification = models.CatererVerification(caterer_id=profile.id, status="PENDING_REVIEW")
+        db.add(verification)
+        db.flush()
+
+    documents_to_review = []
+    for doc_type, (doc_label, file_path, _field_id) in file_paths_to_review.items():
+        document = db.query(models.VerificationDocument).filter_by(
+            verification_id=verification.id,
+            document_type=doc_type,
+        ).order_by(models.VerificationDocument.id.desc()).first()
+        if not document:
+            document = models.VerificationDocument(
+                verification_id=verification.id,
+                document_type=doc_type,
+                secure_file_path=file_path,
+                status="PENDING",
+            )
+            db.add(document)
+        elif document.secure_file_path != file_path:
+            document.secure_file_path = file_path
+            document.status = "PENDING"
+        document_status = (document.status or "PENDING").upper()
+        if document_status != "PENDING" and not (paired_id_files and document_status == "VALID"):
+            return {"success": False, "message": "This identity review has already been decided. Refresh the document list before taking another action."}
+        documents_to_review.append((doc_type, doc_label, document))
+
+    if paired_id_files and all((document.status or "").upper() == "VALID" for _, _, document in documents_to_review) and action == "approve":
+        return {"success": False, "message": "The ID and selfie have already been approved."}
+
+    if action == "approve":
+        for doc_type, _doc_label, document in documents_to_review:
+            document.status = "VALID"
+            db.add(models.VerificationAuditLog(
+                verification_id=verification.id,
+                admin_id=admin.id,
+                action=f"Approved document: {doc_type}",
+                reason=remarks.strip() or None,
+            ))
+        if paired_id_files and identity:
+            identity.verification_status = "VERIFIED"
+            identity.review_status = "approved"
+            identity.reviewed_by = admin.id
+            identity.reviewed_at = datetime.now(timezone.utc)
+            identity.verified_at = identity.reviewed_at
+    else:
+        for doc_type, _doc_label, document in documents_to_review:
+            document.status = "INVALID"
+            db.add(models.VerificationAuditLog(
+                verification_id=verification.id,
+                admin_id=admin.id,
+                action=f"Requested revision for document: {doc_type}",
+                reason=remarks.strip() or None,
+            ))
+        if paired_id_files and identity:
+            identity.verification_status = "REVERIFICATION_REQUIRED"
+            identity.review_status = "requested_reverification"
+            identity.reviewed_by = admin.id
+            identity.reviewed_at = datetime.now(timezone.utc)
+        verification.status = "RESUBMISSION_REQUIRED"
+        verification.rejection_reason = f"{label}: {remarks.strip()}"
+        verification.reviewed_by = admin.id
+        verification.reviewed_at = datetime.now(timezone.utc)
+        profile.verification_status = "Requires Revision"
+        profile.admin_remarks = verification.rejection_reason
+        profile.is_verified = False
+        profile.account_status = "Restricted"
+        if profile.status == "Published":
+            profile.status = "Unpublished"
+        if profile.user:
+            profile.user.is_verified = False
+            profile.user.is_kyc_complete = False
+
+
+    if action == "request_revision" and profile.user_id:
+        db.add(models.Notification(
+            user_id=profile.user_id,
+            title="Verification file needs an update",
+            message=f"{label} needs to be replaced. Admin note: {remarks.strip()}",
+            type="warning",
+            link=f"/caterer/profile?verification_file={field_id}&verification_type={document_type}#verification-file",
+        ))
+
+    db.flush()
+    current_files = [
+        (doc_type, path)
+        for doc_type, (_, path, _) in file_sources.items()
+        if path
+    ]
+    all_files_approved = bool(current_files) and all(
+        db.query(models.VerificationDocument).filter_by(
+            verification_id=verification.id,
+            document_type=doc_type,
+            secure_file_path=path,
+            status="VALID",
+        ).first()
+        for doc_type, path in current_files
+    )
+    has_files_needing_revision = any(
+        db.query(models.VerificationDocument).filter_by(
+            verification_id=verification.id,
+            document_type=doc_type,
+            secure_file_path=path,
+            status="INVALID",
+        ).first()
+        for doc_type, path in current_files
+    )
+
+    if action == "approve" and all_files_approved:
+        verification.status = "VERIFIED"
+        verification.rejection_reason = None
+        verification.reviewed_by = admin.id
+        verification.reviewed_at = datetime.now(timezone.utc)
+        profile.verification_status = "Verified"
+        profile.admin_remarks = None
+        profile.is_verified = True
+        profile.account_status = "Active"
+        if profile.user:
+            profile.user.is_verified = True
+            profile.user.is_kyc_complete = True
+            profile.user.status = "active"
+            profile.user.status_reason = None
+        if profile.permit_url:
+            profile.permit_status = "Verified"
+        if profile.user_id:
+            db.add(models.Notification(
+                user_id=profile.user_id,
+                title="Verification approved",
+                message="All submitted verification files have been approved.",
+                type="success",
+                link="/caterer/profile#verification",
+            ))
+    elif action == "approve":
+        verification.status = "RESUBMISSION_REQUIRED" if has_files_needing_revision else "PENDING_REVIEW"
+        if not has_files_needing_revision:
+            profile.verification_status = "Pending Review"
+
+    db.commit()
+    return {
+        "success": True,
+        "message": f"{label} {'approved' if action == 'approve' else 'marked for replacement'}.",
+        "all_approved": all_files_approved,
+        "status": verification.status,
+    }
 
 @router.post("/api/caterers/{caterer_id}/review")
 async def submit_caterer_review(
@@ -4264,7 +4630,7 @@ async def submit_caterer_review(
             user_id=profile.user_id,
             title=title,
             message=msg,
-            link="/caterer/settings",
+            link="/caterer/profile#verification",
             type=notif_type
         )
         db.add(new_notif)

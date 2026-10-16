@@ -22,6 +22,40 @@
         gap: 1.25rem !important;
     }
 }
+.verification-file-feedback {
+    margin-top: 0.5rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.76rem;
+    line-height: 1.4;
+}
+.verification-file-feedback.is-approved {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+}
+.verification-file-feedback.is-revision {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+}
+.verification-file-feedback-is-target {
+    outline: 2px solid var(--primary-color, #800000);
+    outline-offset: 2px;
+}
+#verificationFormsContainer [data-verification-replace] {
+    display: none !important;
+}
+#verificationFormsContainer [data-verification-replace].is-replacement-requested {
+    display: inline-flex !important;
+}
+#verificationFormsContainer [data-verification-replace]:not(.is-replacement-requested) {
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
 </style>
 {% endblock %}
 
@@ -1547,11 +1581,7 @@ window.gm_authFailure = function() {
                     </div>
                     <p class="verification-file-note">Accepted formats: PNG, JPG, or JPEG. Maximum size: {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB per image.</p>
 
-                    {% if verification_admin_remarks and v_status in ['Action Required', 'Rejected', 'Suspended'] %}
-                    <div style="margin-bottom: 1.5rem; padding: 0.85rem 1.25rem; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; font-size: 0.85rem; color: #7f1d1d;">
-                        <strong><i class="fas fa-circle-exclamation"></i> Admin Remarks:</strong> {{ verification_admin_remarks }}
-                    </div>
-                    {% endif %}
+                    <script type="application/json" id="verificationFileFeedbackData">{{ verification_file_feedback|tojson }}</script>
 
                     <!-- Upload Forms via AJAX -->
                     <div id="verificationFormsContainer">
@@ -1571,37 +1601,38 @@ window.gm_authFailure = function() {
                                     <div class="form-group" style="margin-bottom: 0;">
                                         <label for="verif_id_type" class="verification-field-label">Government ID type <span class="verification-required" aria-label="Required">*</span></label>
                                         {% set common_id_types = ["Driver's License", "Passport", "UMID", "PhilSys National ID", "SSS ID", "GSIS ID", "PRC ID", "Postal ID", "Voter's ID", "Senior Citizen ID", "PWD ID", "Barangay ID"] %}
-                                        <select id="verif_id_type" class="form-control" required onchange="toggleOtherIdType(this.value)" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;">
+                                        <select id="verif_id_type" class="form-control" required onchange="toggleOtherIdType(this.value)" {% if government_id_type_locked %}disabled aria-disabled="true" title="Locked after Government ID submission"{% endif %} style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;">
                                             <option value="" disabled {% if not identity or not identity.verification_type %}selected{% endif %}>Select your ID type</option>
                                             {% for id_choice in common_id_types %}<option value="{{ id_choice }}" {% if identity and identity.verification_type == id_choice %}selected{% endif %}>{{ id_choice }}</option>{% endfor %}
                                             <option value="Other" {% if identity and identity.verification_type and identity.verification_type not in common_id_types %}selected{% endif %}>Other ID</option>
                                         </select>
                                         <div class="verification-other-id" id="otherIdTypeWrap" style="display:{% if identity and identity.verification_type and identity.verification_type not in common_id_types %}block{% else %}none{% endif %};">
                                             <label for="verif_id_type_other" class="verification-field-label">Name of ID <span class="verification-required" aria-label="Required">*</span></label>
-                                            <input type="text" id="verif_id_type_other" value="{% if identity and identity.verification_type and identity.verification_type not in common_id_types %}{{ identity.verification_type }}{% endif %}" maxlength="80" placeholder="Enter the exact name shown on your ID" class="form-control">
+                                            <input type="text" id="verif_id_type_other" value="{% if identity and identity.verification_type and identity.verification_type not in common_id_types %}{{ identity.verification_type }}{% endif %}" maxlength="80" placeholder="Enter the exact name shown on your ID" class="form-control" {% if government_id_type_locked %}disabled aria-disabled="true" title="Locked after Government ID submission"{% endif %}>
                                         </div>
+                                        <small id="governmentIdApprovalLockNotice" class="verification-file-feedback {% if government_id_locked %}is-approved{% endif %}">{{ government_id_type_notice }}</small>
                                     </div>
 
                                     <!-- Front ID -->
                                     <div class="form-group" id="group_verif_id_front" style="margin-bottom: 0;">
-                        <label class="verification-field-label">Front of government ID <span class="verification-required" aria-label="Required">*</span></label>
-                                        {% if profile.gov_id_url or (identity and identity.document_url) %}
-                                        {% set doc_url = profile.gov_id_url or (identity.document_url if identity else '') %}
+                        <label class="verification-field-label">Government ID · front and back <span class="verification-required" aria-label="Required">*</span></label>
+                                        {% if (identity and identity.document_url) or profile.gov_id_url %}
+                                        {% set doc_url = (identity.document_url if identity and identity.document_url else profile.gov_id_url) %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
                                         <div class="uploaded-doc-item" id="card_verif_id_front">
                                             <div class="uploaded-doc-info">
                                                 <div class="uploaded-doc-icon"><i class="fas fa-check-circle"></i></div>
                                                 <div>
                                                     <div style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Uploaded Document</div>
-                                                    <div style="font-size: 0.75rem; color: #64748b;">Government ID (Front)</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">Front and back of your Government ID</div>
                                                 </div>
                                             </div>
                                             <div class="uploaded-doc-actions">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View
-                                                </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_id_front')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace
+                                                <button type="button" onclick="viewGovernmentId('{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}', '{{ identity.document_back_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if identity and identity.document_back_url else '' }}')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #bfdbfe; font-size: 0.78rem; cursor: pointer;">
+                                                    <i class="fas fa-external-link-alt"></i> View ID
+                                                </button>
+                                                <button type="button" data-verification-replace onclick="enableGovernmentIdReplacement()" class="btn btn-sm" style="display: none; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
+                                                    <i class="fas fa-sync-alt"></i> Replace ID
                                                 </button>
                                             </div>
                                         </div>
@@ -1610,7 +1641,7 @@ window.gm_authFailure = function() {
                                                 <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                                 <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement front ID</span>
                                                 <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
-                                                <input type="file" id="verif_id_front" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_front')">
+                                                <input type="file" id="verif_id_front" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" {% if government_id_locked %}disabled aria-disabled="true"{% endif %} onchange="handleDropzoneFileChange(this, 'verif_id_front')">
                                                 <div id="selected_badge_verif_id_front" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                     <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                                 </div>
@@ -1622,7 +1653,7 @@ window.gm_authFailure = function() {
                                             <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                             <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload Front ID</span>
                                             <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG (Max {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB)</span>
-                                            <input type="file" id="verif_id_front" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_front')">
+                                            <input type="file" id="verif_id_front" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" {% if government_id_locked %}disabled aria-disabled="true"{% endif %} onchange="handleDropzoneFileChange(this, 'verif_id_front')">
                                             <div id="selected_badge_verif_id_front" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                 <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                             </div>
@@ -1632,11 +1663,11 @@ window.gm_authFailure = function() {
 
                                     <!-- Back ID -->
                                     <div class="form-group" id="group_verif_id_back" style="margin-bottom: 0;">
-                                        <label class="verification-field-label">Back of government ID <span class="verification-required" aria-label="Required">*</span></label>
+                                        <label class="verification-field-label" style="{% if identity and identity.document_back_url %}display: none;{% endif %}">Back of government ID <span class="verification-required" aria-label="Required">*</span></label>
                                         {% if identity and identity.document_back_url %}
                                         {% set doc_url = identity.document_back_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
-                                        <div class="uploaded-doc-item" id="card_verif_id_back">
+                                        <div class="uploaded-doc-item" id="card_verif_id_back" style="display: none;">
                                             <div class="uploaded-doc-info">
                                                 <div class="uploaded-doc-icon"><i class="fas fa-check-circle"></i></div>
                                                 <div>
@@ -1645,12 +1676,6 @@ window.gm_authFailure = function() {
                                                 </div>
                                             </div>
                                             <div class="uploaded-doc-actions">
-                                                <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
-                                                    <i class="fas fa-external-link-alt"></i> View
-                                                </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_id_back')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
-                                                    <i class="fas fa-sync-alt"></i> Replace
-                                                </button>
                                             </div>
                                         </div>
                                         <div id="wrapper_verif_id_back" style="display: none;">
@@ -1658,19 +1683,19 @@ window.gm_authFailure = function() {
                                                 <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                                 <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Choose replacement back ID</span>
                                                 <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
-                                                <input type="file" id="verif_id_back" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_back')">
+                                                <input type="file" id="verif_id_back" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" {% if government_id_locked %}disabled aria-disabled="true"{% endif %} onchange="handleDropzoneFileChange(this, 'verif_id_back')">
                                                 <div id="selected_badge_verif_id_back" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                     <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                                 </div>
                                             </div>
-                                            <button type="button" onclick="cancelFileReplacement('verif_id_back')" class="btn btn-sm" style="margin-top: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; color: #64748b;">Keep Existing File</button>
+                                            <button type="button" onclick="cancelGovernmentIdReplacement()" class="btn btn-sm" style="margin-top: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; color: #64748b;">Cancel ID replacement</button>
                                         </div>
                                         {% else %}
                                         <div class="upload-dropzone-box" onclick="document.getElementById('verif_id_back').click()">
                                             <i class="fas fa-cloud-arrow-up" style="font-size: 1.5rem; color: var(--primary-color);"></i>
                                             <span style="font-weight: 700; font-size: 0.84rem; color: #1e293b;">Upload back of ID</span>
                                             <span style="font-size: 0.72rem; color: #94a3b8;">PNG, JPG, or JPEG</span>
-                                            <input type="file" id="verif_id_back" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" onchange="handleDropzoneFileChange(this, 'verif_id_back')">
+                                            <input type="file" id="verif_id_back" accept="image/png,image/jpeg,.png,.jpg,.jpeg" style="display: none;" {% if government_id_locked %}disabled aria-disabled="true"{% endif %} onchange="handleDropzoneFileChange(this, 'verif_id_back')">
                                             <div id="selected_badge_verif_id_back" style="display: none; font-size: 0.75rem; color: #15803d; font-weight: 700; margin-top: 4px;">
                                                 <i class="fas fa-check"></i> <span class="selected-filename"></span>
                                             </div>
@@ -1681,8 +1706,8 @@ window.gm_authFailure = function() {
                                     <!-- Selfie / Liveness Check -->
                                     <div class="form-group" id="group_verif_selfie" style="margin-bottom: 0;">
                                         <label class="verification-field-label">Selfie photo <span class="verification-required" aria-label="Required">*</span></label>
-                                        {% if identity and identity.selfie_url %}
-                                        {% set doc_url = identity.selfie_url %}
+                                        {% if identity and (identity.selfie_url or identity.selfie_2_url or identity.selfie_3_url) %}
+                                        {% set doc_url = identity.selfie_url or identity.selfie_2_url or identity.selfie_3_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
                                         <div class="uploaded-doc-item" id="card_verif_selfie">
                                             <div class="uploaded-doc-info">
@@ -1696,7 +1721,7 @@ window.gm_authFailure = function() {
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_selfie')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
+                                                <button type="button" data-verification-replace onclick="enableFileReplacement('verif_selfie', this.dataset.documentType)" class="btn btn-sm" style="display: none; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
@@ -1743,8 +1768,8 @@ window.gm_authFailure = function() {
                                     <!-- Business Permit -->
                                     <div class="form-group" id="group_verif_permit" style="margin-bottom: 0;">
                                         <label class="verification-field-label">Business or mayor’s permit <span class="verification-required" aria-label="Required">*</span></label>
-                                        {% if profile.permit_url %}
-                                        {% set doc_url = profile.permit_url %}
+                                        {% if profile.permit_url or profile.mayors_permit_url %}
+                                        {% set doc_url = profile.permit_url or profile.mayors_permit_url %}
                                         {% set view_url = doc_url.replace('/static/uploads/verification/', '/api/bookings/kyc/view/') if doc_url and '/static/uploads/verification/' in doc_url else doc_url %}
                                         <div class="uploaded-doc-item" id="card_verif_permit">
                                             <div class="uploaded-doc-info">
@@ -1758,7 +1783,7 @@ window.gm_authFailure = function() {
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_permit')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
+                                                <button type="button" data-verification-replace onclick="enableFileReplacement('verif_permit', this.dataset.documentType)" class="btn btn-sm" style="display: none; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
@@ -1788,18 +1813,6 @@ window.gm_authFailure = function() {
                                         {% endif %}
                                     </div>
 
-                                    <!-- Permit Expiration Date -->
-                                    <div class="form-group" style="margin-bottom: 0;">
-                                        <label for="verif_permit_expiry" class="verification-field-label">Permit expiration date <span class="verification-required" aria-label="Required">*</span></label>
-                                        <input type="date" id="verif_permit_expiry" value="{{ profile.permit_expiry_date or '' }}" required class="form-control" style="width:100%; padding:0.65rem 0.85rem; border:1.5px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #1e293b; background: #fff;" onchange="checkPermitExpiryWarning(this.value)">
-                                        
-                                        <!-- Permit Expired Alert Banner -->
-                                        <div id="permitExpiredWarning" class="permit-expired-warning" style="display: none;">
-                                            <i class="fas fa-triangle-exclamation"></i>
-                                            <span>Your permit has expired. Please upload a valid document.</span>
-                                        </div>
-                                    </div>
-
                                     <!-- DTI Registration -->
                                     <div class="form-group" id="group_verif_dti" style="margin-bottom: 0;">
                                         <label class="verification-field-label">DTI business name registration <span class="verification-required" aria-label="Required">*</span></label>
@@ -1818,7 +1831,7 @@ window.gm_authFailure = function() {
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_dti')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
+                                                <button type="button" data-verification-replace onclick="enableFileReplacement('verif_dti', this.dataset.documentType)" class="btn btn-sm" style="display: none; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>
@@ -1866,7 +1879,7 @@ window.gm_authFailure = function() {
                                                 <a href="{{ '/' + view_url if view_url and not view_url.startswith('/') and not view_url.startswith('http') else view_url }}" target="_blank" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #2563eb; padding: 5px 10px; border-radius: 6px; font-weight: 700; text-decoration: none; border: 1px solid #bfdbfe; font-size: 0.78rem;">
                                                     <i class="fas fa-external-link-alt"></i> View
                                                 </a>
-                                                <button type="button" onclick="enableFileReplacement('verif_bir')" class="btn btn-sm" style="display: inline-flex; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
+                                                <button type="button" data-verification-replace onclick="enableFileReplacement('verif_bir', this.dataset.documentType)" class="btn btn-sm" style="display: none; align-items: center; gap: 4px; background: #ffffff; color: #475569; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1.5px solid #cbd5e1; font-size: 0.78rem; cursor: pointer;">
                                                     <i class="fas fa-sync-alt"></i> Replace
                                                 </button>
                                             </div>

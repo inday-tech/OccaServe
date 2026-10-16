@@ -1555,7 +1555,7 @@ async def custom_booking_submit(
         title="Custom Request Received",
         message=caterer_msg,
         type="Booking",
-        link=f"/caterer/dashboard?page=bookings"
+        link=f"/caterer/bookings?open_booking={new_booking.id}"
     )
     db.add(notif)
     db.commit()

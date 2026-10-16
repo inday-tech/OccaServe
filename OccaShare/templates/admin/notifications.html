@@ -54,7 +54,7 @@
                  id="notif-{{ notif.id }}"
                  data-type="{{ notif.type }}"
                  data-read="{{ 'true' if notif.is_read else 'false' }}"
-                 onclick="handleNotificationClick({{ notif.id }}, '{{ notif.link or '' }}')">
+                 onclick='handleNotificationClick({{ notif.id }}, {{ (notif.link or "")|tojson }})'>
 
                 <!-- Icon -->
                 <div class="notif-icon
@@ -352,9 +352,11 @@
         if (card && card.classList.contains('notif-unread')) {
             await markAsRead(id);
         }
-        if (link) {
-            window.location.href = link;
-        }
+        let safeLink = typeof link === 'string' && link.startsWith('/')
+            ? link
+            : '/admin/notifications';
+        if (safeLink === '/admin/kyc') safeLink = '/admin/caterer-verification';
+        window.location.href = safeLink;
     }
 
     // Initial count sync

@@ -229,6 +229,44 @@
         padding: 0;
         accent-color: var(--adm-primary);
     }
+    #addCatererModal .onboard-modal-body { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+    #addCatererModal .onboard-grid { gap: 1rem; }
+    #addCatererModal .onboard-grid > div { gap: 0.8rem !important; }
+    #addCatererModal .onboard-choice-card { padding: 0.75rem; }
+    #addCatererModal .onboard-choice-grid { gap: 0.4rem 0.6rem; }
+    #addCatererModal .onboard-required { color: #dc2626; }
+    #addCatererModal .onboard-field-label {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--adm-navy);
+        font-size: 0.65rem;
+        font-weight: 800;
+    }
+    #addCatererModal .onboard-select-all {
+        padding: 0.25rem 0.55rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #fff;
+        color: var(--adm-primary);
+        font-size: 0.65rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    #addCatererModal .onboard-select-all:hover { background: #f8fafc; }
+    #addCatererModal .phone-input-control { display: flex; align-items: center; width: 100%; }
+    #addCatererModal .phone-country-code {
+        padding: 0 0.65rem;
+        color: #475569;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    #addCatererModal .phone-national-input { min-width: 0; flex: 1; }
+    #addCatererModal #submitAddCaterer:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+        filter: grayscale(0.4);
+    }
 
     .onboard-verification-note {
         display: flex;
@@ -287,9 +325,188 @@
     .vd-modal-card .modal-body-clean { min-width: 0; }
     .review-verification-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 300px;
-        gap: 1.5rem;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.5rem;
     }
+    #reviewDocumentsGrid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.5rem;
+        min-width: 0;
+    }
+    .review-document-guide {
+        margin: 0 0 0.55rem;
+        padding: 0.55rem 0.7rem;
+        border: 1px solid #dbeafe;
+        border-radius: 8px;
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 0.7rem;
+        line-height: 1.45;
+    }
+    #reviewVerificationModal .modal-header-clean > div { min-width: 0; }
+    #reviewCatererTitle,
+    #reviewCatererSubtitle { overflow-wrap: anywhere; }
+    .review-document-card {
+        display: grid;
+        grid-template-columns: 92px minmax(0, 1fr);
+        align-items: start;
+        gap: 0.7rem;
+        min-width: 0;
+        padding: 0.6rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+    }
+    .review-document-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.45rem;
+    }
+    .review-document-heading h5 {
+        margin: 0;
+        color: var(--adm-navy);
+        font-size: 0.78rem;
+        line-height: 1.35;
+    }
+    .review-document-status {
+        flex: 0 0 auto;
+        padding: 0.2rem 0.45rem;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 0.62rem;
+        font-weight: 700;
+    }
+    .review-document-status.is-approved { background: #dcfce7; color: #166534; }
+    .review-document-status.is-revision { background: #fee2e2; color: #991b1b; }
+    .review-document-card .doc-preview-trigger {
+        width: 92px;
+        height: 92px;
+        margin: 0;
+        align-self: start;
+    }
+    .review-id-previews {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+    .review-id-preview-item { min-width: 0; }
+    .review-id-preview-item > span {
+        display: block;
+        margin-bottom: 0.2rem;
+        color: #64748b;
+        font-size: 0.62rem;
+        font-weight: 700;
+    }
+    .review-id-previews .doc-preview-trigger { width: 100%; height: 120px; }
+    .review-id-previews + .review-document-content { grid-column: 1 / -1; }
+    .review-identity-details {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.4rem 0.75rem;
+        margin: 0.35rem 0 0.6rem;
+        padding: 0.55rem 0.65rem;
+        border-radius: 7px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 0.68rem;
+        line-height: 1.4;
+    }
+    .review-identity-details strong { display: block; color: #64748b; font-size: 0.6rem; text-transform: uppercase; }
+    .review-identity-details .is-wide { grid-column: 1 / -1; overflow-wrap: anywhere; }
+    .review-document-card .doc-card-thumb,
+    .review-document-card .doc-pdf-preview,
+    .review-document-card .doc-preview-unavailable {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        aspect-ratio: 1;
+        object-fit: contain;
+    }
+    .review-document-card .doc-pdf-preview,
+    .review-document-card .doc-preview-unavailable {
+        padding: 0.35rem;
+        font-size: 0.63rem;
+        text-align: center;
+    }
+    .review-document-content { min-width: 0; }
+    .review-document-decision {
+        margin: 0.35rem 0;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.55rem;
+        background: #f8fafc;
+    }
+    .review-document-decision label {
+        display: block;
+        margin: 0 0 0.25rem;
+        color: #334155;
+        font-size: 0.66rem;
+        font-weight: 700;
+    }
+    .review-document-decision [hidden] { display: none; }
+    .review-document-decision .review-decision-select {
+        display: block;
+        width: 100%;
+        min-height: 34px;
+        box-sizing: border-box;
+        padding: 0.42rem 2rem 0.42rem 0.6rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px;
+        appearance: none;
+        background: #fff;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%2364748b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.55rem center;
+        color: #334155;
+        font: inherit;
+        font-size: 0.69rem;
+        cursor: pointer;
+    }
+    .review-document-decision .review-decision-select:focus {
+        outline: 2px solid #bfdbfe;
+        border-color: var(--adm-primary);
+    }
+    .review-document-decision .review-decision-note {
+        width: 100%;
+        min-height: 48px;
+        box-sizing: border-box;
+        margin-top: 0.45rem;
+        padding: 0.5rem 0.6rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px;
+        resize: vertical;
+        font: inherit;
+        font-size: 0.69rem;
+    }
+    .review-document-decision .review-decision-submit {
+        display: block;
+        width: 100%;
+        min-height: 32px;
+        margin-top: 0.45rem;
+        padding: 0.4rem 0.6rem;
+        border: 0;
+        border-radius: 7px;
+        background: var(--adm-primary);
+        color: #fff;
+        font-size: 0.69rem;
+        font-weight: 750;
+        cursor: pointer;
+    }
+    .review-document-decision .review-decision-submit.is-revision { background: #dc2626; }
+    .review-document-decision .review-decision-submit[hidden] { display: none; }
+    .review-document-decision .review-decision-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+    .review-document-review-note {
+        margin: 0.45rem 0 0;
+        color: #991b1b;
+        font-size: 0.7rem;
+        line-height: 1.4;
+    }
+    .review-document-card.is-target { border-color: var(--adm-primary); box-shadow: 0 0 0 2px rgb(37 99 235 / 12%); }
     .verification-status-card {
         min-width: 0;
         padding: 0.8rem;
@@ -385,8 +602,10 @@
             padding-left: 1rem !important;
             padding-right: 1rem !important;
         }
-        .review-verification-grid { grid-template-columns: minmax(0, 1fr); gap: 1rem; }
-        #reviewDocumentsGrid { grid-template-columns: minmax(0, 1fr) !important; }
+        .review-verification-grid { gap: 0.35rem; }
+        #reviewDocumentsGrid { gap: 0.4rem; }
+        .review-document-card { grid-template-columns: 76px minmax(0, 1fr); gap: 0.55rem; padding: 0.5rem; }
+        .review-document-card .doc-preview-trigger { width: 76px; height: 76px; }
     }
 
     @media (max-width: 380px) {
@@ -1077,8 +1296,8 @@
                         <!-- Official Business Name -->
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <label
-                                style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Official
-                                Business Name</label>
+                                for="onboard_biz_name" style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Official
+                                Business Name <span class="onboard-required">*</span></label>
                             <div class="dm-input-group">
                                 <input type="text" name="business_name" id="onboard_biz_name" required>
                             </div>
@@ -1090,22 +1309,22 @@
                             <div class="onboard-name-grid">
                                 <div>
                                     <label
-                                        style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">First
-                                        Name</label>
+                                        for="onboard_fname" style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">First
+                                        Name <span class="onboard-required">*</span></label>
                                     <div class="dm-input-group"><input type="text" name="first_name" id="onboard_fname"
                                             required></div>
                                 </div>
                                 <div>
                                     <label
-                                        style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Middle
+                                        for="onboard_mname" style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Middle
                                         Name</label>
                                     <div class="dm-input-group"><input type="text" name="middle_name"
                                             id="onboard_mname"></div>
                                 </div>
                                 <div>
                                     <label
-                                        style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Last
-                                        Name</label>
+                                        for="onboard_lname" style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 4px; display: block;">Last
+                                        Name <span class="onboard-required">*</span></label>
                                     <div class="dm-input-group"><input type="text" name="last_name" id="onboard_lname"
                                             required></div>
                                 </div>
@@ -1132,18 +1351,22 @@
                         <div class="onboard-contact-grid">
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 <label
-                                    style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Gmail
-                                    Address</label>
+                                    for="onboard_email" style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Gmail
+                                    Address <span class="onboard-required">*</span></label>
                                 <div class="dm-input-group"><input type="email" name="email" id="onboard_email"
                                         required></div>
                                 <div id="email_audit_status" class="status-indicator"></div>
                             </div>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
                                 <label
-                                    style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Mobile
-                                    Number</label>
-                                <div class="dm-input-group"><input type="tel" name="phone" id="onboard_phone"
-                                        maxlength="11" required></div>
+                                    for="onboard_phone" style="font-size: 0.6rem; font-weight: 800; color: var(--adm-navy); text-transform: uppercase; margin-bottom: 2px;">Mobile
+                                    Number <span class="onboard-required">*</span></label>
+                                <div class="dm-input-group phone-input-control">
+                                <span class="phone-country-code" aria-hidden="true">+63</span>
+                                <input type="tel" name="phone" id="onboard_phone" class="phone-national-input"
+                                    inputmode="numeric" autocomplete="tel-national" maxlength="16"
+                                    placeholder="9XXXXXXXXX" required>
+                                </div>
                                 <div id="phone_audit_status" class="status-indicator"></div>
                             </div>
                         </div>
@@ -1152,26 +1375,36 @@
                             style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-top: 0.5rem;">
                             Business Address (PSGC)</h4>
                         <div class="onboard-address-grid">
-                            <div class="dm-input-group">
-                                <select name="province" id="onboard_province" onchange="fetchMunicipalities()" required>
-                                    <option value="" disabled selected>Select Province</option>
-                                </select>
+                            <div>
+                                <label class="onboard-field-label" for="onboard_province">Province <span class="onboard-required">*</span></label>
+                                <div class="dm-input-group">
+                                    <select name="province" id="onboard_province" onchange="fetchMunicipalities()" required>
+                                        <option value="" disabled selected>Select Province</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="dm-input-group">
-                                <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled
-                                    required>
-                                    <option value="" disabled selected>Select City/Muni</option>
-                                </select>
+                            <div>
+                                <label class="onboard-field-label" for="onboard_city">City / Municipality <span class="onboard-required">*</span></label>
+                                <div class="dm-input-group">
+                                    <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled required>
+                                        <option value="" disabled selected>Select City/Muni</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="onboard-address-grid">
-                            <div class="dm-input-group">
-                                <select name="barangay" id="onboard_brgy" disabled required>
-                                    <option value="" disabled selected>Select Barangay</option>
-                                </select>
+                            <div>
+                                <label class="onboard-field-label" for="onboard_brgy">Barangay <span class="onboard-required">*</span></label>
+                                <div class="dm-input-group">
+                                    <select name="barangay" id="onboard_brgy" disabled required>
+                                        <option value="" disabled selected>Select Barangay</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="dm-input-group"><input type="text" name="street" placeholder="Bldg/Street/Subd"
-                                    required></div>
+                            <div>
+                                <label class="onboard-field-label" for="onboard_street">Building / Street / Subdivision <span class="onboard-required">*</span></label>
+                                <div class="dm-input-group"><input type="text" name="street" id="onboard_street" required></div>
+                            </div>
                         </div>
                     </div>
 
@@ -1181,7 +1414,10 @@
                             style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">
                             Event Types Served</h4>
                         <div class="onboard-choice-card">
-                            <span class="onboard-choice-title">Select all event types this caterer serves</span>
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.55rem;">
+                                <span class="onboard-choice-title" style="margin:0;">Select all event types this caterer serves <span class="onboard-required">*</span></span>
+                                <button type="button" class="onboard-select-all" data-select-all="events">Select all</button>
+                            </div>
                             <div class="onboard-choice-grid">
                                 <label class="onboard-choice"><input type="checkbox" name="events" value="Wedding"> <span>Wedding</span></label>
                                 <label class="onboard-choice"><input type="checkbox" name="events" value="Birthday"> <span>Birthday</span></label>
@@ -1195,7 +1431,10 @@
                         </div>
 
                         <div class="onboard-choice-card">
-                            <span class="onboard-choice-title">Cuisine types</span>
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.55rem;">
+                                <span class="onboard-choice-title" style="margin:0;">Cuisine types <span class="onboard-required">*</span></span>
+                                <button type="button" class="onboard-select-all" data-select-all="cuisines">Select all</button>
+                            </div>
                             <div class="onboard-choice-grid">
                                 <label class="onboard-choice"><input type="checkbox" name="cuisines" value="Filipino"> <span>Filipino</span></label>
                                 <label class="onboard-choice"><input type="checkbox" name="cuisines" value="Asian"> <span>Asian</span></label>
@@ -1216,7 +1455,7 @@
                 <button type="button" class="btn-clean"
                     style="background: white; border: 1px solid #e2e8f0; color: var(--adm-navy);"
                     onclick="closeAddCatererModal()">Cancel</button>
-                <button type="submit" class="btn-clean caterer-add-button"
+                <button type="submit" id="submitAddCaterer" class="btn-clean caterer-add-button" disabled
                     style="padding: 0.75rem 2rem;">Add New
                     Caterer</button>
             </div>
@@ -1411,70 +1650,22 @@
 <!-- Review Verification Modal -->
 <div id="reviewVerificationModal" class="admin-modal-overlay">
     <div class="admin-modal-card"
-        style="max-width: 900px; width: 95%; display: flex; flex-direction: column; max-height: 90vh;">
-        <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 1.25rem 2rem;">
+        style="max-width: 650px; width: min(94vw, 650px); display: flex; flex-direction: column; max-height: 86vh; max-height: 86dvh;">
+        <div class="modal-header-clean" style="border-bottom: 1px solid #f1f5f9; padding: 0.8rem 1rem;">
             <div>
-                <h3 id="reviewCatererTitle" style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy);">Review Caterer Documents
-                </h3>
-                <p id="reviewCatererSubtitle" style="font-size: 0.7rem; color: var(--adm-muted);">Check the submitted identity and business documents, then choose a decision.</p>
+                <h3 id="reviewCatererTitle" style="font-size: 0.9rem; font-weight: 800; color: var(--adm-navy); margin: 0;">Review caterer documents</h3>
+                <p id="reviewCatererSubtitle" style="font-size: 0.7rem; color: var(--adm-muted); margin: 0.2rem 0 0;">Review the Government ID, selfie, and registration details together.</p>
             </div>
-            <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
+            <button type="button" aria-label="Close review documents" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeReviewModal()">&times;</button>
         </div>
 
-        <div class="modal-body-clean" style="overflow-y: auto; padding: 1.5rem 2rem; flex: 1;">
+        <div class="modal-body-clean" style="overflow-y: auto; padding: 0.7rem 1rem; flex: 1;">
             <div class="review-verification-grid">
-
-                <!-- Left Panel: Verification files -->
-                <div>
-                    <h4
-                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-bottom: 1rem;">
-                        Submitted Verification Files</h4>
-                    <div id="reviewDocumentsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <!-- Injected by JS -->
-                        <div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading
-                            verification files...</div>
-                    </div>
-                </div>
-
-                <!-- Right Panel: Actions -->
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <h4
-                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase;">
-                        Review Actions</h4>
-
-                    <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <input type="hidden" id="review_caterer_id">
-
-                        <div style="margin-bottom: 1rem;">
-                            <label
-                                style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); display: block; margin-bottom: 0.5rem;">Action
-                                Taken</label>
-                            <select id="review_action_select" class="dm-input-group"
-                                style="width: 100%; padding: 0.5rem; border: none; background: white; font-size: 0.85rem; outline: none; appearance: auto;"
-                                onchange="toggleRemarks()">
-                                <option value="Verified">Approve / Verify</option>
-                                <option value="Requires Revision">Request Revision</option>
-                                <option value="Rejected">Reject</option>
-                                <option value="Suspended">Suspend Account</option>
-                            </select>
-                        </div>
-
-                        <div id="review_remarks_container" style="display: none; margin-bottom: 1rem;">
-                            <label
-                                style="font-size: 0.7rem; font-weight: 700; color: var(--adm-navy); display: block; margin-bottom: 0.5rem;">Admin
-                                Remarks <span style="color:#ef4444">*</span></label>
-                            <textarea id="review_remarks" rows="4" class="dm-input-group"
-                                style="width: 100%; padding: 0.75rem; border: none; background: white; font-size: 0.85rem; outline: none; resize: vertical;"
-                                placeholder="Explain why revision is needed or why they are rejected..."></textarea>
-                        </div>
-
-                        <button type="button" class="btn-clean" id="btnSubmitReview"
-                            style="background: var(--adm-primary); color: white; width: 100%; padding: 0.75rem; border-radius: 6px; font-weight: 700; text-align: center; justify-content: center; margin-top: 1rem;"
-                            onclick="submitReview()">
-                            Submit Decision
-                        </button>
-                    </div>
+                <input type="hidden" id="review_caterer_id">
+                <p class="review-document-guide">Compare the ID front and back with the selfie and registered details, then choose one decision for the identity bundle.</p>
+                <div id="reviewDocumentsGrid">
+                    <div class="verification-empty">Loading verification files...</div>
                 </div>
             </div>
         </div>
@@ -1607,9 +1798,66 @@
     // Initialize pagination on load
     document.addEventListener("DOMContentLoaded", () => {
         filterCaterers();
+        const params = new URLSearchParams(window.location.search);
+        const catererId = params.get('caterer_id');
+        const action = params.get('action');
+        if (!catererId || !/^\d+$/.test(catererId)) return;
+        const row = document.querySelector(`[data-caterer-id="${catererId}"]`);
+        if (action === 'verify') {
+            openReviewModal(catererId);
+        } else if (action === 'details') {
+            const detailsButton = row?.querySelector('.dm-dropdown-item[onclick="viewCatererDetails(this)"]');
+            if (detailsButton) viewCatererDetails(detailsButton);
+        }
     });
 
     // Add Caterer Logic
+    const addCatererForm = document.getElementById('addCatererForm');
+    const addCatererSubmit = document.getElementById('submitAddCaterer');
+    function normalizeAdminPhoneEntry(value) {
+        let digits = String(value || '').replace(/\D/g, '');
+        if (digits.startsWith('63')) digits = digits.slice(2);
+        if (digits.startsWith('0')) digits = digits.slice(1);
+        return digits.slice(0, 10);
+    }
+    function normalizeAdminPhoneNumber(value) {
+        const subscriber = normalizeAdminPhoneEntry(value);
+        return /^9\d{9}$/.test(subscriber) ? `0${subscriber}` : subscriber;
+    }
+    function updateAddCatererSubmitState() {
+        if (!addCatererForm || !addCatererSubmit) return;
+        const eventsSelected = addCatererForm.querySelector('input[name="events"]:checked');
+        const cuisinesSelected = addCatererForm.querySelector('input[name="cuisines"]:checked');
+        const auditStatuses = [
+            document.getElementById('biz_name_status'),
+            document.getElementById('name_audit_status'),
+            document.getElementById('email_audit_status'),
+            document.getElementById('phone_audit_status')
+        ];
+        const auditsPassed = auditStatuses.every(status =>
+            status && status.classList.contains('status-ok')
+        );
+        addCatererSubmit.disabled = !(
+            addCatererForm.checkValidity()
+            && eventsSelected
+            && cuisinesSelected
+            && auditsPassed
+        );
+    }
+
+    document.querySelectorAll('#addCatererModal [data-select-all]').forEach(button => {
+        button.addEventListener('click', () => {
+            const groupName = button.dataset.selectAll;
+            const checkboxes = Array.from(addCatererForm.querySelectorAll(`input[name="${groupName}"]`));
+            const shouldSelectAll = checkboxes.some(checkbox => !checkbox.checked);
+            checkboxes.forEach(checkbox => { checkbox.checked = shouldSelectAll; });
+            button.textContent = shouldSelectAll ? 'Deselect all' : 'Select all';
+            updateAddCatererSubmitState();
+        });
+    });
+    addCatererForm?.addEventListener('input', updateAddCatererSubmitState);
+    addCatererForm?.addEventListener('change', updateAddCatererSubmitState);
+
     function openAddCatererModal() {
         document.getElementById('addCatererModal').classList.add('active');
         if (document.getElementById('onboard_province').options.length <= 1) fetchProvinces();
@@ -1620,6 +1868,7 @@
     async function fetchProvinces() {
         try {
             const res = await fetch(`${PSGC_BASE}/provinces/`);
+            if (!res.ok) throw new Error(`Province lookup failed (${res.status}).`);
             const provinces = await res.json();
             const sel = document.getElementById('onboard_province');
             provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
@@ -1627,7 +1876,12 @@
                 opt.value = p.code; opt.textContent = p.name;
                 sel.appendChild(opt);
             });
-        } catch (err) { console.error("PSGC Error", err); }
+        } catch (err) {
+            console.error("Could not load provinces.", err);
+            document.getElementById('onboard_province').innerHTML = '<option value="" selected>Could not load provinces</option>';
+            Swal.fire('Address lookup failed', err.message, 'error');
+        }
+        updateAddCatererSubmitState();
     }
     async function fetchMunicipalities() {
         const provCode = document.getElementById('onboard_province').value;
@@ -1638,6 +1892,7 @@
         brgySel.disabled = true;
         try {
             const res = await fetch(`${PSGC_BASE}/provinces/${provCode}/cities-municipalities/`);
+            if (!res.ok) throw new Error(`City/municipality lookup failed (${res.status}).`);
             const cities = await res.json();
             citySel.innerHTML = '<option value="" disabled selected>Select City/Muni</option>';
             cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
@@ -1646,7 +1901,12 @@
                 citySel.appendChild(opt);
             });
             citySel.disabled = false;
-        } catch (err) { }
+        } catch (err) {
+            console.error("Could not load cities and municipalities.", err);
+            citySel.innerHTML = '<option value="" selected>Could not load cities</option>';
+            Swal.fire('Address lookup failed', err.message, 'error');
+        }
+        updateAddCatererSubmitState();
     }
     async function fetchBarangays() {
         const cityCode = document.getElementById('onboard_city').value;
@@ -1654,6 +1914,7 @@
         brgySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
         try {
             const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
+            if (!res.ok) throw new Error(`Barangay lookup failed (${res.status}).`);
             const brgys = await res.json();
             brgySel.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
             brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
@@ -1662,7 +1923,12 @@
                 brgySel.appendChild(opt);
             });
             brgySel.disabled = false;
-        } catch (err) { }
+        } catch (err) {
+            console.error("Could not load barangays.", err);
+            brgySel.innerHTML = '<option value="" selected>Could not load barangays</option>';
+            Swal.fire('Address lookup failed', err.message, 'error');
+        }
+        updateAddCatererSubmitState();
     }
 
     // --- Real-time Identity Audit Engine ---
@@ -1673,26 +1939,43 @@
         clearTimeout(bizCheckTimeout);
         if (name.length < 3) {
             status.className = 'status-indicator';
+            status.textContent = '';
             e.target.className = '';
+            updateAddCatererSubmitState();
             return;
         }
 
         status.textContent = 'Auditing...';
         status.className = 'status-indicator show';
+        updateAddCatererSubmitState();
         bizCheckTimeout = setTimeout(async () => {
             try {
                 const res = await fetch(`/admin/api/caterers/audit-identity?business_name=${encodeURIComponent(name)}`);
+                if (!res.ok) throw new Error(`Business name check failed (${res.status}).`);
                 const data = await res.json();
                 status.textContent = data.business_name_taken ? 'BUSINESS NAME TAKEN' : '✓ BUSINESS NAME AVAILABLE';
                 status.className = `status-indicator show ${data.business_name_taken ? 'status-error' : 'status-ok'}`;
                 e.target.className = data.business_name_taken ? 'input-error' : 'input-success';
-            } catch (err) { }
+            } catch (err) {
+                console.error('Could not validate business name.', err);
+                status.textContent = 'Could not verify business name. Try again.';
+                status.className = 'status-indicator show status-error';
+            }
+            updateAddCatererSubmitState();
         }, 500);
     });
 
     let auditTimeout;
     function runIdentityAudit() {
         clearTimeout(auditTimeout);
+        ['name_audit_status', 'email_audit_status', 'phone_audit_status'].forEach(id => {
+            const status = document.getElementById(id);
+            if (status) {
+                status.textContent = 'Checking...';
+                status.className = 'status-indicator show';
+            }
+        });
+        updateAddCatererSubmitState();
         auditTimeout = setTimeout(async () => {
             const emailInp = document.getElementById('onboard_email');
             const phoneInp = document.getElementById('onboard_phone');
@@ -1701,7 +1984,7 @@
             const lnameInp = document.getElementById('onboard_lname');
 
             const email = emailInp.value.trim().toLowerCase();
-            const phone = phoneInp.value.replace(/\D/g, '');
+            const phone = normalizeAdminPhoneNumber(phoneInp.value);
             const fname = fnameInp.value.trim().toLowerCase();
             const mname = mnameInp.value.trim().toLowerCase();
             let lname = lnameInp.value.trim().toLowerCase();
@@ -1741,12 +2024,8 @@
             // 2. Phone prefix & length check
             const phoneStat = document.getElementById('phone_audit_status');
             if (phoneInp.value) {
-                if (!phoneInp.value.startsWith('09')) {
-                    phoneStat.textContent = 'INVALID PREFIX (MUST START WITH 09)';
-                    phoneStat.className = 'status-indicator show status-error';
-                    phoneInp.className = 'input-error';
-                } else if (phone.length !== 11) {
-                    phoneStat.textContent = 'INVALID LENGTH (11 DIGITS)';
+                if (!/^09\d{9}$/.test(phone)) {
+                    phoneStat.textContent = 'Enter 9 digits after +63.';
                     phoneStat.className = 'status-indicator show status-error';
                     phoneInp.className = 'input-error';
                 } else {
@@ -1769,6 +2048,7 @@
 
                 try {
                     const res = await fetch(url);
+                    if (!res.ok) throw new Error(`Identity check failed (${res.status}).`);
                     const data = await res.json();
 
                     const emailStat = document.getElementById('email_audit_status');
@@ -1805,11 +2085,29 @@
                             fnameInp.className = lnameInp.className = 'input-success';
                         }
                     }
-                } catch (err) { }
+                } catch (err) {
+                    console.error('Could not complete caterer identity checks.', err);
+                    ['name_audit_status', 'email_audit_status', 'phone_audit_status'].forEach(id => {
+                        const status = document.getElementById(id);
+                        if (status?.textContent === 'Checking...') {
+                            status.textContent = 'Could not verify. Try again.';
+                            status.className = 'status-indicator show status-error';
+                        }
+                    });
+                }
             }
+            updateAddCatererSubmitState();
         }, 500);
     }
 
+    const onboardPhone = document.getElementById('onboard_phone');
+    onboardPhone.addEventListener('input', function () {
+        const normalized = normalizeAdminPhoneEntry(this.value);
+        if (this.value !== normalized) {
+            this.value = normalized;
+            this.setSelectionRange(normalized.length, normalized.length);
+        }
+    });
     ['onboard_fname', 'onboard_mname', 'onboard_lname', 'onboard_email', 'onboard_phone', 'onboard_suffix'].forEach(id => {
         document.getElementById(id).addEventListener('input', runIdentityAudit);
     });
@@ -1837,8 +2135,9 @@
         const email = fd.get('email');
         if (!email.toLowerCase().endsWith('@gmail.com')) return Swal.fire('Error', 'Gmail addresses only.', 'error');
 
-        const phone = fd.get('phone').replace(/\D/g, '');
-        if (!phone.startsWith('09') || phone.length !== 11) return Swal.fire('Error', 'Phone must start with 09 and be 11 digits.', 'error');
+        const phone = normalizeAdminPhoneNumber(fd.get('phone'));
+        if (!phone.startsWith('09') || phone.length !== 11) return Swal.fire('Error', 'Enter a valid 10-digit mobile number after +63.', 'error');
+        fd.set('phone', phone);
 
         if (fd.get('business_name').trim().length < 3) return Swal.fire('Error', 'Business name is too short.', 'error');
 
@@ -2298,56 +2597,384 @@
     }
 
     // --- Review Verification Engine ---
+    let reviewDocumentsRefreshTimer = null;
+    let reviewDocumentsLoading = false;
+
     async function openReviewModal(catererId) {
         const row = document.querySelector(`[data-caterer-id="${catererId}"]`);
         document.getElementById('review_caterer_id').value = catererId;
         document.getElementById('reviewCatererTitle').textContent = `Review ${row?.dataset.businessName || 'caterer'} documents`;
-        document.getElementById('reviewCatererSubtitle').textContent = 'Check each submitted file and choose a review decision.';
-        document.getElementById('review_action_select').value = 'Verified';
-        document.getElementById('review_remarks').value = '';
-        toggleRemarks();
-
+        document.getElementById('reviewCatererSubtitle').textContent = 'Review the Government ID, selfie, and registration details together.';
         document.getElementById('reviewVerificationModal').classList.add('active');
-        const grid = document.getElementById('reviewDocumentsGrid');
-        grid.innerHTML = '<div style="color: #64748b; font-size: 0.85rem;"><i class="fas fa-spinner fa-spin"></i> Loading verification files...</div>';
-
-        try {
-            const res = await fetch(`/admin/api/caterers/${catererId}/documents`);
-            const data = await res.json();
-
-            if (data.success) {
-                const files = [
-                    { name: 'Government ID front', url: data.docs.gov_id_url, extra: data.docs.verification_summary?.identity_status },
-                    { name: 'Government ID back', url: data.docs.gov_id_back_url, extra: data.docs.verification_summary?.identity_status },
-                    { name: 'Selfie / proof of life 1', url: data.docs.selfie_url, extra: data.docs.verification_summary?.identity_status },
-                    { name: 'Selfie / proof of life 2', url: data.docs.selfie_2_url, extra: data.docs.verification_summary?.identity_status },
-                    { name: 'Selfie / proof of life 3', url: data.docs.selfie_3_url, extra: data.docs.verification_summary?.identity_status },
-                    { name: 'Business permit', url: data.docs.permit_url, extra: data.docs.verification_summary?.permit_status || 'Not submitted' },
-                    { name: 'DTI registration', url: data.docs.dti_url, extra: data.docs.verification_summary?.dti_status || 'Not submitted' },
-                    { name: 'BIR registration', url: data.docs.bir_url, extra: data.docs.verification_summary?.bir_status || 'Not submitted' },
-                    { name: "Mayor's permit", url: data.docs.mayors_permit_url, extra: data.docs.verification_summary?.mayors_permit_status || 'Not submitted' }
-                ];
-
-                renderVerificationFiles(grid, files, 'No verification files submitted yet.');
-            } else {
-                grid.textContent = `Failed to load verification files: ${data.message || 'Unknown error'}`;
+        if (reviewDocumentsRefreshTimer) window.clearInterval(reviewDocumentsRefreshTimer);
+        await loadReviewDocuments(catererId);
+        reviewDocumentsRefreshTimer = window.setInterval(() => {
+            const modal = document.getElementById('reviewVerificationModal');
+            const grid = document.getElementById('reviewDocumentsGrid');
+            const hasUnsubmittedDecision = Array.from(
+                grid.querySelectorAll('.review-decision-select')
+            ).some(select => select.value);
+            if (modal.classList.contains('active') && !document.hidden && !hasUnsubmittedDecision) {
+                loadReviewDocuments(catererId, true);
             }
-        } catch (e) {
-            grid.textContent = 'Failed to fetch verification files.';
+        }, 10000);
+    }
+
+    async function loadReviewDocuments(catererId, silent = false) {
+        if (reviewDocumentsLoading) return;
+        reviewDocumentsLoading = true;
+        const grid = document.getElementById('reviewDocumentsGrid');
+        if (!silent) {
+            grid.replaceChildren();
+            const loading = document.createElement('div');
+            loading.className = 'verification-empty';
+            loading.textContent = 'Loading verification files...';
+            grid.appendChild(loading);
+        }
+        try {
+            const res = await fetch(`/admin/api/caterers/${encodeURIComponent(catererId)}/documents`, {
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json' }
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success || !data.docs) {
+                throw new Error(data.message || `Request failed (${res.status}).`);
+            }
+            const resolvedCatererId = data.docs.caterer_id || catererId;
+            document.getElementById('review_caterer_id').value = resolvedCatererId;
+            const overallStatus = data.docs.verification_summary?.overall_status;
+            if (overallStatus && overallStatus !== 'Unverified') {
+                updateCatererReviewRow(resolvedCatererId, overallStatus);
+            }
+            document.getElementById('reviewCatererTitle').textContent =
+                `Review documents · ${data.docs.caterer_name || 'Caterer'}`;
+            document.getElementById('reviewCatererSubtitle').textContent =
+                [data.docs.caterer_email, 'Review the ID, selfie, and registration details together.'].filter(Boolean).join(' · ');
+            const rawFiles = (data.docs.files || []).filter(file => file.url);
+            const frontId = rawFiles.find(file => file.type === 'GOVERNMENT_ID');
+            const backId = rawFiles.find(file => file.type === 'GOVERNMENT_ID_BACK');
+            const selfieFiles = rawFiles.filter(file => ['SELFIE', 'SELFIE_2', 'SELFIE_3'].includes(file.type));
+            const idType = data.docs.verification_summary?.id_type || data.docs.id_type || 'Government ID';
+            const files = rawFiles.filter(file => !['GOVERNMENT_ID_BACK', 'SELFIE', 'SELFIE_2', 'SELFIE_3'].includes(file.type));
+            if (frontId || backId || selfieFiles.length) {
+                const primarySelfie = selfieFiles.find(file => file.type === 'SELFIE');
+                const requiredIdentityFiles = [frontId, backId, primarySelfie];
+                const identityFiles = [...requiredIdentityFiles, ...selfieFiles.filter(file => file.type !== 'SELFIE')].filter(Boolean);
+                const identityStatuses = identityFiles.map(file => String(file.status || 'PENDING').toUpperCase());
+                const identityStatus = !requiredIdentityFiles.every(Boolean)
+                    ? 'MISSING'
+                    : identityStatuses.every(status => status === 'VALID')
+                    ? 'VALID'
+                    : identityStatuses.some(status => status === 'INVALID') ? 'INVALID' : 'PENDING';
+                const identityCard = {
+                    ...(frontId || backId || selfieFiles[0]),
+                    status: identityStatus,
+                    review_reason: identityFiles.find(file => String(file.status).toUpperCase() === 'INVALID')?.review_reason,
+                    name: `${idType} ID and selfie`,
+                    id_type: idType,
+                    front_url: frontId?.url || null,
+                    back_url: backId?.url || null,
+                    selfie_urls: selfieFiles.map((file, index) => ({
+                        label: selfieFiles.length > 1 ? `Selfie ${index + 1}` : 'Selfie / liveness',
+                        url: file.url
+                    })),
+                    registrant: data.docs.registrant || {},
+                    type: 'GOVERNMENT_ID'
+                };
+                const existingIdentityIndex = files.findIndex(file => file.type === 'GOVERNMENT_ID');
+                if (existingIdentityIndex >= 0) files[existingIdentityIndex] = identityCard;
+                else files.unshift(identityCard);
+            }
+            if (silent) {
+                const hasUnsubmittedDecision = Array.from(
+                    grid.querySelectorAll('.review-decision-select')
+                ).some(select => select.value);
+                if (hasUnsubmittedDecision) return;
+            }
+            grid.replaceChildren();
+            if (!files.length) {
+                const empty = document.createElement('div');
+                empty.className = 'verification-empty';
+                empty.textContent = 'No verification files submitted yet.';
+                grid.appendChild(empty);
+                return;
+            }
+            files.forEach(file => grid.appendChild(createReviewDocumentCard(resolvedCatererId, file)));
+            const requestedDocumentType = new URLSearchParams(window.location.search).get('document_type');
+            if (!silent && requestedDocumentType) {
+                const targetCard = Array.from(grid.querySelectorAll('.review-document-card'))
+                    .find(card => card.dataset.documentType === requestedDocumentType);
+                if (targetCard) {
+                    targetCard.classList.add('is-target');
+                    targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        } catch (error) {
+            if (silent) {
+                console.error('Could not refresh verification files.', error);
+                document.getElementById('reviewCatererSubtitle').textContent =
+                    `Live update failed: ${error.message}. Retrying automatically.`;
+                return;
+            }
+            grid.replaceChildren();
+            const message = document.createElement('div');
+            message.className = 'verification-empty';
+            message.style.color = '#b91c1c';
+            message.textContent = `Could not load verification files: ${error.message}`;
+            grid.appendChild(message);
+        } finally {
+            reviewDocumentsLoading = false;
+        }
+    }
+
+    function createReviewDocumentCard(catererId, file) {
+        const card = document.createElement('article');
+        card.className = 'review-document-card';
+        card.dataset.documentType = file.type;
+
+        const heading = document.createElement('div');
+        heading.className = 'review-document-heading';
+        const title = document.createElement('h5');
+        title.textContent = file.name;
+        const status = document.createElement('span');
+        status.className = 'review-document-status';
+        const normalizedStatus = String(file.status || 'PENDING').toUpperCase();
+        const approved = normalizedStatus === 'VALID';
+        const needsRevision = normalizedStatus === 'INVALID';
+        const incomplete = normalizedStatus === 'MISSING';
+        status.textContent = approved ? 'Approved' : needsRevision ? 'Needs replacement' : incomplete ? 'Missing required file' : 'Pending review';
+        if (approved) status.classList.add('is-approved');
+        if (needsRevision) status.classList.add('is-revision');
+        heading.append(title, status);
+
+        const preview = document.createElement('div');
+        const isIdentityBundle = Boolean(file.front_url || file.back_url || file.selfie_urls?.length);
+        preview.className = isIdentityBundle ? 'review-id-previews' : '';
+        const previewFiles = isIdentityBundle
+            ? [
+                { label: 'ID front', url: file.front_url },
+                { label: 'ID back', url: file.back_url },
+                ...(file.selfie_urls || [])
+            ].filter(item => item.url)
+            : [{ label: file.name, url: file.url }];
+        previewFiles.forEach(item => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'doc-preview-trigger';
+            button.setAttribute('aria-label', `Preview ${item.label} of ${file.name}`);
+            const pdf = isPdfVerificationFile(item.url);
+            if (pdf) {
+                const previewLabel = document.createElement('span');
+                previewLabel.className = 'doc-pdf-preview';
+                previewLabel.textContent = `${item.label} · PDF`;
+                button.appendChild(previewLabel);
+            } else {
+                const image = document.createElement('img');
+                image.className = 'doc-card-thumb';
+                image.src = item.url;
+                image.alt = `${item.label} of ${file.name}`;
+                image.addEventListener('error', () => {
+                    const unavailable = document.createElement('span');
+                    unavailable.className = 'doc-preview-unavailable';
+                    unavailable.textContent = 'Preview unavailable';
+                    image.replaceWith(unavailable);
+                }, { once: true });
+                button.appendChild(image);
+            }
+            button.addEventListener('click', () => openDocLightbox(item.url, pdf));
+            if (isIdentityBundle) {
+                const labeledPreview = document.createElement('div');
+                labeledPreview.className = 'review-id-preview-item';
+                const sideLabel = document.createElement('span');
+                sideLabel.textContent = item.label;
+                labeledPreview.append(sideLabel, button);
+                preview.appendChild(labeledPreview);
+            } else {
+                preview.appendChild(button);
+            }
+        });
+
+        const content = document.createElement('div');
+        content.className = 'review-document-content';
+        content.appendChild(heading);
+        if (file.registrant) {
+            const details = document.createElement('div');
+            details.className = 'review-identity-details';
+            const name = [file.registrant.first_name, file.registrant.middle_name, file.registrant.last_name]
+                .filter(Boolean).join(' ') || 'Not provided';
+            [
+                ['Registered name', name, false],
+                ['Birthdate', file.registrant.birthdate || 'Not provided', false],
+                ['Registered address', file.registrant.address || 'Not provided', true]
+            ].forEach(([label, value, wide]) => {
+                const item = document.createElement('div');
+                if (wide) item.classList.add('is-wide');
+                const caption = document.createElement('strong');
+                caption.textContent = label;
+                const text = document.createElement('span');
+                text.textContent = value;
+                item.append(caption, text);
+                details.appendChild(item);
+            });
+            content.appendChild(details);
+        }
+        if (approved || needsRevision || incomplete) {
+            if (incomplete) {
+                const missing = document.createElement('p');
+                missing.className = 'review-document-review-note';
+                missing.textContent = 'The ID front, ID back, and selfie are all required before this identity review can be decided.';
+                content.appendChild(missing);
+            }
+            if (needsRevision && file.review_reason) {
+                const reviewNote = document.createElement('p');
+                reviewNote.className = 'review-document-review-note';
+                reviewNote.textContent = file.review_reason;
+                content.appendChild(reviewNote);
+            }
+            card.append(preview, content);
+            return card;
+        }
+
+        const decision = document.createElement('div');
+        decision.className = 'review-document-decision';
+        const outcomeLabel = document.createElement('label');
+        outcomeLabel.textContent = 'Review outcome';
+        const outcome = document.createElement('select');
+        outcome.className = 'review-decision-select';
+        outcome.setAttribute('aria-label', `Review outcome for ${file.name}`);
+        const placeholder = new Option('Choose approve or request replacement', '', true, true);
+        placeholder.disabled = true;
+        outcome.add(placeholder);
+        outcome.add(new Option('Approve file', 'approve'));
+        outcome.add(new Option('Request replacement', 'request_revision'));
+        outcomeLabel.appendChild(outcome);
+
+        const reasonLabel = document.createElement('label');
+        reasonLabel.textContent = 'Reason';
+        reasonLabel.hidden = true;
+        const reason = document.createElement('select');
+        reason.className = 'review-decision-select';
+        reason.setAttribute('aria-label', `Review reason for ${file.name}`);
+        reason.add(new Option('Choose a reason', ''));
+        reasonLabel.appendChild(reason);
+
+        const note = document.createElement('textarea');
+        note.className = 'review-decision-note';
+        note.setAttribute('aria-label', `Additional replacement note for ${file.name}`);
+        note.placeholder = 'Optional note for the caterer';
+        note.hidden = true;
+
+        const submit = document.createElement('button');
+        submit.type = 'button';
+        submit.className = 'review-decision-submit';
+        submit.hidden = true;
+        submit.addEventListener('click', () => reviewSingleDocument(
+            catererId,
+            file.type,
+            outcome.value,
+            card,
+            note.value,
+            reason.value,
+            reason.selectedOptions[0]?.textContent || ''
+        ));
+
+        outcome.addEventListener('change', () => {
+            reason.replaceChildren(new Option('Choose a reason', ''));
+            reason.hidden = !outcome.value;
+            reasonLabel.hidden = !outcome.value;
+            note.hidden = outcome.value !== 'request_revision';
+            submit.hidden = true;
+            submit.classList.toggle('is-revision', outcome.value === 'request_revision');
+            submit.textContent = outcome.value === 'request_revision'
+                ? 'Send replacement request'
+                : 'Approve file';
+            const options = outcome.value === 'approve'
+                ? [{ id: 'meets_requirements', label: 'Readable, complete, and matches the required details' }]
+                : outcome.value === 'request_revision'
+                    ? getVerificationFileReplacementReasons()
+                    : [];
+            options.forEach(option => reason.add(new Option(option.label, option.id)));
+        });
+        reason.addEventListener('change', () => {
+            submit.hidden = !reason.value;
+        });
+
+        decision.append(outcomeLabel, reasonLabel, note, submit);
+        content.appendChild(decision);
+        card.append(preview, content);
+        return card;
+    }
+
+    function getVerificationFileReplacementReasons() {
+        return [
+            { id: 'unreadable', label: 'Image is blurry or unreadable.' },
+            { id: 'missing_details', label: 'Required details are missing or cut off.' },
+            { id: 'wrong_document', label: 'Wrong document type was submitted.' },
+            { id: 'details_mismatch', label: 'Details do not match the caterer or business profile.' },
+            { id: 'altered_or_expired', label: 'File appears altered, expired, or incomplete.' }
+        ];
+    }
+
+    async function reviewSingleDocument(catererId, documentType, action, card, remarks = '', reasonId = '', reasonLabel = '') {
+        const note = remarks.trim();
+        if (!reasonId) {
+            if (window.showError) window.showError('Choose a review reason before continuing.');
+            return;
+        }
+        {
+            let confirmed = false;
+            if (window.Swal) {
+                const result = await window.Swal.fire({
+                    title: action === 'approve' ? 'Approve this file?' : 'Request a replacement?',
+                    text: action === 'approve'
+                        ? `Approve ${card.querySelector('.review-document-heading h5').textContent} because: ${reasonLabel}?`
+                        : `Request a replacement for ${card.querySelector('.review-document-heading h5').textContent} because: ${reasonLabel}?`,
+                    icon: action === 'approve' ? 'question' : 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: action === 'approve' ? 'Approve file' : 'Send request',
+                    cancelButtonText: action === 'approve' ? 'Review again' : 'Continue reviewing',
+                    reverseButtons: true
+                });
+                confirmed = result.isConfirmed;
+            } else {
+                confirmed = window.confirm(action === 'approve'
+                    ? `Approve ${card.querySelector('.review-document-heading h5').textContent}?`
+                    : `Request a replacement for ${card.querySelector('.review-document-heading h5').textContent}?`);
+            }
+            if (!confirmed) return;
+        }
+        const controls = card.querySelectorAll('button, input, textarea');
+        controls.forEach(control => control.disabled = true);
+        try {
+            const formData = new FormData();
+            formData.append('action', action);
+            formData.append('remarks', note);
+            formData.append('review_reason', reasonId);
+            const response = await fetch(
+                `/admin/api/caterers/${encodeURIComponent(catererId)}/documents/${encodeURIComponent(documentType)}/review`,
+                { method: 'POST', body: formData }
+            );
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || `Request failed (${response.status}).`);
+
+            if (result.all_approved) updateCatererReviewRow(catererId, 'Verified');
+            else if (action === 'request_revision') updateCatererReviewRow(catererId, 'Requires Revision');
+            if (window.showSuccess) window.showSuccess(result.message);
+            await loadReviewDocuments(catererId);
+        } catch (error) {
+            controls.forEach(control => control.disabled = false);
+            const decisionButton = card.querySelector('.review-decision-submit');
+            if (decisionButton) decisionButton.hidden = !card.querySelector('.review-decision-select:nth-of-type(2)')?.value;
+            if (window.showError) window.showError(error.message);
+            else alert(error.message);
         }
     }
 
     function closeReviewModal() {
         document.getElementById('reviewVerificationModal').classList.remove('active');
-    }
-
-    function toggleRemarks() {
-        const val = document.getElementById('review_action_select').value;
-        const container = document.getElementById('review_remarks_container');
-        if (val !== 'Verified') {
-            container.style.display = 'block';
-        } else {
-            container.style.display = 'none';
+        if (reviewDocumentsRefreshTimer) {
+            window.clearInterval(reviewDocumentsRefreshTimer);
+            reviewDocumentsRefreshTimer = null;
         }
     }
 
@@ -2400,48 +3027,5 @@
         filterCaterers();
     }
 
-    async function submitReview() {
-        const id = document.getElementById('review_caterer_id').value;
-        const status = document.getElementById('review_action_select').value;
-        const remarks = document.getElementById('review_remarks').value.trim();
-
-        if (status !== 'Verified' && remarks === '') {
-            if (window.showError) window.showError("Admin remarks are required when requesting revision, rejecting, or suspending.");
-            else alert("Admin remarks are required.");
-            return;
-        }
-
-        const btn = document.getElementById('btnSubmitReview');
-        const oldHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
-        btn.disabled = true;
-
-        try {
-            const formData = new FormData();
-            formData.append('status', status);
-            formData.append('remarks', remarks);
-
-            const res = await fetch(`/admin/api/caterers/${id}/review`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                updateCatererReviewRow(id, status);
-                closeReviewModal();
-                if (window.showSuccess) window.showSuccess(data.message);
-                else alert(data.message);
-            } else {
-                if (window.showError) window.showError(data.message);
-                else alert(data.message);
-            }
-        } catch (e) {
-            if (window.showError) window.showError("An error occurred.");
-        } finally {
-            btn.innerHTML = oldHtml;
-            btn.disabled = false;
-        }
-    }
 </script>
 {% endblock %}

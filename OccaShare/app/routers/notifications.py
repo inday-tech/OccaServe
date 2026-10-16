@@ -4,6 +4,7 @@ from typing import List, Dict, Any
 from app.db.database import get_db
 from app.db.models import User, Notification
 from app.core.security import get_current_user
+from app.services.notification import caterer_notification_destination
 from datetime import datetime
 
 router = APIRouter(
@@ -35,7 +36,11 @@ def get_notifications(
                 "title": notif.title,
                 "message": notif.message,
                 "type": notif.type,
-                "link": notif.link,
+                "link": (
+                    caterer_notification_destination(notif.link, notif.type, notif.title)
+                    if (current_user.role or "").lower() == "caterer"
+                    else notif.link
+                ),
                 "is_read": notif.is_read,
                 "created_at": notif.created_at.isoformat() if notif.created_at else None
             }

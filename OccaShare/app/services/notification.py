@@ -1,10 +1,48 @@
 import os
 import httpx
+from urllib.parse import urlsplit, urlunsplit
 from sqlalchemy.orm import Session
 from ..db import models
 from ..core.config import settings
 from .email import EmailService
 from ..services.realtime import manager
+
+
+def caterer_notification_destination(link, notif_type, title=""):
+    fallback_by_type = {
+        "booking": "/caterer/bookings",
+        "payment": "/caterer/payments",
+        "verification": "/caterer/profile#verification",
+        "review": "/caterer/reviews",
+        "reminder": "/caterer/calendar",
+    }
+    title_key = str(title or "").lower()
+    if any(word in title_key for word in ("verification", "identity", "kyc", "permit")):
+        fallback = fallback_by_type["verification"]
+    elif any(word in title_key for word in ("payment", "invoice", "commission")):
+        fallback = fallback_by_type["payment"]
+    elif any(word in title_key for word in ("booking", "order", "event", "request")):
+        fallback = fallback_by_type["booking"]
+    else:
+        fallback = fallback_by_type.get(str(notif_type or "").lower(), "/caterer/notifications")
+    if (
+        not link
+        or not isinstance(link, str)
+        or not link.startswith("/")
+        or link.startswith("//")
+        or "\\" in link
+    ):
+        return fallback
+
+    parsed = urlsplit(link)
+    if parsed.path in {"/caterer/verification", "/caterer/settings"}:
+        return "/caterer/profile#verification"
+    if parsed.path == "/caterer/profile" and parsed.fragment == "section-verification":
+        return "/caterer/profile#verification"
+    if parsed.path == "/caterer/dashboard" and parsed.query == "page=bookings":
+        return "/caterer/bookings"
+    return urlunsplit(("", "", parsed.path, parsed.query, parsed.fragment))
+
 
 class NotificationService:
     @staticmethod
@@ -63,7 +101,7 @@ class NotificationService:
             title=f"New {subject_prefix} Received!",
             message=f"New {subject_prefix.lower()} {ref_id} for '{booking.event_name}' on {event_date_str} from {customer.first_name} {customer.last_name or ''}.",
             type="Booking",
-            link=f"/caterer/bookings"
+            link=f"/caterer/bookings?open_booking={booking.id}"
         )
         db.add(notif)
         db.commit()
@@ -245,7 +283,7 @@ class NotificationService:
             title=f"{payment_type} Received!",
             message=f"Payment of ₱{amount:,.2f} received for '{booking.event_name}'.",
             type="Payment",
-            link=f"/caterer/bookings"
+            link=f"/caterer/bookings?open_booking={booking.id}"
         )
         db.add(notif)
         db.commit()
@@ -444,7 +482,7 @@ class NotificationService:
             title="Booking Cancelled",
             message=f"The booking for '{booking.event_name}' has been cancelled by the {cancelled_by}. Reason: {reason}",
             type="Booking",
-            link="/caterer/bookings" if cancelled_by == "Customer" else "/customer/bookings"
+            link=f"/caterer/bookings?open_booking={booking.id}" if cancelled_by == "Customer" else f"/customer/bookings/manage/{booking.id}"
         )
         db.add(notif)
         db.commit()

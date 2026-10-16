@@ -292,8 +292,13 @@ window.fetchGlobalNotifications = async function(isForced = false) {
         if (data.notifications.length === 0) {
             container.innerHTML = `<div style="text-align: center; padding: 2.5rem 1rem;"><div style="background: #f1f5f9; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;"><i class="fas fa-check-double" style="color: #94a3b8; font-size: 1.5rem;"></i></div><p style="margin: 0; font-size: 0.9rem; font-weight: 600; color: #1e293b;">You're all caught up!</p><p style="margin: 4px 0 0; font-size: 0.75rem; color: #64748b;">No new notifications</p></div>`;
         } else {
-            let htmlString = '';
             const topNotifs = data.notifications.slice(0, 5);
+            const fallbackPath = window.location.pathname.startsWith('/admin/')
+                ? '/admin/notifications'
+                : window.location.pathname.startsWith('/caterer/')
+                    ? '/caterer/notifications'
+                    : '/customer/notifications';
+            const items = [];
             topNotifs.forEach(notif => {
                 const iconMap = {
                     'Booking': { i: 'fa-calendar-check', c: '#10b981', bg: '#d1fae5' },
@@ -304,10 +309,54 @@ window.fetchGlobalNotifications = async function(isForced = false) {
                 };
                 const info = iconMap[notif.type] || { i: 'fa-bell', c: '#64748b', bg: '#f1f5f9' };
                 const isUnread = !notif.is_read;
-                const timeStr = new Date(notif.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-                htmlString += `<a href="javascript:void(0)" onclick="handleGlobalNotifClick(${notif.id}, '${notif.link || ''}', ${isUnread})" style="display: flex; gap: 12px; padding: 16px; text-decoration: none; border-bottom: 1px solid #e2e8f0; background: ${isUnread ? '#f8fafc' : 'white'}; transition: all 0.2s; align-items: flex-start; position: relative;"><div style="background: ${info.bg}; color: ${info.c}; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; box-shadow: ${isUnread ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'};"><i class="fas ${info.i}"></i></div><div style="flex: 1; overflow: hidden; padding-top: 2px;"><p style="margin: 0 0 4px 0; font-size: 0.85rem; color: #0f172a; font-weight: ${isUnread ? '700' : '500'}; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${notif.message}</p><p style="margin: 0; font-size: 0.7rem; color: #64748b; font-weight: 600;"><i class="far fa-clock" style="margin-right: 4px;"></i>${timeStr}</p></div>${isUnread ? '<div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%; position: absolute; top: 16px; right: 16px; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);"></div>' : ''}</a>`;
+                const anchor = document.createElement('a');
+                let destination = fallbackPath;
+                if (typeof notif.link === 'string' && notif.link.trim()) {
+                    try {
+                        const url = new URL(notif.link, window.location.origin);
+                        if (url.origin === window.location.origin) {
+                            destination = `${url.pathname}${url.search}${url.hash}`;
+                        }
+                    } catch (error) {
+                        console.error('Invalid notification destination.', error);
+                    }
+                }
+                anchor.href = destination;
+                anchor.style.cssText = `display:flex;gap:12px;padding:16px;text-decoration:none;border-bottom:1px solid #e2e8f0;background:${isUnread ? '#f8fafc' : 'white'};transition:all .2s;align-items:flex-start;position:relative;`;
+                anchor.addEventListener('click', event => {
+                    event.preventDefault();
+                    window.handleGlobalNotifClick(notif.id, destination, isUnread);
+                });
+
+                const icon = document.createElement('div');
+                icon.style.cssText = `background:${info.bg};color:${info.c};width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;box-shadow:${isUnread ? '0 4px 12px rgba(0,0,0,.05)' : 'none'};`;
+                const iconElement = document.createElement('i');
+                iconElement.className = `fas ${info.i}`;
+                icon.appendChild(iconElement);
+
+                const content = document.createElement('div');
+                content.style.cssText = 'flex:1;overflow:hidden;padding-top:2px;';
+                const message = document.createElement('p');
+                message.textContent = notif.message || notif.title || 'Notification';
+                message.style.cssText = `margin:0 0 4px;font-size:.85rem;color:#0f172a;font-weight:${isUnread ? '700' : '500'};line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;`;
+                const timestamp = document.createElement('p');
+                timestamp.style.cssText = 'margin:0;font-size:.7rem;color:#64748b;font-weight:600;';
+                const clockIcon = document.createElement('i');
+                clockIcon.className = 'far fa-clock';
+                clockIcon.style.marginRight = '4px';
+                timestamp.append(clockIcon, document.createTextNode(notif.created_at
+                    ? new Date(notif.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                    : ''));
+                content.append(message, timestamp);
+                anchor.append(icon, content);
+                if (isUnread) {
+                    const dot = document.createElement('span');
+                    dot.style.cssText = 'width:8px;height:8px;background:#ef4444;border-radius:50%;position:absolute;top:16px;right:16px;box-shadow:0 0 0 4px rgba(239,68,68,.1);';
+                    anchor.appendChild(dot);
+                }
+                items.push(anchor);
             });
-            container.innerHTML = htmlString;
+            container.replaceChildren(...items);
         }
 
         // 3. Broadcast to Notifications Page if it exists
@@ -322,17 +371,26 @@ window.fetchGlobalNotifications = async function(isForced = false) {
 window.handleGlobalNotifClick = async function(id, link, isUnread) {
     if (isUnread) {
         try {
-            await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+            const response = await fetch(`/api/notifications/${id}/read`, { method: 'POST' });
+            if (!response.ok) throw new Error(`Mark notification read failed (${response.status}).`);
             window.fetchGlobalNotifications(true);
-        } catch(e) {}
+        } catch(error) {
+            console.error('Could not mark notification as read before navigation.', error);
+        }
     }
-    if (link) {
-        // Legacy contract alerts used to open the oversized sign page directly.
-        // Open the booking workspace first so the caterer can use its Sign Agreement action.
-        const signRoute = link.match(/^\/caterer\/bookings\/(\d+)\/sign(?:\?.*)?$/);
-        if (signRoute) link = `/caterer/bookings?open_booking=${signRoute[1]}`;
-        window.location.href = link;
-    }
+    let destination = typeof link === 'string' && link.startsWith('/')
+        ? link
+        : (window.location.pathname.startsWith('/admin/')
+            ? '/admin/notifications'
+            : window.location.pathname.startsWith('/caterer/')
+                ? '/caterer/notifications'
+                : '/customer/notifications');
+    if (destination === '/admin/kyc') destination = '/admin/caterer-verification';
+    // Legacy contract alerts used to open the oversized sign page directly.
+    // Open the booking workspace first so the caterer can use its Sign Agreement action.
+    const signRoute = destination.match(/^\/caterer\/bookings\/(\d+)\/sign(?:\?.*)?$/);
+    if (signRoute) destination = `/caterer/bookings?open_booking=${signRoute[1]}`;
+    window.location.href = destination;
 }
 
 
@@ -426,4 +484,3 @@ window.addEventListener('click', function(e) {
         });
     }
 });
-

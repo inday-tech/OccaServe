@@ -633,7 +633,7 @@ async def register(
                         user_id=admin.id,
                         title="New Caterer Application",
                         message=f"{business_name} has registered as a new caterer partner.",
-                        link="/admin/kyc",
+                        link=f"/admin/caterers?caterer_id={new_profile.id}&action=details",
                         type="info"
                     )
                     db.add(new_notif)
@@ -786,7 +786,7 @@ def verify_email_submit(
                                 user_id=admin.id,
                                 title="New Customer Registration",
                                 message=f"Customer {user.first_name} {user.last_name} has registered and verified their email.",
-                                link="/admin/customers",
+                                link=f"/admin/customers?customer_id={user.id}",
                                 type="info"
                             )
                             db.add(new_notif)

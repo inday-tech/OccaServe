@@ -786,7 +786,7 @@ async def upload_public_proof_of_payment(
         title="Payment Submitted",
         message=caterer_msg,
         type="Payment",
-        link=f"/caterer/dashboard?page=bookings"
+        link=f"/caterer/bookings?open_booking={booking.id}"
     )
     db.add(notif)
     db.commit()

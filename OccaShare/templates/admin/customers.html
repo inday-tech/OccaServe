@@ -305,7 +305,7 @@
 </div>
 
 {% macro customer_row(customer, section) %}
-<tr class="cust-row" data-customer-section="{{ section }}" data-verification-status="{{ 'not-applicable' if customer.kind|default('account') == 'walkin' else ('verified' if customer.is_verified else 'pending') }}" data-account-status="{{ 'walk-in' if customer.kind|default('account') == 'walkin' else (customer.status or 'active')|lower }}">
+<tr class="cust-row" data-customer-id="{{ customer.id if customer.kind|default('account') != 'walkin' else '' }}" data-customer-section="{{ section }}" data-verification-status="{{ 'not-applicable' if customer.kind|default('account') == 'walkin' else ('verified' if customer.is_verified else 'pending') }}" data-account-status="{{ 'walk-in' if customer.kind|default('account') == 'walkin' else (customer.status or 'active')|lower }}">
     <td style="padding: 1rem 1.25rem;">
         <div style="display:flex; align-items:center; gap:12px; min-width:0;">
             <div class="registry-avatar" aria-hidden="true" style="width:44px;height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;border:1px solid #e2e8f0;">
@@ -859,5 +859,11 @@
 
     // Initialize
     filterRegistry();
+    const registeredCustomerId = new URLSearchParams(window.location.search).get('customer_id');
+    if (registeredCustomerId && /^\d+$/.test(registeredCustomerId)) {
+        const row = document.querySelector(`.cust-row[data-customer-id="${registeredCustomerId}"]`);
+        const detailsButton = row?.querySelector('.dm-dropdown-item[data-id]');
+        if (detailsButton) viewCustomerDetails(detailsButton);
+    }
 </script>
 {% endblock %}

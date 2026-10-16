@@ -17,7 +17,7 @@ import uuid
 from decimal import Decimal, InvalidOperation
 from ..services.realtime import manager
 from ..services.payment_verification import payment_verification_service
-from ..services.notification import NotificationService
+from ..services.notification import NotificationService, caterer_notification_destination
 from ..services.reminders import billing_period_due_date
 from ..services.commission import (
     build_commission_invoice_rows,
@@ -85,8 +85,6 @@ def _caterer_verification_documents_missing(db: Session, profile: models.Caterer
     missing = [label for url, label in required_documents if not url]
     if not id_type:
         missing.insert(0, "Government ID type")
-    if not profile.permit_expiry_date:
-        missing.append("Permit expiration date")
     return missing
 
 
@@ -111,14 +109,149 @@ def _caterer_verification_status(db: Session, profile: models.CatererProfile) ->
         status_label = profile_status
     else:
         status_label = review_labels.get(review_status, profile_status)
-    permit_expired = bool(profile.permit_expiry_date and profile.permit_expiry_date < date.today())
-    if permit_expired and status_label in {"Verified", "Pending Review"}:
-        return "Expired"
     if status_label == "Pending Review" and (
         not review or _caterer_verification_documents_missing(db, profile)
     ):
         return "Not Submitted"
     return status_label
+
+
+def _verification_file_feedback_for_current_paths(
+    documents: list,
+    current_file_paths: dict,
+    audit_logs: list,
+) -> dict:
+    latest_documents = {}
+    for document in sorted(documents, key=lambda item: item.id or 0):
+        current_path = current_file_paths.get(document.document_type)
+        if current_path and document.secure_file_path == current_path:
+            latest_documents[document.document_type] = document
+
+    feedback = {}
+    for document_type, document in latest_documents.items():
+        status = (document.status or "PENDING").upper()
+        if status == "VALID":
+            message = "This file has been approved."
+        elif status == "INVALID":
+            latest_review = next(
+                (log for log in audit_logs if document_type in (log.action or "")),
+                None,
+            )
+            message = (latest_review.reason if latest_review else None) or "Please replace this file and submit it again."
+        elif status == "PENDING":
+            message = "This file is waiting for admin review."
+        else:
+            continue
+        feedback[document_type] = {"status": status, "message": message}
+    return feedback
+
+
+def _caterer_verification_file_feedback(db: Session, profile: models.CatererProfile) -> dict:
+    verification = db.query(models.CatererVerification).filter(
+        models.CatererVerification.caterer_id == profile.id
+    ).order_by(
+        models.CatererVerification.submitted_at.desc(),
+        models.CatererVerification.id.desc(),
+    ).first()
+    if not verification:
+        return {}
+
+    identity = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == profile.user_id,
+        models.IdentityVerification.verification_type != "business_permit",
+    ).order_by(
+        models.IdentityVerification.created_at.desc(),
+        models.IdentityVerification.id.desc(),
+    ).first()
+    current_file_paths = {
+        "GOVERNMENT_ID": (identity.document_url if identity else None) or profile.gov_id_url,
+        "GOVERNMENT_ID_BACK": identity.document_back_url if identity else None,
+        "SELFIE": identity.selfie_url if identity else None,
+        "SELFIE_2": identity.selfie_2_url if identity else None,
+        "SELFIE_3": identity.selfie_3_url if identity else None,
+        "BUSINESS_PERMIT": profile.permit_url,
+        "DTI_REGISTRATION": profile.dti_url,
+        "BIR_REGISTRATION": profile.bir_url,
+        "MAYORS_PERMIT": profile.mayors_permit_url,
+    }
+    audit_logs = db.query(models.VerificationAuditLog).filter(
+        models.VerificationAuditLog.verification_id == verification.id
+    ).order_by(
+        models.VerificationAuditLog.timestamp.desc(),
+        models.VerificationAuditLog.id.desc(),
+    ).all()
+    return _verification_file_feedback_for_current_paths(
+        verification.documents,
+        current_file_paths,
+        audit_logs,
+    )
+
+
+def _government_id_files_approved(file_feedback: dict) -> bool:
+    return (
+        (file_feedback.get("GOVERNMENT_ID", {}).get("status") or "").upper() == "VALID"
+        and (file_feedback.get("GOVERNMENT_ID_BACK", {}).get("status") or "").upper() == "VALID"
+        and (file_feedback.get("SELFIE", {}).get("status") or "").upper() == "VALID"
+        and all(
+            (feedback.get("status") or "").upper() == "VALID"
+            for document_type, feedback in file_feedback.items()
+            if document_type in {"SELFIE_2", "SELFIE_3"}
+        )
+    )
+
+
+def _government_id_type_locked(identity: Optional[models.IdentityVerification], profile: Optional[models.CatererProfile]) -> bool:
+    """Keep the selected ID type fixed once any identity evidence has been submitted."""
+    return bool(
+        (identity and (
+            identity.document_url or identity.document_back_url or identity.selfie_url
+            or identity.selfie_2_url or identity.selfie_3_url
+        ))
+        or (profile and profile.gov_id_url)
+    )
+
+
+def _government_id_type_notice(file_feedback: dict, type_locked: bool) -> str:
+    if _government_id_files_approved(file_feedback):
+        return "ID and selfie approved. ID type is locked."
+    if any(
+        (file_feedback.get(document_type, {}).get("status") or "").upper() == "INVALID"
+        for document_type in ("GOVERNMENT_ID", "GOVERNMENT_ID_BACK", "SELFIE", "SELFIE_2", "SELFIE_3")
+    ):
+        return "ID or selfie replacement requested. Keep the same ID type."
+    if type_locked:
+        return "ID and selfie under review. ID type is locked."
+    return "Choose the ID type shown on the document. It locks after submission."
+
+
+def _caterer_verification_requested_files(db: Session, profile: models.CatererProfile) -> list[str]:
+    labels = {
+        "GOVERNMENT_ID": "Government ID (front)",
+        "GOVERNMENT_ID_BACK": "Government ID (back)",
+        "SELFIE": "Selfie photo",
+        "SELFIE_2": "Selfie / proof of life 2",
+        "SELFIE_3": "Selfie / proof of life 3",
+        "BUSINESS_PERMIT": "Business permit",
+        "DTI_REGISTRATION": "DTI registration",
+        "BIR_REGISTRATION": "BIR registration",
+        "MAYORS_PERMIT": "Mayor's permit",
+    }
+    feedback = _caterer_verification_file_feedback(db, profile)
+    requested = []
+    identity_types = {"GOVERNMENT_ID", "GOVERNMENT_ID_BACK", "SELFIE", "SELFIE_2", "SELFIE_3"}
+    if any(
+        (feedback.get(document_type, {}).get("status") or "").upper() == "INVALID"
+        for document_type in identity_types
+    ):
+        requested.append("Government ID and selfie")
+    requested.extend(
+        labels[document_type]
+        for document_type, file_feedback in feedback.items()
+        if document_type in labels
+        and document_type not in identity_types
+        and file_feedback["status"] == "INVALID"
+    )
+    return requested
 
 
 def _caterer_verification_remarks(db: Session, profile: models.CatererProfile) -> Optional[str]:
@@ -131,12 +264,24 @@ def _caterer_verification_remarks(db: Session, profile: models.CatererProfile) -
     return (review.rejection_reason if review else None) or profile.admin_remarks
 
 
-def _caterer_verification_next_step(status_label: str) -> str:
+def _caterer_verification_next_step(
+    status_label: str,
+    requested_files: Optional[list[str]] = None,
+    identity_approved: bool = False,
+) -> str:
+    if status_label == "Action Required" and requested_files:
+        file_names = ", ".join(requested_files)
+        return (
+            f"Admin requested replacement for: {file_names}. Replace and submit only these "
+            "file(s); the Replace button is available only for files awaiting replacement."
+        )
+    if status_label == "Pending Review" and identity_approved:
+        return "Your Government ID and selfie are approved. Other submitted business documents are still under admin review."
     return {
         "Not Submitted": "Upload every required document, choose your government ID type, and submit the complete application for review.",
         "Pending Review": "Your complete documents have been submitted. Wait for the admin review and check this page for updates.",
         "Verified": "Your verification is approved. Keep your business permit valid and complete the remaining setup steps to publish your listing.",
-        "Action Required": "Review the admin remarks, replace or correct the requested documents, then submit them again.",
+        "Action Required": "Review the message under each flagged file, replace only the requested documents, then submit them again.",
         "Rejected": "Review the admin remarks, correct the documents, and submit a complete application again.",
         "Expired": "Your business permit has expired. Upload a renewed permit with its new expiration date, then resubmit for review.",
         "Suspended": "Your verification or account is suspended. Review the admin remarks and contact support before taking further action.",
@@ -301,7 +446,10 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
         else "Create and activate at least one package with a valid price. Description and photo are optional."
     )
     package_action = "Manage packages" if has_existing_package else "Create package"
-    verification_description = _caterer_verification_next_step(verification_status)
+    verification_description = _caterer_verification_next_step(
+        verification_status,
+        _caterer_verification_requested_files(db, profile),
+    )
     verification_remarks = _caterer_verification_remarks(db, profile)
     if verification_remarks and verification_status in {"Action Required", "Rejected", "Suspended"}:
         verification_description = f"{verification_description} Admin note: {verification_remarks}"
@@ -2332,7 +2480,10 @@ async def caterer_dashboard(
         "can_publish": can_publish,
         "is_identity_verified": is_identity_verified,
         "verification_status_display": verification_status_display,
-        "verification_next_step": _caterer_verification_next_step(verification_status_display),
+        "verification_next_step": _caterer_verification_next_step(
+            verification_status_display,
+            _caterer_verification_requested_files(db, profile),
+        ),
         "verification_admin_remarks": _caterer_verification_remarks(db, profile),
         "listing_is_live": listing_is_live,
         "setup_requirements": setup_requirements,
@@ -5622,6 +5773,15 @@ async def caterer_calendar(
     except (TypeError, ValueError):
         max_advance_days = 365
     max_booking_date = current_date + timedelta(days=max_advance_days)
+    focus_schedule_date = None
+    focus_schedule_id = request.query_params.get("focus_schedule", "")
+    if focus_schedule_id.isdecimal():
+        focus_schedule = db.query(models.InternalSchedule).filter(
+            models.InternalSchedule.id == int(focus_schedule_id),
+            models.InternalSchedule.caterer_id == user.caterer_profile.id,
+        ).first()
+        if focus_schedule and focus_schedule.date >= current_date:
+            focus_schedule_date = focus_schedule.date.isoformat()
     business_hours = scheduling_rules.get("business_hours") or {}
     business_open = event_availability.get("open_time") or business_hours.get("open_time") or "08:00"
     business_close = event_availability.get("close_time") or business_hours.get("close_time") or "20:00"
@@ -5730,6 +5890,7 @@ async def caterer_calendar(
         "booking_lead_time": lead_time_days,
         "min_booking_date": min_booking_date,
         "max_booking_date": max_booking_date,
+        "focus_schedule_date": focus_schedule_date,
         "business_open": business_open,
         "business_close": business_close,
         "min_pax": user.caterer_profile.min_pax or 1,
@@ -6239,21 +6400,39 @@ async def edit_profile(
     identity = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.user_id == user.id,
         models.IdentityVerification.verification_type != "business_permit",
-    ).order_by(models.IdentityVerification.id.desc()).first()
+    ).order_by(
+        models.IdentityVerification.created_at.desc(),
+        models.IdentityVerification.id.desc(),
+    ).first()
     profile = user.caterer_profile
     setup_requirements = _caterer_setup_requirements(db, profile) if profile else []
     can_publish = bool(setup_requirements) and all(item["complete"] for item in setup_requirements)
     listing_is_live = _caterer_listing_is_live(profile) if profile else False
     verification_status_display = _caterer_verification_status(db, profile) if profile else "Not Submitted"
     verification_admin_remarks = _caterer_verification_remarks(db, profile) if profile else None
+    verification_file_feedback = _caterer_verification_file_feedback(db, profile) if profile else {}
+    verification_requested_files = (
+        _caterer_verification_requested_files(db, profile) if profile else []
+    )
     return templates.TemplateResponse("caterer/profile_edit.html", {
         "request": request,
         "user": user,
         "profile": profile,
         "identity": identity,
         "verification_status_display": verification_status_display,
-        "verification_next_step": _caterer_verification_next_step(verification_status_display),
+        "verification_next_step": _caterer_verification_next_step(
+            verification_status_display,
+            verification_requested_files,
+            _government_id_files_approved(verification_file_feedback),
+        ),
         "verification_admin_remarks": verification_admin_remarks,
+        "verification_file_feedback": verification_file_feedback,
+        "government_id_locked": _government_id_files_approved(verification_file_feedback),
+        "government_id_type_locked": _government_id_type_locked(identity, profile),
+        "government_id_type_notice": _government_id_type_notice(
+            verification_file_feedback,
+            _government_id_type_locked(identity, profile),
+        ),
         "verification_can_submit": verification_status_display in {
             "Not Submitted", "Action Required", "Rejected", "Expired"
         },
@@ -9386,7 +9565,8 @@ async def set_booking_reminder(
         user_id=user.id,
         title=f"Reminder Set: {booking.event_name or 'Event'}",
         message=f"You will be reminded about this event scheduled on {booking.event_date}.",
-        type="reminder"
+        type="reminder",
+        link=f"/caterer/bookings?open_booking={booking.id}",
     )
     db.add(new_notif)
     db.commit()
@@ -9795,6 +9975,10 @@ async def caterer_notifications(
     notifications = base_query.order_by(
         models.Notification.created_at.desc()
     ).offset((page - 1) * per_page).limit(per_page).all()
+    for notification in notifications:
+        notification.display_link = caterer_notification_destination(
+            notification.link, notification.type, notification.title
+        )
     
     return templates.TemplateResponse("caterer/notifications.html", {
         "request": request,
@@ -11242,11 +11426,67 @@ async def caterer_report_booking(
     return JSONResponse(content={"success": True, "message": f"Report submitted successfully. Reference ID: {reference_id}"})
 
 
+@router.get("/verification/status")
+async def caterer_verification_status(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only),
+):
+    profile = db.query(models.CatererProfile).filter(
+        models.CatererProfile.user_id == user.id
+    ).first()
+    if not profile:
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "message": "Profile not found."},
+        )
+    status_label = _caterer_verification_status(db, profile)
+    requested_files = _caterer_verification_requested_files(db, profile)
+    file_feedback = _caterer_verification_file_feedback(db, profile)
+    return JSONResponse(
+        content={
+            "success": True,
+            "status": status_label,
+            "next_step": _caterer_verification_next_step(
+                status_label,
+                requested_files,
+                _government_id_files_approved(file_feedback),
+            ),
+            "files": file_feedback,
+            "government_id_locked": _government_id_files_approved(file_feedback),
+            "government_id_type_locked": _government_id_type_locked(
+                db.query(models.IdentityVerification).filter(
+                    models.IdentityVerification.user_id == user.id,
+                    models.IdentityVerification.verification_type != "business_permit",
+                ).order_by(
+                    models.IdentityVerification.created_at.desc(),
+                    models.IdentityVerification.id.desc(),
+                ).first(),
+                profile,
+            ),
+            "government_id_type_notice": _government_id_type_notice(
+                file_feedback,
+                _government_id_type_locked(
+                    db.query(models.IdentityVerification).filter(
+                        models.IdentityVerification.user_id == user.id,
+                        models.IdentityVerification.verification_type != "business_permit",
+                    ).order_by(
+                        models.IdentityVerification.created_at.desc(),
+                        models.IdentityVerification.id.desc(),
+                    ).first(),
+                    profile,
+                ),
+            ),
+        },
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate"},
+    )
+
+
 @router.post("/verification/submit")
 async def submit_verification(
     background_tasks: BackgroundTasks,
     id_type: str = Form(...),
-    permit_expiry: Optional[str] = Form(None),
+    replace_document_type: Optional[str] = Form(None),
+    replace_document_types: str = Form("[]"),
     id_front: Optional[UploadFile] = File(None),
     id_back: Optional[UploadFile] = File(None),
     permit: Optional[UploadFile] = File(None),
@@ -11260,6 +11500,42 @@ async def submit_verification(
     profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == user.id).first()
     if not profile:
         return JSONResponse(status_code=400, content={"success": False, "message": "Profile not found."})
+    allowed_replacement_types = {
+        "GOVERNMENT_ID", "GOVERNMENT_ID_BACK", "SELFIE", "SELFIE_2", "SELFIE_3",
+        "BUSINESS_PERMIT", "DTI_REGISTRATION", "BIR_REGISTRATION", "MAYORS_PERMIT",
+    }
+    try:
+        replacement_types = json.loads(replace_document_types or "[]")
+    except json.JSONDecodeError:
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "message": "The replacement file selection could not be read. Please try again.",
+        })
+    if not isinstance(replacement_types, list) or not all(
+        isinstance(document_type, str) for document_type in replacement_types
+    ):
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "message": "The replacement file selection is invalid.",
+        })
+    if replace_document_type:
+        if replacement_types and replace_document_type not in replacement_types:
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "message": "The selected replacement files do not match the submitted file.",
+            })
+        if not replacement_types:
+            replacement_types = [replace_document_type]
+    if {"GOVERNMENT_ID", "GOVERNMENT_ID_BACK", "SELFIE"}.intersection(replacement_types):
+        replacement_types = list(dict.fromkeys([*replacement_types, "GOVERNMENT_ID", "GOVERNMENT_ID_BACK", "SELFIE"]))
+    if (
+        len(replacement_types) != len(set(replacement_types))
+        or any(document_type not in allowed_replacement_types for document_type in replacement_types)
+    ):
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "message": "One or more selected verification files cannot be replaced.",
+        })
 
     current_verification_status = _caterer_verification_status(db, profile)
     if current_verification_status in {"Pending Review", "Verified", "Suspended"}:
@@ -11267,43 +11543,140 @@ async def submit_verification(
             "success": False,
             "message": _caterer_verification_next_step(current_verification_status),
         })
+    replacement_uploads = {
+        "GOVERNMENT_ID": ("id_front", id_front),
+        "GOVERNMENT_ID_BACK": ("id_back", id_back),
+        "SELFIE": ("selfie", selfie),
+        "SELFIE_2": ("selfie", selfie),
+        "SELFIE_3": ("selfie", selfie),
+        "BUSINESS_PERMIT": ("permit", permit),
+        "DTI_REGISTRATION": ("dti", dti),
+        "BIR_REGISTRATION": ("bir", bir),
+        "MAYORS_PERMIT": ("mayors", mayors),
+    }
+    supplied_uploads = {
+        name for name, upload in (
+            ("id_front", id_front), ("id_back", id_back), ("selfie", selfie),
+            ("permit", permit), ("dti", dti), ("bir", bir), ("mayors", mayors),
+        )
+        if upload and upload.filename
+    }
+    latest_verification = None
+    if current_verification_status == "Action Required" or replacement_types:
+        latest_verification = db.query(models.CatererVerification).filter_by(
+            caterer_id=profile.id
+        ).order_by(
+            models.CatererVerification.submitted_at.desc(),
+            models.CatererVerification.id.desc(),
+        ).first()
+        latest_document_statuses = {}
+        if latest_verification:
+            for document in db.query(models.VerificationDocument).filter_by(
+                verification_id=latest_verification.id
+            ).order_by(models.VerificationDocument.id.desc()).all():
+                latest_document_statuses.setdefault(
+                    document.document_type,
+                    (document.status or "").upper(),
+                )
+        has_file_requiring_replacement = any(
+            status == "INVALID" for status in latest_document_statuses.values()
+        )
+    else:
+        has_file_requiring_replacement = False
+        latest_document_statuses = {}
+    if (
+        current_verification_status == "Action Required"
+        and has_file_requiring_replacement
+        and not replacement_types
+    ):
+        return JSONResponse(status_code=409, content={
+            "success": False,
+            "message": "Only files specifically requested for replacement can be submitted.",
+        })
+    if replacement_types:
+        expected_names = [replacement_uploads[document_type][0] for document_type in replacement_types]
+        duplicate_names = {
+            name for name in expected_names if expected_names.count(name) > 1
+        }
+        if duplicate_names - {"selfie"}:
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "message": "Choose one replacement file per upload field before submitting.",
+            })
+        expected_upload_names = set(expected_names)
+        if supplied_uploads != expected_upload_names or any(
+            not replacement_uploads[document_type][1]
+            or not replacement_uploads[document_type][1].filename
+            for document_type in replacement_types
+        ):
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "message": "Submit only the replacement files requested by the admin.",
+            })
+        if not latest_verification:
+            return JSONResponse(status_code=409, content={
+                "success": False,
+                "message": "There is no active verification review for these replacement files.",
+            })
+        unrequested_types = [
+            document_type for document_type in replacement_types
+            if (latest_document_statuses.get(document_type) != "INVALID")
+        ]
+        if unrequested_types:
+            return JSONResponse(status_code=409, content={
+                "success": False,
+                "message": "One or more files are no longer awaiting replacement. Refresh and review their status.",
+            })
+    elif current_verification_status == "Action Required" and supplied_uploads:
+        return JSONResponse(status_code=409, content={
+            "success": False,
+            "message": "Only files specifically requested for replacement can be submitted.",
+        })
 
     identity = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.user_id == user.id,
         models.IdentityVerification.verification_type != "business_permit",
-    ).order_by(models.IdentityVerification.id.desc()).first()
+    ).order_by(
+        models.IdentityVerification.created_at.desc(),
+        models.IdentityVerification.id.desc(),
+    ).first()
+    current_file_feedback = _caterer_verification_file_feedback(db, profile)
+    government_id_locked = _government_id_files_approved(current_file_feedback)
+    government_id_type_locked = _government_id_type_locked(identity, profile)
+    if (
+        government_id_type_locked
+        and identity
+        and id_type.strip() != (identity.verification_type or "").strip()
+    ):
+        return JSONResponse(status_code=409, content={
+            "success": False,
+            "message": "The Government ID type is locked after submission and cannot be changed while under review or after approval.",
+        })
+    if government_id_locked and (
+        (id_front and id_front.filename)
+        or (id_back and id_back.filename)
+        or (selfie and selfie.filename)
+        or bool({"GOVERNMENT_ID", "GOVERNMENT_ID_BACK", "SELFIE"}.intersection(replacement_types))
+    ):
+        return JSONResponse(status_code=409, content={
+            "success": False,
+            "message": "Both government ID files are approved and locked. They can no longer be changed.",
+        })
     required_documents = [
         (id_front, (identity.document_url if identity else None) or profile.gov_id_url, "Front of government ID"),
         (id_back, identity.document_back_url if identity else None, "Back of government ID"),
-        (selfie, identity.selfie_url if identity else None, "Selfie photo"),
-        (permit, profile.permit_url, "Business or mayor’s permit"),
+        (selfie, (
+            (identity.selfie_url or identity.selfie_2_url or identity.selfie_3_url)
+            if identity else None
+        ), "Selfie photo"),
+        (permit, profile.permit_url or profile.mayors_permit_url, "Business or mayor’s permit"),
         (dti, profile.dti_url, "DTI business name registration"),
         (bir, profile.bir_url, "BIR Certificate of Registration"),
     ]
     missing_documents = [label for upload, saved_url, label in required_documents
                          if not (upload and upload.filename) and not saved_url]
-    if not permit_expiry and not profile.permit_expiry_date:
-        missing_documents.append("Permit expiration date")
     if not id_type.strip():
         missing_documents.insert(0, "Government ID type")
-    if permit_expiry:
-        try:
-            expiry_date = datetime.strptime(permit_expiry, "%Y-%m-%d").date()
-        except ValueError:
-            return JSONResponse(status_code=400, content={
-                "success": False,
-                "message": "Enter a valid permit expiration date."
-            })
-        if expiry_date < date.today():
-            return JSONResponse(status_code=400, content={
-                "success": False,
-                "message": "Upload a business permit that has not expired."
-            })
-    elif profile.permit_expiry_date and profile.permit_expiry_date < date.today():
-        return JSONResponse(status_code=400, content={
-            "success": False,
-            "message": "Upload a renewed business permit and enter its future expiration date."
-        })
     if missing_documents:
         return JSONResponse(status_code=400, content={
             "success": False,
@@ -11345,14 +11718,9 @@ async def submit_verification(
     try:
         if permit:
             url = save_file(permit, "permit")
-            if url: profile.permit_url = url
+            if url:
+                profile.permit_url = url
             
-        if permit_expiry:
-            try:
-                profile.permit_expiry_date = datetime.strptime(permit_expiry, "%Y-%m-%d").date()
-            except:
-                pass
-                
         if dti:
             url = save_file(dti, "dti")
             if url: profile.dti_url = url
@@ -11390,7 +11758,17 @@ async def submit_verification(
             
         if selfie:
             url = save_file(selfie, "selfie")
-            if url: identity.selfie_url = url
+            if url:
+                selfie_replacement_types = set(replacement_types).intersection({"SELFIE", "SELFIE_2", "SELFIE_3"})
+                if selfie_replacement_types:
+                    if "SELFIE" in selfie_replacement_types:
+                        identity.selfie_url = url
+                    if "SELFIE_2" in selfie_replacement_types:
+                        identity.selfie_2_url = url
+                    if "SELFIE_3" in selfie_replacement_types:
+                        identity.selfie_3_url = url
+                else:
+                    identity.selfie_url = url
             
         # Synchronize CatererVerification & VerificationDocument relational entities
         caterer_ver = db.query(models.CatererVerification).filter_by(caterer_id=profile.id).order_by(models.CatererVerification.id.desc()).first()
@@ -11404,13 +11782,13 @@ async def submit_verification(
         else:
             caterer_ver.status = "PENDING_REVIEW"
 
-        def sync_doc_record(v_id, doc_type, file_path):
+        def sync_doc_record(v_id, doc_type, file_path, replaced=False):
             if not file_path:
                 return
             existing_doc = db.query(models.VerificationDocument).filter_by(
                 verification_id=v_id,
                 document_type=doc_type
-            ).first()
+            ).order_by(models.VerificationDocument.id.desc()).first()
             if not existing_doc:
                 new_doc = models.VerificationDocument(
                     verification_id=v_id,
@@ -11420,23 +11798,66 @@ async def submit_verification(
                 )
                 db.add(new_doc)
             else:
-                existing_doc.secure_file_path = file_path
-                existing_doc.status = "PENDING"
+                path_changed = existing_doc.secure_file_path != file_path
+                if path_changed:
+                    existing_doc.secure_file_path = file_path
+                if replaced or path_changed or existing_doc.status not in {"PENDING", "VALID", "INVALID"}:
+                    existing_doc.status = "PENDING"
 
         if identity.document_url:
-            sync_doc_record(caterer_ver.id, "GOVERNMENT_ID", identity.document_url)
+            sync_doc_record(caterer_ver.id, "GOVERNMENT_ID", identity.document_url, "GOVERNMENT_ID" in replacement_types or bool(id_front and id_front.filename))
         if identity.document_back_url:
-            sync_doc_record(caterer_ver.id, "GOVERNMENT_ID_BACK", identity.document_back_url)
+            sync_doc_record(caterer_ver.id, "GOVERNMENT_ID_BACK", identity.document_back_url, "GOVERNMENT_ID_BACK" in replacement_types or bool(id_back and id_back.filename))
         if identity.selfie_url:
-            sync_doc_record(caterer_ver.id, "SELFIE", identity.selfie_url)
+            sync_doc_record(caterer_ver.id, "SELFIE", identity.selfie_url, "SELFIE" in replacement_types or bool(selfie and selfie.filename))
+        if identity.selfie_2_url:
+            sync_doc_record(caterer_ver.id, "SELFIE_2", identity.selfie_2_url, "SELFIE_2" in replacement_types)
+        if identity.selfie_3_url:
+            sync_doc_record(caterer_ver.id, "SELFIE_3", identity.selfie_3_url, "SELFIE_3" in replacement_types)
         if profile.permit_url:
-            sync_doc_record(caterer_ver.id, "BUSINESS_PERMIT", profile.permit_url)
+            sync_doc_record(caterer_ver.id, "BUSINESS_PERMIT", profile.permit_url, "BUSINESS_PERMIT" in replacement_types or bool(permit and permit.filename))
         if profile.dti_url:
-            sync_doc_record(caterer_ver.id, "DTI_REGISTRATION", profile.dti_url)
+            sync_doc_record(caterer_ver.id, "DTI_REGISTRATION", profile.dti_url, "DTI_REGISTRATION" in replacement_types or bool(dti and dti.filename))
         if profile.bir_url:
-            sync_doc_record(caterer_ver.id, "BIR_REGISTRATION", profile.bir_url)
+            sync_doc_record(caterer_ver.id, "BIR_REGISTRATION", profile.bir_url, "BIR_REGISTRATION" in replacement_types or bool(bir and bir.filename))
         if profile.mayors_permit_url:
-            sync_doc_record(caterer_ver.id, "MAYORS_PERMIT", profile.mayors_permit_url)
+            sync_doc_record(caterer_ver.id, "MAYORS_PERMIT", profile.mayors_permit_url, "MAYORS_PERMIT" in replacement_types or bool(mayors and mayors.filename))
+
+        current_document_paths = {
+            "GOVERNMENT_ID": (identity.document_url or profile.gov_id_url),
+            "GOVERNMENT_ID_BACK": identity.document_back_url,
+            "SELFIE": identity.selfie_url,
+            "SELFIE_2": identity.selfie_2_url,
+            "SELFIE_3": identity.selfie_3_url,
+            "BUSINESS_PERMIT": profile.permit_url,
+            "DTI_REGISTRATION": profile.dti_url,
+            "BIR_REGISTRATION": profile.bir_url,
+            "MAYORS_PERMIT": profile.mayors_permit_url,
+        }
+        latest_documents = {}
+        for document in db.query(models.VerificationDocument).filter_by(
+            verification_id=caterer_ver.id
+        ).order_by(models.VerificationDocument.id.desc()).all():
+            latest_documents.setdefault(document.document_type, document)
+        unresolved_revisions = False
+        for doc_type, file_path in current_document_paths.items():
+            document = latest_documents.get(doc_type)
+            if (
+                file_path
+                and document
+                and document.secure_file_path == file_path
+                and (document.status or "").upper() == "INVALID"
+            ):
+                unresolved_revisions = True
+                break
+        if unresolved_revisions:
+            caterer_ver.status = "RESUBMISSION_REQUIRED"
+            profile.verification_status = "Requires Revision"
+        else:
+            caterer_ver.status = "PENDING_REVIEW"
+            caterer_ver.rejection_reason = None
+            profile.verification_status = "Pending Review"
+            profile.admin_remarks = None
 
         db.commit()
         
@@ -11519,39 +11940,85 @@ async def submit_verification(
 
             background_tasks.add_task(run_caterer_kyc_bg, identity.document_url, identity.selfie_url, full_name, user.id, id_type)
 
-        # Phase 1: Notify Admins of Caterer Document Submission
-        from ..services.realtime import manager
-        from ..core.email_service import send_notification_email
-        from ..core.config import settings
-        import asyncio
-        
-        admins = db.query(models.User).filter(models.User.role == "admin").all()
-        for admin in admins:
-            new_notif = models.Notification(
-                user_id=admin.id,
-                title="KYC Submission",
-                message=f"Caterer {profile.business_name} has submitted verification documents.",
-                link=f"/admin/caterers?caterer_id={user.id}&action=verify",
-                type="info"
-            )
-            db.add(new_notif)
+        submitted_document_labels = {
+            "GOVERNMENT_ID": "Government ID (front)",
+            "GOVERNMENT_ID_BACK": "Government ID (back)",
+            "SELFIE": "Selfie photo",
+            "SELFIE_2": "Selfie / proof of life 2",
+            "SELFIE_3": "Selfie / proof of life 3",
+            "BUSINESS_PERMIT": "Business permit",
+            "DTI_REGISTRATION": "DTI registration",
+            "BIR_REGISTRATION": "BIR registration",
+            "MAYORS_PERMIT": "Mayor's permit",
+        }
+        submitted_document_types = []
+        if replacement_types:
+            submitted_document_types.extend(replacement_types)
+        else:
+            if id_front and id_front.filename:
+                submitted_document_types.append("GOVERNMENT_ID")
+            if id_back and id_back.filename:
+                submitted_document_types.append("GOVERNMENT_ID_BACK")
+            if selfie and selfie.filename:
+                submitted_document_types.append("SELFIE")
+            if permit and permit.filename:
+                submitted_document_types.append("BUSINESS_PERMIT")
+            if dti and dti.filename:
+                submitted_document_types.append("DTI_REGISTRATION")
+            if bir and bir.filename:
+                submitted_document_types.append("BIR_REGISTRATION")
+            if mayors and mayors.filename:
+                submitted_document_types.append("MAYORS_PERMIT")
+
+        if submitted_document_types:
+            from ..services.realtime import manager
+            from ..core.email_service import send_notification_email
+            from ..core.config import settings
+            import asyncio
+
+            admins = db.query(models.User).filter(models.User.role == "admin").all()
+            review_base_link = f"/admin/caterers?caterer_id={profile.id}&action=verify"
+            for admin in admins:
+                for document_type in submitted_document_types:
+                    label = submitted_document_labels[document_type]
+                    document_link = f"{review_base_link}&document_type={document_type}"
+                    db.add(models.Notification(
+                        user_id=admin.id,
+                        title=f"Verification file submitted: {label}",
+                        message=f"{profile.business_name} submitted {label} for review.",
+                        link=document_link,
+                        type="info",
+                    ))
             db.commit()
-            
-            # Send Email Alert to Admin
-            if admin.email:
-                send_notification_email(
-                    to_email=admin.email,
-                    subject=f"New KYC Submission: {profile.business_name}",
-                    message=f"Hello Admin,\n\nA caterer ({profile.business_name}) has just submitted their identity and business documents for KYC verification.\n\nPlease log in to the OccaServe Admin Panel to review their application and verify their account.",
-                    link=f"{settings.SITE_URL.rstrip('/')}/admin/caterers?caterer_id={user.id}&action=verify"
-                )
-            
-            count = db.query(models.Notification).filter(models.Notification.user_id == admin.id, models.Notification.is_read == False).count()
-            asyncio.create_task(manager.broadcast_to_user(admin.id, {
-                "type": "new_notification",
-                "message": f"KYC update from {profile.business_name}",
-                "count": count
-            }))
+
+            submitted_labels = [
+                submitted_document_labels[document_type]
+                for document_type in submitted_document_types
+            ]
+            for admin in admins:
+                if admin.email:
+                    send_notification_email(
+                        to_email=admin.email,
+                        subject=f"Verification files submitted: {profile.business_name}",
+                        message=(
+                            f"{profile.business_name} submitted these verification files for review: "
+                            f"{', '.join(submitted_labels)}."
+                        ),
+                        link=(
+                            f"{settings.SITE_URL.rstrip('/')}{review_base_link}"
+                            f"&document_type={submitted_document_types[0]}"
+                        ),
+                    )
+
+                count = db.query(models.Notification).filter(
+                    models.Notification.user_id == admin.id,
+                    models.Notification.is_read == False,
+                ).count()
+                asyncio.create_task(manager.broadcast_to_user(admin.id, {
+                    "type": "new_notification",
+                    "message": f"Verification file submitted by {profile.business_name}",
+                    "count": count,
+                }))
             
         return JSONResponse(content={"success": True, "message": "Verification submitted successfully."})
     except ValueError as e:
@@ -11905,7 +12372,8 @@ async def set_schedule_reminder(schedule_id: int, db: Session = Depends(database
         user_id=user.id,
         title=f'Reminder Set: {schedule.title}',
         message=f'You will be reminded about your internal schedule on {schedule.date}.',
-        type='reminder'
+        type='reminder',
+        link=f"/caterer/calendar?focus_schedule={schedule.id}",
     )
     db.add(new_notif)
     db.commit()

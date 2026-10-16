@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: initialView,
+            initialDate: window.CALENDAR_FOCUS_DATE || undefined,
             height: window.innerWidth <= 768 ? 550 : 750,
             expandRows: true,
             headerToolbar: {
@@ -277,6 +278,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             },
             eventDidMount: function (info) {
+                const focusScheduleId = new URLSearchParams(window.location.search).get('focus_schedule');
+                if (focusScheduleId && info.event.id === `internal-${focusScheduleId}`) {
+                    info.el.style.outline = '3px solid var(--primary-color, #800000)';
+                    info.el.style.outlineOffset = '2px';
+                    info.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    window.setTimeout(() => window.showInternalScheduleDetails(info.event), 150);
+                    const cleanUrl = new URL(window.location.href);
+                    cleanUrl.searchParams.delete('focus_schedule');
+                    window.history.replaceState({}, document.title, cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+                }
+
                 // Filter logic
                 let eType = (info.event.extendedProps.recordType || info.event.extendedProps.eventType || info.event.extendedProps.type || '').toLowerCase();
                 let fType = 'booking';

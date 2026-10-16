@@ -1962,6 +1962,7 @@
     window.CATERER_MIN_PAX = parseInt("{{ min_pax }}") || 20;
     window.MIN_BOOKING_DATE = "{{ min_booking_date.strftime('%Y-%m-%d') }}";
     window.MAX_BOOKING_DATE = "{{ max_booking_date.strftime('%Y-%m-%d') }}";
+    window.CALENDAR_FOCUS_DATE = {{ focus_schedule_date|tojson }};
 </script>
 <script src="{{ url_for('static', path='/js/caterer/calendar.js') }}?v={{ static_asset_version('js/caterer/calendar.js') }}"></script>
 <script>
@@ -2000,4 +2001,3 @@
     });
 </script>
 {% endblock %}
-

@@ -196,6 +196,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // Restore Section from Hash
     function handleHashRoute() {
         const currentHash = window.location.hash.substring(1);
+        const verificationTargets = {
+            verif_id_front: '#group_verif_id_front',
+            verif_id_back: '#group_verif_id_back',
+            verif_selfie: '#group_verif_selfie',
+            verif_permit: '#group_verif_permit',
+            verif_dti: '#group_verif_dti',
+            verif_bir: '#group_verif_bir'
+        };
         const deepLinks = {
             'business-name': { section: 'general', target: '#businessNameInput', focus: true },
             'business-type': { section: 'general', target: '#businessTypeInput', focus: true },
@@ -216,7 +224,10 @@ document.addEventListener('DOMContentLoaded', function () {
             'verification-id': { section: 'verification', target: '#group_verif_id_front' },
             'verification-status': { section: 'verification', target: '#verificationStatusSummary' }
         };
-        const deepLink = deepLinks[currentHash];
+        const verificationField = new URLSearchParams(window.location.search).get('verification_file');
+        const deepLink = verificationTargets[verificationField]
+            ? { section: 'verification', target: verificationTargets[verificationField] }
+            : deepLinks[currentHash];
         const sectionId = deepLink ? deepLink.section : currentHash;
         if (sectionId && SECTION_META[sectionId]) {
             const navItem = document.querySelector(`.snav-item[data-section="${sectionId}"]`);
@@ -729,23 +740,67 @@ async function resetBrandDefaults() {
     }
 }
 
-function enableFileReplacement(fieldId) {
+function enableFileReplacement(fieldId, documentType) {
     const card = document.getElementById(`card_${fieldId}`);
     const wrapper = document.getElementById(`wrapper_${fieldId}`);
     if (card) card.style.display = 'none';
     if (wrapper) wrapper.style.display = 'block';
     const input = document.getElementById(fieldId);
-    if (input) input.click();
+    if (input) {
+        input.dataset.replacementDocumentType = documentType || '';
+        input.click();
+    }
     window.updateVerificationSubmitState?.();
+}
+
+function viewGovernmentId(frontUrl, backUrl) {
+    if (frontUrl) window.open(frontUrl, '_blank', 'noopener');
+    if (backUrl) window.open(backUrl, '_blank', 'noopener');
+}
+
+function enableGovernmentIdReplacement() {
+    let requestedIdentityTypes = ['GOVERNMENT_ID', 'GOVERNMENT_ID_BACK', 'SELFIE'];
+    try {
+        requestedIdentityTypes = JSON.parse(document.body.dataset.identityReplacementTypes || '[]');
+    } catch (_) {}
+    ['verif_id_front', 'verif_id_back', 'verif_selfie'].forEach(fieldId => {
+        const docType = ({
+            verif_id_front: 'GOVERNMENT_ID',
+            verif_id_back: 'GOVERNMENT_ID_BACK',
+            verif_selfie: 'SELFIE'
+        })[fieldId];
+        const card = document.getElementById(`card_${fieldId}`);
+        const wrapper = document.getElementById(`wrapper_${fieldId}`);
+        const input = document.getElementById(fieldId);
+        if (card) card.style.display = 'none';
+        if (wrapper) wrapper.style.display = 'block';
+        if (input) input.dataset.replacementDocumentType = docType;
+    });
+    const selfieInput = document.getElementById('verif_selfie');
+    if (selfieInput) {
+        selfieInput.dataset.replacementDocumentTypes = JSON.stringify(
+            requestedIdentityTypes.filter(type => type.startsWith('SELFIE'))
+        );
+    }
+    document.getElementById('verif_id_front')?.click();
+    window.updateVerificationSubmitState?.();
+}
+
+function cancelGovernmentIdReplacement() {
+    ['verif_id_front', 'verif_id_back', 'verif_selfie'].forEach(cancelFileReplacement);
 }
 
 function cancelFileReplacement(fieldId) {
     const card = document.getElementById(`card_${fieldId}`);
     const wrapper = document.getElementById(`wrapper_${fieldId}`);
     const input = document.getElementById(fieldId);
-    if (input) input.value = '';
+    if (input) {
+        input.value = '';
+        delete input.dataset.replacementDocumentType;
+        delete input.dataset.replacementDocumentTypes;
+    }
     if (wrapper) wrapper.style.display = 'none';
-    if (card) card.style.display = 'flex';
+    if (card) card.style.display = fieldId === 'verif_id_back' ? 'none' : 'flex';
     window.updateVerificationSubmitState?.();
 }
 
@@ -784,21 +839,115 @@ function collectVerificationRequirements() {
     const missing = files.filter(([inputId, cardId]) =>
         !document.getElementById(inputId)?.files?.[0] && !document.getElementById(cardId)
     ).map(([, , label]) => label);
-    const expiryInput = document.getElementById('verif_permit_expiry');
-    if (!expiryInput?.value) {
-        missing.push('Permit expiration date');
-    } else {
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        if (expiryInput.value < today) missing.push('Unexpired business permit');
-    }
     if (!idType) missing.unshift('Government ID type');
     else if (idType === 'Other' && !idTypeOther) missing.unshift('Name of ID');
-    return { resolvedIdType, missing, expiryInput, idType, idTypeOther, files };
+    return { resolvedIdType, missing, idType, idTypeOther, files };
+}
+
+function appendSelectedVerificationUploads(formData) {
+    const params = new URLSearchParams(window.location.search);
+    const fieldByType = {
+        GOVERNMENT_ID: 'verif_id_front',
+        GOVERNMENT_ID_BACK: 'verif_id_back',
+        SELFIE: 'verif_selfie',
+        SELFIE_2: 'verif_selfie',
+        SELFIE_3: 'verif_selfie',
+        BUSINESS_PERMIT: 'verif_permit',
+        DTI_REGISTRATION: 'verif_dti',
+        BIR_REGISTRATION: 'verif_bir',
+        MAYORS_PERMIT: 'verif_permit'
+    };
+    const uploadByType = {
+        GOVERNMENT_ID: 'id_front',
+        GOVERNMENT_ID_BACK: 'id_back',
+        SELFIE: 'selfie',
+        SELFIE_2: 'selfie',
+        SELFIE_3: 'selfie',
+        BUSINESS_PERMIT: 'permit',
+        DTI_REGISTRATION: 'dti',
+        BIR_REGISTRATION: 'bir',
+        MAYORS_PERMIT: 'mayors'
+    };
+    const uploadByField = {
+        verif_id_front: 'id_front',
+        verif_id_back: 'id_back',
+        verif_selfie: 'selfie',
+        verif_permit: 'permit',
+        verif_dti: 'dti',
+        verif_bir: 'bir',
+        verif_mayors: 'mayors'
+    };
+    const requestedType = params.get('verification_type');
+    const requestedField = params.get('verification_file');
+    const replacementTypes = [];
+    document.querySelectorAll('#verificationFormsContainer input[type="file"]').forEach(input => {
+        const file = input.files?.[0];
+        if (!file) return;
+        const fieldId = input.id;
+        const replaceButton = Array.from(
+            document.querySelectorAll(`#group_${fieldId} [data-verification-replace]`)
+        ).find(button => button.dataset.documentType);
+        const documentType = input.dataset.replacementDocumentType
+            || replaceButton?.dataset.documentType
+            || (['GOVERNMENT_ID', 'GOVERNMENT_ID_BACK'].includes(requestedType)
+                ? ({ verif_id_front: 'GOVERNMENT_ID', verif_id_back: 'GOVERNMENT_ID_BACK' }[fieldId] || null)
+                : null)
+            || (requestedField === fieldId && fieldByType[requestedType] === fieldId ? requestedType : null);
+        const uploadName = documentType && uploadByType[documentType]
+            ? uploadByType[documentType]
+            : uploadByField[fieldId];
+        if (!uploadName) return;
+        formData.append(uploadName, file);
+        if (documentType && fieldByType[documentType] === fieldId) {
+            replacementTypes.push(documentType);
+        }
+        if (fieldId === 'verif_selfie' && input.dataset.replacementDocumentTypes) {
+            try {
+                replacementTypes.push(...JSON.parse(input.dataset.replacementDocumentTypes));
+            } catch (_) {}
+        }
+    });
+    const uniqueTypes = [...new Set(replacementTypes)];
+    formData.append('replace_document_types', JSON.stringify(uniqueTypes));
+    return uniqueTypes;
+}
+
+function markReplacementSubmitted(documentTypes) {
+    if (!documentTypes?.length) return;
+    delete document.body.dataset.identityReplacementTypes;
+    const fieldsByType = {
+        GOVERNMENT_ID: 'verif_id_front',
+        GOVERNMENT_ID_BACK: 'verif_id_back',
+        SELFIE: 'verif_selfie',
+        SELFIE_2: 'verif_selfie',
+        SELFIE_3: 'verif_selfie',
+        BUSINESS_PERMIT: 'verif_permit',
+        DTI_REGISTRATION: 'verif_dti',
+        BIR_REGISTRATION: 'verif_bir',
+        MAYORS_PERMIT: 'verif_permit'
+    };
+    documentTypes.forEach(documentType => {
+        const fieldId = fieldsByType[documentType];
+        const group = fieldId && document.getElementById(`group_${fieldId}`);
+        group?.querySelectorAll('[data-verification-replace]').forEach(button => {
+            if (button.dataset.documentType === documentType) {
+                button.classList.remove('is-replacement-requested');
+            }
+        });
+        const input = document.getElementById(fieldId);
+        if (input?.dataset.replacementDocumentType === documentType) {
+            delete input.dataset.replacementDocumentType;
+        }
+        const notice = document.getElementById(`verification-feedback-${documentType.toLowerCase()}`);
+        if (notice) {
+            notice.classList.remove('is-approved', 'is-revision');
+            notice.textContent = 'Replacement submitted. This file is now waiting for admin review.';
+        }
+    });
 }
 
 function getVerificationRequirements(showWarning = true) {
-    const { resolvedIdType, missing, expiryInput, idType, idTypeOther, files } = collectVerificationRequirements();
+    const { resolvedIdType, missing, idType, idTypeOther, files } = collectVerificationRequirements();
     if (missing.length) {
         if (!showWarning) return null;
         const message = `Please complete: ${missing.join(', ')}.`;
@@ -808,8 +957,6 @@ function getVerificationRequirements(showWarning = true) {
             document.getElementById('verif_id_type')?.focus();
         } else if (idType === 'Other' && !idTypeOther) {
             document.getElementById('verif_id_type_other')?.focus();
-        } else if (missing.includes('Permit expiration date') || missing.includes('Unexpired business permit')) {
-            expiryInput?.focus();
         }
         const firstMissing = files.find(([inputId, cardId]) =>
             !document.getElementById(inputId)?.files?.[0] && !document.getElementById(cardId)
@@ -829,9 +976,14 @@ window.updateVerificationSubmitState = function() {
         return;
     }
     const { missing } = collectVerificationRequirements();
-    button.disabled = missing.length > 0;
+    const idReplacementStarted = Boolean(document.getElementById('verif_id_front')?.dataset.replacementDocumentType);
+    const idReplacementComplete = !idReplacementStarted || ['verif_id_front', 'verif_id_back', 'verif_selfie']
+        .every(fieldId => Boolean(document.getElementById(fieldId)?.files?.[0]));
+    button.disabled = missing.length > 0 || !idReplacementComplete;
     if (hint) {
-        hint.textContent = missing.length
+        hint.textContent = !idReplacementComplete
+            ? 'Select replacement files for the ID front, ID back, and selfie.'
+            : missing.length
             ? `Still needed: ${missing.join(', ')}.`
             : 'All required documents are ready. You can submit your application.';
     }
@@ -842,37 +994,9 @@ async function submitVerification() {
     const btn = document.getElementById('btnSubmitVerification');
     const resolvedIdType = getVerificationRequirements();
     if (!resolvedIdType) return;
-    const idFrontInput = document.getElementById('verif_id_front');
-    const permitInput = document.getElementById('verif_permit');
-    const selfieInput = document.getElementById('verif_selfie');
-
-    const hasExistingId = !!document.getElementById('card_verif_id_front');
-    const hasExistingPermit = !!document.getElementById('card_verif_permit');
-    const hasExistingSelfie = !!document.getElementById('card_verif_selfie');
-
-    const idFront = idFrontInput?.files?.[0];
-    const permit = permitInput?.files?.[0];
-    const selfie = selfieInput?.files?.[0];
-
     const formData = new FormData();
     formData.append('id_type', resolvedIdType);
-    if (idFront) formData.append('id_front', idFront);
-    
-    const idBack = document.getElementById('verif_id_back')?.files?.[0];
-    if (idBack) formData.append('id_back', idBack);
-    
-    if (selfie) formData.append('selfie', selfie);
-    
-    if (permit) formData.append('permit', permit);
-    const permitExpiryVal = document.getElementById('verif_permit_expiry')?.value;
-    if (permitExpiryVal) formData.append('permit_expiry', permitExpiryVal);
-
-    const dti = document.getElementById('verif_dti')?.files?.[0];
-    if (dti) formData.append('dti', dti);
-    const bir = document.getElementById('verif_bir')?.files?.[0];
-    if (bir) formData.append('bir', bir);
-    const mayors = document.getElementById('verif_mayors')?.files?.[0];
-    if (mayors) formData.append('mayors', mayors);
+    const replacementDocumentTypes = appendSelectedVerificationUploads(formData);
 
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
@@ -882,6 +1006,7 @@ async function submitVerification() {
         const response = await fetch('/caterer/verification/submit', { method: 'POST', body: formData });
         const result = await response.json();
         if (result.success) {
+            markReplacementSubmitted(replacementDocumentTypes);
             if (window.showToast) {
                 window.showToast('Verification documents submitted!', 'success');
             } else {
@@ -1159,49 +1284,13 @@ window.handleDropzoneFileChange = function(input, fieldId) {
     window.updateVerificationSubmitState?.();
 };
 
-window.checkPermitExpiryWarning = function(dateStr) {
-    const warningEl = document.getElementById('permitExpiredWarning');
-    if (warningEl && !dateStr) {
-        warningEl.style.display = 'none';
-    } else if (warningEl) {
-        const expiryDate = new Date(dateStr + 'T23:59:59');
-        const now = new Date();
-        warningEl.style.display = expiryDate < now ? 'flex' : 'none';
-    }
-    triggerSettingsDirty();
-    window.updateVerificationSubmitState?.();
-};
-
 window.submitVerificationDocs = async function(btn) {
     if (!btn) return;
     const resolvedIdType = getVerificationRequirements();
     if (!resolvedIdType) return;
-    const idFront = document.getElementById('verif_id_front')?.files?.[0];
-    const selfie = document.getElementById('verif_selfie')?.files?.[0];
-    const permit = document.getElementById('verif_permit')?.files?.[0];
-
-    const hasExistingId = !!document.getElementById('card_verif_id_front');
-    const hasExistingPermit = !!document.getElementById('card_verif_permit');
-
     const formData = new FormData();
     formData.append('id_type', resolvedIdType);
-    if (idFront) formData.append('id_front', idFront);
-    
-    const idBack = document.getElementById('verif_id_back')?.files?.[0];
-    if (idBack) formData.append('id_back', idBack);
-    
-    if (selfie) formData.append('selfie', selfie);
-    
-    if (permit) formData.append('permit', permit);
-    const permitExpiryVal = document.getElementById('verif_permit_expiry')?.value;
-    if (permitExpiryVal) formData.append('permit_expiry', permitExpiryVal);
-
-    const dti = document.getElementById('verif_dti')?.files?.[0];
-    if (dti) formData.append('dti', dti);
-    const bir = document.getElementById('verif_bir')?.files?.[0];
-    if (bir) formData.append('bir', bir);
-    const mayors = document.getElementById('verif_mayors')?.files?.[0];
-    if (mayors) formData.append('mayors', mayors);
+    const replacementDocumentTypes = appendSelectedVerificationUploads(formData);
 
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
@@ -1211,6 +1300,7 @@ window.submitVerificationDocs = async function(btn) {
         const response = await fetch('/caterer/verification/submit', { method: 'POST', body: formData });
         const result = await response.json();
         if (result.success) {
+            markReplacementSubmitted(replacementDocumentTypes);
             if (window.showToast) {
                 window.showToast('Verification documents submitted!', 'success');
             } else {
@@ -1572,6 +1662,237 @@ window.updateAvailabilitySummary = function() {
     }
 };
 
+function renderVerificationFileFeedback(feedbackByType, serverGovernmentIdLocked = false, serverGovernmentIdTypeLocked = false, serverGovernmentIdNotice = '') {
+    if (!feedbackByType) {
+        const dataElement = document.getElementById('verificationFileFeedbackData');
+        if (!dataElement) return;
+        try {
+            feedbackByType = JSON.parse(dataElement.textContent || '{}');
+        } catch (error) {
+            console.error('Could not read verification file feedback.', error);
+            return;
+        }
+    }
+    const fieldsByType = {
+        GOVERNMENT_ID: 'verif_id_front',
+        GOVERNMENT_ID_BACK: 'verif_id_back',
+        SELFIE: 'verif_selfie',
+        SELFIE_2: 'verif_selfie',
+        SELFIE_3: 'verif_selfie',
+        BUSINESS_PERMIT: 'verif_permit',
+        DTI_REGISTRATION: 'verif_dti',
+        BIR_REGISTRATION: 'verif_bir',
+        MAYORS_PERMIT: 'verif_permit'
+    };
+    const labelsByType = {
+        GOVERNMENT_ID: 'Government ID (front)',
+        GOVERNMENT_ID_BACK: 'Government ID (back)',
+        SELFIE: 'Selfie photo',
+        SELFIE_2: 'Selfie / proof of life 2',
+        SELFIE_3: 'Selfie / proof of life 3',
+        BUSINESS_PERMIT: 'Business permit',
+        DTI_REGISTRATION: 'DTI registration',
+        BIR_REGISTRATION: 'BIR registration',
+        MAYORS_PERMIT: "Mayor's permit"
+    };
+    const identityBundleTypes = ['GOVERNMENT_ID', 'GOVERNMENT_ID_BACK', 'SELFIE', 'SELFIE_2', 'SELFIE_3'];
+    const requiredIdentityTypes = ['GOVERNMENT_ID', 'GOVERNMENT_ID_BACK', 'SELFIE'];
+    const governmentIdLocked = serverGovernmentIdLocked || requiredIdentityTypes.every(documentType =>
+        String(feedbackByType?.[documentType]?.status || '').toUpperCase() === 'VALID'
+    ) && identityBundleTypes.filter(type => ['SELFIE_2', 'SELFIE_3'].includes(type) && feedbackByType?.[type])
+        .every(type => String(feedbackByType[type].status || '').toUpperCase() === 'VALID');
+    applyGovernmentIdLock(
+        governmentIdLocked,
+        serverGovernmentIdTypeLocked || governmentIdLocked,
+        serverGovernmentIdNotice
+    );
+
+    const requestedTypesByField = {};
+    Object.values(fieldsByType).forEach(fieldId => {
+        const group = document.getElementById(`group_${fieldId}`);
+        if (!group) return;
+        group.querySelectorAll('.verification-file-feedback').forEach(notice => notice.remove());
+        group.querySelectorAll('.verification-replace-generated').forEach(button => button.remove());
+        group.querySelectorAll('[data-verification-replace]').forEach(button => {
+            button.classList.remove('is-replacement-requested');
+            delete button.dataset.documentType;
+        });
+    });
+    Object.entries(feedbackByType || {}).forEach(([documentType, feedback]) => {
+        if (governmentIdLocked && identityBundleTypes.includes(documentType)) return;
+        if (identityBundleTypes.includes(documentType)) {
+            if (String(feedback.status || '').toUpperCase() === 'INVALID') {
+                if (!requestedTypesByField.verif_id_front) requestedTypesByField.verif_id_front = [];
+                requestedTypesByField.verif_id_front.push(documentType);
+            }
+            return;
+        }
+        const fieldId = fieldsByType[documentType];
+        const group = fieldId && document.getElementById(`group_${fieldId}`);
+        if (!group) return;
+
+        const status = String(feedback.status || '').toUpperCase();
+        if (status === 'INVALID') {
+            if (!requestedTypesByField[fieldId]) requestedTypesByField[fieldId] = [];
+            requestedTypesByField[fieldId].push(documentType);
+        }
+
+        const notice = document.createElement('div');
+        notice.id = `verification-feedback-${documentType.toLowerCase()}`;
+        notice.className = 'verification-file-feedback';
+        notice.setAttribute('role', 'status');
+        notice.setAttribute('aria-live', 'polite');
+        if (status === 'VALID') {
+            notice.classList.add('is-approved');
+            notice.textContent = `Approved: ${feedback.message}`;
+        } else if (status === 'INVALID') {
+            notice.classList.add('is-revision');
+            notice.textContent = `Action required: ${feedback.message}`;
+        } else {
+            notice.textContent = feedback.message || 'This file is pending review.';
+        }
+        group.appendChild(notice);
+    });
+
+    let hasRequestedReplacement = false;
+    Object.entries(requestedTypesByField).forEach(([fieldId, documentTypes]) => {
+        const group = document.getElementById(`group_${fieldId}`);
+        const templateButton = group?.querySelector('[data-verification-replace]');
+        if (!group || !templateButton) return;
+        hasRequestedReplacement = true;
+        const isGovernmentIdPair = fieldId === 'verif_id_front'
+            && documentTypes.some(type => identityBundleTypes.includes(type));
+        const buttonTypes = isGovernmentIdPair ? ['GOVERNMENT_ID'] : documentTypes;
+        if (isGovernmentIdPair) {
+            document.body.dataset.identityReplacementTypes = JSON.stringify(documentTypes);
+        }
+        buttonTypes.forEach((documentType, index) => {
+            const button = index === 0 ? templateButton : templateButton.cloneNode(true);
+            if (index > 0) {
+                button.classList.add('verification-replace-generated');
+                templateButton.insertAdjacentElement('afterend', button);
+            }
+            button.dataset.documentType = documentType;
+            button.innerHTML = isGovernmentIdPair
+                ? '<i class="fas fa-sync-alt"></i> Replace ID and selfie'
+                : '<i class="fas fa-sync-alt"></i> Replace';
+            button.onclick = isGovernmentIdPair
+                ? enableGovernmentIdReplacement
+                : () => enableFileReplacement(fieldId, documentType);
+            button.setAttribute('aria-label', isGovernmentIdPair
+                ? 'Replace the Government ID front, back, and selfie'
+                : `Replace requested file: ${labelsByType[documentType] || documentType}`);
+            button.classList.add('is-replacement-requested');
+        });
+    });
+    document.body.dataset.verificationReplacementRequested = String(hasRequestedReplacement);
+
+    const params = new URLSearchParams(window.location.search);
+    const fieldId = params.get('verification_file');
+    if (Object.values(fieldsByType).includes(fieldId)) {
+        const target = document.getElementById(`group_${fieldId}`);
+        if (target) target.classList.add('verification-file-feedback-is-target');
+    }
+}
+
+function applyGovernmentIdLock(locked, typeLocked = locked, noticeText = '') {
+    const idType = document.getElementById('verif_id_type');
+    const otherIdType = document.getElementById('verif_id_type_other');
+    if (idType) {
+        idType.disabled = typeLocked;
+        idType.setAttribute('aria-disabled', String(typeLocked));
+    }
+    if (otherIdType) {
+        otherIdType.disabled = typeLocked;
+        otherIdType.setAttribute('aria-disabled', String(typeLocked));
+    }
+
+    const idTypeGroup = document.getElementById('verif_id_type')?.closest('.form-group');
+    let lockNotice = document.getElementById('governmentIdApprovalLockNotice');
+    if (typeLocked && !lockNotice && idTypeGroup) {
+        lockNotice = document.createElement('small');
+        lockNotice.id = 'governmentIdApprovalLockNotice';
+        lockNotice.className = `verification-file-feedback${locked ? ' is-approved' : ''}`;
+        lockNotice.textContent = noticeText || (locked
+            ? 'ID and selfie approved. ID type is locked.'
+            : 'ID and selfie under review. ID type is locked.');
+        idTypeGroup.appendChild(lockNotice);
+    } else if (lockNotice) {
+        lockNotice.classList.toggle('is-approved', locked);
+        lockNotice.textContent = noticeText || (locked
+            ? 'ID and selfie approved. ID type is locked.'
+            : 'ID and selfie under review. ID type is locked.');
+    }
+    if (!typeLocked) {
+        lockNotice?.remove();
+    }
+
+    ['verif_id_front', 'verif_id_back', 'verif_selfie'].forEach(fieldId => {
+        const group = document.getElementById(`group_${fieldId}`);
+        const input = document.getElementById(fieldId);
+        const card = document.getElementById(`card_${fieldId}`);
+        const wrapper = document.getElementById(`wrapper_${fieldId}`);
+        if (input) {
+            input.disabled = locked;
+            if (locked) {
+                input.value = '';
+                delete input.dataset.replacementDocumentType;
+            }
+        }
+        if (locked) {
+            group?.querySelectorAll('[data-verification-replace]').forEach(button => {
+                button.classList.remove('is-replacement-requested');
+                delete button.dataset.documentType;
+            });
+            if (card) card.style.display = fieldId === 'verif_id_back' ? 'none' : 'flex';
+            if (wrapper) wrapper.style.display = 'none';
+        }
+    });
+}
+
+async function refreshCatererVerificationStatus() {
+    try {
+        const response = await fetch('/caterer/verification/status', {
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json' }
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || `Request failed (${response.status}).`);
+        }
+        renderVerificationFileFeedback(
+            result.files || {},
+            result.government_id_locked === true,
+            result.government_id_type_locked === true,
+            result.government_id_type_notice || ''
+        );
+        const nextStep = document.querySelector('#section-verification .verification-status-guidance');
+        if (nextStep) {
+            nextStep.replaceChildren();
+            const label = document.createElement('strong');
+            label.textContent = 'Next step:';
+            nextStep.append(label, document.createTextNode(` ${result.next_step || ''}`));
+        }
+        const statusBadge = document.querySelector('#verificationStatusSummary .verification-status-badge');
+        if (statusBadge) {
+            const status = result.status || 'Not Submitted';
+            const iconByStatus = {
+                'Verified': 'fa-check-circle',
+                'Pending Review': 'fa-hourglass-half',
+                'Suspended': 'fa-ban',
+                'Not Submitted': 'fa-file-circle-exclamation'
+            };
+            statusBadge.className = `verification-status-badge status-${status.toLowerCase().replaceAll(' ', '-')}`;
+            statusBadge.replaceChildren();
+            const icon = document.createElement('i');
+            icon.className = `fas ${iconByStatus[status] || 'fa-circle-exclamation'}`;
+            statusBadge.append(icon, document.createTextNode(` ${status}`));
+        }
+    } catch (error) {
+        console.error('Could not refresh verification status.', error);
+    }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initBlockedDates();
@@ -1583,12 +1904,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateDescCharCounter(descEl);
     }
 
-    // Check initial permit expiry
-    const expiryInput = document.getElementById('verif_permit_expiry');
-    if (expiryInput && expiryInput.value) {
-        checkPermitExpiryWarning(expiryInput.value);
-    }
-    ['verif_id_type', 'verif_id_type_other', 'verif_id_front', 'verif_id_back', 'verif_selfie', 'verif_permit', 'verif_dti', 'verif_bir', 'verif_mayors', 'verif_permit_expiry']
+    ['verif_id_type', 'verif_id_type_other', 'verif_id_front', 'verif_id_back', 'verif_selfie', 'verif_permit', 'verif_dti', 'verif_bir', 'verif_mayors']
         .forEach(function(id) {
             const input = document.getElementById(id);
             if (input) {
@@ -1597,6 +1913,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     window.updateVerificationSubmitState?.();
+    renderVerificationFileFeedback();
+    const verificationForms = document.getElementById('verificationFormsContainer');
+    verificationForms?.addEventListener('change', event => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement) || input.type !== 'file' || !input.files?.length) return;
+        const group = input.closest('.form-group');
+        group?.querySelectorAll('.verification-file-feedback').forEach(notice => {
+            notice.classList.remove('is-approved', 'is-revision');
+            notice.textContent = 'Replacement selected. Submit the file(s) to send them for review.';
+        });
+    });
+    window.setInterval(() => {
+        if (!document.hidden) refreshCatererVerificationStatus();
+    }, 10000);
 
     // Attach dirty listeners to entire form
     const form = document.getElementById('catererSettingsForm');

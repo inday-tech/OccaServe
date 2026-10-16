@@ -183,15 +183,74 @@ async def api_review_verification(
     )
     db.add(audit_log)
     
-    # Send notification to caterer
-    notif = models.Notification(
-        user_id=caterer.user_id,
-        title="Verification Status Updated",
-        message=f"Your caterer verification has been {audit_action.lower()}.",
-        type="info" if action == "resubmit" else ("success" if action == "approve" else "danger"),
-        link="/caterer/verification"
-    )
-    db.add(notif)
+    if action == "resubmit":
+        identity = db.query(models.IdentityVerification).filter(
+            models.IdentityVerification.user_id == caterer.user_id,
+            models.IdentityVerification.verification_type != "business_permit",
+        ).order_by(
+            models.IdentityVerification.created_at.desc(),
+            models.IdentityVerification.id.desc(),
+        ).first()
+        requested_files = [
+            ("GOVERNMENT_ID", "Government ID (front)", (identity.document_url if identity else None) or caterer.gov_id_url, "verif_id_front"),
+            ("GOVERNMENT_ID_BACK", "Government ID (back)", identity.document_back_url if identity else None, "verif_id_back"),
+            ("SELFIE", "Selfie photo", identity.selfie_url if identity else None, "verif_selfie"),
+            ("SELFIE_2", "Selfie / proof of life 2", identity.selfie_2_url if identity else None, "verif_selfie"),
+            ("SELFIE_3", "Selfie / proof of life 3", identity.selfie_3_url if identity else None, "verif_selfie"),
+            ("BUSINESS_PERMIT", "Business permit", caterer.permit_url, "verif_permit"),
+            ("DTI_REGISTRATION", "DTI registration", caterer.dti_url, "verif_dti"),
+            ("BIR_REGISTRATION", "BIR registration", caterer.bir_url, "verif_bir"),
+            ("MAYORS_PERMIT", "Mayor's permit", caterer.mayors_permit_url, "verif_permit"),
+        ]
+        notification_count = 0
+        for document_type, label, file_path, field_id in requested_files:
+            if not file_path:
+                continue
+            document = db.query(models.VerificationDocument).filter_by(
+                verification_id=verification.id,
+                document_type=document_type,
+            ).order_by(models.VerificationDocument.id.desc()).first()
+            if not document:
+                document = models.VerificationDocument(
+                    verification_id=verification.id,
+                    document_type=document_type,
+                    secure_file_path=file_path,
+                    status="INVALID",
+                )
+                db.add(document)
+            else:
+                document.secure_file_path = file_path
+                document.status = "INVALID"
+            db.add(models.VerificationAuditLog(
+                verification_id=verification.id,
+                admin_id=admin.id,
+                action=f"Requested revision for document: {document_type}",
+                reason=reason or None,
+            ))
+            db.add(models.Notification(
+                user_id=caterer.user_id,
+                title="Verification file needs an update",
+                message=f"{label} needs to be replaced." + (f" Admin note: {reason}" if reason else ""),
+                type="warning",
+                link=f"/caterer/profile?verification_file={field_id}&verification_type={document_type}#verification-file",
+            ))
+            notification_count += 1
+        if notification_count == 0:
+            db.add(models.Notification(
+                user_id=caterer.user_id,
+                title="Verification resubmission required",
+                message=f"Your caterer verification needs to be submitted again." + (f" Admin note: {reason}" if reason else ""),
+                type="warning",
+                link="/caterer/profile#verification",
+            ))
+    else:
+        db.add(models.Notification(
+            user_id=caterer.user_id,
+            title="Verification Status Updated",
+            message=f"Your caterer verification has been {audit_action.lower()}.",
+            type="success" if action == "approve" else "danger",
+            link="/caterer/profile#verification",
+        ))
     
     db.commit()
     
@@ -227,7 +286,7 @@ async def cron_check_permit_expiration(db: Session = Depends(database.get_db)):
                 title="Business Permit Expired",
                 message="Your business permit has expired. Your account is now restricted. Please upload a new permit to continue offering services.",
                 type="danger",
-                link="/caterer/verification"
+                link="/caterer/profile#verification"
             )
             db.add(notif)
             
@@ -236,4 +295,3 @@ async def cron_check_permit_expiration(db: Session = Depends(database.get_db)):
     db.commit()
     
     return {"success": True, "message": f"Checked permit expirations. {count} caterers expired."}
-
