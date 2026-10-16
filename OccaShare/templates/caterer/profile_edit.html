@@ -1526,20 +1526,18 @@ window.gm_authFailure = function() {
                         </div>
                         <div>
                             {% set v_status = verification_status_display %}
-                            {% if v_status == 'Verified' %}
-                                <span class="status-badge-saved" style="font-size: 0.88rem; padding: 6px 14px;">
-                                    <i class="fas fa-check-circle"></i> Verified
-                                </span>
-                            {% elif v_status == 'Pending Review' %}
-                                <span style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; font-weight: 700; padding: 6px 14px; border-radius: 99px; background: #fef9c3; color: #a16207; border: 1px solid #fde047;">
-                                    <i class="fas fa-hourglass-half"></i> Pending Review
-                                </span>
-                            {% else %}
-                                <span style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.88rem; font-weight: 700; padding: 6px 14px; border-radius: 99px; background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;">
-                                    <i class="fas fa-circle-exclamation"></i> Action Required
-                                </span>
-                            {% endif %}
+                            <span class="verification-status-badge status-{{ v_status|lower|replace(' ', '-') }}">
+                                {% if v_status == 'Verified' %}<i class="fas fa-check-circle"></i>
+                                {% elif v_status == 'Pending Review' %}<i class="fas fa-hourglass-half"></i>
+                                {% elif v_status == 'Suspended' %}<i class="fas fa-ban"></i>
+                                {% elif v_status == 'Not Submitted' %}<i class="fas fa-file-circle-exclamation"></i>
+                                {% else %}<i class="fas fa-circle-exclamation"></i>{% endif %}
+                                {{ v_status }}
+                            </span>
                         </div>
+                    </div>
+                    <div class="verification-status-guidance" role="status" aria-live="polite">
+                        <strong>Next step:</strong> {{ verification_next_step }}
                     </div>
 
                     <!-- Private Document Notice -->
@@ -1549,9 +1547,9 @@ window.gm_authFailure = function() {
                     </div>
                     <p class="verification-file-note">Accepted formats: PNG, JPG, or JPEG. Maximum size: {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }} MB per image.</p>
 
-                    {% if profile.admin_remarks %}
+                    {% if verification_admin_remarks and v_status in ['Action Required', 'Rejected', 'Suspended'] %}
                     <div style="margin-bottom: 1.5rem; padding: 0.85rem 1.25rem; background: #fee2e2; border-left: 4px solid #ef4444; border-radius: 8px; font-size: 0.85rem; color: #7f1d1d;">
-                        <strong><i class="fas fa-circle-exclamation"></i> Admin Remarks:</strong> {{ profile.admin_remarks }}
+                        <strong><i class="fas fa-circle-exclamation"></i> Admin Remarks:</strong> {{ verification_admin_remarks }}
                     </div>
                     {% endif %}
 
@@ -1903,10 +1901,13 @@ window.gm_authFailure = function() {
                         </div>
                         
                         <div class="verification-submit-row" style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
-                            <button type="button" class="btn-primary verification-submit-button" id="btnSubmitVerification" onclick="submitVerification()" style="padding: 10px 24px; font-size: 0.92rem; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; color: #ffffff; cursor: pointer;">
+                            <button type="button" class="btn-primary verification-submit-button" id="btnSubmitVerification" onclick="submitVerification()" data-submission-locked="{{ 'false' if verification_can_submit else 'true' }}" aria-describedby="verificationSubmitHint" {% if not verification_can_submit %}disabled{% endif %} style="padding: 10px 24px; font-size: 0.92rem; font-weight: 700; border-radius: 8px; display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); border: none; color: #ffffff; cursor: pointer;">
                                 <i class="fas fa-paper-plane"></i> <span class="submit-label-full">Submit verification documents</span><span class="submit-label-mobile">Submit documents</span>
                             </button>
                         </div>
+                        <p class="verification-submit-hint" id="verificationSubmitHint" aria-live="polite">
+                            {% if not verification_can_submit %}{{ verification_next_step }}{% else %}Complete all required fields and documents to enable submission.{% endif %}
+                        </p>
                     </div>
             </div>
             <!-- End Section: Verification -->

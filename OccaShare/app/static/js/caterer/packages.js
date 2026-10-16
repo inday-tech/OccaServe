@@ -49,7 +49,7 @@ function extractErrorMessage(data, fallback = 'Something went wrong. Please try 
         const msgs = detail
             .map(d => (typeof d === 'string' ? d : (d && d.msg) || ''))
             .filter(Boolean);
-        if (msgs.length) return msgs.join('\n');
+        if (msgs.length) return msgs.join('\r\n');
     }
     if (detail && typeof detail === 'object' && typeof detail.msg === 'string') return detail.msg;
 
@@ -166,33 +166,9 @@ window.togglePricingMode = function (mode) {
     const pricingModeSelect = document.getElementById('pkgPricingModeSelect');
     const previousMode = pricingModeSelect?.dataset.previousMode;
 
-    // 1. Category Field: Only visible for Fixed packages, hidden for Customizable
-    const categoryGroup = document.getElementById('pkgCategoryGroup');
-    const serviceTypeSelect = document.getElementById('pkgServiceTypeSelect');
     const pricingModeGroup = document.getElementById('pkgPricingModeGroup');
-
-    if (categoryGroup) {
-        categoryGroup.style.display = isCustomizable ? 'none' : 'block';
-    }
-    const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
-    const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
-    if (otherCategoryGroup) {
-        const showOtherCategory = !isCustomizable && serviceTypeSelect?.value === 'Other';
-        otherCategoryGroup.style.display = showOtherCategory ? 'block' : 'none';
-        if (otherCategoryInput) otherCategoryInput.required = showOtherCategory;
-    }
-    if (serviceTypeSelect) {
-        serviceTypeSelect.required = !isCustomizable;
-        if (isCustomizable && (!serviceTypeSelect.value || serviceTypeSelect.value === '')) {
-            serviceTypeSelect.value = 'General';
-        }
-    }
     if (pricingModeGroup) {
-        if (isCustomizable) {
-            pricingModeGroup.classList.add('form-grid-full');
-        } else {
-            pricingModeGroup.classList.remove('form-grid-full');
-        }
+        pricingModeGroup.classList.remove('form-grid-full');
     }
 
     // 2. Package Pricing Details (Fixed package price, Per-pax rate, or Customizable starting price)
@@ -218,7 +194,7 @@ window.togglePricingMode = function (mode) {
     }
 
     if (isCustomizable) {
-        if (pricingLabelText) pricingLabelText.textContent = 'Starting price per guest (₱) *';
+        if (pricingLabelText) pricingLabelText.textContent = 'Starting price per guest (₱)';
         if (pricingUnitHint) pricingUnitHint.textContent = 'Customers can choose options at this rate per guest.';
         if (priceInput) {
             priceInput.readOnly = false;
@@ -230,7 +206,7 @@ window.togglePricingMode = function (mode) {
             }
         }
     } else if (mode === 'fixed') {
-        if (pricingLabelText) pricingLabelText.textContent = 'Package price (base total) *';
+        if (pricingLabelText) pricingLabelText.textContent = 'Package price (base total)';
         if (pricingUnitHint) pricingUnitHint.textContent = 'Included guests × Business Settings rate per guest.';
         if (priceInput) {
             priceInput.readOnly = true;
@@ -238,7 +214,7 @@ window.togglePricingMode = function (mode) {
             priceInput.required = true;
         }
     } else {
-        if (pricingLabelText) pricingLabelText.textContent = 'Price per guest (₱) *';
+        if (pricingLabelText) pricingLabelText.textContent = 'Price per guest (₱)';
         if (pricingUnitHint) pricingUnitHint.textContent = 'Charged for each guest included in this package.';
         if (priceInput) {
             priceInput.readOnly = false;
@@ -328,10 +304,6 @@ window.openAddPackageModal = async function () {
     if (form.additional_guest_price) form.additional_guest_price.value = String(defaultExcessGuestPrice);
     if (form.additional_guest_price) form.additional_guest_price.min = String(startingPrice);
     if (form.price_per_head) form.price_per_head.value = '';
-    const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
-    const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
-    if (otherCategoryInput) otherCategoryInput.value = '';
-    if (otherCategoryGroup) otherCategoryGroup.style.display = 'none';
     window.clearTimeout(packageNameValidationTimer);
     packageNameValidationSequence++;
     setPackageNameValidation('idle');
@@ -366,11 +338,16 @@ window.openAddPackageModal = async function () {
     customizableCategoryQuotas = {};
     lastMenuQuery = '';
     lastServiceQuery = '';
+    lastEquipmentQuery = '';
+    lastMenuCategory = '';
+    lastServiceCategory = '';
+    lastEquipmentCategory = '';
     const mSearch = document.getElementById('custMenuSearchInput');
     const sSearch = document.getElementById('custServiceSearchInput');
+    const eSearch = document.getElementById('custEquipmentSearchInput');
     if (mSearch) mSearch.value = '';
     if (sSearch) sSearch.value = '';
-
+    if (eSearch) eSearch.value = '';
     // Reset wizard to Step 1 and open modal immediately
     const basicStepBtn = document.getElementById('step-btn-basic');
     if (typeof window.switchPackageTab === 'function') {
@@ -451,8 +428,6 @@ window.editPackage = async function (pkgId) {
 
         window.togglePricingMode(form.pricing_mode ? form.pricing_mode.value : 'fixed');
         schedulePackageNameValidation(pkg.name || '');
-        const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
-        if (otherCategoryGroup) otherCategoryGroup.style.display = 'none';
 
         // Image Preview Handling
         const preview = document.getElementById('pkgImagePreview');
@@ -508,11 +483,16 @@ window.editPackage = async function (pkgId) {
         customizableEquipmentIds = new Set();
         lastMenuQuery = '';
         lastServiceQuery = '';
+        lastEquipmentQuery = '';
+        lastMenuCategory = '';
+        lastServiceCategory = '';
+        lastEquipmentCategory = '';
         const mSearchEdit = document.getElementById('custMenuSearchInput');
         const sSearchEdit = document.getElementById('custServiceSearchInput');
+        const eSearchEdit = document.getElementById('custEquipmentSearchInput');
         if (mSearchEdit) mSearchEdit.value = '';
         if (sSearchEdit) sSearchEdit.value = '';
-
+        if (eSearchEdit) eSearchEdit.value = '';
         if (pkg.selection_rules) {
             let rules = pkg.selection_rules;
             if (typeof rules === 'string') {
@@ -706,9 +686,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('packageForm');
     if (form) {
         const nameInput = document.getElementById('pkgNameInput');
-        const categorySelect = document.getElementById('pkgServiceTypeSelect');
-        const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
-        const otherCategoryGroup = document.getElementById('pkgOtherCategoryGroup');
         document.querySelectorAll('#packageModal .pkg-step-side').forEach(stepButton => {
             stepButton.addEventListener('keydown', event => {
                 if ((event.key === 'Enter' || event.key === ' ') && stepButton.getAttribute('aria-disabled') !== 'true') {
@@ -720,17 +697,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (nameInput) {
             nameInput.addEventListener('input', () => schedulePackageNameValidation(nameInput.value));
-        }
-        if (categorySelect) {
-            categorySelect.addEventListener('change', () => {
-                const showOther = categorySelect.value === 'Other';
-                if (otherCategoryGroup) otherCategoryGroup.style.display = showOther ? 'block' : 'none';
-                if (otherCategoryInput) otherCategoryInput.required = showOther;
-                updatePackageWizardControls();
-            });
-        }
-        if (otherCategoryInput) {
-            otherCategoryInput.addEventListener('input', updatePackageWizardControls);
         }
         form.querySelectorAll('input, select, textarea').forEach(field => {
             field.addEventListener('input', updatePackageWizardControls);
@@ -947,12 +913,6 @@ function validateTab(tabName) {
         }
 
         const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
-        if (mode !== 'customizable' && form.service_type?.value === 'Other') {
-            const otherCategoryInput = document.getElementById('pkgOtherCategoryInput');
-            if (!otherCategoryInput || !otherCategoryInput.value.trim()) {
-                addError(otherCategoryInput, 'Enter the specific category name.');
-            }
-        }
         const globalMinPax = Math.max(1, Number(window.CATERER_MIN_PAX) || 20);
         const durationInput = form.elements.namedItem('service_duration');
         const duration = Number(durationInput?.value);
@@ -963,6 +923,14 @@ function validateTab(tabName) {
         } else if (mode === 'fixed') {
             const basePax = parseInt(form.base_pax?.value, 10);
             if (!Number.isInteger(basePax) || basePax < globalMinPax) addError(form.base_pax, `Package guest count must be at least ${globalMinPax}.`);
+            const extraRateInput = form.elements.namedItem('additional_guest_price');
+            const extraRateText = String(extraRateInput?.value || '').trim();
+            const extraRate = Number(extraRateText);
+            const rateFloor = Math.max(0, Number(window.CATERER_STARTING_PRICE) || 0);
+            if (extraRateText && (!/^\d{1,8}(?:\.\d{1,2})?$/.test(extraRateText)
+                || !Number.isFinite(extraRate) || extraRate <= 0 || extraRate < rateFloor || extraRate > 99999999.99)) {
+                addError(extraRateInput, `Enter a valid extra guest rate of at least ₱${rateFloor.toFixed(2)}.`);
+            }
         }
 
         if (mode === 'customizable') {
@@ -1015,14 +983,10 @@ function packageStepIsReady(tabName) {
         const rawPrice = value('price_per_head').replace(/,/g, '');
         const price = Number(rawPrice);
         const duration = Number(value('service_duration'));
-        const categoryOkay = mode === 'customizable' || (
-            Boolean(value('service_type')) &&
-            (value('service_type') !== 'Other' || Boolean(document.getElementById('pkgOtherCategoryInput')?.value.trim()))
-        );
         const capacity = mode === 'fixed'
             ? Number(value('base_pax')) >= globalMinPax
             : Number(value('min_guests')) >= globalMinPax;
-        return Boolean(value('name')) && packageNameValidationStatus === 'valid' && categoryOkay
+        return Boolean(value('name')) && packageNameValidationStatus === 'valid'
             && Number.isInteger(duration) && duration >= 1 && duration <= 24
             && Boolean(rawPrice) && Number.isFinite(price) && price > 0
             && capacity;
@@ -1069,7 +1033,6 @@ function updateReviewTab() {
     if (!form) return;
 
     const dName = document.getElementById('reviewName');
-    const dType = document.getElementById('reviewType');
     const dMode = document.getElementById('reviewPricingMode');
     const dCap = document.getElementById('reviewCapacity');
     const dCapLabel = document.getElementById('reviewCapacityLabel');
@@ -1084,21 +1047,6 @@ function updateReviewTab() {
     if (dName) dName.innerText = (nameInput && nameInput.value) || 'Untitled Package';
 
     const mode = form.pricing_mode ? form.pricing_mode.value : 'fixed';
-
-    const catRow = document.getElementById('reviewCategoryRow');
-    if (catRow) {
-        catRow.style.display = (mode === 'customizable') ? 'none' : 'block';
-    }
-
-    let catText = 'General';
-    if (form.service_type) {
-        const opt = form.service_type.options[form.service_type.selectedIndex];
-        catText = opt ? opt.text : form.service_type.value;
-    }
-    if (form.service_type?.value === 'Other') {
-        catText = document.getElementById('pkgOtherCategoryInput')?.value.trim() || 'Other';
-    }
-    if (dType) dType.innerText = catText;
 
     if (dMode) {
         if (mode === 'customizable') dMode.innerText = 'Customizable Package';
@@ -1969,29 +1917,27 @@ window.openAddInclusionModal = async function () {
     const editIndexEl = document.getElementById('customInclusionEditIndex');
     const title = document.getElementById('inclusionModalTitle');
     const subtitle = document.getElementById('inclusionModalSubtitle');
-    const btnAddAnother = document.getElementById('btnInclusionSaveAddAnother');
     const btnDoneText = document.getElementById('btnInclusionSaveDoneText');
-    const alertBox = document.getElementById('addInclusionSuccessAlert');
     const desc = document.getElementById('customInclusionDescription');
-    const itemSelect = document.getElementById('inclusionItemSelect');
     const searchInput = document.getElementById('inclusionItemSearch');
-    const selectedBanner = document.getElementById('selectedItemInfoBanner');
+    const doneButton = document.getElementById('btnInclusionSaveDone');
 
     if (editIndexEl) editIndexEl.value = '-1';
-    if (title) title.innerText = 'Quick Add Inclusion';
-    if (subtitle) subtitle.innerText = 'Add a food item or service to your fixed package.';
-    if (btnAddAnother) btnAddAnother.hidden = true;
-    if (btnDoneText) btnDoneText.innerText = 'Save & Select';
-    const doneButton = document.getElementById('btnInclusionSaveDone');
+    if (title) title.innerText = 'Add package item';
+    if (subtitle) subtitle.innerText = 'Choose an item from your catalog.';
+    if (btnDoneText) btnDoneText.innerText = 'Add to package';
     if (doneButton) {
         doneButton.disabled = true;
         doneButton.hidden = true;
     }
-    if (alertBox) { alertBox.style.display = 'none'; alertBox.innerText = ''; }
     if (desc) desc.value = '';
-    if (itemSelect) itemSelect.innerHTML = '<option value="" selected disabled>Select a catalog item</option>';
-    if (searchInput) searchInput.value = '';
-    if (selectedBanner) selectedBanner.style.display = 'none';
+    const categorySelect = document.getElementById('customInclusionCategory');
+    if (categorySelect) categorySelect.disabled = false;
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.setAttribute('aria-expanded', 'false');
+    }
+    setInclusionCatalogOptionsOpen(false);
     resetInclusionImagePicker('');
 
     // Ensure catalog is populated across all item types
@@ -2000,8 +1946,9 @@ window.openAddInclusionModal = async function () {
     }
 
     // Start with only the requested choices; legacy equipment inclusions remain editable.
-    setInclusionCategoryChoices(false);
+    setInclusionCategoryChoices(true);
     const catSelect = document.getElementById('customInclusionCategory');
+    if (catSelect) catSelect.disabled = false;
     if (catSelect) catSelect.value = '';
 
     window.handleInclusionTypeChange('');
@@ -2016,22 +1963,17 @@ window.openAddInclusionModal = async function () {
 // Handle Inclusion Type change (Equipment | Menu | Service)
 window.handleInclusionTypeChange = function (type, preselectId = null) {
     const normType = (type === 'Menu / Food' || type === 'Menu') ? 'Menu' : (type === 'Service' ? 'Service' : (type === 'Equipment' ? 'Equipment' : ''));
-    const select = document.getElementById('inclusionItemSelect');
     const catSelect = document.getElementById('customInclusionCategory');
     if (catSelect && catSelect.value !== normType) {
         catSelect.value = normType;
     }
 
     const lblItem = document.getElementById('lblInclusionItem');
-    const btnCreateText = document.getElementById('btnCreateNewCatalogItemText');
     const btnCreateCatalog = document.getElementById('btnCreateNewCatalogItem');
     const searchInput = document.getElementById('inclusionItemSearch');
-    const banner = document.getElementById('selectedItemInfoBanner');
     const catalogSection = document.querySelector('#addInclusionModal .inclusion-catalog-section');
     const descriptionSection = document.querySelector('#addInclusionModal .inclusion-description-section');
     const photoSection = document.querySelector('#addInclusionModal .inclusion-photo-section');
-    const infoAlert = document.querySelector('#addInclusionModal .inclusion-info-alert');
-    const btnAddAnother = document.getElementById('btnInclusionSaveAddAnother');
     const doneButton = document.getElementById('btnInclusionSaveDone');
     const doneText = document.getElementById('btnInclusionSaveDoneText');
 
@@ -2039,58 +1981,61 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
         if (catalogSection) catalogSection.style.display = 'none';
         if (descriptionSection) descriptionSection.style.display = 'none';
         if (photoSection) photoSection.style.display = 'none';
-        if (infoAlert) infoAlert.style.display = 'none';
-        if (btnAddAnother) btnAddAnother.hidden = true;
         if (doneButton) {
             doneButton.disabled = true;
             doneButton.hidden = true;
         }
-        if (doneText) doneText.innerText = 'Save & Select';
-        if (banner) banner.style.display = 'none';
+        if (doneText) doneText.innerText = 'Add to package';
         const itemIdEl = document.getElementById('customInclusionItemId');
         const nameEl = document.getElementById('customInclusionName');
         if (itemIdEl) itemIdEl.value = '';
         if (nameEl) nameEl.value = '';
-        if (select) select.innerHTML = '<option value="" selected disabled>Select a catalog item</option>';
+        const searchInput = document.getElementById('inclusionItemSearch');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.setAttribute('aria-expanded', 'false');
+        }
+        setInclusionCatalogOptionsOpen(false);
         if (!inclusionImageFile) resetInclusionImagePicker('');
         return;
     }
     if (catalogSection) catalogSection.style.display = 'block';
-    if (catalogSection) catalogSection.style.display = 'block';
     if (descriptionSection) descriptionSection.style.display = 'block';
     if (photoSection) photoSection.style.display = 'block';
-    if (infoAlert) infoAlert.style.display = 'flex';
-    if (btnAddAnother) btnAddAnother.hidden = false;
     if (doneButton) {
-        doneButton.disabled = false;
+        doneButton.disabled = true;
         doneButton.hidden = false;
     }
-    if (doneText) doneText.innerText = 'Add Inclusion';
+    const isEditing = Number(document.getElementById('customInclusionEditIndex')?.value ?? -1) >= 0;
+    if (doneText) doneText.innerText = isEditing ? 'Save changes' : 'Add to package';
 
     // Update UI text and placeholders
-    if (lblItem) lblItem.innerHTML = `${normType} <span style="color: #ef4444;">*</span>`;
-    if (btnCreateText) btnCreateText.innerText = 'Create new';
-    if (btnCreateCatalog) btnCreateCatalog.style.display = normType === 'Equipment' ? 'none' : 'inline-flex';
+    if (lblItem) lblItem.innerHTML = `Catalog item <span style="color: #ef4444;">*</span>`;
+    if (btnCreateCatalog) {
+        btnCreateCatalog.setAttribute('aria-label', `Create new ${normType.toLowerCase()}`);
+        btnCreateCatalog.title = `Create new ${normType.toLowerCase()}`;
+    }
+    if (btnCreateCatalog) btnCreateCatalog.style.display = 'inline-flex';
     if (searchInput) {
-        searchInput.placeholder = `Type to filter ${normType.toLowerCase()} catalog...`;
+        searchInput.placeholder = `Search ${normType.toLowerCase()} catalog...`;
         searchInput.value = '';
     }
 
-    if (banner) banner.style.display = 'none';
     const itemIdEl = document.getElementById('customInclusionItemId');
     const nameEl = document.getElementById('customInclusionName');
     if (itemIdEl) itemIdEl.value = '';
     if (nameEl) nameEl.value = '';
     resetInclusionImagePicker('');
 
-    // Populate the dropdown
+    // Populate the searchable picker.
     window.populateCatalogSelect(normType, '', preselectId);
 };
 
-// Populate the Catalog Select dropdown
+// Populate the combined search-and-select catalog picker.
 window.populateCatalogSelect = function (type, filterQuery = '', preselectId = null) {
-    const select = document.getElementById('inclusionItemSelect');
-    if (!select) return;
+    const searchInput = document.getElementById('inclusionItemSearch');
+    const optionsContainer = document.getElementById('inclusionCatalogOptions');
+    if (!searchInput || !optionsContainer) return;
 
     const catalogKey = type.toLowerCase();
     const items = window.inclusionsCatalog[catalogKey] || [];
@@ -2102,88 +2047,149 @@ window.populateCatalogSelect = function (type, filterQuery = '', preselectId = n
         return n.includes(query) || c.includes(query);
     }) : items;
 
-    let html = `<option value="" selected disabled>Select a ${type.toLowerCase()} item</option>`;
+    let html = '';
     if (filtered.length === 0) {
-        html += `<option value="" disabled>No ${type.toLowerCase()} matching search</option>`;
+        html = `<div class="inclusion-catalog-empty" role="status">${items.length ? 'No matching items.' : 'No catalog items available.'}</div>`;
     } else {
-        filtered.forEach(item => {
-            const isSelected = preselectId && String(item.id) === String(preselectId);
-            const unit = item.unit_type || '';
-            const qty = item.available_qty !== undefined ? item.available_qty : (item.max_available !== undefined ? item.max_available : '');
-            const cat = item.category || type;
-            html += `<option value="${item.id}" 
-                        data-name="${escapeHtml(item.name)}" 
-                        data-unit="${escapeHtml(unit)}" 
-                        data-qty="${qty}" 
-                        data-cat="${escapeHtml(cat)}"
-                        ${isSelected ? 'selected' : ''}>
-                        ${escapeHtml(item.name)} (${escapeHtml(cat)})${qty !== '' ? ' — ' + qty + ' avail' : ''}
-                     </option>`;
-        });
+        html = filtered.map(item => `
+            <button type="button" class="inclusion-catalog-option" role="option"
+                aria-selected="${preselectId && String(item.id) === String(preselectId) ? 'true' : 'false'}"
+                data-item-id="${Number(item.id)}"
+                onmousedown="event.preventDefault()"
+                onclick="window.handleCatalogItemSelected('${Number(item.id)}')">
+                ${escapeHtml(item.name)}
+            </button>
+        `).join('');
     }
 
-    select.innerHTML = html;
+    optionsContainer.innerHTML = html;
 
     if (preselectId) {
-        select.value = String(preselectId);
         window.handleCatalogItemSelected(String(preselectId));
     }
 };
 
-// Filter items in catalog select on typing in search box
+window.showInclusionCatalogOptions = function () {
+    const type = document.getElementById('customInclusionCategory')?.value || '';
+    if (!type) return;
+    const input = document.getElementById('inclusionItemSearch');
+    const selectedId = document.getElementById('customInclusionItemId')?.value || '';
+    window.populateCatalogSelect(type, selectedId ? '' : (input?.value || ''));
+    setInclusionCatalogOptionsOpen(true);
+};
+
+function setInclusionCatalogOptionsOpen(open) {
+    const picker = document.querySelector('#addInclusionModal .inclusion-catalog-picker');
+    const options = document.getElementById('inclusionCatalogOptions');
+    const input = document.getElementById('inclusionItemSearch');
+    const toggle = document.querySelector('#addInclusionModal .inclusion-catalog-picker-toggle');
+    if (!picker || !options) return;
+
+    if (!open) {
+        options.hidden = true;
+        picker.classList.remove('opens-up');
+        if (input) input.setAttribute('aria-expanded', 'false');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        return;
+    }
+
+    const modalBody = document.querySelector('#addInclusionModal .inclusion-modal-body');
+    const pickerRect = picker.getBoundingClientRect();
+    const bodyRect = modalBody?.getBoundingClientRect();
+    const availableBelow = Math.max(0, Math.floor((bodyRect?.bottom ?? window.innerHeight) - pickerRect.bottom - 10));
+    const availableAbove = Math.max(0, Math.floor(pickerRect.top - (bodyRect?.top ?? 0) - 10));
+    const openUp = availableBelow < 150 && availableAbove > availableBelow;
+    picker.classList.toggle('opens-up', openUp);
+    options.style.maxHeight = `${Math.max(80, Math.min(220, openUp ? availableAbove : availableBelow))}px`;
+    options.hidden = false;
+    if (input) input.setAttribute('aria-expanded', 'true');
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+}
+
+window.toggleInclusionCatalogOptions = function () {
+    const options = document.getElementById('inclusionCatalogOptions');
+    if (!options || options.hidden) {
+        window.showInclusionCatalogOptions();
+        document.getElementById('inclusionItemSearch')?.focus();
+        return;
+    }
+    setInclusionCatalogOptionsOpen(false);
+};
+
+window.handleInclusionCatalogKeydown = function (event) {
+    const options = document.getElementById('inclusionCatalogOptions');
+    if (event.key === 'Escape') {
+        setInclusionCatalogOptionsOpen(false);
+    } else if (event.key === 'ArrowDown') {
+        if (options?.hidden) window.showInclusionCatalogOptions();
+        options?.querySelector('.inclusion-catalog-option')?.focus();
+        event.preventDefault();
+    } else if (event.key === 'Enter' && options && !options.hidden) {
+        const firstOption = options.querySelector('.inclusion-catalog-option');
+        if (firstOption) {
+            event.preventDefault();
+            firstOption.click();
+        }
+    }
+};
+
+// Filter catalog items through the combined picker field.
 window.filterInclusionCatalogItems = function (query) {
     const catSelect = document.getElementById('customInclusionCategory');
     const type = catSelect ? catSelect.value : '';
+    const itemIdEl = document.getElementById('customInclusionItemId');
+    const nameEl = document.getElementById('customInclusionName');
+    const doneButton = document.getElementById('btnInclusionSaveDone');
+    if (itemIdEl) itemIdEl.value = '';
+    if (nameEl) nameEl.value = '';
+    if (doneButton) doneButton.disabled = true;
+    if (!inclusionImageFile) resetInclusionImagePicker('');
     window.populateCatalogSelect(type, query);
+    setInclusionCatalogOptionsOpen(true);
 };
 
 // Handle selection of a catalog item
 window.handleCatalogItemSelected = function (selectedId) {
-    const select = document.getElementById('inclusionItemSelect');
     const itemIdEl = document.getElementById('customInclusionItemId');
     const nameEl = document.getElementById('customInclusionName');
-    const banner = document.getElementById('selectedItemInfoBanner');
-    const badge = document.getElementById('selectedItemCategoryBadge');
-    const title = document.getElementById('selectedItemTitle');
-    const meta = document.getElementById('selectedItemMeta');
+    const doneButton = document.getElementById('btnInclusionSaveDone');
+    const type = document.getElementById('customInclusionCategory')?.value || '';
+    const catalogKey = type.toLowerCase();
+    const item = (window.inclusionsCatalog[catalogKey] || []).find(entry => Number(entry.id) === Number(selectedId));
+    const searchInput = document.getElementById('inclusionItemSearch');
+    const optionsContainer = document.getElementById('inclusionCatalogOptions');
 
-    if (!selectedId || !select) {
-        if (banner) banner.style.display = 'none';
+    if (!selectedId || !item) {
         if (itemIdEl) itemIdEl.value = '';
         if (nameEl) nameEl.value = '';
+        if (doneButton) doneButton.disabled = true;
         if (!inclusionImageFile) resetInclusionImagePicker('');
         return;
     }
 
-    const opt = select.options[select.selectedIndex];
-    if (!opt || !opt.dataset.name) return;
-
-    const itemName = opt.dataset.name;
-    const itemQty = opt.dataset.qty || '';
-    const itemCat = opt.dataset.cat || '';
+    const itemName = item.name || '';
 
     if (itemIdEl) itemIdEl.value = selectedId;
+    if (searchInput) {
+        searchInput.value = itemName;
+        searchInput.setAttribute('aria-expanded', 'false');
+    }
     if (nameEl) {
         nameEl.value = itemName;
         nameEl.style.borderColor = '';
     }
+    setInclusionCatalogOptionsOpen(false);
+    optionsContainer?.querySelectorAll('.inclusion-catalog-option').forEach(option => {
+        option.setAttribute('aria-selected', Number(option.dataset.itemId) === Number(selectedId) ? 'true' : 'false');
+    });
 
-    // Display banner overview
-    if (banner) {
-        banner.style.display = 'block';
-        if (title) title.innerText = itemName;
-        if (badge) badge.innerText = itemCat;
-        if (meta) meta.innerText = itemQty ? `Available: ${itemQty}` : `Category: ${itemCat}`;
-    }
+    if (doneButton) doneButton.disabled = false;
 
-    const catSelect = document.getElementById('customInclusionCategory');
-    const currentType = catSelect ? catSelect.value : 'Equipment';
-
-    select.style.borderColor = '';
     // Show the catalog item's existing photo unless the user already picked a new one
     if (!inclusionImageFile) {
-        resetInclusionImagePicker(findCatalogImage(currentType, selectedId, itemName));
+        resetInclusionImagePicker(findCatalogImage(type, selectedId, itemName));
     }
+
 };
 
 // Edit Existing Inclusion
@@ -2194,41 +2200,44 @@ window.editInclusion = async function (index) {
     const editIndexEl = document.getElementById('customInclusionEditIndex');
     const title = document.getElementById('inclusionModalTitle');
     const subtitle = document.getElementById('inclusionModalSubtitle');
-    const btnAddAnother = document.getElementById('btnInclusionSaveAddAnother');
     const btnDoneText = document.getElementById('btnInclusionSaveDoneText');
-    const alertBox = document.getElementById('addInclusionSuccessAlert');
     const desc = document.getElementById('customInclusionDescription');
 
     if (editIndexEl) editIndexEl.value = String(index);
-    if (title) title.innerText = 'Edit Package Inclusion';
-    if (subtitle) subtitle.innerText = 'Update the details of this package inclusion.';
-    if (btnAddAnother) btnAddAnother.hidden = true;
-    if (btnDoneText) btnDoneText.innerText = 'Save Changes';
-    if (alertBox) { alertBox.style.display = 'none'; alertBox.innerText = ''; }
+    if (title) title.innerText = 'Edit package item';
+    if (subtitle) subtitle.innerText = 'Update the selected item or its package notes.';
+    if (btnDoneText) btnDoneText.innerText = 'Save changes';
     if (desc) desc.value = item.description || '';
 
-    // Determine type
-    let itemType = item.type;
-    if (!itemType) {
-        const cat = (item.category || '').toLowerCase();
-        if (cat.includes('equipment')) itemType = 'Equipment';
-        else if (cat.includes('service')) itemType = 'Service';
-        else itemType = 'Menu';
-    }
+    const catalogType = getPackageInclusionCatalogType(item);
+    const itemType = catalogType.charAt(0).toUpperCase() + catalogType.slice(1);
 
     // Ensure catalog is populated
-    if (!window.inclusionsCatalog.equipment || window.inclusionsCatalog.equipment.length === 0) {
+    if (!Array.isArray(window.inclusionsCatalog[catalogType]) || window.inclusionsCatalog[catalogType].length === 0) {
         await window.fetchInclusionsCatalog();
     }
 
     window.handleInclusionTypeChange(itemType, item.item_id);
-    if (btnAddAnother) btnAddAnother.hidden = true;
+    const catalogItems = window.inclusionsCatalog[catalogType] || [];
+    const linkedCatalogItem = item.item_id
+        ? catalogItems.find(entry => Number(entry.id) === Number(item.item_id))
+        : null;
+    if (linkedCatalogItem) {
+        window.openQuickEditModal(catalogType, linkedCatalogItem.id);
+        return;
+    }
 
     // If item_id wasn't in catalog yet, set name manually
     const nameEl = document.getElementById('customInclusionName');
     if (nameEl) nameEl.value = item.name || '';
 
     setInclusionCategoryChoices(itemType === 'Equipment');
+    const typeSelect = document.getElementById('customInclusionCategory');
+    if (typeSelect) typeSelect.disabled = true;
+    const catalogSection = document.querySelector('#addInclusionModal .inclusion-catalog-section');
+    if (catalogSection) catalogSection.style.display = 'none';
+    const photoSection = document.querySelector('#addInclusionModal .inclusion-photo-section');
+    if (photoSection) photoSection.style.display = 'none';
     resetInclusionImagePicker(item.image_url || findCatalogImage(itemType, item.item_id, item.name));
 
     safeOpenModal('addInclusionModal', true);
@@ -2237,17 +2246,22 @@ window.editInclusion = async function (index) {
 // Close Modal
 window.closeAddInclusionModal = function () {
     safeCloseModal('addInclusionModal');
+    const typeSelect = document.getElementById('customInclusionCategory');
+    if (typeSelect) typeSelect.disabled = false;
+    const catalogSection = document.querySelector('#addInclusionModal .inclusion-catalog-section');
+    if (catalogSection) catalogSection.style.display = 'none';
+    const photoSection = document.querySelector('#addInclusionModal .inclusion-photo-section');
+    if (photoSection) photoSection.style.display = 'none';
 };
 
 // Save Inclusion (Add or Edit)
-window.saveInclusion = async function (addAnother = false) {
+window.saveInclusion = async function () {
     const editIndexEl = document.getElementById('customInclusionEditIndex');
     const catSelect = document.getElementById('customInclusionCategory');
-    const select = document.getElementById('inclusionItemSelect');
+    const searchInput = document.getElementById('inclusionItemSearch');
     const itemIdEl = document.getElementById('customInclusionItemId');
     const nameEl = document.getElementById('customInclusionName');
     const descEl = document.getElementById('customInclusionDescription');
-    const alertBox = document.getElementById('addInclusionSuccessAlert');
 
     const selectedType = catSelect ? catSelect.value : 'Equipment';
     if (!['Menu', 'Service', 'Equipment'].includes(selectedType)) {
@@ -2257,21 +2271,15 @@ window.saveInclusion = async function (addAnother = false) {
     const itemId = itemIdEl ? itemIdEl.value : '';
     let nameVal = (nameEl ? nameEl.value : '').trim();
 
-    // If name is empty, attempt to read from select
-    if (!nameVal && select && select.selectedIndex > 0) {
-        const opt = select.options[select.selectedIndex];
-        if (opt && opt.dataset.name) nameVal = opt.dataset.name;
-    }
-
     // Validation: Item must be chosen
     if (!nameVal) {
-        if (select) {
-            select.style.borderColor = '#ef4444';
-            select.focus();
+        if (searchInput) {
+            searchInput.style.borderColor = '#ef4444';
+            searchInput.focus();
         }
         return;
     }
-    if (select) select.style.borderColor = '';
+    if (searchInput) searchInput.style.borderColor = '';
 
     const descVal = descEl ? descEl.value.trim() : '';
 
@@ -2285,9 +2293,9 @@ window.saveInclusion = async function (addAnother = false) {
             if (hint) { hint.textContent = 'Select a catalog item first so the photo can be saved.'; hint.style.color = '#dc2626'; }
             return;
         }
-        const saveBtns = [document.getElementById('btnInclusionSaveDone'), document.getElementById('btnInclusionSaveAddAnother')].filter(Boolean);
+        const saveButton = document.getElementById('btnInclusionSaveDone');
         const hint = document.getElementById('inclusionPhotoHint');
-        saveBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.6'; });
+        if (saveButton) saveButton.disabled = true;
         if (hint) { hint.textContent = 'Uploading photo...'; hint.style.color = '#64748b'; }
         try {
             imageUrl = await uploadInclusionImage(selectedType, parseInt(itemId, 10));
@@ -2297,7 +2305,7 @@ window.saveInclusion = async function (addAnother = false) {
             if (hint) { hint.textContent = (err && err.message) || 'Failed to upload the photo.'; hint.style.color = '#dc2626'; }
             return;
         } finally {
-            saveBtns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+            if (saveButton) saveButton.disabled = false;
         }
     }
 
@@ -2313,8 +2321,11 @@ window.saveInclusion = async function (addAnother = false) {
     const editIndex = editIndexEl ? parseInt(editIndexEl.value, 10) : -1;
 
     if (editIndex >= 0 && editIndex < packageInclusions.length) {
-        // Edit Mode
-        packageInclusions[editIndex] = itemObj;
+        const existing = packageInclusions[editIndex];
+        packageInclusions[editIndex] = {
+            ...existing,
+            description: descVal
+        };
         syncInclusionsHidden();
         renderInclusionsList();
         if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
@@ -2326,36 +2337,38 @@ window.saveInclusion = async function (addAnother = false) {
         renderInclusionsList();
         if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
 
-        if (addAnother) {
-            if (alertBox) {
-                alertBox.style.display = 'block';
-                alertBox.innerHTML = `<i class="fas fa-check-circle" style="margin-right:6px;"></i> Saved <strong>${escapeHtml(nameVal)}</strong>! You can add another inclusion below.`;
-                setTimeout(() => {
-                    if (alertBox) alertBox.style.display = 'none';
-                }, 3500);
-            }
-            // Reset for next inclusion
-            if (select) select.value = '';
-            if (itemIdEl) itemIdEl.value = '';
-            if (nameEl) nameEl.value = '';
-            if (descEl) descEl.value = '';
-            resetInclusionImagePicker('');
-            setInclusionCategoryChoices(false);
-            if (catSelect) catSelect.value = '';
-            const banner = document.getElementById('selectedItemInfoBanner');
-            if (banner) banner.style.display = 'none';
-            window.handleInclusionTypeChange('');
-            const typeSelect = document.getElementById('customInclusionCategory');
-            if (typeSelect) typeSelect.focus();
-        } else {
-            safeCloseModal('addInclusionModal');
-        }
+        safeCloseModal('addInclusionModal');
     }
 };
 
-// Remove Inclusion
+function getPackageInclusionCatalogType(item) {
+    const itemType = String(item.type || '').toLowerCase();
+    if (itemType.includes('equipment')) return 'equipment';
+    if (itemType.includes('service')) return 'service';
+    const category = String(item.category || '').toLowerCase();
+    if (category.includes('equipment')) return 'equipment';
+    if (category.includes('service')) return 'service';
+    return 'menu';
+}
+
+window.archiveInclusion = async function (index, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!Number.isInteger(index) || index < 0 || index >= packageInclusions.length) return;
+    const item = packageInclusions[index];
+    if (!item.item_id) {
+        alert('This item is not linked to a catalog entry, so it cannot be archived. Use Remove to take it out of this package.');
+        return;
+    }
+    await window.quickDeleteCatalogItem(getPackageInclusionCatalogType(item), item.item_id, event);
+};
+
+// Remove an unlinked item from this package only.
 window.removeInclusion = function (index) {
     if (typeof index !== 'number' || index < 0 || index >= packageInclusions.length) return;
+    if (!confirm(`Remove "${packageInclusions[index].name}" from this package?`)) return;
     packageInclusions.splice(index, 1);
     syncInclusionsHidden();
     renderInclusionsList();
@@ -2374,10 +2387,7 @@ function syncInclusionsHidden() {
 window.handleCreateNewCatalogItem = function () {
     const catSelect = document.getElementById('customInclusionCategory');
     const type = catSelect ? catSelect.value : 'Equipment';
-    if (type === 'Equipment') {
-        if (window.showToast) window.showToast('Equipment cannot be added through Quick Add Inclusion.', 'error');
-        return;
-    }
+    if (!['Menu', 'Menu / Food', 'Service', 'Equipment'].includes(type)) return;
     const editIndexEl = document.getElementById('customInclusionEditIndex');
     const editIdx = editIndexEl ? editIndexEl.value : '-1';
 
@@ -2391,7 +2401,9 @@ window.handleCreateNewCatalogItem = function () {
     // Close inclusion modal temporarily (leaves packageModal untouched)
     safeCloseModal('addInclusionModal');
 
-    const quickType = (type === 'Menu' || type === 'Menu / Food') ? 'menu' : 'service';
+    const quickType = (type === 'Menu' || type === 'Menu / Food')
+        ? 'menu'
+        : type.toLowerCase();
     if (typeof window.openQuickAddOptionModal === 'function') {
         window.openQuickAddOptionModal(quickType);
     } else {
@@ -2415,12 +2427,8 @@ window.handleCatalogItemCreated = async function (type, resData) {
     // Switch to type and auto-select the newly created item
     setTimeout(() => {
         window.handleInclusionTypeChange(type, createdId);
-
-        const alertBox = document.getElementById('addInclusionSuccessAlert');
-        if (alertBox && createdName) {
-            alertBox.style.display = 'block';
-            alertBox.innerHTML = `<i class="fas fa-check-circle" style="margin-right:6px;"></i> Newly created <strong>${escapeHtml(createdName)}</strong> has been automatically selected!`;
-            setTimeout(() => { if (alertBox) alertBox.style.display = 'none'; }, 4500);
+        if (createdName && window.showToast) {
+            window.showToast(`"${createdName}" is selected. Add it to the package to continue.`, 'success');
         }
     }, 150);
 };
@@ -2428,172 +2436,98 @@ window.handleCatalogItemCreated = async function (type, resData) {
 // Render clean, professional list / card layout for inclusions
 function renderInclusionsList() {
     const container = document.getElementById('inclusionsListGrouped');
-    const chipsContainer = document.getElementById('inclusionsSummaryChips');
     const totalBadge = document.getElementById('inclusionsTotalBadge');
-    const bottomAdd = document.getElementById('inclusionsBottomAddContainer');
     if (!container) return;
 
     const totalCount = packageInclusions.length;
-    const dishCount = packageInclusions.filter(i => (i.category === 'Menu / Food' || i.type === 'Menu')).length;
-    const svcCount = packageInclusions.filter(i => (i.category === 'Service' || i.type === 'Service')).length;
-    const eqCount = packageInclusions.filter(i => (i.category === 'Equipment' || i.type === 'Equipment')).length;
-
+    const groups = [
+        { type: 'Menu', label: 'Menu / Food', icon: 'fas fa-utensils', items: [] },
+        { type: 'Service', label: 'Services', icon: 'fas fa-concierge-bell', items: [] },
+        { type: 'Equipment', label: 'Equipment', icon: 'fas fa-chair', items: [] }
+    ];
+    const groupByType = Object.fromEntries(groups.map(group => [group.type, group]));
+    packageInclusions.forEach((item, index) => {
+        const type = getPackageInclusionCatalogType(item);
+        const groupType = type.charAt(0).toUpperCase() + type.slice(1);
+        groupByType[groupType].items.push({ item, index });
+    });
     // Update Header Badge
     if (totalBadge) {
-        totalBadge.innerText = `${totalCount} Total Inclusion${totalCount === 1 ? '' : 's'}`;
+        totalBadge.innerText = `${totalCount} item${totalCount === 1 ? '' : 's'}`;
         totalBadge.style.background = totalCount > 0 ? '#e2e8f0' : '#f1f5f9';
         totalBadge.style.color = totalCount > 0 ? '#0f172a' : '#475569';
     }
 
-    // Update Summary Filter Chips & Bottom Add Button
+    // Update the total count.
     if (totalCount === 0) {
-        if (chipsContainer) chipsContainer.style.display = 'none';
-        if (bottomAdd) bottomAdd.style.display = 'none';
-
         container.innerHTML = `
-            <div style="text-align: center; padding: 3.5rem 2rem; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 16px; margin: 0.5rem 0;">
+            <div class="inclusions-empty-state" style="text-align: center; padding: 3.5rem 2rem; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 16px; margin: 0.5rem 0;">
                 <div style="width: 56px; height: 56px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1rem;">
                     <i class="fas fa-layer-group"></i>
                 </div>
                 <h4 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin: 0 0 0.4rem 0;">No inclusions added yet</h4>
-                <p style="font-size: 0.85rem; color: #64748b; max-width: 420px; margin: 0 auto 0.4rem auto; line-height: 1.5;">Add the menu, services, and equipment included in this package.</p>
-                <p style="font-size: 0.8rem; color: #64748b; font-weight: 600; margin: 0 auto 1.5rem auto;"><i class="fas fa-info-circle" style="color: var(--primary-color, #f97316); margin-right: 4px;"></i>These inclusions are fixed and cannot be changed by customers.</p>
-                <button type="button" class="btn-primary-pro" onclick="window.openFixedQuickAddOptionModal()"
+                <p style="font-size: 0.85rem; color: #64748b; max-width: 420px; margin: 0 auto 1.5rem auto; line-height: 1.5;">Add the menu items, services, and equipment included in this package.</p>
+                <button type="button" class="btn-primary-pro" onclick="window.openAddInclusionModal()"
                     style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.875rem; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                     <i class="fas fa-plus"></i>
-                    <span>Add Inclusion</span>
+                    <span>Add item</span>
                 </button>
             </div>
         `;
         return;
     }
 
-    if (chipsContainer) {
-        chipsContainer.style.display = 'flex';
-        chipsContainer.innerHTML = `
-            <span style="font-size: 0.78rem; font-weight: 800; color: #0f172a; background: #e2e8f0; padding: 4px 12px; border-radius: 20px;">
-                Total: ${totalCount}
-            </span>
-            ${dishCount > 0 ? `<span style="font-size: 0.78rem; font-weight: 700; color: #15803d; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 4px 10px; border-radius: 20px;">🍽️ ${dishCount} Menu / Food</span>` : ''}
-            ${svcCount > 0 ? `<span style="font-size: 0.78rem; font-weight: 700; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; padding: 4px 10px; border-radius: 20px;">🛎️ ${svcCount} Service</span>` : ''}
-            ${eqCount > 0 ? `<span style="font-size: 0.78rem; font-weight: 700; color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; padding: 4px 10px; border-radius: 20px;">🪑 ${eqCount} Equipment</span>` : ''}
-        `;
-    }
-
-    if (bottomAdd) {
-        bottomAdd.style.display = 'block';
-    }
-
-    // Category styling theme configuration
-    const catConfig = {
-        'Menu / Food': {
-            badgeBg: '#f0fdf4',
-            badgeColor: '#15803d',
-            badgeBorder: '#bbf7d0',
-            icon: 'fas fa-utensils',
-            iconBg: '#dcfce7',
-            iconColor: '#16a34a'
-        },
-        'Menu': {
-            badgeBg: '#f0fdf4',
-            badgeColor: '#15803d',
-            badgeBorder: '#bbf7d0',
-            icon: 'fas fa-utensils',
-            iconBg: '#dcfce7',
-            iconColor: '#16a34a'
-        },
-        'Service': {
-            badgeBg: '#eff6ff',
-            badgeColor: '#1d4ed8',
-            badgeBorder: '#bfdbfe',
-            icon: 'fas fa-concierge-bell',
-            iconBg: '#dbeafe',
-            iconColor: '#2563eb'
-        },
-        'Equipment': {
-            badgeBg: '#fff7ed',
-            badgeColor: '#c2410c',
-            badgeBorder: '#fed7aa',
-            icon: 'fas fa-chair',
-            iconBg: '#ffedd5',
-            iconColor: '#ea580c'
-        }
+    const groupStyles = {
+        Menu: { accent: '#16a34a', iconBg: '#f0fdf4' },
+        Service: { accent: '#2563eb', iconBg: '#eff6ff' },
+        Equipment: { accent: '#ea580c', iconBg: '#fff7ed' }
     };
-
-    let html = '';
-    packageInclusions.forEach((item, index) => {
-        let cat = item.category || 'Menu / Food';
-        if (cat === 'Menu') cat = 'Menu / Food';
-        const cfg = catConfig[cat] || catConfig['Menu / Food'];
-
-        // Resolve image/description from catalog when available
-        let resolvedImg = item.image_url || '';
-        let resolvedDesc = item.description || '';
-        const catalogKey = (cat === 'Service') ? 'service' : ((cat === 'Equipment') ? 'equipment' : 'menu');
-        const catalog = (window.inclusionsCatalog && window.inclusionsCatalog[catalogKey]) || [];
-        if (item.item_id) {
-            const found = catalog.find(c => Number(c.id) === Number(item.item_id));
-            if (found) {
-                if (!resolvedImg) resolvedImg = found.image_url || '';
-                if (!resolvedDesc) resolvedDesc = found.description || '';
-            }
-        } else if (item.name) {
-            const found = catalog.find(c => String(c.name || '').toLowerCase() === String(item.name).toLowerCase());
-            if (found) {
-                if (!resolvedImg) resolvedImg = found.image_url || '';
-                if (!resolvedDesc) resolvedDesc = found.description || '';
-            }
-        }
-
-        html += `
-        <div class="inclusion-item-card" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: all 0.2s ease;">
-            <div class="inclusion-item-card-content" style="display: flex; align-items: flex-start; gap: 1rem; flex: 1; min-width: 0;">
-                <div class="inclusion-item-card-thumbnail" style="width: 56px; height: 56px; border-radius: 12px; background: ${cfg.iconBg}; color: ${cfg.iconColor}; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; overflow: hidden;">
-                    ${resolvedImg
-                        ? `<img src="${escapeHtml(resolvedImg)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'${cfg.icon}\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
-                        : `<i class="${cfg.icon}"></i>`}
-                </div>
-                <div class="inclusion-item-card-details" style="flex: 1; min-width: 0;">
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
-                        <span style="font-size: 0.72rem; font-weight: 800; color: ${cfg.badgeColor}; background: ${cfg.badgeBg}; border: 1px solid ${cfg.badgeBorder}; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.4px;">
-                            ${cat}
-                        </span>
+    container.innerHTML = groups.filter(group => group.items.length).map(group => {
+        const style = groupStyles[group.type];
+        const cards = group.items.map(({ item, index }) => {
+            const catalog = (window.inclusionsCatalog && window.inclusionsCatalog[group.type.toLowerCase()]) || [];
+            const catalogItem = item.item_id
+                ? catalog.find(entry => Number(entry.id) === Number(item.item_id))
+                : catalog.find(entry => String(entry.name || '').toLowerCase() === String(item.name || '').toLowerCase());
+            const image = item.image_url || catalogItem?.image_url || '';
+            const description = item.description || catalogItem?.description || '';
+            const archiveButton = item.item_id && catalogItem
+                ? `<button type="button" class="inclusion-action-button inclusion-archive-button" onclick="window.archiveInclusion(${index}, event)" title="Archive item" aria-label="Archive item">
+                       <i class="fas fa-archive" aria-hidden="true"></i><span>Archive</span>
+                   </button>`
+                : `<button type="button" class="inclusion-action-button" onclick="window.removeInclusion(${index})" title="Remove from package" aria-label="Remove from package">
+                       <i class="fas fa-minus-circle" aria-hidden="true"></i><span>Remove</span>
+                   </button>`;
+            return `
+                <article class="inclusion-item-card">
+                    <div class="inclusion-item-card-thumbnail" style="background:${style.iconBg};color:${style.accent};">
+                        ${image
+                            ? `<img src="${escapeHtml(image)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'${group.icon}\\'></i>';">`
+                            : `<i class="${group.icon}"></i>`}
                     </div>
-                    <div style="font-size: 0.98rem; font-weight: 800; color: #0f172a; line-height: 1.3; margin-bottom: 3px;">
-                        ${escapeHtml(item.name)}
+                    <div class="inclusion-item-card-details">
+                        <strong>${escapeHtml(item.name)}</strong>
+                        ${description ? `<p>${escapeHtml(description)}</p>` : ''}
                     </div>
-                    ${resolvedDesc && String(resolvedDesc).trim().length > 2 ? `
-                        <div style="font-size: 0.84rem; color: #64748b; line-height: 1.45; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                            ${escapeHtml(resolvedDesc)}
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="inclusion-item-card-actions" style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: auto;">
-                <button type="button" onclick="window.editInclusion(${index})" title="Edit inclusion"
-                    aria-label="Edit inclusion"
-                    style="display: inline-flex; align-items: center; gap: 5px; padding: 0.45rem 0.75rem; font-size: 0.8rem; font-weight: 700; color: #334155; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; cursor: pointer; transition: all 0.15s;"
-                    onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a';"
-                    onmouseout="this.style.background='#f8fafc'; this.style.color='#334155';">
-                    <i class="fas fa-edit" style="color: #64748b;"></i>
-                    <span>Edit</span>
-                </button>
-                <button type="button" onclick="window.removeInclusion(${index})" title="Delete inclusion"
-                    aria-label="Delete inclusion"
-                    style="display: inline-flex; align-items: center; gap: 5px; padding: 0.45rem 0.75rem; font-size: 0.8rem; font-weight: 700; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; cursor: pointer; transition: all 0.15s;"
-                    onmouseover="this.style.background='#fee2e2'; this.style.color='#b91c1c';"
-                    onmouseout="this.style.background='#fef2f2'; this.style.color='#dc2626';">
-                    <i class="fas fa-trash-alt"></i>
-                    <span>Delete</span>
-                </button>
-            </div>
-        </div>
+                    <div class="inclusion-item-card-actions">
+                        <button type="button" class="inclusion-action-button" onclick="window.editInclusion(${index})" title="Edit item" aria-label="Edit item">
+                            <i class="fas fa-edit" aria-hidden="true"></i><span>Edit</span>
+                        </button>
+                        ${archiveButton}
+                    </div>
+                </article>
+            `;
+        }).join('');
+        return `
+            <section class="inclusion-category-group" aria-label="${group.label}">
+                <header>
+                    <h5 style="color:${style.accent};"><i class="${group.icon}" aria-hidden="true"></i>${group.label}</h5>
+                    <span>${group.items.length}</span>
+                </header>
+                <div class="inclusion-category-items">${cards}</div>
+            </section>
         `;
-    });
-
-    container.innerHTML = html;
+    }).join('');
 }
 
 window.archivePackage = function (id) {
@@ -2656,16 +2590,104 @@ let customizableCategoryQuotas = {};
 
 let lastMenuQuery = '';
 let lastServiceQuery = '';
+let lastEquipmentQuery = '';
+let lastMenuCategory = '';
+let lastServiceCategory = '';
+let lastEquipmentCategory = '';
+const equipmentCategoryOptions = [
+    'Chairs', 'Tables', 'Furniture Sets', 'Tents & Canopies', 'Stage & Platform',
+    'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment',
+    'Tableware & Utensils', 'Decorations', 'Event Styling', 'Miscellaneous', 'Others'
+];
+
+function catalogCategorySuggestions(type) {
+    return document.getElementById(`cust${type.charAt(0).toUpperCase() + type.slice(1)}CategoryOptions`);
+}
+
+function catalogSearchInput(type) {
+    return document.getElementById(`cust${type.charAt(0).toUpperCase() + type.slice(1)}SearchInput`);
+}
+
+function getCatalogCategory(type) {
+    if (type === 'menu') return lastMenuCategory;
+    if (type === 'service') return lastServiceCategory;
+    return lastEquipmentCategory;
+}
+
+function setCatalogCategory(type, category) {
+    if (type === 'menu') lastMenuCategory = category;
+    else if (type === 'service') lastServiceCategory = category;
+    else lastEquipmentCategory = category;
+}
+
+function populateCatalogCategorySuggestions() {
+    const categoryFallback = {
+        menu: 'Uncategorized',
+        service: 'Service',
+        equipment: 'Equipment'
+    };
+    ['menu', 'service', 'equipment'].forEach(type => {
+        const suggestions = catalogCategorySuggestions(type);
+        if (!suggestions) return;
+
+        const categories = [...new Set([
+            ...(type === 'equipment' ? equipmentCategoryOptions : []),
+            ...(window.inclusionsCatalog[type] || [])
+                .map(item => String(item.category || '').trim() || categoryFallback[type])
+        ])].sort((a, b) => a.localeCompare(b));
+
+        suggestions.innerHTML = categories
+            .map(category => `<option value="${escapeHtml(category)}"></option>`).join('');
+        const selectedCategory = getCatalogCategory(type);
+        if (selectedCategory && !categories.includes(selectedCategory)) {
+            const input = catalogSearchInput(type);
+            if (input && input.value === selectedCategory) input.value = '';
+            setCatalogCategory(type, '');
+        }
+    });
+}
+
+function updateCatalogActionLabels() {
+    const labels = {
+        menu: 'Menu',
+        service: 'Service',
+        equipment: 'Equipment'
+    };
+    Object.entries(labels).forEach(([type, label]) => {
+        const element = document.getElementById(`cust${label}ActionLabel`);
+        if (element) {
+            const hasCatalogItems = (window.inclusionsCatalog[type] || []).length > 0;
+            element.textContent = `${hasCatalogItems ? 'Add' : 'Create'} ${label.toLowerCase()}`;
+        }
+    });
+}
 
 function getCustomizableMenuCategoryCounts() {
     const counts = {};
     (window.inclusionsCatalog.menu || [])
         .filter(item => customizableMenuIds.has(Number(item.id)))
         .forEach(item => {
-            const category = String(item.category || '').trim() || 'Others';
+            const category = String(item.category || '').trim() || 'Uncategorized';
             counts[category] = (counts[category] || 0) + 1;
         });
     return counts;
+}
+
+function updateInlineMenuCategoryQuotas() {
+    const categoryCounts = getCustomizableMenuCategoryCounts();
+    document.querySelectorAll('#customizableMenuList .menu-category-heading').forEach(heading => {
+        const category = heading.dataset.category || '';
+        const available = categoryCounts[category] || 0;
+        const input = heading.querySelector('input[type="number"]');
+        const offered = heading.querySelector('.menu-category-offered');
+        if (offered) offered.textContent = String(available);
+        if (input) {
+            input.max = String(available);
+            input.disabled = available === 0;
+            const quota = Number(customizableCategoryQuotas[category]);
+            input.value = Number.isInteger(quota) && quota >= 1 && quota <= available ? String(quota) : '';
+        }
+    });
 }
 
 window.toggleCustomizableItem = function (type, id, checked) {
@@ -2674,18 +2696,30 @@ window.toggleCustomizableItem = function (type, id, checked) {
         if (checked) customizableMenuIds.add(numId);
         else customizableMenuIds.delete(numId);
         updateCustomizableCounters('menu');
+        updateInlineMenuCategoryQuotas();
         renderCategoryQuotas();
     } else if (type === 'service') {
         if (checked) customizableServiceIds.add(numId);
         else customizableServiceIds.delete(numId);
         updateCustomizableCounters('service');
+    } else if (type === 'equipment') {
+        if (checked) customizableEquipmentIds.add(numId);
+        else customizableEquipmentIds.delete(numId);
+        updateCustomizableCounters('equipment');
     }
     syncCustomizableSelectionRules();
     updatePackageWizardControls();
 };
 
-window.toggleAllCustomizableCatalog = function (type, selectAll) {
+window.toggleAllCustomizableCatalog = function (type) {
     const catalog = window.inclusionsCatalog[type] || [];
+    const selectedIds = type === 'menu'
+        ? customizableMenuIds
+        : type === 'service'
+            ? customizableServiceIds
+            : customizableEquipmentIds;
+    const allSelected = catalog.length > 0 && catalog.every(item => selectedIds.has(Number(item.id)));
+    const selectAll = !allSelected;
     if (type === 'menu') {
         if (selectAll) catalog.forEach(i => customizableMenuIds.add(Number(i.id)));
         else customizableMenuIds.clear();
@@ -2697,42 +2731,117 @@ window.toggleAllCustomizableCatalog = function (type, selectAll) {
         else customizableServiceIds.clear();
         renderCustomizableServices(lastServiceQuery);
         updateCustomizableCounters('service');
+    } else if (type === 'equipment') {
+        if (selectAll) catalog.forEach(i => customizableEquipmentIds.add(Number(i.id)));
+        else customizableEquipmentIds.clear();
+        renderCustomizableEquipment(lastEquipmentQuery);
+        updateCustomizableCounters('equipment');
     }
     syncCustomizableSelectionRules();
     updatePackageWizardControls();
 };
 
 window.filterCustomizableCatalog = function (type, query) {
+    const categories = (window.inclusionsCatalog[type] || []).map(item => {
+        const fallback = type === 'menu' ? 'Uncategorized' : (type === 'service' ? 'Service' : 'Equipment');
+        return String(item.category || '').trim() || fallback;
+    });
+    const matchedCategory = categories.find(category =>
+        category.toLowerCase() === String(query || '').trim().toLowerCase()
+    ) || '';
+    const searchQuery = matchedCategory ? '' : query;
+    setCatalogCategory(type, matchedCategory);
+
     if (type === 'menu') {
-        lastMenuQuery = query;
-        renderCustomizableMenu(query);
+        lastMenuQuery = searchQuery;
+        renderCustomizableMenu(searchQuery);
     } else if (type === 'service') {
-        lastServiceQuery = query;
-        renderCustomizableServices(query);
+        lastServiceQuery = searchQuery;
+        renderCustomizableServices(searchQuery);
+    } else if (type === 'equipment') {
+        lastEquipmentQuery = searchQuery;
+        renderCustomizableEquipment(searchQuery);
     }
 };
 
 function updateCustomizableCounters(type) {
     const menuBadge = document.getElementById('custMenuCountBadge');
     const serviceBadge = document.getElementById('custServiceCountBadge');
+    const equipmentBadge = document.getElementById('custEquipmentCountBadge');
     const totalBadge = document.getElementById('custTotalAvailableBadge');
 
-    if (menuBadge) menuBadge.innerText = `${customizableMenuIds.size} Selected`;
-    if (serviceBadge) serviceBadge.innerText = `${customizableServiceIds.size} Selected`;
+    if (menuBadge) menuBadge.innerText = `${customizableMenuIds.size} selected`;
+    if (serviceBadge) serviceBadge.innerText = `${customizableServiceIds.size} selected`;
+    if (equipmentBadge) equipmentBadge.innerText = `${customizableEquipmentIds.size} selected`;
+    document.querySelectorAll('[data-catalog-toggle]').forEach(button => {
+        const type = button.dataset.catalogToggle;
+        const catalog = (window.inclusionsCatalog && window.inclusionsCatalog[type]) || [];
+        const selectedIds = type === 'menu'
+            ? customizableMenuIds
+            : type === 'service'
+                ? customizableServiceIds
+                : customizableEquipmentIds;
+        const allSelected = catalog.length > 0 && catalog.every(item => selectedIds.has(Number(item.id)));
+        button.textContent = allSelected ? 'Deselect all' : 'Select all';
+        button.setAttribute('aria-pressed', String(allSelected));
+        button.disabled = catalog.length === 0;
+    });
+    updateCatalogActionLabels();
 
     if (totalBadge) {
-        const total = customizableMenuIds.size + customizableServiceIds.size;
+        const total = customizableMenuIds.size + customizableServiceIds.size + customizableEquipmentIds.size;
         totalBadge.innerText = `${total} Option${total === 1 ? '' : 's'} Available`;
     }
 }
 
 window.renderCustomizableCatalogs = function () {
+    populateCatalogCategorySuggestions();
     renderCustomizableMenu(lastMenuQuery);
     renderCustomizableServices(lastServiceQuery);
+    renderCustomizableEquipment(lastEquipmentQuery);
     renderCategoryQuotas();
     updateCustomizableCounters();
     updatePackageWizardControls();
 };
+
+function renderCustomizableEquipment(query = '') {
+    const container = document.getElementById('customizableEquipmentList');
+    if (!container) return;
+    const items = window.inclusionsCatalog.equipment || [];
+    const q = (query || '').toLowerCase().trim();
+    const filtered = items.filter(item => {
+        const matchesQuery = !q || `${item.name || ''} ${item.category || ''}`.toLowerCase().includes(q);
+        const matchesCategory = !lastEquipmentCategory || (String(item.category || '').trim() || 'Equipment') === lastEquipmentCategory;
+        return matchesQuery && matchesCategory;
+    });
+    if (!filtered.length) {
+        container.innerHTML = `<div class="customizable-equipment-empty">${q || lastEquipmentCategory ? 'No equipment matches these filters.' : 'No equipment in your catalog yet. Create equipment to get started.'}</div>`;
+        return;
+    }
+    container.innerHTML = filtered.map(item => {
+        const id = Number(item.id);
+        const selected = customizableEquipmentIds.has(id);
+        const price = Number(item.price || item.rental_price || 0);
+        return `<div class="catalog-option-card equipment-option-card${selected ? ' is-selected' : ''}">
+            <input type="checkbox" ${selected ? 'checked' : ''}
+                onchange="const c = this.closest('.catalog-option-card'); c.classList.toggle('is-selected', this.checked); window.toggleCustomizableItem('equipment', ${id}, this.checked)">
+            <div class="equipment-option-copy" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'))">
+                <strong>${escapeHtml(item.name || 'Equipment')}</strong>
+            </div>
+            <span class="equipment-option-price">₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+            <div class="catalog-option-actions">
+                <button type="button" title="Edit Equipment" onclick="window.openQuickEditModal('equipment', ${id}, event)"
+                        class="catalog-action-button" aria-label="Edit equipment">
+                    <i class="fas fa-edit" aria-hidden="true"></i>
+                </button>
+                <button type="button" title="Archive Equipment" onclick="window.quickDeleteCatalogItem('equipment', ${id}, event)"
+                        class="catalog-action-button catalog-archive-button" aria-label="Archive equipment">
+                    <i class="fas fa-archive" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
 
 function renderCustomizableMenu(query = '') {
     const container = document.getElementById('customizableMenuList');
@@ -2740,29 +2849,61 @@ function renderCustomizableMenu(query = '') {
 
     const items = window.inclusionsCatalog.menu || [];
     const q = (query || '').toLowerCase().trim();
-    const filtered = q ? items.filter(i => (i.name || '').toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)) : items;
+    const filtered = items.filter(item => {
+        const matchesQuery = !q || `${item.name || ''} ${item.category || ''}`.toLowerCase().includes(q);
+        const matchesCategory = !lastMenuCategory || (String(item.category || '').trim() || 'Uncategorized') === lastMenuCategory;
+        return matchesQuery && matchesCategory;
+    });
 
     if (filtered.length === 0) {
         container.innerHTML = `
             <div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1.5px dashed #cbd5e1;">
-                ${q ? 'No menu items matching search query.' : 'No menu items found in your catalog. Click "+ Quick Add Food" above to add items.'}
+                ${q || lastMenuCategory ? 'No menu items match these filters.' : 'No menu items in your catalog yet. Create a menu item to get started.'}
             </div>
         `;
         return;
     }
 
-    container.innerHTML = filtered.map(item => {
+    const sorted = [...filtered].sort((a, b) => {
+        const categoryOrder = String(a.category || 'Uncategorized').localeCompare(String(b.category || 'Uncategorized'));
+        return categoryOrder || String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    const selectedMenuCounts = getCustomizableMenuCategoryCounts();
+
+    container.innerHTML = sorted.map((item, index) => {
         const id = Number(item.id);
         const isChecked = customizableMenuIds.has(id);
         const img = item.image_url || '';
         const desc = String(item.description || '').trim();
+        const category = String(item.category || 'Uncategorized').trim() || 'Uncategorized';
+        const previousCategory = index > 0
+            ? (String(sorted[index - 1].category || 'Uncategorized').trim() || 'Uncategorized')
+            : '';
+        const selectedInCategory = selectedMenuCounts[category] || 0;
+        const quotaValue = customizableCategoryQuotas[category];
+        const quotaValid = Number.isInteger(Number(quotaValue)) && Number(quotaValue) >= 1 && Number(quotaValue) <= selectedInCategory;
+        const encodedCategory = encodeURIComponent(category).replace(/'/g, '%27');
+        const categoryHeading = category !== previousCategory
+            ? `<div class="menu-category-heading" data-category="${escapeHtml(category)}">
+                    <h5>${escapeHtml(category)}</h5>
+                    <label class="menu-category-quota" title="Required number of menu choices in this category">
+                        <span>Choose</span>
+                        <input type="number" min="1" max="${selectedInCategory}" value="${quotaValid ? quotaValue : ''}"
+                            aria-label="Required number of ${escapeHtml(category)} choices"
+                            ${selectedInCategory ? '' : 'disabled'}
+                            onchange="window.setCategoryQuota('${encodedCategory}', this.value)" />
+                        <span>of <span class="menu-category-offered">${selectedInCategory}</span></span>
+                    </label>
+               </div>`
+            : '';
 
         return `
-            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? '#f0fdf4' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#86efac' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
-                 class="catalog-option-card">
+            ${categoryHeading}
+            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? 'rgba(var(--primary-color-rgb, 255, 123, 84), 0.08)' : '#ffffff'}; border: 1.5px solid ${isChecked ? 'var(--primary-color, #f97316)' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
+                 class="catalog-option-card${isChecked ? ' is-selected' : ''}">
                 <input type="checkbox" ${isChecked ? 'checked' : ''} 
-                       onchange="window.toggleCustomizableItem('menu', ${id}, this.checked); const c = this.closest('.catalog-option-card'); c.style.background = this.checked ? '#f0fdf4' : '#ffffff'; c.style.borderColor = this.checked ? '#86efac' : '#e2e8f0';"
-                       style="width: 17px; height: 17px; accent-color: #16a34a; cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
+                       onchange="const c = this.closest('.catalog-option-card'); c.classList.toggle('is-selected', this.checked); c.style.background = this.checked ? 'rgba(var(--primary-color-rgb, 255, 123, 84), 0.08)' : '#ffffff'; c.style.borderColor = this.checked ? 'var(--primary-color, #f97316)' : '#e2e8f0'; window.toggleCustomizableItem('menu', ${id}, this.checked);"
+                       style="width: 16px; height: 16px; accent-color: var(--primary-color, #f97316); cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
                 <div style="width:56px;height:56px;border-radius:10px;overflow:hidden;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
                     ${img
                         ? `<img src="${escapeHtml(img)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-utensils\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
@@ -2770,23 +2911,16 @@ function renderCustomizableMenu(query = '') {
                 </div>
                 <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
                     <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3; display:block;">${escapeHtml(item.name)}</strong>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
-                        ${item.category ? `<span style="font-size: 0.7rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.category)}</span>` : ''}
-                    </div>
                     ${desc.length > 2 ? `<p style="font-size: 0.75rem; color: #64748b; line-height: 1.4; margin: 6px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(desc)}</p>` : ''}
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px; margin-left: 2px; flex-shrink: 0;">
+                <div class="catalog-option-actions">
                     <button type="button" title="Edit Dish" onclick="window.openQuickEditModal('menu', ${id}, event)"
-                            style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;"
-                            onmouseover="this.style.background='#f1f5f9'; this.style.color='#0f172a'; this.style.borderColor='#cbd5e1';"
-                            onmouseout="this.style.background='#f8fafc'; this.style.color='#475569'; this.style.borderColor='#e2e8f0';">
-                        <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
+                            class="catalog-action-button" aria-label="Edit dish">
+                        <i class="fas fa-edit" aria-hidden="true"></i>
                     </button>
-                    <button type="button" title="Delete Dish" onclick="window.quickDeleteCatalogItem('menu', ${id}, event)"
-                            style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #fee2e2; background: #fef2f2; color: #dc2626; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;"
-                            onmouseover="this.style.background='#fee2e2'; this.style.borderColor='#fca5a5';"
-                            onmouseout="this.style.background='#fef2f2'; this.style.borderColor='#fee2e2';">
-                        <i class="fas fa-trash-alt" style="font-size: 0.75rem;"></i>
+                    <button type="button" title="Archive Dish" onclick="window.quickDeleteCatalogItem('menu', ${id}, event)"
+                            class="catalog-action-button catalog-archive-button" aria-label="Archive dish">
+                        <i class="fas fa-archive" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
@@ -2800,12 +2934,16 @@ function renderCustomizableServices(query = '') {
 
     const items = window.inclusionsCatalog.service || [];
     const q = (query || '').toLowerCase().trim();
-    const filtered = q ? items.filter(i => (i.name || '').toLowerCase().includes(q) || (i.category || '').toLowerCase().includes(q)) : items;
+    const filtered = items.filter(item => {
+        const matchesQuery = !q || `${item.name || ''} ${item.category || ''}`.toLowerCase().includes(q);
+        const matchesCategory = !lastServiceCategory || (String(item.category || '').trim() || 'Service') === lastServiceCategory;
+        return matchesQuery && matchesCategory;
+    });
 
     if (filtered.length === 0) {
         container.innerHTML = `
-            <div style="grid-column: 1 / -1; padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.85rem; background: #f8fafc; border-radius: 8px; border: 1.5px dashed #cbd5e1;">
-                ${q ? 'No services matching search query.' : 'No services found in your catalog. Click "+ Quick Add Service" above to add services.'}
+            <div class="customizable-catalog-empty">
+                ${q || lastServiceCategory ? 'No services match these filters.' : 'No services in your catalog yet. Create a service to get started.'}
             </div>
         `;
         return;
@@ -2817,9 +2955,14 @@ function renderCustomizableServices(query = '') {
         const price = parseFloat(item.price || item.selling_price || 0);
         let unitText = item.unit_type || 'service';
         if (unitText.startsWith('per_')) unitText = unitText.replace('per_', '');
+        const priceHtml = price > 0
+            ? `<span class="service-option-price" style="font-size: 0.75rem; font-weight: 800; color: var(--primary-color, #f97316); background: rgba(var(--primary-color-rgb, 255, 123, 84), 0.1); padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
+                   ₱${price.toLocaleString('en-PH', { maximumFractionDigits: 2 })}${unitText && unitText !== 'fixed' ? '/' + escapeHtml(unitText) : ''}
+               </span>`
+            : '';
         const img = item.image_url || '';
         const notes = String(item.notes || item.description || '')
-            .split(/[\n,]+/)
+            .split(/[\r\n,]+/)
             .map(note => note.replace(/^\s*[•*-]\s*/, '').trim())
             .filter(Boolean);
         const notesHtml = notes.length
@@ -2830,11 +2973,11 @@ function renderCustomizableServices(query = '') {
             : '';
 
         return `
-            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? '#eff6ff' : '#ffffff'}; border: 1.5px solid ${isChecked ? '#93c5fd' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
-                 class="catalog-option-card service-option-card">
+            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? 'rgba(var(--primary-color-rgb, 255, 123, 84), 0.08)' : '#ffffff'}; border: 1.5px solid ${isChecked ? 'var(--primary-color, #f97316)' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
+                 class="catalog-option-card service-option-card${isChecked ? ' is-selected' : ''}">
                 <input type="checkbox" ${isChecked ? 'checked' : ''} 
-                       onchange="window.toggleCustomizableItem('service', ${id}, this.checked); const c = this.closest('.catalog-option-card'); c.style.background = this.checked ? '#eff6ff' : '#ffffff'; c.style.borderColor = this.checked ? '#93c5fd' : '#e2e8f0';"
-                       style="width: 17px; height: 17px; accent-color: #2563eb; cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
+                       onchange="const c = this.closest('.catalog-option-card'); c.classList.toggle('is-selected', this.checked); c.style.background = this.checked ? 'rgba(var(--primary-color-rgb, 255, 123, 84), 0.08)' : '#ffffff'; c.style.borderColor = this.checked ? 'var(--primary-color, #f97316)' : '#e2e8f0'; window.toggleCustomizableItem('service', ${id}, this.checked);"
+                       style="width: 16px; height: 16px; accent-color: var(--primary-color, #f97316); cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
                 <div style="width:56px;height:56px;border-radius:10px;overflow:hidden;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
                     ${img
                         ? `<img src="${escapeHtml(img)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-concierge-bell\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
@@ -2843,27 +2986,18 @@ function renderCustomizableServices(query = '') {
                 <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
                         <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3;">${escapeHtml(item.name)}</strong>
-                        <span class="service-option-price" style="font-size: 0.75rem; font-weight: 800; color: #1e40af; background: #dbeafe; padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
-                            ₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unitText && unitText !== 'fixed' ? '/' + escapeHtml(unitText) : ''}
-                        </span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
-                        ${item.category ? `<span style="font-size: 0.7rem; font-weight: 700; color: #64748b; background: #f1f5f9; padding: 1px 6px; border-radius: 4px;">${escapeHtml(item.category)}</span>` : ''}
+                        ${priceHtml}
                     </div>
                     ${notesHtml}
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px; margin-left: 2px; flex-shrink: 0;">
+                <div class="catalog-option-actions">
                     <button type="button" title="Edit Service" onclick="window.openQuickEditModal('service', ${id}, event)"
-                            style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;"
-                            onmouseover="this.style.background='#f1f5f9'; this.style.color='#0f172a'; this.style.borderColor='#cbd5e1';"
-                            onmouseout="this.style.background='#f8fafc'; this.style.color='#475569'; this.style.borderColor='#e2e8f0';">
-                        <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
+                            class="catalog-action-button" aria-label="Edit service">
+                        <i class="fas fa-edit" aria-hidden="true"></i>
                     </button>
-                    <button type="button" title="Delete Service" onclick="window.quickDeleteCatalogItem('service', ${id}, event)"
-                            style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #fee2e2; background: #fef2f2; color: #dc2626; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;"
-                            onmouseover="this.style.background='#fee2e2'; this.style.borderColor='#fca5a5';"
-                            onmouseout="this.style.background='#fef2f2'; this.style.borderColor='#fee2e2';">
-                        <i class="fas fa-trash-alt" style="font-size: 0.75rem;"></i>
+                    <button type="button" title="Archive Service" onclick="window.quickDeleteCatalogItem('service', ${id}, event)"
+                            class="catalog-action-button catalog-archive-button" aria-label="Archive service">
+                        <i class="fas fa-archive" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
@@ -2889,7 +3023,7 @@ function syncCustomizableSelectionRules() {
             package_type: 'customizable',
             available_menu_ids: Array.from(customizableMenuIds),
             available_service_ids: Array.from(customizableServiceIds),
-            available_equipment_ids: [],
+            available_equipment_ids: Array.from(customizableEquipmentIds),
             category_quotas: cleanQuotas,
             total_variants_allowed: total
         };
@@ -2906,77 +3040,23 @@ window.setCategoryQuota = function(encodedCat, val) {
     } else {
         customizableCategoryQuotas[cat] = next;
     }
+    updateInlineMenuCategoryQuotas();
     renderCategoryQuotas();
     syncCustomizableSelectionRules();
     updatePackageWizardControls();
 };
 
 function renderCategoryQuotas() {
-    const container = document.getElementById('categoryQuotasContainer');
-    if (!container) return;
-
     const catCounts = getCustomizableMenuCategoryCounts();
-    const categories = Object.keys(catCounts).sort();
-    if (categories.length === 0) {
-        container.innerHTML = `
-            <div class="customizable-quota-empty" style="grid-column: 1 / -1; padding: 1rem; text-align: center; color: #64748b; font-size: 0.82rem;">
-                Select the menu dishes you want to offer above. Their categories and limits will appear here.
-            </div>
-        `;
-        const totalEl = document.getElementById('custTotalVariantsAllowedText');
-        if (totalEl) totalEl.innerText = '0';
-        const banner = document.getElementById('custQuotaSummaryBanner');
-        if (banner) {
-            banner.style.display = 'block';
-            banner.textContent = 'Choose menu dishes above to configure customer selection limits.';
-        }
-        return;
-    }
-
     let totalAllowed = 0;
-    const summaryParts = [];
-
-    container.innerHTML = categories.map(cat => {
-        const quotaValue = customizableCategoryQuotas[cat];
-        const quota = String(quotaValue ?? '').trim() ? Number(quotaValue) : NaN;
-        const availableInCat = catCounts[cat] || 0;
-        const encodedCat = encodeURIComponent(cat).replace(/'/g, '%27');
-        const quotaIsValid = Number.isInteger(quota) && quota >= 1 && quota <= availableInCat;
-
-        if (quotaIsValid) {
+    for (const [category, available] of Object.entries(catCounts)) {
+        const quota = Number(customizableCategoryQuotas[category]);
+        if (Number.isInteger(quota) && quota >= 1 && quota <= available) {
             totalAllowed += quota;
-            summaryParts.push(`${quota} from ${escapeHtml(cat)}`);
         }
-
-        return `
-            <div class="customizable-quota-card" style="background: ${quotaIsValid ? '#ffffff' : '#fffaf5'}; border: 1.5px solid ${quotaIsValid ? '#fed7aa' : '#fdba74'}; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                <div class="customizable-quota-category">
-                    <strong>${escapeHtml(cat)}</strong>
-                    <span>${availableInCat} choice${availableInCat === 1 ? '' : 's'} offered</span>
-                </div>
-                <label class="customizable-quota-input">
-                    <span>Customer must choose</span>
-                    <span class="customizable-quota-input-control">
-                        <input type="number" min="1" max="${availableInCat}" value="${quotaIsValid ? quota : ''}"
-                            aria-label="Number of ${escapeHtml(cat)} dishes customers may select"
-                            onchange="window.setCategoryQuota('${encodedCat}', this.value)" />
-                        <span>of ${availableInCat}</span>
-                    </span>
-                </label>
-            </div>
-        `;
-    }).join('');
-
-    const totalEl = document.getElementById('custTotalVariantsAllowedText');
-    if (totalEl) totalEl.innerText = totalAllowed;
-
-    const banner = document.getElementById('custQuotaSummaryBanner');
-    if (banner) {
-        banner.style.display = 'block';
-        banner.innerHTML = summaryParts.length === categories.length
-            ? `<strong>Required customer picks:</strong> ${summaryParts.join(', ')} (${totalAllowed} total)`
-            : 'Set the required number of picks for each selected category to continue.';
     }
+    const totalEl = document.getElementById('custTotalVariantsAllowedText');
+    if (totalEl) totalEl.innerText = String(totalAllowed);
     updatePackageWizardControls();
 }
 
@@ -3056,13 +3136,35 @@ function renderReviewCustomizable() {
                 svcList.innerHTML = selectedSvcItems.map(i => {
                     const price = parseFloat(i.price || i.selling_price || 0);
                     const unit = (i.unit_type || 'service').replace('per_', '');
+                    const priceHtml = price > 0
+                        ? `<span style="font-weight:700; color:#1e40af; font-size:0.78rem;">₱${price.toLocaleString('en-PH', { maximumFractionDigits: 2 })}${unit && unit !== 'fixed' ? '/' + escapeHtml(unit) : ''}</span>`
+                        : '';
                     return `
                         <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #f1f5f9;">
                             <span><i class="fas fa-check-circle" style="color:#2563eb; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong></span>
-                            <span style="font-weight:700; color:#1e40af; font-size:0.78rem;">₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unit && unit !== 'fixed' ? '/' + escapeHtml(unit) : ''}</span>
+                            ${priceHtml}
                         </div>
                     `;
                 }).join('');
+            }
+        }
+
+        // 4. Available Equipment
+        const equipmentList = document.getElementById('reviewCustEquipmentList');
+        const equipmentCountBadge = document.getElementById('reviewCustEquipmentCount');
+        const equipmentCatalog = (window.inclusionsCatalog && window.inclusionsCatalog.equipment) || [];
+        const selectedEquipmentItems = equipmentCatalog.filter(i => customizableEquipmentIds.has(Number(i.id)));
+
+        if (equipmentCountBadge) equipmentCountBadge.innerText = `${selectedEquipmentItems.length} item${selectedEquipmentItems.length === 1 ? '' : 's'}`;
+        if (equipmentList) {
+            if (selectedEquipmentItems.length === 0) {
+                equipmentList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic; padding: 6px 0;">No equipment selected.</div>';
+            } else {
+                equipmentList.innerHTML = selectedEquipmentItems.map(i => `
+                    <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #f1f5f9;">
+                        <span><i class="fas fa-check-circle" style="color:#7c3aed; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong>${i.category ? ' <span style="color:#64748b; font-size:0.75rem;">(' + escapeHtml(i.category) + ')</span>' : ''}</span>
+                    </div>
+                `).join('');
             }
         }
     } catch (err) {
@@ -3083,10 +3185,8 @@ window.validateQuickAddOptionPrice = function () {
     const rawValue = input.value.replace(/,/g, '').trim();
     const amount = Number(rawValue);
     let message = '';
-    if (type === 'service') {
-        if (!rawValue) {
-            message = 'Enter a service fee.';
-        } else if (input.dataset.formatOverflow === 'true') {
+    if (type === 'service' && rawValue) {
+        if (input.dataset.formatOverflow === 'true') {
             message = 'Use up to 8 whole-number digits and 2 decimal places.';
         } else if (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount)) {
             message = 'Enter a valid service fee with no more than 2 decimal places.';
@@ -3097,6 +3197,45 @@ window.validateQuickAddOptionPrice = function () {
         }
     }
 
+    input.setCustomValidity('');
+    if (error) {
+        error.textContent = message;
+        error.style.display = message ? 'block' : 'none';
+    }
+    return !message;
+};
+
+window.sanitizeMoneyInput = function (input) {
+    if (!input || input.readOnly) return;
+    const original = input.value;
+    let cleaned = original.replace(/[^\d.]/g, '');
+    const decimalIndex = cleaned.indexOf('.');
+    if (decimalIndex >= 0) {
+        cleaned = cleaned.slice(0, decimalIndex + 1)
+            + cleaned.slice(decimalIndex + 1).replace(/\./g, '').slice(0, 2);
+    }
+    const [whole = '', fraction] = cleaned.split('.');
+    cleaned = whole.slice(0, 8) + (fraction !== undefined ? `.${fraction}` : '');
+    if (input.value !== cleaned) {
+        const cursor = input.selectionStart;
+        input.value = cleaned;
+        if (cursor !== null) input.setSelectionRange(Math.min(cursor, cleaned.length), Math.min(cursor, cleaned.length));
+    }
+};
+
+window.validateSwapFee = function (inputId, errorId) {
+    const input = document.getElementById(inputId);
+    const error = document.getElementById(errorId);
+    if (!input) return false;
+    const value = input.value.trim();
+    let message = '';
+    if (value && !/^\d{1,8}(?:\.\d{1,2})?$/.test(value)) {
+        message = 'Use up to 8 whole-number digits and 2 decimal places; fee cannot exceed ₱99,999,999.99.';
+    } else if (value && Number(value) <= 0) {
+        message = 'Enter an amount greater than ₱0, or leave this field blank.';
+    } else if (value && (!Number.isFinite(Number(value)) || Number(value) > 99999999.99)) {
+        message = 'The maximum dish swap fee is ₱99,999,999.99.';
+    }
     input.setCustomValidity(message);
     if (error) {
         error.textContent = message;
@@ -3176,7 +3315,6 @@ window.setQuickAddOptionType = function (type) {
     const priceLabel = document.getElementById('quickAddOptionPriceLabel');
     const priceInput = document.getElementById('quickAddOptionPrice');
     const priceError = document.getElementById('quickAddOptionPriceError');
-    const qtyWrapper = document.getElementById('quickAddOptionQtyWrapper');
     const nameLabel = document.getElementById('quickAddOptionNameLabel');
     const nameInput = document.getElementById('quickAddOptionName');
     const unitLabel = document.getElementById('quickAddOptionUnitLabel');
@@ -3185,9 +3323,13 @@ window.setQuickAddOptionType = function (type) {
     const categoryWrapper = document.getElementById('quickAddOptionCategoryWrapper');
     const categorySuggestions = document.getElementById('quickAddOptionCategorySuggestions');
     const description = document.getElementById('quickAddOptionDescription');
+    const upgradeFeeWrapper = document.getElementById('quickAddOptionUpgradeFeeWrapper');
+    const upgradeFeeInput = document.getElementById('quickAddOptionUpgradeFee');
+    const customCategoryWrapper = document.getElementById('quickAddOptionCustomCategoryWrapper');
+    const customCategoryInput = document.getElementById('quickAddOptionCustomCategory');
     const equipmentFlow = type === 'equipment';
 
-    if (categoryInput && categorySuggestions && !categoryInput.dataset.suggestionsBound) {
+    if (categoryInput?.tagName === 'INPUT' && categorySuggestions && !categoryInput.dataset.suggestionsBound) {
         categoryInput.addEventListener('input', window.renderQuickAddOptionCategorySuggestions);
         categoryInput.addEventListener('focus', window.renderQuickAddOptionCategorySuggestions);
         categorySuggestions.addEventListener('click', window.handleQuickAddOptionCategorySuggestionClick);
@@ -3209,16 +3351,26 @@ window.setQuickAddOptionType = function (type) {
             : (type === 'service' ? 'Service' : (type === 'equipment' ? 'Equipment' : ''));
     }
     if (typeWrapper) typeWrapper.style.display = 'block';
-    if (footer) footer.style.display = hasType ? 'flex' : 'none';
+    if (footer) footer.style.setProperty('display', hasType ? 'flex' : 'none', 'important');
     if (nameWrapper) nameWrapper.style.display = hasType ? 'block' : 'none';
-    if (unitWrapper) unitWrapper.style.display = hasType ? 'block' : 'none';
+    if (unitWrapper) unitWrapper.style.display = 'none';
+    if (priceWrapper) priceWrapper.style.display = type === 'service' ? 'block' : 'none';
     if (descriptionWrapper) descriptionWrapper.style.display = hasType ? 'block' : 'none';
     if (photoWrapper) photoWrapper.style.display = hasType ? 'block' : 'none';
     if (categoryWrapper) categoryWrapper.style.display = type === 'menu' ? 'block' : 'none';
+    if (upgradeFeeWrapper) upgradeFeeWrapper.style.display = type === 'menu' ? 'block' : 'none';
+    if (upgradeFeeInput && type !== 'menu') upgradeFeeInput.value = '';
+    if (customCategoryWrapper) customCategoryWrapper.style.display = 'none';
+    if (customCategoryInput) { customCategoryInput.required = false; customCategoryInput.value = ''; }
     if (nameInput) nameInput.required = hasType;
-    if (unitSelect) unitSelect.required = hasType;
+    if (unitSelect) unitSelect.required = false;
     if (categoryInput) categoryInput.required = type === 'menu';
-    if (qtyWrapper) qtyWrapper.style.display = equipmentFlow ? 'block' : 'none';
+    if (categoryInput) categoryInput.setCustomValidity('');
+    const upgradeFeeError = document.getElementById('quickAddOptionUpgradeFeeError');
+    if (upgradeFeeError) upgradeFeeError.textContent = '';
+    if (priceRow) priceRow.style.display = type === 'service' ? 'grid' : 'none';
+    if (priceRow) priceRow.style.gridTemplateColumns = '1fr';
+    if (priceInput) priceInput.required = false;
     if (priceError) {
         priceError.textContent = '';
         priceError.style.display = 'none';
@@ -3259,12 +3411,10 @@ window.setQuickAddOptionType = function (type) {
             priceInput.value = '0.00';
             priceInput.required = false;
         }
-        if (priceWrapper) priceWrapper.style.display = 'none';
         if (description) description.placeholder = 'Details, ingredients, specifications or notes...';
     } else if (type === 'service') {
         if (nameLabel) nameLabel.innerHTML = 'Service Name <span style="color: #ef4444;">*</span>';
         if (nameInput) nameInput.placeholder = 'e.g. Trained Waitstaff, Event Setup & Cleanup, Bartender';
-        if (unitLabel) unitLabel.innerHTML = 'Service Rate Type <span style="color: #ef4444;">*</span>';
         if (unitSelect) {
             unitSelect.innerHTML = `
                 <option value="per_event">Per Event (Flat Rate)</option>
@@ -3274,14 +3424,8 @@ window.setQuickAddOptionType = function (type) {
             unitSelect.value = 'per_event';
         }
         if (categoryInput) categoryInput.value = 'Service';
-        if (priceRow) {
-            priceRow.style.display = 'grid';
-            priceRow.style.gridTemplateColumns = 'minmax(0, 1fr)';
-        }
-        if (priceWrapper) priceWrapper.style.display = 'block';
-        if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="color: #ef4444;">*</span>';
+        if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>';
         if (priceInput) {
-            priceInput.required = true;
             priceInput.value = '';
             priceInput.placeholder = '0.00';
         }
@@ -3300,23 +3444,25 @@ window.setQuickAddOptionType = function (type) {
             unitSelect.value = 'piece';
         }
         if (categoryInput) categoryInput.value = 'Equipment';
-        if (priceRow) {
-            priceRow.style.display = 'grid';
-            priceRow.style.gridTemplateColumns = '1fr 1fr';
-        }
-        if (priceWrapper) priceWrapper.style.display = 'block';
-        if (priceLabel) priceLabel.innerHTML = 'Rental Rate (₱) <span style="color: #ef4444;">*</span>';
-        if (priceInput) {
-            priceInput.required = true;
-            priceInput.value = '0.00';
-        }
+        if (priceInput) priceInput.value = '';
     }
 
     const title = document.getElementById('quickAddOptionModalTitle');
     const subtitle = document.querySelector('#quickAddOptionModal .quick-add-option-subtitle');
     const itemLabel = type === 'menu' ? 'menu item' : type;
     if (title) title.textContent = `Create ${itemLabel}`;
-    if (subtitle) subtitle.textContent = `Add a new ${itemLabel} to your catalog${window._pkgInclusionReturnState?.direct ? ' and package' : ''}.`;
+    if (subtitle) subtitle.textContent = `Save this ${itemLabel} to your catalog to reuse in future packages${window._pkgInclusionReturnState?.direct ? ' and add it to this package' : ''}.`;
+};
+
+window.toggleQuickAddCustomCategory = function (category) {
+    const wrapper = document.getElementById('quickAddOptionCustomCategoryWrapper');
+    const input = document.getElementById('quickAddOptionCustomCategory');
+    const show = category === 'Other' && document.getElementById('quickAddOptionType')?.value === 'menu';
+    if (wrapper) wrapper.style.display = show ? 'block' : 'none';
+    if (input) {
+        input.required = show;
+        if (!show) input.value = '';
+    }
 };
 
 window.openQuickAddOptionModal = function (type) {
@@ -3325,8 +3471,16 @@ window.openQuickAddOptionModal = function (type) {
 
     const form = document.getElementById('quickAddOptionForm');
     if (form) form.reset();
+    const typeSelect = document.getElementById('quickAddOptionType');
+    if (typeSelect) typeSelect.disabled = false;
     const photoPreview = document.getElementById('quickAddOptionPhotoPreview');
     if (photoPreview) photoPreview.innerHTML = '';
+    const photoHint = document.getElementById('quickAddOptionPhotoHint');
+    const photoDescription = document.getElementById('quickAddOptionPhotoDescription');
+    if (photoHint) photoHint.textContent = 'Upload photo';
+    if (photoDescription) photoDescription.textContent = 'JPG or PNG · shown on package details';
+    const typeLabel = document.getElementById('quickAddOptionTypeLabel');
+    if (typeLabel) typeLabel.innerHTML = 'What would you like to add? <span style="color: #ef4444;">*</span>';
 
     const normalizedType = ['menu', 'service', 'equipment'].includes(type) ? type : '';
     window.setQuickAddOptionType(normalizedType);
@@ -3337,25 +3491,31 @@ window.openQuickAddOptionModal = function (type) {
             ? `Create ${normalizedType === 'menu' ? 'menu item' : normalizedType}`
             : 'Quick Add Inclusion';
     }
+    const saveButton = document.querySelector('#quickAddOptionFooter #btnQuickOptionSubmit span');
+    if (saveButton) saveButton.textContent = 'Save';
+    const addAnotherButton = document.getElementById('btnQuickOptionAddAnother');
+    if (addAnotherButton) {
+        addAnotherButton.disabled = false;
+        addAnotherButton.textContent = 'Save & add another';
+    }
+    const submitButton = document.getElementById('btnQuickOptionSubmit');
+    if (submitButton) submitButton.disabled = false;
     if (subtitle) {
         subtitle.textContent = normalizedType
-            ? `Add a new ${normalizedType === 'menu' ? 'menu item' : normalizedType} to your catalog and package.`
-            : 'Choose an option type, then add it to your catalog and package.';
+            ? `Save this ${normalizedType === 'menu' ? 'menu item' : normalizedType} to your catalog to reuse in future packages.`
+            : 'Choose an option type, then save it to your catalog to reuse in future packages.';
     }
     safeOpenModal('quickAddOptionModal', true);
 };
 
 window.openFixedQuickAddOptionModal = function () {
-    window._pkgInclusionReturnState = {
-        active: true,
-        direct: true,
-        type: ''
-    };
-    window.openQuickAddOptionModal('');
+    window.openAddInclusionModal();
 };
 
 window.closeQuickAddOptionModal = function () {
     safeCloseModal('quickAddOptionModal');
+    const typeSelect = document.getElementById('quickAddOptionType');
+    if (typeSelect) typeSelect.disabled = false;
     if (window._pkgInclusionReturnState && window._pkgInclusionReturnState.active) {
         if (!window._pkgInclusionReturnState.direct) {
             safeOpenModal('addInclusionModal', true);
@@ -3366,15 +3526,16 @@ window.closeQuickAddOptionModal = function () {
 
 window.submitQuickAddOption = async function (e) {
     e.preventDefault();
+    const saveAnother = e.submitter?.value === 'add_another';
     const type = document.getElementById('quickAddOptionType')?.value || '';
     const name = (document.getElementById('quickAddOptionName')?.value || '').trim();
     const categoryInput = document.getElementById('quickAddOptionCategory');
-    const category = (categoryInput?.value || '').trim();
+    const category = (type === 'menu' ? categoryInput?.value : '')?.trim() || '';
+    const customCategory = (document.getElementById('quickAddOptionCustomCategory')?.value || '').trim();
     const unit = document.getElementById('quickAddOptionUnit')?.value || '';
     const priceInput = document.getElementById('quickAddOptionPrice');
     const priceText = (priceInput?.value || '').trim();
     const price = type === 'menu' ? 0 : (Number(priceText.replace(/,/g, '')) || 0);
-    const qty = parseInt(document.getElementById('quickAddOptionQty')?.value || 100, 10) || 100;
     const desc = (document.getElementById('quickAddOptionDescription')?.value || '').trim();
 
     if (!['menu', 'service', 'equipment'].includes(type)) {
@@ -3393,9 +3554,18 @@ window.submitQuickAddOption = async function (e) {
         }
         return;
     }
+    if (type === 'menu' && category === 'Other' && !customCategory) {
+        const customCategoryInput = document.getElementById('quickAddOptionCustomCategory');
+        if (customCategoryInput) { customCategoryInput.reportValidity(); customCategoryInput.focus(); }
+        return;
+    }
     if (categoryInput) categoryInput.setCustomValidity('');
+    if (type === 'menu' && !window.validateSwapFee('quickAddOptionUpgradeFee', 'quickAddOptionUpgradeFeeError')) {
+        document.getElementById('quickAddOptionUpgradeFee')?.focus();
+        return;
+    }
     if (type === 'service' && !window.validateQuickAddOptionPrice()) {
-        if (priceInput) priceInput.focus();
+        priceInput?.focus();
         return;
     }
 
@@ -3404,16 +3574,22 @@ window.submitQuickAddOption = async function (e) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving...</span>';
     }
+    const addAnotherButton = document.getElementById('btnQuickOptionAddAnother');
+    if (addAnotherButton) addAnotherButton.disabled = true;
 
     try {
         const formData = new FormData();
         formData.append('item_type', type);
         formData.append('name', name);
         formData.append('category', category);
-        formData.append('price', price);
+        formData.append('custom_category', customCategory);
+        const upgradeFeeText = document.getElementById('quickAddOptionUpgradeFee')?.value.trim() || '';
+        if (type === 'menu' && upgradeFeeText) {
+            formData.append('upgrade_fee', String(Number(upgradeFeeText.replace(/,/g, ''))));
+        }
+        if (type === 'service' && priceText) formData.append('price', price);
         formData.append('unit_type', unit);
         formData.append('description', desc);
-        formData.append('available_qty', qty);
         const fileInput = document.getElementById('quickAddOptionImage');
         if (fileInput && fileInput.files && fileInput.files[0]) {
             formData.append('image', fileInput.files[0]);
@@ -3434,6 +3610,7 @@ window.submitQuickAddOption = async function (e) {
         if (!window.inclusionsCatalog[type]) {
             window.inclusionsCatalog[type] = [];
         }
+
         // Unshift so new item appears at the top
         window.inclusionsCatalog[type].unshift(newItem);
 
@@ -3448,9 +3625,6 @@ window.submitQuickAddOption = async function (e) {
         syncCustomizableSelectionRules();
         renderReviewCustomizable();
 
-        // Close modal
-        safeCloseModal('quickAddOptionModal');
-
         if (window._pkgInclusionReturnState?.direct) {
             const categoryLabel = type === 'menu' ? 'Menu / Food' : type.charAt(0).toUpperCase() + type.slice(1);
             packageInclusions.push({
@@ -3464,10 +3638,50 @@ window.submitQuickAddOption = async function (e) {
             syncInclusionsHidden();
             renderInclusionsList();
             if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
-            window._pkgInclusionReturnState = null;
-            if (window.showToast) {
-                window.showToast(`Added "${newItem.name}" to this package.`, 'success');
+        }
+
+        if (saveAnother) {
+            if (window._pkgInclusionReturnState?.active && !window._pkgInclusionReturnState.direct) {
+                const categoryLabel = type === 'menu' ? 'Menu / Food' : type.charAt(0).toUpperCase() + type.slice(1);
+                packageInclusions.push({
+                    type: type === 'menu' ? 'Menu' : categoryLabel,
+                    category: categoryLabel,
+                    item_id: newId,
+                    name: newItem.name,
+                    description: newItem.description || '',
+                    image_url: newItem.image_url || ''
+                });
+                syncInclusionsHidden();
+                renderInclusionsList();
+                if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
             }
+            const form = document.getElementById('quickAddOptionForm');
+            form?.reset();
+            const typeSelect = document.getElementById('quickAddOptionType');
+            if (typeSelect) typeSelect.value = type;
+            window.setQuickAddOptionType(type);
+            const photoPreview = document.getElementById('quickAddOptionPhotoPreview');
+            if (photoPreview) photoPreview.innerHTML = '';
+            const photoHint = document.getElementById('quickAddOptionPhotoHint');
+            if (photoHint) photoHint.textContent = 'Upload photo';
+            const photoDescription = document.getElementById('quickAddOptionPhotoDescription');
+            if (photoDescription) photoDescription.textContent = 'JPG or PNG · shown on package details';
+            if (window._pkgInclusionReturnState?.active && !window._pkgInclusionReturnState.direct) {
+                window._pkgInclusionReturnState.type = type === 'menu'
+                    ? 'Menu'
+                    : type.charAt(0).toUpperCase() + type.slice(1);
+            }
+            if (window.showToast) window.showToast(`Saved "${newItem.name}". Add another item or save to finish.`, 'success');
+            document.getElementById('quickAddOptionName')?.focus();
+            return;
+        }
+
+        // Close the form only when the caterer is finished adding items.
+        safeCloseModal('quickAddOptionModal');
+
+        if (window._pkgInclusionReturnState?.direct) {
+            window._pkgInclusionReturnState = null;
+            if (window.showToast) window.showToast(`Added "${newItem.name}" to this package.`, 'success');
             return;
         }
 
@@ -3492,7 +3706,12 @@ window.submitQuickAddOption = async function (e) {
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check"></i> <span>Save &amp; Select</span>';
+            btn.innerHTML = '<i class="fas fa-check"></i> <span>Save</span>';
+        }
+        const addAnotherButton = document.getElementById('btnQuickOptionAddAnother');
+        if (addAnotherButton) {
+            addAnotherButton.disabled = false;
+            addAnotherButton.textContent = 'Save & add another';
         }
     }
 };
@@ -3505,9 +3724,11 @@ window.openQuickEditModal = function (type, id, event) {
         event.preventDefault();
         event.stopPropagation();
     }
-    const modal = document.getElementById('quickEditOptionModal');
-    if (!modal) return;
-
+    type = String(type || '').toLowerCase();
+    if (!['menu', 'service', 'equipment'].includes(type)) {
+        alert('Invalid catalog item type.');
+        return;
+    }
     const list = window.inclusionsCatalog[type] || [];
     const item = list.find(i => Number(i.id) === Number(id));
     if (!item) {
@@ -3515,192 +3736,219 @@ window.openQuickEditModal = function (type, id, event) {
         return;
     }
 
-    const form = document.getElementById('quickEditOptionForm');
+    const modalId = {
+        menu: 'editMenuItemModal',
+        service: 'editServiceItemModal',
+        equipment: 'editEquipmentItemModal'
+    }[type];
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+
+    const prefix = type === 'menu' ? 'editMenuItem' : `edit${type[0].toUpperCase()}${type.slice(1)}Item`;
+    const form = document.getElementById(`${prefix}Form`);
     if (form) form.reset();
-
-    const hiddenType = document.getElementById('quickEditOptionType');
-    const hiddenId = document.getElementById('quickEditOptionId');
-    if (hiddenType) hiddenType.value = type;
-    if (hiddenId) hiddenId.value = id;
-
-    const titleEl = document.getElementById('quickEditOptionModalTitle');
-    const nameLabel = document.getElementById('quickEditOptionNameLabel');
-    const nameInput = document.getElementById('quickEditOptionName');
-    const catSelect = document.getElementById('quickEditOptionCategory');
-    const categorySuggestions = document.getElementById('quickEditOptionCategorySuggestions');
-    const unitLabel = document.getElementById('quickEditOptionUnitLabel');
-    const unitSelect = document.getElementById('quickEditOptionUnit');
-    const priceLabel = document.getElementById('quickEditOptionPriceLabel');
-    const priceInput = document.getElementById('quickEditOptionPrice');
-    const descInput = document.getElementById('quickEditOptionDescription');
-
-    const price = parseFloat(item.price || item.selling_price || 0);
-
-    const priceWrapper = document.getElementById('quickEditOptionPriceWrapper');
-    if (catSelect) catSelect.value = item.category || (type === 'service' ? 'Service' : '');
-    if (categorySuggestions) {
-        const categories = Array.from(new Set([
-            ...(window.inclusionsCatalog[type] || []).map(entry => String(entry.category || '').trim()),
-            String(item.category || '').trim()
-        ].filter(Boolean)));
-        categorySuggestions.innerHTML = categories.map(category => `<option value="${escapeHtml(category)}"></option>`).join('');
+    if (form) {
+        form.dataset.dirty = 'false';
+        if (!form.dataset.dirtyTracking) {
+            form.addEventListener('input', () => { form.dataset.dirty = 'true'; });
+            form.addEventListener('change', () => { form.dataset.dirty = 'true'; });
+            form.dataset.dirtyTracking = 'true';
+        }
     }
+    const value = (suffix) => document.getElementById(`${prefix}${suffix}`);
+    const idField = value('Id');
+    const nameField = value('Name');
+    const descriptionField = value('Description');
+    const imageField = value('Image');
+    const preview = value('PhotoPreview');
+    const photoHint = value('PhotoHint');
+    if (idField) idField.value = String(item.id);
+    if (nameField) nameField.value = item.name || '';
+    if (descriptionField) descriptionField.value = item.description || '';
+    if (imageField) imageField.value = '';
+    if (preview) {
+        preview.innerHTML = item.image_url
+            ? `<img src="${escapeHtml(item.image_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`
+            : '';
+    }
+    if (photoHint) photoHint.textContent = item.image_url ? 'Click to replace photo' : 'Upload photo';
 
     if (type === 'menu') {
-        if (titleEl) titleEl.innerHTML = '<i class="fas fa-edit" style="color: #16a34a; margin-right: 6px;"></i> Edit Food / Dish';
-        if (nameLabel) nameLabel.innerHTML = 'Dish / Menu Item Name <span style="color: #ef4444;">*</span>';
-        if (unitLabel) unitLabel.innerText = 'Serving Unit';
-        if (priceWrapper) priceWrapper.style.display = 'none';
-        if (priceInput) {
-            priceInput.value = '0.00';
-            priceInput.required = false;
+        const categoryField = value('Category');
+        const customCategoryField = value('CustomCategory');
+        const currentCategory = String(item.category || '');
+        const isPreset = categoryField && Array.from(categoryField.options).some(option => option.value === currentCategory);
+        if (categoryField) {
+            categoryField.value = isPreset ? currentCategory : 'Other';
+            window.toggleCatalogEditCustomCategory('menu', categoryField.value);
         }
-
-        if (unitSelect) {
-            unitSelect.innerHTML = `
-                <option value="per_pax">Per Pax / Guest</option>
-                <option value="per_tray">Per Tray / Pan</option>
-                <option value="per_serving">Per Serving</option>
-                <option value="per_order">Per Order</option>
-            `;
-            const u = item.unit_type || item.pricing_unit || 'per_pax';
-            unitSelect.value = u;
-        }
+        if (customCategoryField && categoryField?.value === 'Other') customCategoryField.value = currentCategory;
+        const feeField = value('UpgradeFee');
+        if (feeField) feeField.value = Number(item.upgrade_fee) > 0 ? String(item.upgrade_fee) : '';
+        window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError');
     } else if (type === 'service') {
-        if (titleEl) titleEl.innerHTML = '<i class="fas fa-edit" style="color: #2563eb; margin-right: 6px;"></i> Edit Service';
-        if (nameLabel) nameLabel.innerHTML = 'Service Name <span style="color: #ef4444;">*</span>';
-        if (unitLabel) unitLabel.innerText = 'Service Rate Type';
-        if (priceWrapper) priceWrapper.style.display = 'block';
-        if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="color: #ef4444;">*</span>';
-        if (priceInput) priceInput.required = true;
-
-        if (unitSelect) {
-            unitSelect.innerHTML = `
-                <option value="per_event">Per Event (Flat Rate)</option>
-                <option value="per_hour">Per Hour</option>
-                <option value="per_staff">Per Staff Member</option>
-                <option value="per_pax">Per Pax / Guest</option>
-            `;
-            if (item.unit_type) {
-                unitSelect.value = item.unit_type;
-            }
-        }
+        const feeField = value('Fee');
+        if (feeField) feeField.value = Number(item.price ?? item.selling_price) > 0 ? String(item.price ?? item.selling_price) : '';
+        window.validateCatalogEditServiceFee();
     }
 
-    if (nameInput) nameInput.value = item.name || '';
-    if (priceInput) priceInput.value = price.toFixed(2);
-    if (descInput) descInput.value = item.description || '';
+    safeOpenModal(modalId, true);
+};
 
-    // Populate existing photo preview
-    const photoPreview = document.getElementById('quickEditOptionPhotoPreview');
-    const photoHint    = document.getElementById('quickEditOptionPhotoHint');
-    if (photoPreview) {
-        if (item.image_url) {
-            photoPreview.innerHTML = `<img src="${item.image_url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;" onerror="this.parentElement.innerHTML='<i class=\'fas fa-camera\'></i>'"`  + '>';
-        } else {
-            photoPreview.innerHTML = '<i class="fas fa-camera"></i>';
-        }
+window.toggleCatalogEditCustomCategory = function (type, category) {
+    if (type !== 'menu') return;
+    const wrapper = document.getElementById('editMenuItemCustomCategoryWrapper');
+    const input = document.getElementById('editMenuItemCustomCategory');
+    const visible = category === 'Other';
+    if (wrapper) wrapper.hidden = !visible;
+    if (input) {
+        input.required = visible;
+        if (!visible) input.value = '';
     }
-    if (photoHint) photoHint.textContent = item.image_url ? 'Click to replace photo' : 'Upload or replace photo';
-
-    // Clear any previously-selected file
-    const fileInput = document.getElementById('quickEditOptionImage');
-    if (fileInput) fileInput.value = '';
-
-    safeOpenModal('quickEditOptionModal', true);
 };
 
-window.closeQuickEditOptionModal = function () {
-    safeCloseModal('quickEditOptionModal');
+window.validateCatalogEditServiceFee = function () {
+    const input = document.getElementById('editServiceItemFee');
+    const error = document.getElementById('editServiceItemFeeError');
+    if (!input) return false;
+    window.sanitizeMoneyInput(input);
+    const raw = input.value.trim();
+    let message = '';
+    if (raw && (!/^\d{1,8}(?:\.\d{1,2})?$/.test(raw) || Number(raw) <= 0 || Number(raw) > 99999999.99)) {
+        message = 'Enter a fee greater than 0, up to 8 whole-number digits and 2 decimal places, or leave it blank.';
+    }
+    input.setCustomValidity(message);
+    if (error) {
+        error.textContent = message;
+        error.style.display = message ? 'block' : 'none';
+    }
+    return !message;
 };
 
-window.submitQuickEditOption = async function (e) {
-    e.preventDefault();
-    const type = document.getElementById('quickEditOptionType')?.value || 'menu';
-    const id = parseInt(document.getElementById('quickEditOptionId')?.value || 0, 10);
-    const name = (document.getElementById('quickEditOptionName')?.value || '').trim();
-    const category = document.getElementById('quickEditOptionCategory')?.value || '';
-    const unit = document.getElementById('quickEditOptionUnit')?.value || '';
-    const price = type === 'menu' ? 0 : (parseFloat(document.getElementById('quickEditOptionPrice')?.value || 0) || 0);
-    const desc = (document.getElementById('quickEditOptionDescription')?.value || '').trim();
+window.closeCatalogEditModal = function (modalId) {
+    const form = document.querySelector(`#${modalId} form`);
+    if (form && !form.dataset.saving && form.dataset.dirty === 'true' &&
+        !window.confirm('Discard your changes? Choose OK to discard changes or Cancel to continue editing.')) return;
+    safeCloseModal(modalId);
+    if (form) {
+        form.reset();
+        delete form.dataset.dirty;
+        delete form.dataset.saving;
+    }
+};
 
-    if (!name || !id) {
-        alert('Please enter an item name.');
+window.submitCatalogItemEdit = async function (event, type) {
+    event.preventDefault();
+    const prefix = type === 'menu' ? 'editMenuItem' : `edit${type[0].toUpperCase()}${type.slice(1)}Item`;
+    const value = (suffix) => document.getElementById(`${prefix}${suffix}`);
+    const id = value('Id')?.value;
+    const name = value('Name')?.value.trim() || '';
+    const description = value('Description')?.value.trim() || '';
+    if (!id || !name) {
+        alert('Item name is required.');
+        return;
+    }
+    if (type === 'menu' && !window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError')) {
+        value('UpgradeFee')?.focus();
+        return;
+    }
+    if (type === 'service' && !window.validateCatalogEditServiceFee()) {
+        value('Fee')?.focus();
         return;
     }
 
-    const btn = document.getElementById('btnQuickEditSubmit');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Saving...</span>';
+    const form = event.currentTarget;
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (form) form.dataset.saving = 'true';
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Saving...';
     }
 
     try {
-        // Use FormData so image file can be included
         const formData = new FormData();
         formData.append('name', name);
-        formData.append('category', category);
-        formData.append('price', price);
-        formData.append('unit_type', unit);
-        formData.append('description', desc);
-        const fileInput = document.getElementById('quickEditOptionImage');
-        if (fileInput && fileInput.files && fileInput.files[0]) {
-            formData.append('image', fileInput.files[0]);
+        formData.append('description', description);
+        if (type === 'menu') {
+            const category = value('Category').value;
+            const customCategory = value('CustomCategory')?.value.trim() || '';
+            const fee = value('UpgradeFee')?.value.trim() || '';
+            formData.append('category', category);
+            formData.append('custom_category', customCategory);
+            formData.append('upgrade_fee', fee ? String(Number(fee)) : '0');
+        } else if (type === 'service') {
+            formData.append('price', value('Fee')?.value.trim() || '');
         }
+        const image = value('Image')?.files?.[0];
+        if (image) formData.append('image', image);
 
-        const res = await fetch(`/caterer/api/catalogs/quick-edit/${type}/${id}`, {
+        const response = await fetch(`/caterer/api/catalogs/quick-edit/${type}/${id}`, {
             method: 'POST',
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         });
-
-        const data = await res.json();
-        if (!res.ok || data.status !== 'success') {
-            throw new Error(extractErrorMessage(data, 'Failed to update item'));
+        const result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+            throw new Error(extractErrorMessage(result, 'Failed to update item'));
         }
 
-        const updatedItem = data.item;
-        const list = window.inclusionsCatalog[type] || [];
-        const idx = list.findIndex(i => Number(i.id) === Number(id));
-        if (idx !== -1) {
-            list[idx] = { ...list[idx], ...updatedItem };
+        const updatedItem = result.item;
+        const catalog = window.inclusionsCatalog[type] || [];
+        const catalogIndex = catalog.findIndex(entry => Number(entry.id) === Number(id));
+        if (catalogIndex >= 0) catalog[catalogIndex] = { ...catalog[catalogIndex], ...updatedItem };
+        window.inclusionsCatalog[type] = catalog;
+        let packageChanged = false;
+        packageInclusions = packageInclusions.map(inclusion => {
+            if (Number(inclusion.item_id) !== Number(id) ||
+                getPackageInclusionCatalogType(inclusion) !== type) return inclusion;
+            packageChanged = true;
+            return {
+                ...inclusion,
+                name: updatedItem.name,
+                description: updatedItem.description || '',
+                image_url: updatedItem.image_url || inclusion.image_url || ''
+            };
+        });
+        if (packageChanged) {
+            syncInclusionsHidden();
+            renderInclusionsList();
+            if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
         }
-
-        // Update UI
         renderCustomizableCatalogs();
         renderReviewCustomizable();
-
-        // Close modal
-        safeCloseModal('quickEditOptionModal');
-
-        if (window.showToast) {
-            window.showToast(`Updated "${updatedItem.name}" successfully!`, 'success');
-        }
-    } catch (err) {
-        console.error('submitQuickEditOption error:', err);
-        alert(err.message || 'An error occurred while updating.');
+        safeCloseModal({
+            menu: 'editMenuItemModal',
+            service: 'editServiceItemModal',
+            equipment: 'editEquipmentItemModal'
+        }[type]);
+        if (window.showToast) window.showToast(`Updated "${updatedItem.name}" successfully!`, 'success');
+    } catch (error) {
+        console.error('submitCatalogItemEdit error:', error);
+        alert(error.message || 'Failed to update item.');
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check"></i> <span>Save Changes</span>';
+        if (form) delete form.dataset.saving;
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Save changes';
         }
     }
 };
 
-// ---- Photo preview handler for add/edit catalog item modals ----
-window.previewQuickCatalogPhoto = function (mode, event) {
+window.previewCatalogEditPhoto = function (type, event) {
     const file = event && event.target && event.target.files && event.target.files[0];
     if (!file) return;
-    const previewId = mode === 'edit' ? 'quickEditOptionPhotoPreview' : 'quickAddOptionPhotoPreview';
-    const hintId    = mode === 'edit' ? 'quickEditOptionPhotoHint'    : 'quickAddOptionPhotoHint';
-    const preview = document.getElementById(previewId);
-    const hint    = document.getElementById(hintId);
+    const prefix = type === 'menu' ? 'editMenuItem' : `edit${type[0].toUpperCase()}${type.slice(1)}Item`;
+    const preview = document.getElementById(`${prefix}PhotoPreview`);
+    const hint = document.getElementById(`${prefix}PhotoHint`);
     const reader  = new FileReader();
     reader.onload = function (e) {
         if (preview) {
             preview.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
         }
         if (hint) hint.textContent = file.name;
+        const form = document.getElementById(`${prefix}Form`);
+        if (form) form.dataset.dirty = 'true';
     };
     reader.readAsDataURL(file);
 };
@@ -3710,12 +3958,13 @@ window.quickDeleteCatalogItem = async function (type, id, event) {
         event.preventDefault();
         event.stopPropagation();
     }
+    type = String(type || '').toLowerCase();
     const list = window.inclusionsCatalog[type] || [];
     const item = list.find(i => Number(i.id) === Number(id));
     const itemName = item ? item.name : 'this item';
 
-    if (!confirm(`Are you sure you want to remove "${itemName}" from your catalog?`)) {
-        return;
+    if (!confirm(`Archive "${itemName}"? It will be removed from this package and moved to Archives, where you can restore it later.`)) {
+        return false;
     }
 
     try {
@@ -3728,7 +3977,7 @@ window.quickDeleteCatalogItem = async function (type, id, event) {
 
         const data = await res.json();
         if (!res.ok || data.status !== 'success') {
-            throw new Error(extractErrorMessage(data, 'Failed to delete item'));
+            throw new Error(extractErrorMessage(data, 'Failed to archive item'));
         }
 
         // Remove from local catalog
@@ -3741,6 +3990,17 @@ window.quickDeleteCatalogItem = async function (type, id, event) {
         const numId = Number(id);
         if (type === 'menu') customizableMenuIds.delete(numId);
         else if (type === 'service') customizableServiceIds.delete(numId);
+        else if (type === 'equipment') customizableEquipmentIds.delete(numId);
+
+        const previousInclusionCount = packageInclusions.length;
+        packageInclusions = packageInclusions.filter(inclusion =>
+            !(Number(inclusion.item_id) === numId && getPackageInclusionCatalogType(inclusion) === type)
+        );
+        if (packageInclusions.length !== previousInclusionCount) {
+            syncInclusionsHidden();
+            renderInclusionsList();
+            if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
+        }
 
         // Update UI
         renderCustomizableCatalogs();
@@ -3748,10 +4008,12 @@ window.quickDeleteCatalogItem = async function (type, id, event) {
         renderReviewCustomizable();
 
         if (window.showToast) {
-            window.showToast(`"${itemName}" removed from catalog.`, 'info');
+            window.showToast(`"${itemName}" archived. You can restore it from Archives.`, 'success');
         }
+        return true;
     } catch (err) {
         console.error('quickDeleteCatalogItem error:', err);
-        alert(err.message || 'An error occurred while deleting.');
+        alert(err.message || 'An error occurred while archiving.');
+        return false;
     }
 };

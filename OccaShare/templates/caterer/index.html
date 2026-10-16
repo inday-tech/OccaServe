@@ -43,19 +43,21 @@
             <p>Complete the important setup items below. Each link takes you directly to the page you need.</p>
         </div>
         <div class="onboarding-progress" role="status">
-            <div><strong>{{ setup_completed_count }} of {{ setup_total_count }} complete</strong><span>{% if can_publish %}Everything is ready. Review and confirm to publish.{% else %}Your profile stays private until every required item is complete.{% endif %}</span></div>
-            <div class="onboarding-progress-track"><span style="width: {{ completion_percentage }}%"></span></div>
+            <div><strong class="onboarding-progress-count">{{ setup_completed_count }} of {{ setup_total_count }} complete</strong><span class="onboarding-progress-message">{% if can_publish %}Everything is ready. Review and confirm to publish.{% else %}Your profile stays private until every required item is complete.{% endif %}</span></div>
+            <div class="onboarding-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ completion_percentage }}"><span style="width: {{ completion_percentage }}%"></span></div>
         </div>
         <ol class="onboarding-steps">
             {% for item in setup_requirements %}
-            <li class="onboarding-step {{ 'is-done' if item.complete }} {{ 'is-pending' if item.pending }}">
+            <li class="onboarding-step {{ 'is-done' if item.complete }} {{ 'is-pending' if item.pending }}" data-requirement-index="{{ loop.index0 }}">
                 <span class="onboarding-step-number">{% if item.complete %}<i class="fas fa-check"></i>{% elif item.pending %}<i class="fas fa-clock"></i>{% else %}{{ loop.index }}{% endif %}</span>
                 <div class="onboarding-step-copy">
                     <h3>{{ item.title }}</h3>
-                    <p>{% if item.pending %}Your documents are with the review team. Publishing will unlock after approval.{% elif item.complete %}Complete.{% else %}{{ item.description }}{% endif %}</p>
-                    {% if not item.complete %}<a class="onboarding-action {{ 'onboarding-action-secondary' if item.pending }}" href="{{ item.url }}">{{ item.action }} <i class="fas fa-arrow-right"></i></a>{% endif %}
+                    <p class="onboarding-step-description">{% if item.pending %}Your documents are with the review team. Publishing will unlock after approval.{% elif item.complete %}Complete.{% else %}{{ item.description }}{% endif %}</p>
                 </div>
-                <span class="onboarding-step-status">{% if item.complete %}Done{% elif item.pending %}Under review{% else %}To do{% endif %}</span>
+                <div class="onboarding-step-actions">
+                    <a class="onboarding-action {{ 'onboarding-action-secondary' if item.pending }}" href="{{ item.url }}" {% if item.complete %}hidden{% endif %}>{{ item.action }} <i class="fas fa-arrow-right"></i></a>
+                    <span class="onboarding-step-status">{% if item.complete %}Done{% elif item.pending %}Under review{% else %}To do{% endif %}</span>
+                </div>
             </li>
             {% endfor %}
         </ol>
@@ -63,7 +65,7 @@
             <button type="button" class="onboarding-action onboarding-publish-button" onclick="window.toggleCatererPublish(this)" {% if not can_publish %}disabled aria-disabled="true" title="Complete all setup items to enable publishing"{% endif %}>
                 <i class="fas fa-rocket"></i> Publish to customers
             </button>
-            {% if not can_publish %}<span class="onboarding-locked"><i class="fas fa-lock"></i> Publishing unlocks when all items above are complete.</span>{% endif %}
+            <span class="onboarding-locked" {% if can_publish %}hidden{% endif %}><i class="fas fa-lock"></i> Publishing unlocks when all items above are complete.</span>
         </div>
         <a class="onboarding-help-link" href="/caterer/profile">Go to Business Settings <i class="fas fa-arrow-right"></i></a>
     </section>
@@ -291,6 +293,84 @@
     // Mini Calendar & Search Initialization
     document.addEventListener('DOMContentLoaded', function () {
         const setupPanel = document.getElementById('onboarding');
+        if (setupPanel) {
+            let setupRefreshInProgress = false;
+            const refreshSetupRequirements = async function () {
+                if (setupRefreshInProgress) return;
+                setupRefreshInProgress = true;
+                try {
+                    const response = await fetch('/caterer/api/dashboard-setup', {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (!response.ok) {
+                        throw new Error(`Dashboard setup refresh failed with status ${response.status}`);
+                    }
+                    const data = await response.json();
+                    if (!data.success || !Array.isArray(data.requirements)) {
+                        throw new Error('Dashboard setup refresh returned an invalid response');
+                    }
+
+                    setupPanel.dataset.publishReady = String(data.can_publish);
+                    setupPanel.dataset.profileStatus = data.profile_status;
+                    setupPanel.querySelector('.onboarding-progress-count').textContent =
+                        `${data.completed_count} of ${data.total_count} complete`;
+                    setupPanel.querySelector('.onboarding-progress-message').textContent = data.can_publish
+                        ? 'Everything is ready. Review and confirm to publish.'
+                        : 'Your profile stays private until every required item is complete.';
+                    const progressTrack = setupPanel.querySelector('.onboarding-progress-track');
+                    progressTrack.setAttribute('aria-valuenow', data.completion_percentage);
+                    progressTrack.firstElementChild.style.width = `${data.completion_percentage}%`;
+
+                    const steps = setupPanel.querySelectorAll('.onboarding-step');
+                    data.requirements.forEach((item, index) => {
+                        const step = steps[index];
+                        if (!step) return;
+                        const pending = Boolean(item.pending);
+                        const complete = Boolean(item.complete);
+                        step.classList.toggle('is-done', complete);
+                        step.classList.toggle('is-pending', pending);
+                        step.querySelector('.onboarding-step-copy h3').textContent = item.title;
+                        step.querySelector('.onboarding-step-description').textContent = pending
+                            ? 'Your documents are with the review team. Publishing will unlock after approval.'
+                            : complete ? 'Complete.' : item.description;
+                        const number = step.querySelector('.onboarding-step-number');
+                        number.innerHTML = complete
+                            ? '<i class="fas fa-check"></i>'
+                            : pending ? '<i class="fas fa-clock"></i>' : String(index + 1);
+                        const action = step.querySelector('.onboarding-action');
+                        action.href = item.url;
+                        action.innerHTML = `${item.action} <i class="fas fa-arrow-right"></i>`;
+                        action.classList.toggle('onboarding-action-secondary', pending);
+                        action.hidden = complete;
+                        step.querySelector('.onboarding-step-status').textContent =
+                            complete ? 'Done' : pending ? 'Under review' : 'To do';
+                    });
+
+                    const publishButton = setupPanel.querySelector('.onboarding-publish-button');
+                    publishButton.disabled = !data.can_publish;
+                    publishButton.setAttribute('aria-disabled', String(!data.can_publish));
+                    publishButton.title = data.can_publish
+                        ? ''
+                        : 'Complete all setup items to enable publishing';
+                    setupPanel.querySelector('.onboarding-locked').hidden = data.can_publish;
+
+                    if (data.listing_is_live) {
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error('Could not refresh caterer setup requirements.', error);
+                } finally {
+                    setupRefreshInProgress = false;
+                }
+            };
+            window.setInterval(refreshSetupRequirements, 7000);
+            window.addEventListener('focus', refreshSetupRequirements);
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') refreshSetupRequirements();
+            });
+            refreshSetupRequirements();
+        }
+
         if (setupPanel?.dataset.publishReady === 'true' && setupPanel.dataset.profileStatus !== 'Unpublished') {
             const promptKey = `caterer-publish-prompt-shown-${setupPanel.dataset.profileId}`;
             try {

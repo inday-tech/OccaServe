@@ -644,7 +644,7 @@ async function saveNotificationPrefs() {
         if (window.showError) window.showError('An error occurred. Please try again.');
     } finally {
         btn.innerHTML = originalHtml;
-        btn.disabled = false;
+        window.updateVerificationSubmitState?.();
     }
 }
 
@@ -736,6 +736,7 @@ function enableFileReplacement(fieldId) {
     if (wrapper) wrapper.style.display = 'block';
     const input = document.getElementById(fieldId);
     if (input) input.click();
+    window.updateVerificationSubmitState?.();
 }
 
 function cancelFileReplacement(fieldId) {
@@ -745,6 +746,7 @@ function cancelFileReplacement(fieldId) {
     if (input) input.value = '';
     if (wrapper) wrapper.style.display = 'none';
     if (card) card.style.display = 'flex';
+    window.updateVerificationSubmitState?.();
 }
 
 window.toggleOtherIdType = function(value) {
@@ -756,6 +758,7 @@ window.toggleOtherIdType = function(value) {
         input.required = isOther;
         if (!isOther) input.value = '';
     }
+    window.updateVerificationSubmitState?.();
 };
 
 window.formatCatererContactNumber = function(input) {
@@ -766,7 +769,7 @@ window.formatCatererContactNumber = function(input) {
     window.triggerSettingsDirty?.();
 };
 
-function getVerificationRequirements() {
+function collectVerificationRequirements() {
     const idType = document.getElementById('verif_id_type')?.value || '';
     const idTypeOther = document.getElementById('verif_id_type_other')?.value.trim() || '';
     const resolvedIdType = idType === 'Other' ? idTypeOther : idType;
@@ -782,10 +785,22 @@ function getVerificationRequirements() {
         !document.getElementById(inputId)?.files?.[0] && !document.getElementById(cardId)
     ).map(([, , label]) => label);
     const expiryInput = document.getElementById('verif_permit_expiry');
-    if (!expiryInput?.value) missing.push('Permit expiration date');
+    if (!expiryInput?.value) {
+        missing.push('Permit expiration date');
+    } else {
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        if (expiryInput.value < today) missing.push('Unexpired business permit');
+    }
     if (!idType) missing.unshift('Government ID type');
     else if (idType === 'Other' && !idTypeOther) missing.unshift('Name of ID');
+    return { resolvedIdType, missing, expiryInput, idType, idTypeOther, files };
+}
+
+function getVerificationRequirements(showWarning = true) {
+    const { resolvedIdType, missing, expiryInput, idType, idTypeOther, files } = collectVerificationRequirements();
     if (missing.length) {
+        if (!showWarning) return null;
         const message = `Please complete: ${missing.join(', ')}.`;
         if (window.showToast) window.showToast(message, 'warning');
         else alert(message);
@@ -793,7 +808,7 @@ function getVerificationRequirements() {
             document.getElementById('verif_id_type')?.focus();
         } else if (idType === 'Other' && !idTypeOther) {
             document.getElementById('verif_id_type_other')?.focus();
-        } else if (!expiryInput?.value) {
+        } else if (missing.includes('Permit expiration date') || missing.includes('Unexpired business permit')) {
             expiryInput?.focus();
         }
         const firstMissing = files.find(([inputId, cardId]) =>
@@ -804,6 +819,23 @@ function getVerificationRequirements() {
     }
     return resolvedIdType;
 }
+
+window.updateVerificationSubmitState = function() {
+    const button = document.getElementById('btnSubmitVerification');
+    const hint = document.getElementById('verificationSubmitHint');
+    if (!button) return;
+    if (button.dataset.submissionLocked === 'true') {
+        button.disabled = true;
+        return;
+    }
+    const { missing } = collectVerificationRequirements();
+    button.disabled = missing.length > 0;
+    if (hint) {
+        hint.textContent = missing.length
+            ? `Still needed: ${missing.join(', ')}.`
+            : 'All required documents are ready. You can submit your application.';
+    }
+};
 
 // Submit verification documents
 async function submitVerification() {
@@ -872,7 +904,7 @@ async function submitVerification() {
         }
     } finally {
         btn.innerHTML = originalHtml;
-        btn.disabled = false;
+        window.updateVerificationSubmitState?.();
     }
 }
 
@@ -1096,13 +1128,17 @@ window.handleImageFallback = function(img, type) {
 };
 // ─── Dropzone & Expiry Helpers ───
 window.handleDropzoneFileChange = function(input, fieldId) {
-    if (!input.files || !input.files[0]) return;
+    if (!input.files || !input.files[0]) {
+        window.updateVerificationSubmitState?.();
+        return;
+    }
     const file = input.files[0];
     const ext = (file.name.split('.').pop() || '').toLowerCase();
     if (!['png', 'jpg', 'jpeg'].includes(ext)) {
         input.value = '';
         const message = 'Choose a PNG, JPG, or JPEG image.';
         if (window.showToast) window.showToast(message, 'warning'); else alert(message);
+        window.updateVerificationSubmitState?.();
         return;
     }
     const maxSizeMb = Math.max(1, Number(window.MAX_UPLOAD_SIZE_MB) || 5);
@@ -1110,6 +1146,7 @@ window.handleDropzoneFileChange = function(input, fieldId) {
         input.value = '';
         const message = `This image is larger than the ${maxSizeMb} MB upload limit.`;
         if (window.showToast) window.showToast(message, 'warning'); else alert(message);
+        window.updateVerificationSubmitState?.();
         return;
     }
     const badge = document.getElementById('selected_badge_' + fieldId);
@@ -1119,23 +1156,20 @@ window.handleDropzoneFileChange = function(input, fieldId) {
         badge.style.display = 'flex';
     }
     triggerSettingsDirty();
+    window.updateVerificationSubmitState?.();
 };
 
 window.checkPermitExpiryWarning = function(dateStr) {
     const warningEl = document.getElementById('permitExpiredWarning');
-    if (!warningEl) return;
-    if (!dateStr) {
+    if (warningEl && !dateStr) {
         warningEl.style.display = 'none';
-        return;
-    }
-    const expiryDate = new Date(dateStr + 'T23:59:59');
-    const now = new Date();
-    if (expiryDate < now) {
-        warningEl.style.display = 'flex';
-    } else {
-        warningEl.style.display = 'none';
+    } else if (warningEl) {
+        const expiryDate = new Date(dateStr + 'T23:59:59');
+        const now = new Date();
+        warningEl.style.display = expiryDate < now ? 'flex' : 'none';
     }
     triggerSettingsDirty();
+    window.updateVerificationSubmitState?.();
 };
 
 window.submitVerificationDocs = async function(btn) {
@@ -1554,6 +1588,15 @@ document.addEventListener('DOMContentLoaded', function() {
     if (expiryInput && expiryInput.value) {
         checkPermitExpiryWarning(expiryInput.value);
     }
+    ['verif_id_type', 'verif_id_type_other', 'verif_id_front', 'verif_id_back', 'verif_selfie', 'verif_permit', 'verif_dti', 'verif_bir', 'verif_mayors', 'verif_permit_expiry']
+        .forEach(function(id) {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', window.updateVerificationSubmitState);
+                input.addEventListener('change', window.updateVerificationSubmitState);
+            }
+        });
+    window.updateVerificationSubmitState?.();
 
     // Attach dirty listeners to entire form
     const form = document.getElementById('catererSettingsForm');

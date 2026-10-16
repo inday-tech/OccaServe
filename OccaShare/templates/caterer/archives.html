@@ -465,9 +465,11 @@
                 </div>
                 <div class="archived-card-body">
                     <h3 class="archived-card-title">{{ item.name }}</h3>
+                    {% if item.selling_price and item.selling_price > 0 %}
                     <div style="margin-bottom: 0.75rem; font-size: 0.8rem; color: var(--text-muted);">
-                        <i class="fas fa-tag"></i> ₱{{ "{:,.2f}".format(item.selling_price or 0) }} / {{ item.unit_type }}
+                        <i class="fas fa-tag"></i> ₱{{ "{:,.0f}".format(item.selling_price) if item.selling_price == (item.selling_price|int) else "{:,.2f}".format(item.selling_price) }} / {{ item.unit_type }}
                     </div>
+                    {% endif %}
                     <div class="archived-card-actions" style="margin-top: auto;">
                         <button class="archive-btn btn-restore" onclick="restoreAction('service', {{ item.id }})">
                             <i class="fas fa-undo"></i> Restore

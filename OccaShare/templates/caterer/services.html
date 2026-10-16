@@ -162,15 +162,6 @@
                             <option value="Service_Staff">Service (Staff-Based e.g. Waiters)</option>
                         </select>
                     </div>
-                    <div class="form-group-pro">
-                        <label>Category *</label>
-                        <select name="category" id="modalCategory" class="control-pro" required
-                            onchange="toggleCustomCategory()">
-                            <!-- Populated dynamically via JS -->
-                        </select>
-                        <input type="text" name="custom_category" id="customCategoryInput" class="control-pro"
-                            placeholder="Type specific category" style="display: none; margin-top: 10px;">
-                    </div>
                 </div>
 
                 <div class="form-row-pro">
@@ -180,7 +171,7 @@
                             placeholder="e.g. Plastic Chair, Tent, Waiter" required minlength="2" maxlength="100">
                         <div class="invalid-feedback"></div>
                     </div>
-                    <div class="form-group-pro">
+                    <div class="form-group-pro" id="modalUnitGroup">
                         <label>Unit *</label>
                         <select name="unit_type" id="modalPricingUnit" class="control-pro" required>
                             <!-- Populated dynamically via JS -->
@@ -263,15 +254,15 @@
                 <div id="servicePricingSection">
                     <div class="form-row-pro">
                         <div class="form-group-pro" id="serviceSellingPriceGroup">
-                            <label id="priceLabel">Selling Price (₱) *</label>
+                            <label id="priceLabel">Selling Price (₱)</label>
                             <input type="text" name="price" id="servicePriceInput" class="control-pro js-format-comma"
-                                placeholder="0.00" inputmode="decimal" maxlength="12"
+                                placeholder="Optional" inputmode="decimal" maxlength="12"
                                 data-max-integer-digits="8" data-max-decimal-digits="2"
-                                oninput="window.validateServicePriceField()" required>
+                                oninput="window.validateServicePriceField()">
                             <small id="servicePriceError" aria-live="polite"
                                 style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
                             <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">
-                                Enter an amount up to ₱99,999,999.99. Commas are added automatically.
+                                Optional. Whole numbers or up to 2 decimal places; commas are added automatically.
                             </small>
                         </div>
                     </div>
@@ -342,7 +333,6 @@
         </div>
         <div style="padding: 2rem; max-height: 50vh; overflow-y: auto;">
             <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
-                <span id="viewItemCat" class="item-cat-tag"></span>
                 <span id="viewItemType" class="item-addon-tag" style="background: #e2e8f0; color: #475569;"></span>
                 <span id="viewItemStatus" class="status-chip" style="margin-left: auto;"></span>
             </div>
@@ -353,7 +343,7 @@
 
             <div
                 style="background: #f8fafc; padding: 1.5rem; border-radius: var(--border-radius, 1rem); border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 1.25rem;">
-                <div>
+                <div id="viewPriceWrapper">
                     <span
                         style="display: block; font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;"
                         id="viewPriceLabel">Selling Price</span>
@@ -410,28 +400,7 @@
     const imagePreview = document.getElementById('imagePreview');
     const photoDropzone = document.getElementById('photoDropzone');
     const typeSelect = document.getElementById('modalType');
-    const catSelect = document.getElementById('modalCategory');
     const unitSelect = document.getElementById('modalPricingUnit');
-    const customCat = document.getElementById('customCategoryInput');
-
-    const baseEquipmentCats = ['Chairs', 'Tables', 'Furniture Sets', 'Tents & Canopies', 'Stage & Platform', 'Audio Equipment', 'Lighting Equipment', 'Visual Equipment', 'Buffet Equipment', 'Tableware & Utensils', 'Decorations', 'Event Styling', 'Miscellaneous'];
-    const baseServiceCats = ['Event Staff', 'Entertainment', 'Photography', 'Videography', 'Coordination', 'Styling', 'Security', 'Transportation', 'Audio & Visual Services'];
-
-    const userEquipmentCats = [
-        {% for item in items if item.item_type == 'Equipment' and item.category %}
-        {{ item.category | tojson | safe }},
-        {% endfor %}
-    ];
-    const userServiceCats = [
-        {% for item in items if item.item_type == 'Service' and item.category %}
-        {{ item.category | tojson | safe }},
-        {% endfor %}
-    ];
-
-    const equipmentCats = Array.from(new Set([...baseEquipmentCats, ...userEquipmentCats]));
-    equipmentCats.push('Others');
-    const serviceCats = Array.from(new Set([...baseServiceCats, ...userServiceCats]));
-    serviceCats.push('Others');
     const equipmentUnits = ['Per Piece', 'Per Set', 'Per Bundle', 'Per Day', 'Per Event'];
     const serviceUnits = ['Per Staff', 'Per Hour', 'Per Event', 'Per Package', 'Per Session'];
     const maxServicePrice = 99999999.99;
@@ -444,16 +413,15 @@
 
         const rawValue = input.value.replace(/,/g, '').trim();
         const amount = Number(rawValue);
+        const isService = typeSelect.value.startsWith('Service');
         let message = '';
-        if (!rawValue) {
-            message = 'Enter a service fee or rental price.';
-        } else if (input.dataset.formatOverflow === 'true') {
+        if (rawValue && input.dataset.formatOverflow === 'true') {
             message = 'Use up to 8 whole-number digits and 2 decimal places.';
-        } else if (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount)) {
+        } else if (rawValue && (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount))) {
             message = 'Enter a valid amount with no more than 2 decimal places.';
-        } else if (amount <= 0) {
+        } else if (rawValue && amount <= 0) {
             message = 'The amount must be greater than zero.';
-        } else if (amount > maxServicePrice) {
+        } else if (rawValue && amount > maxServicePrice) {
             message = 'The maximum amount is ₱99,999,999.99.';
         }
 
@@ -467,23 +435,32 @@
 
     function handleTypeChange() {
         const type = typeSelect.value;
-        const cats = type === 'Equipment' ? equipmentCats : serviceCats;
         const units = type === 'Equipment' ? equipmentUnits : serviceUnits;
 
-        catSelect.innerHTML = '';
-        cats.forEach(c => { const o = document.createElement('option'); o.value = c; o.innerText = c; catSelect.appendChild(o); });
         unitSelect.innerHTML = '';
         units.forEach(u => { const o = document.createElement('option'); o.value = u; o.innerText = u; unitSelect.appendChild(o); });
 
         const qtyLabel = document.getElementById('qtyLabel');
         const qtyInput = document.getElementById('availableQtyInput');
+        const qtyGroup = document.getElementById('qtyGroup');
+        const unitGroup = document.getElementById('modalUnitGroup');
+        const qtyRow = qtyGroup?.parentElement;
         const priceLabel = document.getElementById('priceLabel');
+        const priceGroup = document.getElementById('serviceSellingPriceGroup');
         const statusSelect = document.getElementById('modalStatus');
         const durationGroup = document.getElementById('serviceDurationGroup');
 
         statusSelect.innerHTML = '';
         const isService = type.startsWith('Service');
         const isStaff = type === 'Service_Staff';
+        const nameRow = unitGroup?.parentElement;
+        if (unitGroup) unitGroup.style.display = isService ? 'none' : '';
+        if (nameRow) nameRow.style.gridTemplateColumns = isService ? '1fr' : '1fr 1fr';
+        if (qtyRow) qtyRow.style.gridTemplateColumns = isService ? '1fr 1fr' : '1fr';
+        unitSelect.required = !isService;
+        if (isService) {
+            unitSelect.value = 'Per Event';
+        }
 
         // Toggle Capacity Specific Groups
         document.querySelectorAll('.staff-capacity-group').forEach(el => el.style.display = isStaff ? 'flex' : 'none');
@@ -500,23 +477,22 @@
 
         if (isService) {
             qtyLabel.innerText = isStaff ? 'Maximum Personnel Pool' : 'Available Units / Teams';
-            priceLabel.innerText = 'Service Fee (₱) *';
+            priceLabel.innerText = 'Service Fee (₱) (Optional)';
             qtyInput.required = false;
+            qtyGroup.style.display = '';
             statusSelect.innerHTML = '<option value="available">Available</option><option value="unavailable">Fully Booked</option><option value="maintenance">Temporarily Unavailable</option>';
             if (durationGroup) durationGroup.style.display = 'flex';
+            if (priceGroup) priceGroup.style.display = '';
         } else {
-            qtyLabel.innerText = 'Available Quantity *';
-            priceLabel.innerText = 'Rental Price (₱) *';
-            qtyInput.required = true;
+            qtyLabel.innerText = 'Available Quantity';
+            priceLabel.innerText = '';
+            qtyInput.required = false;
+            qtyGroup.style.display = 'none';
+            if (priceGroup) priceGroup.style.display = 'none';
             statusSelect.innerHTML = '<option value="available">Available</option><option value="unavailable">Unavailable</option><option value="maintenance">Under Maintenance</option>';
             if (durationGroup) durationGroup.style.display = 'none';
         }
-        toggleCustomCategory();
-    }
-
-    function toggleCustomCategory() {
-        if (catSelect.value === 'Others') { customCat.style.display = 'block'; customCat.required = true; }
-        else { customCat.style.display = 'none'; customCat.required = false; }
+        document.getElementById('servicePriceInput').required = false;
     }
 
     function openAddMenuModal() {
@@ -538,11 +514,15 @@
     function viewMenuItem(el) {
         document.getElementById('viewItemName').innerText = el.dataset.name;
         document.getElementById('viewItemType').innerText = el.dataset.type;
-        document.getElementById('viewItemCat').innerText = el.dataset.category;
         document.getElementById('viewItemDesc').innerText = el.dataset.description || 'No description provided.';
         const priceLbl = el.dataset.type === 'Equipment' ? 'Rental Price' : 'Service Fee';
         document.getElementById('viewPriceLabel').innerText = priceLbl;
-        document.getElementById('viewItemPrice').innerText = '₱' + (parseFloat(el.dataset.price) || 0).toLocaleString() + ' / ' + (el.dataset.pricingUnit || '');
+        const price = Number(el.dataset.price);
+        const priceWrapper = document.getElementById('viewPriceWrapper');
+        const hasServiceFee = Number.isFinite(price) && price > 0;
+        priceWrapper.style.display = el.dataset.type.startsWith('Service') && !hasServiceFee ? 'none' : '';
+        document.getElementById('viewItemPrice').innerText = '₱' + (Number.isFinite(price) ? price : 0)
+            .toLocaleString('en-PH', { maximumFractionDigits: 2 }) + ' / ' + (el.dataset.pricingUnit || '');
         const statusSpan = document.getElementById('viewItemStatus');
         const statusMap = { available: ['status-chip available', 'Available'], unavailable: ['status-chip unavailable', 'Unavailable'], maintenance: ['status-chip unavailable', 'Under Maintenance'] };
         const [cls, txt] = statusMap[el.dataset.status] || statusMap.available;
@@ -617,7 +597,7 @@
         try {
             const item = {
                 id: el.dataset.id, name: el.dataset.name, type: el.dataset.type,
-                category: el.dataset.category, description: el.dataset.description,
+                description: el.dataset.description,
                 price: el.dataset.price, pricing_unit: el.dataset.pricingUnit,
                 available_qty: el.dataset.availableQty, status: el.dataset.status,
                 is_hidden: el.dataset.isHidden, base_duration_hours: el.dataset.baseDurationHours || 3,
@@ -632,12 +612,8 @@
             handleTypeChange();
             const nameInput = form.elements.namedItem('name');
             if (nameInput) nameInput.value = item.name;
-            const catOptions = Array.from(catSelect.options).map(o => o.value);
-            if (catOptions.includes(item.category)) { catSelect.value = item.category; }
-            else { catSelect.value = 'Others'; customCat.value = item.category; }
-            toggleCustomCategory();
             form.description.value = item.description || '';
-            form.price.value = item.price || 0;
+            form.price.value = item.type.startsWith('Service') && Number(item.price) <= 0 ? '' : (item.price || '');
             if (!Array.from(unitSelect.options).map(o => o.value).includes(item.pricing_unit)) {
                 const opt = document.createElement('option'); opt.value = item.pricing_unit; opt.innerText = item.pricing_unit; unitSelect.appendChild(opt);
             }
@@ -651,7 +627,7 @@
             if (form.min_staff_required) form.min_staff_required.value = el.dataset.minStaffRequired || 1;
             if (form.allow_freelancers) form.allow_freelancers.checked = el.dataset.allowFreelancers === 'true';
             if (form.buffer_time_hours) form.buffer_time_hours.value = el.dataset.bufferTimeHours || 0;
-            if (window.applyCommaFormatting) window.applyCommaFormatting(form.price);
+            if (window.applyCommaFormatting && form.price.value) window.applyCommaFormatting(form.price);
             window.validateServicePriceField();
 
             // Populate Inclusions for editing
@@ -815,7 +791,6 @@
         const name = (nameInput?.value || '').trim();
         const priceInput = document.getElementById('servicePriceInput');
         const sellPrice = parseFloat((priceInput?.value || '0').replace(/,/g, '')) || 0;
-        const qty = parseInt(document.getElementById('availableQtyInput')?.value) || 0;
 
         if (!name || name.length < 2) {
             alert('Name must be at least 2 characters.'); if (updateType) typeSelect.disabled = true; return;
@@ -824,17 +799,19 @@
             priceInput.focus();
             if (updateType) typeSelect.disabled = true; return;
         }
-        if (type === 'Equipment' && qty < 1) {
-            alert('Available Quantity must be at least 1 for Equipment.'); if (updateType) typeSelect.disabled = true; return;
-        }
-        if (catSelect.value === 'Others' && customCat && customCat.value.trim() !== '') {
-            catSelect.appendChild(new Option(customCat.value.trim(), customCat.value.trim(), true, true));
-        }
-
         const btn = this.querySelector('button[type="submit"]');
         this.querySelectorAll('.js-format-comma').forEach(i => i.value = i.value.replace(/,/g, ''));
         const data = new FormData(this);
         data.set('price', sellPrice);
+        data.delete('category');
+        data.delete('custom_category');
+        if (type.startsWith('Service')) {
+            data.delete('unit_type');
+            if (!data.get('available_qty')) data.delete('available_qty');
+        } else {
+            data.delete('available_qty');
+            data.delete('price');
+        }
         data.set('cost_price', 0);
         data.set('addon_price', 0);
         data.set('usage_type', 'both');
@@ -1264,15 +1241,13 @@
         const rawValue = input.value.replace(/,/g, '').trim();
         const amount = Number(rawValue);
         let message = '';
-        if (!rawValue) {
-            message = 'Enter a service fee or starting price.';
-        } else if (input.dataset.formatOverflow === 'true') {
+        if (rawValue && input.dataset.formatOverflow === 'true') {
             message = 'Use up to 8 whole-number digits and 2 decimal places.';
-        } else if (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount)) {
+        } else if (rawValue && (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount))) {
             message = 'Enter a valid amount with no more than 2 decimal places.';
-        } else if (amount <= 0) {
+        } else if (rawValue && amount <= 0) {
             message = 'The service fee must be greater than zero.';
-        } else if (amount > 99999999.99) {
+        } else if (rawValue && amount > 99999999.99) {
             message = 'The maximum service fee is ₱99,999,999.99.';
         }
 

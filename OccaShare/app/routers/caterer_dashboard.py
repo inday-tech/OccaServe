@@ -68,6 +68,81 @@ def _caterer_verification_label(profile: models.CatererProfile) -> str:
     return labels.get(normalized, raw_status or "Not Submitted")
 
 
+def _caterer_verification_documents_missing(db: Session, profile: models.CatererProfile) -> list[str]:
+    identity = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == profile.user_id,
+        models.IdentityVerification.verification_type != "business_permit",
+    ).order_by(models.IdentityVerification.id.desc()).first()
+    id_type = (identity.verification_type or "").strip() if identity else ""
+    required_documents = [
+        ((identity.document_url if identity else None) or profile.gov_id_url, "Front of government ID"),
+        (identity.document_back_url if identity else None, "Back of government ID"),
+        (identity.selfie_url if identity else None, "Selfie photo"),
+        (profile.permit_url, "Business or mayor's permit"),
+        (profile.dti_url, "DTI business name registration"),
+        (profile.bir_url, "BIR Certificate of Registration"),
+    ]
+    missing = [label for url, label in required_documents if not url]
+    if not id_type:
+        missing.insert(0, "Government ID type")
+    if not profile.permit_expiry_date:
+        missing.append("Permit expiration date")
+    return missing
+
+
+def _caterer_verification_status(db: Session, profile: models.CatererProfile) -> str:
+    """Return a review status only when a complete application was actually submitted."""
+    review = db.query(models.CatererVerification).filter(
+        models.CatererVerification.caterer_id == profile.id
+    ).order_by(
+        models.CatererVerification.submitted_at.desc(),
+        models.CatererVerification.id.desc(),
+    ).first()
+    review_status = (review.status or "").strip().upper() if review else ""
+    profile_status = _caterer_verification_label(profile)
+    review_labels = {
+        "PENDING_REVIEW": "Pending Review",
+        "RESUBMISSION_REQUIRED": "Action Required",
+        "VERIFIED": "Verified",
+        "REJECTED": "Rejected",
+        "EXPIRED": "Expired",
+    }
+    if profile_status in {"Not Submitted", "Action Required", "Rejected", "Suspended", "Expired"}:
+        status_label = profile_status
+    else:
+        status_label = review_labels.get(review_status, profile_status)
+    permit_expired = bool(profile.permit_expiry_date and profile.permit_expiry_date < date.today())
+    if permit_expired and status_label in {"Verified", "Pending Review"}:
+        return "Expired"
+    if status_label == "Pending Review" and (
+        not review or _caterer_verification_documents_missing(db, profile)
+    ):
+        return "Not Submitted"
+    return status_label
+
+
+def _caterer_verification_remarks(db: Session, profile: models.CatererProfile) -> Optional[str]:
+    review = db.query(models.CatererVerification).filter(
+        models.CatererVerification.caterer_id == profile.id
+    ).order_by(
+        models.CatererVerification.submitted_at.desc(),
+        models.CatererVerification.id.desc(),
+    ).first()
+    return (review.rejection_reason if review else None) or profile.admin_remarks
+
+
+def _caterer_verification_next_step(status_label: str) -> str:
+    return {
+        "Not Submitted": "Upload every required document, choose your government ID type, and submit the complete application for review.",
+        "Pending Review": "Your complete documents have been submitted. Wait for the admin review and check this page for updates.",
+        "Verified": "Your verification is approved. Keep your business permit valid and complete the remaining setup steps to publish your listing.",
+        "Action Required": "Review the admin remarks, replace or correct the requested documents, then submit them again.",
+        "Rejected": "Review the admin remarks, correct the documents, and submit a complete application again.",
+        "Expired": "Your business permit has expired. Upload a renewed permit with its new expiration date, then resubmit for review.",
+        "Suspended": "Your verification or account is suspended. Review the admin remarks and contact support before taking further action.",
+    }.get(status_label, "Check your verification details and contact support if you are unsure what to do next.")
+
+
 def _caterer_listing_is_live(profile: models.CatererProfile) -> bool:
     return bool(
         profile.status == "Published"
@@ -78,7 +153,7 @@ def _caterer_listing_is_live(profile: models.CatererProfile) -> bool:
 
 def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> list:
     """Return live, actionable requirements that must be met before publishing."""
-    verification_status = _caterer_verification_label(profile)
+    verification_status = _caterer_verification_status(db, profile)
     is_verified = verification_status == "Verified"
     account_approved = (profile.account_status or "").strip().casefold() == "active"
     verification_pending = verification_status == "Pending Review" or (is_verified and not account_approved)
@@ -116,11 +191,13 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
         models.CateringPackage.is_active.is_(True),
         or_(models.CateringPackage.status.is_(None), models.CateringPackage.status != "archived"),
     ).all()
+    has_existing_package = db.query(models.CateringPackage.id).filter(
+        models.CateringPackage.caterer_id == profile.id,
+        or_(models.CateringPackage.status.is_(None), models.CateringPackage.status != "archived"),
+    ).limit(1).first() is not None
     has_complete_package = any(
         (package.name or "").strip()
-        and (package.description or "").strip()
         and float(package.price_per_head or package.price or package.min_contract_amount or 0) > 0
-        and bool(package.image_url)
         for package in active_packages
     )
 
@@ -213,13 +290,32 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
         policies_url = "/caterer/profile#minimum-guests"
     elif has_starting_price and not has_payment_terms:
         policies_url = "/caterer/profile#accepted-payment-terms"
+    package_url = (
+        "/caterer/services?tab=packages"
+        if has_existing_package
+        else "/caterer/services?tab=packages&create=1"
+    )
+    package_description = (
+        "At least one active package with a name and valid price is required. Description and photo are optional."
+        if has_existing_package
+        else "Create and activate at least one package with a valid price. Description and photo are optional."
+    )
+    package_action = "Manage packages" if has_existing_package else "Create package"
+    verification_description = _caterer_verification_next_step(verification_status)
+    verification_remarks = _caterer_verification_remarks(db, profile)
+    if verification_remarks and verification_status in {"Action Required", "Rejected", "Suspended"}:
+        verification_description = f"{verification_description} Admin note: {verification_remarks}"
     return [
         requirement(
             "Identity and business verification",
-            "Admin approval is required before customers can see your listing.",
+            verification_description,
             verification_url,
             is_verified and account_approved,
-            "Check status" if verification_pending else "Submit documents",
+            "Check status" if verification_pending else (
+                "View verification" if verification_status in {"Verified", "Suspended"}
+                else "Update documents" if verification_status in {"Action Required", "Rejected", "Expired"}
+                else "Submit documents"
+            ),
         ),
         requirement(
             "Business details",
@@ -240,11 +336,11 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
             has_logo and has_cover,
         ),
         requirement(
-            "At least one complete service package",
-            "Create an active package with a name, description, price, and photo.",
-            "/caterer/services?tab=packages&create=1",
+            "At least one active service package",
+            package_description,
+            package_url,
             has_complete_package,
-            "Create package",
+            package_action,
         ),
         requirement(
             "Customer payment method",
@@ -285,6 +381,12 @@ def parse_service_fee(raw_value) -> float:
     if amount <= 0 or amount > MAX_SERVICE_FEE:
         raise HTTPException(status_code=400, detail="Service fee must be between 0.01 and 99,999,999.99.")
     return float(amount)
+
+
+def parse_optional_service_fee(raw_value) -> float:
+    if raw_value is None or not str(raw_value).strip():
+        return 0.0
+    return parse_service_fee(raw_value)
 
 
 def parse_delivery_fee(raw_value) -> float:
@@ -2117,7 +2219,7 @@ async def caterer_dashboard(
     stats['action_center_items'] = action_center_items[:6] # Top 6 items
     
     # The profile verification status is the admin-reviewed source of truth.
-    verification_status_display = _caterer_verification_label(profile)
+    verification_status_display = _caterer_verification_status(db, profile)
     is_identity_verified = verification_status_display == "Verified"
     listing_is_live = _caterer_listing_is_live(profile)
     setup_requirements = _caterer_setup_requirements(db, profile)
@@ -2129,7 +2231,7 @@ async def caterer_dashboard(
     has_logo = bool(profile.logo_url and profile.logo_url != "/static/images/default_caterer.png")
     has_cover = bool(profile.cover_image_url)
     has_description = bool(profile.description and profile.description.strip())
-    has_packages = any("complete service package" in item["title"].lower() and item["complete"] for item in setup_requirements)
+    has_packages = any("active service package" in item["title"].lower() and item["complete"] for item in setup_requirements)
     has_portfolio = len([p for p in profile.portfolios if getattr(p, 'visibility', 'Public') == 'Public']) >= 1
     has_starting_price = bool(profile.starting_price and profile.starting_price > 0)
     has_menu = len([m for m in profile.menu_items if getattr(m, 'is_archived', False) == False]) > 0
@@ -2230,6 +2332,8 @@ async def caterer_dashboard(
         "can_publish": can_publish,
         "is_identity_verified": is_identity_verified,
         "verification_status_display": verification_status_display,
+        "verification_next_step": _caterer_verification_next_step(verification_status_display),
+        "verification_admin_remarks": _caterer_verification_remarks(db, profile),
         "listing_is_live": listing_is_live,
         "setup_requirements": setup_requirements,
         "setup_completed_count": setup_completed_count,
@@ -2240,6 +2344,29 @@ async def caterer_dashboard(
         "today_schedule": today_schedule,
         "upcoming_events_list": upcoming_events_list
     })
+
+@router.get("/api/dashboard-setup")
+async def dashboard_setup_api(
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only)
+):
+    profile = user.caterer_profile
+    if not profile:
+        return JSONResponse(status_code=404, content={"success": False, "message": "Profile not found"})
+
+    requirements = _caterer_setup_requirements(db, profile)
+    completed_count = sum(1 for item in requirements if item["complete"])
+    total_count = len(requirements)
+    return {
+        "success": True,
+        "requirements": requirements,
+        "completed_count": completed_count,
+        "total_count": total_count,
+        "completion_percentage": round(completed_count / total_count * 100) if total_count else 0,
+        "can_publish": total_count > 0 and completed_count == total_count,
+        "listing_is_live": _caterer_listing_is_live(profile),
+        "profile_status": profile.status or "Draft",
+    }
 
 @router.post("/toggle-publish")
 async def toggle_publish(
@@ -5732,12 +5859,12 @@ async def add_service_item(
     request: Request,
     type: str = Form(...),
     name: str = Form(...),
-    category: str = Form(...),
+    category: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    price: float = Form(0.0),
+    price: Optional[float] = Form(None),
     cost_price: float = Form(0.0),
-    unit_type: str = Form("Per Event"),
-    available_qty: int = Form(1),
+    unit_type: Optional[str] = Form(None),
+    available_qty: Optional[int] = Form(None),
     status: str = Form("available"),
     visibility: str = Form("public"),
     usage_type: str = Form("both"),
@@ -5776,12 +5903,12 @@ async def add_service_item(
             caterer_id=user.caterer_profile.id,
             equipment_type=actual_type,
             name=name,
-            category=category,
+            category=(category or "Equipment").strip(),
             description=description,
-            rental_price=price,
+            rental_price=price or 0.0,
             cost_value=cost_price,
-            unit_type=unit_type,
-            available_qty=available_qty,
+            unit_type=unit_type or "Per Set",
+            available_qty=available_qty or 1,
             status=status,
             is_hidden=(visibility == "hidden"),
             usage_type=usage_type,
@@ -5793,12 +5920,12 @@ async def add_service_item(
         new_item = models.Service(
             caterer_id=user.caterer_profile.id,
             name=name,
-            category=category,
+            category=(category or "Service").strip(),
             description=description,
-            selling_price=price,
+            selling_price=price or 0.0,
             cost=cost_price,
-            unit_type=unit_type,
-            max_available=available_qty,
+            unit_type=unit_type or "Per Event",
+            max_available=available_qty or 1,
             status=status,
             is_hidden=(visibility == "hidden"),
             usage_type=usage_type,
@@ -5826,12 +5953,12 @@ async def update_service_item(
     request: Request,
     type: str = Form(...),
     name: str = Form(...),
-    category: str = Form(...),
+    category: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    price: float = Form(0.0),
+    price: Optional[float] = Form(None),
     cost_price: float = Form(0.0),
-    unit_type: str = Form("Per Event"),
-    available_qty: int = Form(1),
+    unit_type: Optional[str] = Form(None),
+    available_qty: Optional[int] = Form(None),
     status: str = Form("available"),
     visibility: str = Form("public"),
     usage_type: str = Form("both"),
@@ -5871,12 +5998,16 @@ async def update_service_item(
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
         item.name = name
-        item.category = category
+        if category is not None:
+            item.category = category
         item.description = description
-        item.rental_price = price
+        if price is not None:
+            item.rental_price = price
         item.cost_value = cost_price
-        item.unit_type = unit_type
-        item.available_qty = available_qty
+        if unit_type is not None:
+            item.unit_type = unit_type
+        if available_qty is not None:
+            item.available_qty = available_qty
         item.status = status
         item.is_hidden = (visibility == "hidden")
         item.usage_type = usage_type
@@ -5890,12 +6021,16 @@ async def update_service_item(
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
         item.name = name
-        item.category = category
+        if category is not None:
+            item.category = category
         item.description = description
-        item.price = price
+        if price is not None:
+            item.price = price
         item.cost_price = cost_price
-        item.pricing_unit = unit_type
-        item.max_stock_quantity = available_qty
+        if unit_type is not None:
+            item.pricing_unit = unit_type
+        if available_qty is not None:
+            item.max_stock_quantity = available_qty
         item.is_hidden = (visibility == "hidden")
         item.status = status
         item.usage_type = usage_type
@@ -5909,12 +6044,16 @@ async def update_service_item(
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
         item.name = name
-        item.category = category
+        if category is not None:
+            item.category = category
         item.description = description
-        item.selling_price = price
+        if price is not None:
+            item.selling_price = price
         item.cost = cost_price
-        item.unit_type = unit_type
-        item.max_available = available_qty
+        if unit_type is not None:
+            item.unit_type = unit_type
+        if available_qty is not None:
+            item.max_available = available_qty
         item.status = status
         item.is_hidden = (visibility == "hidden")
         item.usage_type = usage_type
@@ -5970,9 +6109,9 @@ async def add_rental_wizard(
         caterer_id=user.caterer_profile.id,
         name=form.get("name"),
         equipment_type="Equipment",
-        category=form.get("category"),
+        category="Service",
         description=form.get("description"),
-        rental_price=float(form.get("price", 0)),
+        rental_price=0.0,
         unit_type=form.get("unit_type", "Per Set"),
         available_qty=int(form.get("total_stock", 1)),
         status=status_val,
@@ -6024,9 +6163,9 @@ async def add_service_wizard(
     new_item = models.Service(
         caterer_id=user.caterer_profile.id,
         name=form.get("name"),
-        category=form.get("category"),
+        category="Service",
         description=form.get("description"),
-        selling_price=parse_service_fee(form.get("price")),
+        selling_price=parse_optional_service_fee(form.get("price")),
         unit_type=form.get("unit_type", "Per Event"),
         status=service_status_val,
         usage_type="both",
@@ -6105,12 +6244,19 @@ async def edit_profile(
     setup_requirements = _caterer_setup_requirements(db, profile) if profile else []
     can_publish = bool(setup_requirements) and all(item["complete"] for item in setup_requirements)
     listing_is_live = _caterer_listing_is_live(profile) if profile else False
+    verification_status_display = _caterer_verification_status(db, profile) if profile else "Not Submitted"
+    verification_admin_remarks = _caterer_verification_remarks(db, profile) if profile else None
     return templates.TemplateResponse("caterer/profile_edit.html", {
         "request": request,
         "user": user,
         "profile": profile,
         "identity": identity,
-        "verification_status_display": _caterer_verification_label(profile) if profile else "Not Submitted",
+        "verification_status_display": verification_status_display,
+        "verification_next_step": _caterer_verification_next_step(verification_status_display),
+        "verification_admin_remarks": verification_admin_remarks,
+        "verification_can_submit": verification_status_display in {
+            "Not Submitted", "Action Required", "Rejected", "Expired"
+        },
         "can_publish": can_publish,
         "listing_is_live": listing_is_live,
         "active_page": "settings"
@@ -7255,7 +7401,17 @@ async def update_profile(
                     profile.permit_url = data_url
 
                     profile.permit_status = 'Pending Review'
-                    profile.verification_status = 'Pending Review'
+                    latest_verification = db.query(models.CatererVerification).filter(
+                        models.CatererVerification.caterer_id == profile.id
+                    ).order_by(
+                        models.CatererVerification.submitted_at.desc(),
+                        models.CatererVerification.id.desc(),
+                    ).first()
+                    if latest_verification:
+                        latest_verification.status = "RESUBMISSION_REQUIRED"
+                        profile.verification_status = "RESUBMISSION_REQUIRED"
+                    else:
+                        profile.verification_status = "Not Submitted"
                     profile.is_verified = False
                     if profile.status == "Published":
                         profile.status = "Unpublished"
@@ -8001,10 +8157,12 @@ async def quick_add_catalog_item(
     item_type: str = Form("menu"),
     name: str = Form(...),
     category: Optional[str] = Form(None),
-    price: float = Form(0.0),
+    custom_category: Optional[str] = Form(None),
+    upgrade_fee: float = Form(0.0),
+    price: Optional[str] = Form(None),
     unit_type: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    available_qty: Optional[int] = Form(100),
+    available_qty: Optional[int] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -8018,7 +8176,13 @@ async def quick_add_catalog_item(
         raise HTTPException(status_code=400, detail="Item name is required.")
 
     item_type = (item_type or "menu").lower()
-    price = parse_service_fee(price) if item_type == "service" else max(0.0, float(price or 0.0))
+    price = (
+        parse_optional_service_fee(price)
+        if item_type == "service"
+        else max(0.0, float(price or 0.0))
+    )
+    if upgrade_fee < 0 or upgrade_fee > 99999999.99:
+        raise HTTPException(status_code=400, detail="Dish swap fee must be between 0 and 99,999,999.99.")
     desc = description.strip() if description else None
 
     image_url = None
@@ -8033,6 +8197,8 @@ async def quick_add_catalog_item(
 
     if item_type == "menu":
         cat = category.strip() if category else ""
+        if cat == "Other":
+            cat = (custom_category or "Other").strip() or "Other"
         if not cat or len(cat) > 60:
             raise HTTPException(status_code=400, detail="Enter a menu category up to 60 characters.")
         unit = unit_type.strip() if unit_type else "per_pax"
@@ -8041,6 +8207,7 @@ async def quick_add_catalog_item(
             name=name,
             category=cat,
             price=price,
+            upgrade_fee=max(0.0, float(upgrade_fee or 0.0)),
             pricing_unit=unit,
             description=desc,
             image_url=image_url,
@@ -8064,6 +8231,7 @@ async def quick_add_catalog_item(
                 "category": new_item.category,
                 "unit_type": new_item.pricing_unit or "per_pax",
                 "price": new_item.price or 0.0,
+                "upgrade_fee": new_item.upgrade_fee or 0.0,
                 "description": new_item.description or "",
                 "image_url": new_item.image_url or ""
             }
@@ -8103,7 +8271,7 @@ async def quick_add_catalog_item(
     elif item_type == "equipment":
         cat = category.strip() if category else "Equipment"
         unit = unit_type.strip() if unit_type else "piece"
-        qty = int(available_qty or 100)
+        qty = max(1, int(available_qty or 1))
         new_equip = models.Equipment(
             caterer_id=profile.id,
             name=name,
@@ -8153,7 +8321,9 @@ async def quick_edit_catalog_item(
     item_id: int,
     name: str = Form(...),
     category: Optional[str] = Form(None),
-    price: float = Form(0.0),
+    custom_category: Optional[str] = Form(None),
+    upgrade_fee: float = Form(0.0),
+    price: Optional[str] = Form(None),
     unit_type: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
@@ -8169,7 +8339,13 @@ async def quick_edit_catalog_item(
         raise HTTPException(status_code=400, detail="Item name is required.")
 
     item_type = (item_type or "menu").lower()
-    price = max(0.0, float(price or 0.0))
+    price = (
+        (parse_optional_service_fee(price) if price is not None else None)
+        if item_type == "service"
+        else (max(0.0, float(price or 0.0)) if price is not None else None)
+    )
+    if upgrade_fee < 0 or upgrade_fee > 99999999.99:
+        raise HTTPException(status_code=400, detail="Dish swap fee must be between 0 and 99,999,999.99.")
     desc = description.strip() if description else None
 
     image_url = None
@@ -8183,6 +8359,11 @@ async def quick_edit_catalog_item(
             image_url = None
 
     if item_type == "menu":
+        menu_category = (category or "").strip()
+        if menu_category == "Other":
+            menu_category = (custom_category or "").strip()
+        if menu_category and len(menu_category) > 60:
+            raise HTTPException(status_code=400, detail="Menu category must be 60 characters or fewer.")
         item = db.query(models.MenuItem).filter(
             models.MenuItem.id == item_id,
             models.MenuItem.caterer_id == profile.id
@@ -8191,9 +8372,11 @@ async def quick_edit_catalog_item(
             raise HTTPException(status_code=404, detail="Menu item not found")
 
         item.name = name
-        if category:
-            item.category = category.strip()
-        item.price = price
+        if menu_category:
+            item.category = menu_category
+        if price is not None:
+            item.price = price
+        item.upgrade_fee = max(0.0, float(upgrade_fee or 0.0))
         if unit_type:
             item.pricing_unit = unit_type.strip()
         item.description = desc
@@ -8211,6 +8394,7 @@ async def quick_edit_catalog_item(
                 "category": item.category,
                 "unit_type": item.pricing_unit or "per_pax",
                 "price": item.price or 0.0,
+                "upgrade_fee": item.upgrade_fee or 0.0,
                 "description": item.description or "",
                 "image_url": item.image_url or ""
             }
@@ -8226,7 +8410,8 @@ async def quick_edit_catalog_item(
         svc.name = name
         if category:
             svc.category = category.strip()
-        svc.selling_price = price
+        if price is not None:
+            svc.selling_price = price
         if unit_type:
             svc.unit_type = unit_type.strip()
         svc.description = desc
@@ -8247,6 +8432,42 @@ async def quick_edit_catalog_item(
                 "selling_price": svc.selling_price or 0.0,
                 "description": svc.description or "",
                 "image_url": svc.image_url or ""
+            }
+        }
+    elif item_type == "equipment":
+        equipment = db.query(models.Equipment).filter(
+            models.Equipment.id == item_id,
+            models.Equipment.caterer_id == profile.id
+        ).first()
+        if not equipment:
+            raise HTTPException(status_code=404, detail="Equipment not found")
+
+        equipment.name = name
+        if category:
+            equipment.category = category.strip()
+        if price is not None:
+            equipment.rental_price = price
+        if unit_type:
+            equipment.unit_type = unit_type.strip()
+        equipment.description = desc
+        if image_url:
+            equipment.image_url = image_url
+        db.commit()
+        db.refresh(equipment)
+
+        return {
+            "status": "success",
+            "type": "equipment",
+            "item": {
+                "id": equipment.id,
+                "name": equipment.name,
+                "category": equipment.category,
+                "unit_type": equipment.unit_type or "piece",
+                "price": equipment.rental_price or 0.0,
+                "rental_price": equipment.rental_price or 0.0,
+                "available_qty": equipment.available_qty or 0,
+                "description": equipment.description or "",
+                "image_url": equipment.image_url or ""
             }
         }
     else:
@@ -8342,6 +8563,17 @@ async def quick_delete_catalog_item_placeholder_skip(
         svc.status = "archived"
         db.commit()
         return {"status": "success", "type": "service", "item_id": item_id}
+    elif item_type == 'equipment':
+        equipment = db.query(models.Equipment).filter(
+            models.Equipment.id == item_id,
+            models.Equipment.caterer_id == profile.id
+        ).first()
+        if not equipment:
+            raise HTTPException(status_code=404, detail="Equipment not found")
+        equipment.is_archived = True
+        equipment.status = "archived"
+        db.commit()
+        return {"status": "success", "type": "equipment", "item_id": item_id}
     else:
         raise HTTPException(status_code=400, detail="Invalid item type")
 
@@ -8475,7 +8707,7 @@ async def update_menu_item(
     item.description = description
     item.serving_style = serving_style
     item.cost_price = cost_price
-    item.price = price
+    item.price = price or 0.0
     item.serving_size = serving_size
     item.min_order_qty = min_order_qty
     item.status = status
@@ -11029,7 +11261,17 @@ async def submit_verification(
     if not profile:
         return JSONResponse(status_code=400, content={"success": False, "message": "Profile not found."})
 
-    identity = db.query(models.IdentityVerification).filter(models.IdentityVerification.user_id == user.id).first()
+    current_verification_status = _caterer_verification_status(db, profile)
+    if current_verification_status in {"Pending Review", "Verified", "Suspended"}:
+        return JSONResponse(status_code=409, content={
+            "success": False,
+            "message": _caterer_verification_next_step(current_verification_status),
+        })
+
+    identity = db.query(models.IdentityVerification).filter(
+        models.IdentityVerification.user_id == user.id,
+        models.IdentityVerification.verification_type != "business_permit",
+    ).order_by(models.IdentityVerification.id.desc()).first()
     required_documents = [
         (id_front, (identity.document_url if identity else None) or profile.gov_id_url, "Front of government ID"),
         (id_back, identity.document_back_url if identity else None, "Back of government ID"),
@@ -11045,14 +11287,23 @@ async def submit_verification(
     if not id_type.strip():
         missing_documents.insert(0, "Government ID type")
     if permit_expiry:
-        from datetime import datetime
         try:
-            datetime.strptime(permit_expiry, "%Y-%m-%d")
+            expiry_date = datetime.strptime(permit_expiry, "%Y-%m-%d").date()
         except ValueError:
             return JSONResponse(status_code=400, content={
                 "success": False,
                 "message": "Enter a valid permit expiration date."
             })
+        if expiry_date < date.today():
+            return JSONResponse(status_code=400, content={
+                "success": False,
+                "message": "Upload a business permit that has not expired."
+            })
+    elif profile.permit_expiry_date and profile.permit_expiry_date < date.today():
+        return JSONResponse(status_code=400, content={
+            "success": False,
+            "message": "Upload a renewed business permit and enter its future expiration date."
+        })
     if missing_documents:
         return JSONResponse(status_code=400, content={
             "success": False,
@@ -11097,7 +11348,6 @@ async def submit_verification(
             if url: profile.permit_url = url
             
         if permit_expiry:
-            from datetime import datetime
             try:
                 profile.permit_expiry_date = datetime.strptime(permit_expiry, "%Y-%m-%d").date()
             except:
@@ -11709,8 +11959,8 @@ async def quick_save_service(
         raise HTTPException(status_code=400, detail="Service / Inclusion name is required.")
 
     price = float(payload.price or 0.0)
-    if price <= 0 or price > 999999.99:
-        raise HTTPException(status_code=400, detail="Service amount must be between 0.01 and 999,999.99.")
+    if price < 0 or price > 999999.99:
+        raise HTTPException(status_code=400, detail="Service amount must be between 0 and 999,999.99.")
     notes = payload.notes.strip() if payload.notes else None
     category = payload.category.strip() if payload.category else "Service"
 
@@ -11766,8 +12016,8 @@ async def quick_update_service(
         raise HTTPException(status_code=400, detail="Service / Inclusion name is required.")
 
     price = float(payload.price or 0.0)
-    if price <= 0 or price > 999999.99:
-        raise HTTPException(status_code=400, detail="Service amount must be between 0.01 and 999,999.99.")
+    if price < 0 or price > 999999.99:
+        raise HTTPException(status_code=400, detail="Service amount must be between 0 and 999,999.99.")
 
     service.name = name
     service.selling_price = price

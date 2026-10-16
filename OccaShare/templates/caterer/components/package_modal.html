@@ -8,6 +8,7 @@
                     style="color: #0f172a; font-size: 1.25rem; font-weight: 800; margin: 0;">Create a Package</h3>
                 <div class="occ-modal-subtitle" style="color: #64748b; font-size: 0.85rem; margin-top: 4px;">Add the details, choose inclusions, then review your price.</div>
             </div>
+
             <button class="btn-close-pro" onclick="window.closePackageModal()" type="button"><i
                     class="fas fa-times"></i></button>
         </div>
@@ -15,6 +16,7 @@
             style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
             <input type="hidden" name="inclusions_json" id="package_inclusions_json" value="" />
             <input type="hidden" name="selection_rules" id="package_selection_rules_json" value="" />
+            <input type="hidden" name="service_type" id="pkgServiceTypeSelect" value="General" />
             <div class="occ-modal-body modal-body">
                 <!-- Left Sidebar Stepper -->
                 <div class="pkg-wizard-sidebar modal-sidebar">
@@ -22,7 +24,7 @@
                         onclick="window.switchPackageTab(this, 'basic')">
                         <div class="step-icon-side"><i class="fas fa-info-circle"></i></div>
                         <div class="step-text-side">
-                            <span class="step-title-side step-title-desktop">1. Package Details</span>
+                            <span class="step-title-side step-title-desktop">1. Details</span>
                             <span class="step-title-side step-title-mobile">1. Details</span>
                         </div>
                     </div>
@@ -30,14 +32,14 @@
                         onclick="window.switchPackageTab(this, 'inclusions')">
                         <div class="step-icon-side"><i class="fas fa-boxes"></i></div>
                         <div class="step-text-side">
-                            <span class="step-title-side step-title-desktop" id="step2SidebarTitle">2. Inclusions &amp; Options</span>
+                            <span class="step-title-side step-title-desktop" id="step2SidebarTitle">2. Inclusions</span>
                             <span class="step-title-side step-title-mobile" id="step2SidebarMobileTitle">2. Inclusions</span>
                         </div>
                     </div>
                     <div class="pkg-step-side" id="step-btn-review" role="button" tabindex="0" onclick="window.switchPackageTab(this, 'review')">
                         <div class="step-icon-side"><i class="fas fa-check-double"></i></div>
                         <div class="step-text-side">
-                            <span class="step-title-side step-title-desktop">3. Review &amp; Save</span>
+                            <span class="step-title-side step-title-desktop">3. Review</span>
                             <span class="step-title-side step-title-mobile">3. Review</span>
                         </div>
                     </div>
@@ -58,38 +60,14 @@
                     <!-- STEP 1: BASIC INFO -->
                     <div class="tab-pane-pro active" id="tab-basic">
                         <div class="form-grid">
-                            <div class="form-group-pro form-grid-full">
-                                <label>Package name *</label>
+                            <div class="form-group-pro">
+                                <label>Package name <span class="required-mark">*</span></label>
                                 <input class="control-pro" name="name" id="pkgNameInput" placeholder="e.g. Wedding Gold"
                                     required="" type="text" autocomplete="off" aria-describedby="packageNameValidationMessage" />
                                 <small id="packageNameValidationMessage" class="package-name-validation" aria-live="polite"></small>
                             </div>
-                            <div class="form-group-pro" id="pkgCategoryGroup">
-                                <label>Event category *</label>
-                                <select class="control-pro" name="service_type" id="pkgServiceTypeSelect" required="">
-                                    <option value="Wedding">Wedding</option>
-                                    <option value="Birthday">Birthday</option>
-                                    <option value="Debut">Debut</option>
-                                    <option value="Christening">Christening</option>
-                                    <option value="Corporate">Corporate</option>
-                                    <option value="Funeral">Funeral</option>
-                                    <option value="Anniversary">Anniversary</option>
-                                    <option value="Kiddie Party">Kiddie Party</option>
-                                    <option value="Fiesta">Fiesta</option>
-                                    <option value="General">General</option>
-                                    {% for category in existing_package_categories or [] %}
-                                    <option value="{{ category }}">{{ category }}</option>
-                                    {% endfor %}
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            <div class="form-group-pro form-grid-full" id="pkgOtherCategoryGroup" style="display: none;">
-                                <label for="pkgOtherCategoryInput">Category name *</label>
-                                <input class="control-pro" id="pkgOtherCategoryInput" name="other_category" type="text" maxlength="60"
-                                    placeholder="e.g. Graduation, Company Anniversary" autocomplete="off" />
-                            </div>
                             <div class="form-group-pro" id="pkgPricingModeGroup">
-                                <label>Package type *</label>
+                                <label>Package type <span class="required-mark">*</span></label>
                                 <select class="control-pro" name="pricing_mode" id="pkgPricingModeSelect"
                                     onchange="window.togglePricingMode(this.value)" required="">
                                     <option value="fixed" selected>Fixed Package</option>
@@ -100,36 +78,53 @@
                                 <h5>Guest capacity</h5>
                                 <div class="form-row-pro" id="capacityRow" style="margin-bottom: 0;">
                                     <div class="form-group-pro capacity-per-pax" style="flex: 1; margin-bottom: 0;">
-                                        <label>Minimum guests *</label>
+                                        <label>Minimum guests <span class="required-mark">*</span></label>
                                         <input class="control-pro" min="{{ caterer_min_pax or 1 }}" name="min_guests" type="number" value="{{ caterer_min_pax or 1 }}" required />
                                     </div>
                                     <div class="form-group-pro capacity-additional"
                                         style="display: block; flex: 1; margin-bottom: 0;">
-                                        <label>Included guests *</label>
-                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                        <label>Included guests <span class="required-mark">*</span></label>
+                                        <div class="pkg-guest-field">
                                             <input class="control-pro" name="base_pax" placeholder="Guest count"
-                                                type="number" min="{{ caterer_min_pax or 1 }}" value="{{ caterer_min_pax or 1 }}" required style="flex: 1;" />
-                                            <span
-                                                style="font-size: 0.85rem; font-weight: 700; color: #64748b;">Guests</span>
+                                                type="number" min="{{ caterer_min_pax or 1 }}" value="{{ caterer_min_pax or 1 }}" required />
+                                            <span class="pkg-guest-suffix">Guests</span>
                                         </div>
                                     </div>
                                     <div class="form-group-pro capacity-fixed"
                                         style="display: none; flex: 1; margin-bottom: 0;">
-                                        <label for="pkgExtraGuestRate">Extra guest rate (₱)</label>
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 0.85rem; font-weight: 700; color: #64748b;">₱</span>
+                                        <label for="pkgExtraGuestRate">Extra guest rate</label>
+                                        <div class="pkg-currency-field">
+                                            <span class="pkg-currency-prefix">₱</span>
                                             <input class="control-pro" id="pkgExtraGuestRate" name="additional_guest_price"
-                                                placeholder="0.00" type="number" min="{{ caterer_starting_price or 0 }}" step="0.01" value="{{ caterer_starting_price or '' }}" style="flex: 1;" />
+                                                placeholder="0.00" type="text" inputmode="decimal" maxlength="11" oninput="window.sanitizeMoneyInput(this)" value="{{ caterer_starting_price or '' }}" />
                                             <span
-                                                style="font-size: 0.85rem; font-weight: 700; color: #64748b; white-space: nowrap;">/
+                                                class="pkg-currency-suffix">/
                                                 guest</span>
                                         </div>
                                         <small class="pkg-inline-hint">Matches your Business Settings rate. You can set a higher rate.</small>
                                     </div>
                                 </div>
                             </div>
+                            <div class="pricing-overview-card form-grid-full package-price-card" id="pkgPricingCard">
+                                <div class="package-price-card-heading">
+                                    <h4>Package price</h4>
+                                </div>
+                                <div class="form-row-pro">
+                                    <div class="form-group-pro" style="flex: 1;">
+                                        <label id="lblPricingMain"><span id="pkgPricingLabelText">Package price (base total)</span> <span class="required-mark">*</span></label>
+                                        <div style="position: relative; display: flex; align-items: center;">
+                                            <span
+                                                style="position: absolute; left: 12px; color: #64748b; font-weight: 700;">₱</span>
+                                            <input class="control-pro js-format-comma" id="pkgManualPriceInput"
+                                                maxlength="11" name="price_per_head" placeholder="0.00" oninput="window.sanitizeMoneyInput(this)" readonly required=""
+                                                style="padding-left: 28px; font-weight: 700;" type="text" />
+                                        </div>
+                                        <small class="pkg-inline-hint" id="pkgPriceUnitHint">Calculated from included guests × starting price per guest.</small>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="form-group-pro form-grid-full">
-                                <label>Service duration (hours) *</label>
+                                <label>Service duration (hours) <span class="required-mark">*</span></label>
                                 <input class="control-pro" min="1" max="24" name="service_duration"
                                     placeholder="e.g. 4" required type="number"
                                     value="{{ caterer_service_duration or 4 }}" />
@@ -139,25 +134,6 @@
                                 <textarea class="control-pro" name="description"
                                     placeholder="Describe what customers can expect."
                                     rows="2"></textarea>
-                            </div>
-
-                            <div class="pricing-overview-card form-grid-full package-price-card" id="pkgPricingCard">
-                                <div class="package-price-card-heading">
-                                    <h4>Package price</h4>
-                                </div>
-                                <div class="form-row-pro">
-                                    <div class="form-group-pro" style="flex: 1;">
-                                        <label id="lblPricingMain"><span id="pkgPricingLabelText">Package price (base total) *</span></label>
-                                        <div style="position: relative; display: flex; align-items: center;">
-                                            <span
-                                                style="position: absolute; left: 12px; color: #64748b; font-weight: 700;">₱</span>
-                                            <input class="control-pro js-format-comma" id="pkgManualPriceInput"
-                                                maxlength="12" name="price_per_head" placeholder="0.00" readonly required=""
-                                                style="padding-left: 28px; font-weight: 700;" type="text" />
-                                        </div>
-                                        <small class="pkg-inline-hint" id="pkgPriceUnitHint">Calculated from included guests × starting price per guest.</small>
-                                    </div>
-                                </div>
                             </div>
                             <div class="form-group-pro form-grid-full">
                                 <label>Package status</label>
@@ -222,171 +198,131 @@
                         <!-- 1. FIXED PACKAGE FLOW (Preserved completely) -->
                         <div id="step2FixedContainer">
                             <!-- Header Section with Single Primary Action -->
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 1rem;">
+                            <div class="fixed-inclusion-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 1rem;">
                                 <div>
                                     <div style="display: flex; align-items: center; gap: 10px;">
                                         <h4 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">What's included</h4>
                                         <span id="inclusionsTotalBadge" style="background: #f1f5f9; color: #475569; font-size: 0.8rem; font-weight: 800; padding: 3px 10px; border-radius: 9999px; border: 1px solid #e2e8f0;">0 items</span>
                                     </div>
-                                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Add the menu items and services every customer receives with this fixed package.</p>
+                                    <p style="font-size: 0.82rem; color: #64748b; margin: 5px 0 0 0; max-width: 52ch; line-height: 1.5;">Add the food, services, and equipment included for every customer.</p>
                                 </div>
-                                <button type="button" class="btn-primary-pro" onclick="window.openFixedQuickAddOptionModal()"
+                                <button type="button" class="btn-primary-pro fixed-inclusion-add-button" onclick="window.openAddInclusionModal()"
                                     style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.9rem; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                                     <i class="fas fa-plus"></i>
-                                    <span>Quick Add Inclusion</span>
+                                    <span>Add item</span>
                                 </button>
                             </div>
 
                             <!-- Small Informational Note -->
-                            <div style="display: flex; align-items: center; gap: 8px; padding: 0.65rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 1.25rem; color: #475569; font-size: 0.82rem; font-weight: 600;">
+                            <div class="fixed-inclusion-note" style="display: flex; align-items: flex-start; gap: 8px; padding: 0.65rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 1rem; color: #475569; font-size: 0.78rem; font-weight: 600; line-height: 1.45;">
                                 <i class="fas fa-info-circle" style="color: var(--primary-color, #f97316); font-size: 0.95rem;"></i>
-                                <span>Customers receive every item listed here; they cannot swap or remove inclusions.</span>
-                            </div>
-
-                            <!-- Summary Category Chips (Shown when inclusions exist) -->
-                            <div id="inclusionsSummaryChips" style="display: none; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem;">
-                                <!-- Injected dynamically -->
+                                <span>Every item listed here is included in the package.</span>
                             </div>
 
                             <!-- Inclusions List / Card Container -->
                             <div id="inclusionsListGrouped" style="display: flex; flex-direction: column; gap: 0.75rem;">
                                 <!-- Inclusions injected here dynamically -->
                             </div>
-
-                            <!-- Bottom Add Button (Visible when items exist) -->
-                            <div id="inclusionsBottomAddContainer" style="display: none; margin-top: 1.25rem; text-align: center;">
-                                <button type="button" class="btn-secondary-pro" onclick="window.openFixedQuickAddOptionModal()"
-                                    style="display: inline-flex; align-items: center; gap: 8px; padding: 0.65rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; border: 1.5px dashed #cbd5e1; background: #f8fafc; width: 100%; justify-content: center;">
-                                    <i class="fas fa-plus text-brand"></i>
-                                    <span>Quick Add Another Inclusion</span>
-                                </button>
-                            </div>
                         </div>
 
                         <!-- 2. CUSTOMIZABLE PACKAGE FLOW: AVAILABLE OPTIONS (Three Sections: A. Menu/Food, B. Services, C. Equipment) -->
-                        <div id="step2CustomizableContainer" style="display: none; flex-direction: column; gap: 1.5rem;">
+                        <div id="step2CustomizableContainer" style="display: none; flex-direction: column; gap: 1rem;">
                             <!-- Header Section -->
                             <div class="customizable-options-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 0.75rem;">
                                 <div class="customizable-options-heading">
                                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                         <h4 style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">Available Options</h4>
-                                        <span id="custTotalAvailableBadge" style="background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; font-size: 0.8rem; font-weight: 800; padding: 3px 10px; border-radius: 9999px;">0 options selected</span>
+                                        <span id="custTotalAvailableBadge" style="font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">0 options selected</span>
                                     </div>
-                                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Choose the menu items and services customers may select when they build their package.</p>
+                                    <p style="font-size: 0.85rem; color: #64748b; margin: 4px 0 0 0;">Select what customers can choose for this package.</p>
                                 </div>
                                 <div class="customizable-options-create-actions">
                                     <button type="button" class="btn-primary-pro customizable-options-add-button" onclick="window.openQuickAddOptionModal('menu')">
-                                        <i class="fas fa-plus" aria-hidden="true"></i><span>Create menu</span>
+                                        <span id="custMenuActionLabel">Create menu</span>
                                     </button>
                                     <button type="button" class="btn-secondary-pro customizable-options-add-button" onclick="window.openQuickAddOptionModal('service')">
-                                        <i class="fas fa-plus" aria-hidden="true"></i><span>Create service</span>
+                                        <span id="custServiceActionLabel">Create service</span>
+                                    </button>
+                                    <button type="button" class="btn-secondary-pro customizable-options-add-button" onclick="window.openQuickAddOptionModal('equipment')">
+                                        <span id="custEquipmentActionLabel">Create equipment</span>
                                     </button>
                                 </div>
-                            </div>
-
-                            <!-- Small Informational Note -->
-                            <div style="display: flex; align-items: center; gap: 8px; padding: 0.65rem 1rem; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; color: #9a3412; font-size: 0.82rem; font-weight: 600;">
-                                <i class="fas fa-sliders-h" style="color: #ea580c; font-size: 0.95rem;"></i>
-                                <span>Select the menu items and services customers can choose from. You can edit or remove an item from your catalog using its action buttons.</span>
                             </div>
 
                             <!-- A. MENU / FOOD -->
-                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-                                    <div>
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 0.72rem; font-weight: 800; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">Section A</span>
-                                            <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">Menu items</h4>
-                                            <span id="custMenuCountBadge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 9999px;">0 selected</span>
-                                        </div>
-                                        <p style="font-size: 0.8rem; color: #64748b; margin: 3px 0 0 0;">Select the dishes customers can choose from for their event.</p>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('menu', true)"
-                                            style="padding: 0.4rem 0.75rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px;">Select All</button>
-                                        <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('menu', false)"
-                                            style="padding: 0.4rem 0.75rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px;">Deselect All</button>
+                            <div class="customizable-catalog-panel">
+                                <div class="customizable-section-heading">
+                                    <h4>Menu items</h4>
+                                    <div class="customizable-section-summary">
+                                        <span id="custMenuCountBadge" class="customizable-count-badge">0 selected</span>
+                                        <span class="customizable-required-summary" title="Number of menu choices customers must select across the selected categories">Required: <strong id="custTotalVariantsAllowedText">0</strong></span>
+                                        <button type="button" class="btn-secondary-pro customizable-select-all" onclick="window.toggleAllCustomizableCatalog('menu')"
+                                            data-catalog-toggle="menu">Select all</button>
                                     </div>
                                 </div>
-                                <div style="margin-bottom: 0.85rem;">
-                                    <div style="position: relative;">
-                                        <input type="text" id="custMenuSearchInput" oninput="window.filterCustomizableCatalog('menu', this.value)"
-                                            placeholder="Filter menu items by name or category..." class="control-pro"
-                                            style="width: 100%; height: 38px; padding: 0 12px; font-size: 0.85rem; border-radius: 8px;" />
-                                    </div>
+                                <div class="customizable-catalog-filters">
+                                    <input type="search" id="custMenuSearchInput" oninput="window.filterCustomizableCatalog('menu', this.value)"
+                                        list="custMenuCategoryOptions" placeholder="Search or choose a category..." class="control-pro"
+                                        aria-label="Search menu items or choose a category" />
+                                    <datalist id="custMenuCategoryOptions"></datalist>
                                 </div>
-                                <div id="customizableMenuList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.65rem; max-height: 380px; overflow-y: auto; padding: 2px;">
+                                <div id="customizableMenuList" class="customizable-catalog-list">
                                     <!-- Injected dynamically -->
                                 </div>
-                            </div>
-
-                            <!-- CATEGORY QUOTAS (SELECTION LIMITS) -->
-                            <div class="customizable-quota-section" style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 12px; padding: 1rem 1.25rem;">
-                                <div class="customizable-quota-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-                                    <div class="customizable-quota-heading">
-                                        <h4 style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin: 0;">Required choices per category</h4>
-                                        <p style="font-size: 0.8rem; color: #64748b; margin: 4px 0 0;">Set the number of dishes customers must choose from each category. Only the selected dishes above are available.</p>
-                                    </div>
-                                    <span class="customizable-quota-total" style="font-size: 0.78rem; font-weight: 800; color: #9a3412; background: #ffedd5; padding: 3px 10px; border-radius: 20px; border: 1px solid #fed7aa;">
-                                        Required choices in total: <strong id="custTotalVariantsAllowedText" style="color: #ea580c;">0</strong>
-                                    </span>
-                                </div>
-                                <div id="categoryQuotasContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.6rem; margin-top: 0.5rem;">
-                                    <!-- Populated dynamically via JS -->
-                                </div>
-                                <div id="custQuotaSummaryBanner" style="margin-top: 0.65rem; padding: 6px 10px; background: #fffaf5; border: 1px dashed #fed7aa; border-radius: 6px; font-size: 0.78rem; color: #9a3412;">
-                                    <!-- Dynamic text -->
-                                </div>
-                                <p class="customizable-quota-example">Example: If 3 chicken dishes are selected and the required number is 1, each customer must choose 1 chicken dish.</p>
                             </div>
 
                             <!-- B. SERVICES -->
-                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
-                                    <div>
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 0.72rem; font-weight: 800; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; text-transform: uppercase;">Section B</span>
-                                            <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">Services</h4>
-                                            <span id="custServiceCountBadge" style="background: #f1f5f9; color: #475569; font-size: 0.75rem; font-weight: 800; padding: 2px 8px; border-radius: 9999px;">0 selected</span>
-                                        </div>
-                                        <p style="font-size: 0.8rem; color: #64748b; margin: 3px 0 0 0;">Select the services customers may add to their package.</p>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 6px;">
-                                        <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('service', true)"
-                                            style="padding: 0.4rem 0.75rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px;">Select All</button>
-                                        <button type="button" class="btn-secondary-pro" onclick="window.toggleAllCustomizableCatalog('service', false)"
-                                            style="padding: 0.4rem 0.75rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px;">Deselect All</button>
+                            <div class="customizable-catalog-panel">
+                                <div class="customizable-section-heading">
+                                    <h4>Services</h4>
+                                    <div class="customizable-section-summary">
+                                        <span id="custServiceCountBadge" class="customizable-count-badge">0 selected</span>
+                                        <button type="button" class="btn-secondary-pro customizable-select-all" onclick="window.toggleAllCustomizableCatalog('service')"
+                                            data-catalog-toggle="service">Select all</button>
                                     </div>
                                 </div>
-                                <div style="margin-bottom: 0.85rem;">
-                                    <div style="position: relative;">
-                                        <input type="text" id="custServiceSearchInput" oninput="window.filterCustomizableCatalog('service', this.value)"
-                                            placeholder="Filter services by name..." class="control-pro"
-                                            style="width: 100%; height: 38px; padding: 0 12px; font-size: 0.85rem; border-radius: 8px;" />
-                                    </div>
+                                <div class="customizable-catalog-filters">
+                                    <input type="search" id="custServiceSearchInput" oninput="window.filterCustomizableCatalog('service', this.value)"
+                                        list="custServiceCategoryOptions" placeholder="Search or choose a category..." class="control-pro"
+                                        aria-label="Search services or choose a category" />
+                                    <datalist id="custServiceCategoryOptions"></datalist>
                                 </div>
-                                <div id="customizableServiceList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.65rem; max-height: 320px; overflow-y: auto; padding: 2px;">
+                                <div id="customizableServiceList" class="customizable-catalog-list">
                                     <!-- Injected dynamically -->
                                 </div>
+                            </div>
+                            <div class="customizable-equipment-panel">
+                                <div class="customizable-section-heading">
+                                    <h4>Equipment</h4>
+                                    <div class="customizable-section-summary">
+                                        <span id="custEquipmentCountBadge" class="customizable-count-badge">0 selected</span>
+                                        <button type="button" class="btn-secondary-pro customizable-select-all" onclick="window.toggleAllCustomizableCatalog('equipment')" data-catalog-toggle="equipment">Select all</button>
+                                    </div>
+                                </div>
+                                <div class="customizable-catalog-filters">
+                                    <input type="search" id="custEquipmentSearchInput" class="control-pro" placeholder="Search equipment..."
+                                        list="custEquipmentCategoryOptions" aria-label="Search equipment or choose a category"
+                                        oninput="window.filterCustomizableCatalog('equipment', this.value)" />
+                                    <datalist id="custEquipmentCategoryOptions"></datalist>
+                                </div>
+                                <div id="customizableEquipmentList"></div>
                             </div>
                         </div>
                     </div>
                     <!-- STEP 3: REVIEW & SAVE -->
                     <div class="tab-pane-pro" id="tab-review">
-                        <div
+                        <div class="pkg-review-summary"
                             style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--border-radius); padding: 1.5rem;">
                             <h4
                                 style="font-size: 1.1rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-                                <i class="fas fa-clipboard-check text-green-500 mr-2"></i> Review your package</h4>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                                Review your package</h4>
+                            <div class="pkg-review-top-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                                 <div>
                                     <h5
                                         style="font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem;">
-                                        Identity</h5>
+                                        Package details</h5>
                                     <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Package:</strong> <span
                                             id="reviewName"></span></p>
-                                    <p id="reviewCategoryRow" style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Category:</strong> <span
-                                            id="reviewType"></span></p>
                                     <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong>Pricing type:</strong> <span
                                             id="reviewPricingMode"></span></p>
                                     <p style="font-size: 0.85rem; margin: 0 0 0.25rem;"><strong id="reviewCapacityLabel">Guest limit:</strong> <span
@@ -491,12 +427,25 @@
                                     </div>
                                 </div>
 
+                                <!-- 4. Available Equipment -->
+                                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <h5 style="font-size: 0.75rem; font-weight: 800; color: #7c3aed; text-transform: uppercase; margin: 0;">
+                                            <i class="fas fa-chair mr-1"></i> AVAILABLE EQUIPMENT
+                                        </h5>
+                                        <span id="reviewCustEquipmentCount" style="font-size: 0.72rem; font-weight: 800; color: #6d28d9; background: #ede9fe; padding: 2px 8px; border-radius: 10px;">0 items</span>
+                                    </div>
+                                    <div id="reviewCustEquipmentList" style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 200px; overflow-y: auto;">
+                                        <!-- Injected dynamically -->
+                                    </div>
+                                </div>
+
                                 <!-- Customization Notice Banner -->
                                 <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 0.85rem 1rem; display: flex; align-items: center; gap: 10px;">
                                     <i class="fas fa-check-circle" style="color: #16a34a; font-size: 1.1rem;"></i>
                                     <div>
                                         <strong style="color: #15803d; font-size: 0.85rem; display: block;">Your options are ready</strong>
-                                        <span style="color: #166534; font-size: 0.8rem;">Customers can choose from the menu items and services selected above.</span>
+                                        <span style="color: #166534; font-size: 0.8rem;">Customers can choose from the menu items, services, and equipment selected above.</span>
                                     </div>
                                 </div>
                             </div>
@@ -513,10 +462,10 @@
                         <i class="fas fa-arrow-left"></i> <span class="pkg-wizard-nav-text">Back</span>
                     </button>
                     <button class="btn-primary-pro pkg-modal-nav-btn" id="btnWizardNext"
-                        onclick="window.goToWizardNextStep()" style="display: inline-flex !important; background: var(--primary-color, #ff7b54); border: none; color: #ffffff; padding: 0.55rem 1.4rem; border-radius: 8px; font-weight: 800; cursor: pointer; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(255, 123, 84, 0.25);" type="button">
+                        onclick="window.goToWizardNextStep()" style="display: inline-flex !important; background: var(--primary-color, #ff7b54); border: 1px solid var(--primary-color, #ff7b54); color: #ffffff; padding: 0.55rem 1.4rem; border-radius: 8px; font-weight: 800; cursor: pointer; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(var(--primary-color-rgb, 255, 123, 84), 0.25);" type="button">
                         <span class="pkg-wizard-nav-text">Continue</span> <i class="fas fa-arrow-right"></i>
                     </button>
-                    <button class="btn-primary-pro pkg-modal-nav-btn" id="pkgSaveBtn" style="display: none !important; background: #16a34a !important; border: none !important; color: #ffffff !important; padding: 0.55rem 1.5rem !important; border-radius: 8px !important; font-weight: 800 !important; cursor: pointer !important; align-items: center !important; gap: 6px !important; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25) !important;"
+                    <button class="btn-primary-pro pkg-modal-nav-btn" id="pkgSaveBtn" style="display: none !important; background: var(--primary-color, #f97316) !important; border: 1px solid var(--primary-color, #f97316) !important; color: #ffffff !important; padding: 0.55rem 1.5rem !important; border-radius: 8px !important; font-weight: 800 !important; cursor: pointer !important; align-items: center !important; gap: 6px !important; box-shadow: 0 4px 12px rgba(var(--primary-color-rgb, 249, 115, 22), 0.25) !important;"
                         type="submit">
                         <i class="fas fa-check-circle"></i> <span style="font-weight: 800;">Save Package</span>
                     </button>
@@ -556,11 +505,11 @@
         <div class="occ-modal-header inclusion-modal-header"
             style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0;">
             <div>
-                <h3 class="occ-modal-title" id="inclusionModalTitle" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">Quick Add Inclusion</h3>
-                <div id="inclusionModalSubtitle" style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">Add a food item or service to your fixed package.</div>
+                <h3 class="occ-modal-title" id="inclusionModalTitle" style="font-size: 1.2rem; font-weight: 800; color: #0f172a; margin: 0;">Add package item</h3>
+                <div id="inclusionModalSubtitle" style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">Choose an item from your catalog.</div>
             </div>
             <button class="occ-modal-close" onclick="window.closeAddInclusionModal()" type="button"
-                aria-label="Close quick add inclusion"
+                aria-label="Close add/edit package item"
                 style="background:#f1f5f9; border:1px solid #cbd5e1; width:36px; height:36px; display:flex; align-items:center; justify-content:center; font-size:1rem; color:#475569; cursor:pointer; padding:0; border-radius:50%; box-shadow:none; flex-shrink:0;">
                 <i class="fas fa-times"></i>
             </button>
@@ -571,84 +520,61 @@
             <input type="hidden" id="customInclusionItemId" value="" />
             <input type="hidden" id="customInclusionName" value="" />
 
-            <!-- Instant Success alert banner for Save & Add Another -->
-            <div id="addInclusionSuccessAlert"
-                style="display: none; margin-bottom: 1.25rem; padding: 0.65rem 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; color: #15803d; font-size: 0.85rem; font-weight: 700;">
-            </div>
-
-            <!-- Small Informational Note -->
-            <div class="inclusion-info-alert" style="display: none; margin-bottom: 1.25rem; padding: 0.6rem 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; color: #475569; font-size: 0.82rem; font-weight: 600; align-items: center; gap: 8px;">
-                <i class="fas fa-info-circle" style="color: var(--primary-color, #f97316);"></i>
-                <span>These inclusions are fixed and cannot be changed by customers.</span>
-            </div>
-
-            <!-- Inclusion Type Selector -->
             <div class="form-group-pro inclusion-type-section" style="margin-bottom: 1.25rem;">
                 <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Option Type <span style="color: #ef4444;">*</span>
+                    Item type <span style="color: #ef4444;">*</span>
                 </label>
                 <select class="control-pro" id="customInclusionCategory" onchange="window.handleInclusionTypeChange(this.value)"
                     style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #1e293b; background: #fff;">
-                    <option value="" selected disabled>Select option type</option>
-                    <option value="Menu">🍽️ Menu / Food</option>
-                    <option value="Service">🛎️ Service</option>
+                    <option value="" selected disabled>Select item type</option>
+                    <option value="Menu">Menu / Food</option>
+                    <option value="Service">Service</option>
+                    <option value="Equipment">Equipment</option>
                 </select>
             </div>
 
-            <!-- Existing Catalog Item Selector -->
             <div class="form-group-pro inclusion-catalog-section" style="display: none; margin-bottom: 1.25rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                    <label id="lblInclusionItem" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">
-                        Equipment <span style="color: #ef4444;">*</span>
+                <div class="inclusion-catalog-heading">
+                    <label id="lblInclusionItem" for="inclusionItemSearch" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">
+                        Catalog item <span style="color: #ef4444;">*</span>
                     </label>
                     <button type="button" id="btnCreateNewCatalogItem" onclick="window.handleCreateNewCatalogItem()"
-                        style="background: none; border: none; color: var(--primary-color, #f97316); font-size: 0.82rem; font-weight: 800; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px;">
-                        <i class="fas fa-plus" aria-hidden="true"></i> <span id="btnCreateNewCatalogItemText">Create new</span>
+                        class="inclusion-create-button" aria-label="Create new catalog item" title="Create new item">
+                        <i class="fas fa-plus" aria-hidden="true"></i>
                     </button>
                 </div>
 
-                <!-- Search Input for catalog items -->
-                <div style="position: relative; margin-bottom: 8px;">
-                    <input type="text" id="inclusionItemSearch" class="control-pro" placeholder="Type to search equipment catalog..."
+                <label for="inclusionItemSearch" class="inclusion-search-label">Choose or search an item</label>
+                <div class="inclusion-catalog-picker">
+                    <input type="search" id="inclusionItemSearch" class="control-pro" role="combobox"
+                        aria-autocomplete="list" aria-controls="inclusionCatalogOptions" aria-expanded="false"
+                        placeholder="Choose or search catalog..."
                         oninput="window.filterInclusionCatalogItems(this.value)"
-                        style="width: 100%; height: 38px; padding: 0 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; color: #1e293b;" />
-                </div>
-
-                <!-- Dropdown Selector -->
-                <select class="control-pro" id="inclusionItemSelect" onchange="window.handleCatalogItemSelected(this.value)"
-                    style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 600; color: #1e293b; background: #fff;">
-                    <option value="" selected disabled>Select a catalog item</option>
-                </select>
-
-                <!-- Selected Item Preview Card -->
-                <div id="selectedItemInfoBanner"
-                    style="display: none; margin-top: 0.75rem; padding: 0.75rem 1rem; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                        <div>
-                            <span id="selectedItemCategoryBadge" style="font-size: 0.68rem; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; background: #fed7aa; color: #c2410c;">EQUIPMENT</span>
-                            <div id="selectedItemTitle" style="font-size: 0.92rem; font-weight: 800; color: #0f172a; margin-top: 3px;">Monoblock Chairs</div>
-                        </div>
-                        <span id="selectedItemMeta" style="font-size: 0.78rem; color: #64748b; font-weight: 700; background: #ffffff; padding: 3px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                            Available: 100
-                        </span>
-                    </div>
+                        onfocus="window.showInclusionCatalogOptions()"
+                        onkeydown="window.handleInclusionCatalogKeydown(event)"
+                        autocomplete="off" />
+                    <button type="button" class="inclusion-catalog-picker-toggle" aria-label="Show catalog items"
+                        aria-controls="inclusionCatalogOptions" aria-expanded="false" onclick="window.toggleInclusionCatalogOptions()">
+                        <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <div id="inclusionCatalogOptions" class="inclusion-catalog-options" role="listbox" hidden></div>
                 </div>
             </div>
 
             <!-- Description (Optional) -->
             <div class="form-group-pro inclusion-description-section" style="display: none; margin-bottom: 0.5rem;">
                 <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Description / Notes <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
+                    Package notes <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
                 </label>
                 <textarea class="control-pro" id="customInclusionDescription" rows="2"
-                    placeholder="Add any extra details, specifications, or notes..."
+                    placeholder="Add details specific to this package item."
                     style="width: 100%; padding: 0.65rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; color: #1e293b; resize: vertical;"></textarea>
             </div>
 
             <!-- Inclusion Photo (Optional) -->
             <div class="form-group-pro inclusion-photo-section" style="display: none; margin-bottom: 1.25rem;">
                 <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Upload Photo <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
+                    Item photo <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
                 </label>
                 <div class="inclusion-photo-upload" style="display: flex; align-items: center; gap: 12px;">
                     <div id="inclusionPhotoPreview" onclick="window.triggerInclusionImagePicker()" title="Upload photo"
@@ -667,23 +593,16 @@
                             </button>
                         </div>
                         <div id="inclusionPhotoHint" style="font-size: 0.78rem; color: #64748b; margin-top: 6px; font-weight: 600;">
-                            JPG, JPEG, or PNG, up to 5MB. An existing catalog photo can be kept.
+                            Use a JPG or PNG image up to 5MB. Leave blank to keep the current photo.
                         </div>
                     </div>
                 </div>
             </div>
 
         </div>
-
-        <div class="occ-modal-footer inclusion-modal-footer"
-            style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;">
-            <button class="btn-secondary-pro" id="btnInclusionSaveAddAnother" onclick="window.saveInclusion(true)" type="button"
-                hidden style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; border: 1.5px solid var(--primary-color, #f97316); color: var(--primary-color, #f97316); background: #ffffff;">
-                Save &amp; Add Another
-            </button>
-            <button class="btn-primary-pro" id="btnInclusionSaveDone" onclick="window.saveInclusion(false)" type="button" disabled hidden
-                style="padding: 0.55rem 1.35rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
-                <span id="btnInclusionSaveDoneText">Save &amp; Select</span>
+        <div class="occ-modal-footer inclusion-modal-footer">
+            <button type="button" id="btnInclusionSaveDone" class="btn-primary-pro" onclick="window.saveInclusion()" disabled hidden>
+                <span id="btnInclusionSaveDoneText">Add to package</span>
             </button>
         </div>
     </div>
@@ -700,14 +619,14 @@
             </div>
             <button class="occ-modal-close" onclick="window.closeQuickAddOptionModal()" type="button"
                 aria-label="Close create item"
-                style="background:none; border:none; font-size:1.1rem; color:#94a3b8; cursor:pointer; padding: 4px 8px; border-radius: 6px;">
+                style="font-size:1.1rem; cursor:pointer; padding: 4px 8px; border-radius: 6px;">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <form id="quickAddOptionForm" onsubmit="window.submitQuickAddOption(event)">
             <div class="occ-modal-body quick-add-option-body" style="padding: 1.5rem; background: #ffffff;">
                 <div class="form-group-pro" id="quickAddOptionTypeWrapper" style="margin-bottom: 1rem;">
-                    <label for="quickAddOptionType" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                    <label id="quickAddOptionTypeLabel" for="quickAddOptionType" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                         What would you like to add? <span style="color: #ef4444;">*</span>
                     </label>
                     <select name="item_type" id="quickAddOptionType" class="control-pro" required onchange="window.setQuickAddOptionType(this.value)"
@@ -715,6 +634,7 @@
                         <option value="" selected disabled>Select an option type</option>
                         <option value="menu">Menu / Food</option>
                         <option value="service">Service</option>
+                        <option value="equipment">Equipment</option>
                     </select>
                 </div>
                 <div class="form-group-pro" id="quickAddOptionNameWrapper" style="display: none; margin-bottom: 1rem;">
@@ -729,28 +649,32 @@
                     <label for="quickAddOptionCategory" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                         Food Category <span style="color: #ef4444;">*</span>
                     </label>
-                    <input type="text" name="category" id="quickAddOptionCategory"
-                        class="control-pro" maxlength="60" autocomplete="off" required
-                        oninput="this.setCustomValidity('')"
-                        placeholder="e.g. Rice, Pork, Chicken, Pasta or Drinks"
-                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
-                    <div id="quickAddOptionCategorySuggestions" class="quick-add-category-suggestions" style="display: none;"></div>
-                    <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">Use a category name customers will recognize. Existing categories will appear as suggestions.</small>
-                </div>
-
-                <div class="form-group-pro" id="quickAddOptionUnitWrapper" style="display: none; margin-bottom: 1rem;">
-                    <label id="quickAddOptionUnitLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Serving Unit <span style="color: #ef4444;">*</span>
-                    </label>
-                    <select name="unit_type" id="quickAddOptionUnit" class="control-pro" required
+                    <select name="category" id="quickAddOptionCategory" class="control-pro" required onchange="window.toggleQuickAddCustomCategory(this.value)"
                         style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
+                        <option value="" selected disabled>Select a food category</option>
+                        <option>Beef</option><option>Pork</option><option>Chicken</option><option>Seafood</option>
+                        <option>Vegetables</option><option>Rice &amp; Noodles</option><option>Pasta</option>
+                        <option>Appetizers</option><option>Dessert</option><option>Beverages</option><option>Other</option>
                     </select>
+                    <div id="quickAddOptionCategorySuggestions" class="quick-add-category-suggestions" style="display: none;"></div>
+                    <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">Choose a category customers can recognize.</small>
+                </div>
+                <div class="form-group-pro" id="quickAddOptionCustomCategoryWrapper" style="display: none; margin-bottom: 1rem;">
+                    <label for="quickAddOptionCustomCategory">Custom category <span style="color: #ef4444;">*</span></label>
+                    <input type="text" name="custom_category" id="quickAddOptionCustomCategory" class="control-pro" maxlength="60" placeholder="Enter a category" />
                 </div>
 
-                <div class="form-row-pro" id="quickAddOptionPriceRow" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
+                <div class="form-group-pro" id="quickAddOptionUpgradeFeeWrapper" style="display: none; margin-bottom: 1rem;">
+                    <label for="quickAddOptionUpgradeFee">Dish swap fee per guest (₱) <small>(Optional)</small></label>
+                    <input type="text" inputmode="decimal" name="upgrade_fee" id="quickAddOptionUpgradeFee" class="control-pro" maxlength="11" placeholder="Optional" oninput="window.sanitizeMoneyInput(this); window.validateSwapFee('quickAddOptionUpgradeFee', 'quickAddOptionUpgradeFeeError')" />
+                    <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">Charged when a customer chooses this dish as a swap.</small>
+                    <small id="quickAddOptionUpgradeFeeError" class="swap-fee-error" aria-live="polite"></small>
+                </div>
+
+                <div class="form-row-pro" id="quickAddOptionPriceRow" style="display: none; grid-template-columns: 1fr; gap: 10px; margin-bottom: 1rem;">
                     <div class="form-group-pro" id="quickAddOptionPriceWrapper">
                         <label id="quickAddOptionPriceLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Price (₱) <span style="color: #ef4444;">*</span>
+                            Price (₱)
                         </label>
                         <input type="text" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2"
                             name="price" id="quickAddOptionPrice" class="control-pro" value="0.00"
@@ -759,13 +683,6 @@
                         <small id="quickAddOptionPriceError" aria-live="polite" style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
                     </div>
 
-                    <div class="form-group-pro" id="quickAddOptionQtyWrapper" style="display: none;">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Available Qty <span style="color: #ef4444;">*</span>
-                        </label>
-                        <input type="number" min="1" name="available_qty" id="quickAddOptionQty" class="control-pro" value="100"
-                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
-                    </div>
                 </div>
 
                 <div class="form-group-pro" id="quickAddOptionDescriptionWrapper" style="display: none; margin-bottom: 0.5rem;">
@@ -786,117 +703,156 @@
                         <div id="quickAddOptionPhotoPreview" style="width: 56px; height: 56px; border-radius: 10px; background: #e2e8f0; color: #94a3b8; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
                         </div>
                         <div style="min-width: 0;">
-                            <div style="font-size: 0.85rem; font-weight: 800; color: #334155;">Upload photo</div>
-                            <div style="font-size: 0.75rem; color: #94a3b8;">JPG or PNG · shown on package details</div>
+                            <div id="quickAddOptionPhotoHint" style="font-size: 0.85rem; font-weight: 800; color: #334155;">Upload photo</div>
+                            <div id="quickAddOptionPhotoDescription" style="font-size: 0.75rem; color: #94a3b8;">JPG or PNG Â· shown on package details</div>
                         </div>
                     </div>
                     <input type="file" name="image" id="quickAddOptionImage" accept="image/*" style="display: none;"
-                        onchange="window.previewQuickCatalogPhoto('add', event)" />
+                        onchange="window.previewQuickCatalogPhoto(event)" />
                 </div>
             </div>
             <div class="occ-modal-footer" id="quickAddOptionFooter"
                 style="display: none; padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-secondary-pro" onclick="window.closeQuickAddOptionModal()"
-                    style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700;">Cancel</button>
-                <button type="submit" id="btnQuickOptionSubmit" class="btn-primary-pro"
-                    style="padding: 0.55rem 1.35rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>Save &amp; Select</span>
+                <button type="submit" id="btnQuickOptionAddAnother" class="btn-secondary-pro" name="save_mode" value="add_another"
+                    style="padding: 0.45rem 0.75rem; border-radius: 8px; font-size: 0.78rem; font-weight: 700;">Save &amp; add another</button>
+                <button type="submit" id="btnQuickOptionSubmit" class="btn-primary-pro" name="save_mode" value="save"
+                    style="padding: 0.45rem 0.85rem; border-radius: 8px; font-size: 0.78rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>Save</span>
                 </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Quick Edit Option Modal (For Editing Catalog Items from Step 2: Food & Service) -->
-<div class="occ-modal-overlay" id="quickEditOptionModal" style="z-index: 2450; display: none;">
-    <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 500px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
-        <div class="occ-modal-header"
-            style="padding: 1.25rem 1.5rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-            <h3 class="occ-modal-title" id="quickEditOptionModalTitle" style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0;">
-                <i class="fas fa-edit" style="color: var(--primary-color, #f97316); margin-right: 6px;"></i> Edit Item
-            </h3>
-            <button class="occ-modal-close" onclick="window.closeQuickEditOptionModal()" type="button"
-                style="background:none; border:none; font-size:1.1rem; color:#94a3b8; cursor:pointer; padding: 4px 8px; border-radius: 6px;">
-                <i class="fas fa-times"></i>
-            </button>
+<!-- Menu catalog edit modal -->
+<div class="occ-modal-overlay catalog-edit-modal" id="editMenuItemModal" data-backdrop-dismiss="false" style="z-index: 2450; display: none;">
+    <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 600px; border-radius: 16px; overflow: hidden;">
+        <div class="occ-modal-header catalog-edit-header">
+            <div>
+                <h3 class="occ-modal-title">Edit menu item</h3>
+                <p>Update this menu item in your catalog.</p>
+            </div>
+            <button type="button" class="occ-modal-close" aria-label="Close edit menu item" onclick="window.closeCatalogEditModal('editMenuItemModal')"><i class="fas fa-times"></i></button>
         </div>
-        <form id="quickEditOptionForm" onsubmit="window.submitQuickEditOption(event)">
-            <input type="hidden" name="item_type" id="quickEditOptionType" value="menu" />
-            <input type="hidden" name="item_id" id="quickEditOptionId" value="" />
-            <div class="occ-modal-body" style="padding: 1.5rem; background: #ffffff;">
-                <div class="form-group-pro" style="margin-bottom: 1rem;">
-                    <label id="quickEditOptionNameLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Item Name <span style="color: #ef4444;">*</span>
-                    </label>
-                    <input type="text" name="name" id="quickEditOptionName" class="control-pro" required placeholder="e.g. Item Name"
-                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;" />
+        <form id="editMenuItemForm" onsubmit="window.submitCatalogItemEdit(event, 'menu')">
+            <input type="hidden" id="editMenuItemId">
+            <div class="occ-modal-body catalog-edit-body">
+                <div class="form-group-pro">
+                    <label for="editMenuItemName">Dish / Menu Item Name <span>*</span></label>
+                    <input type="text" id="editMenuItemName" class="control-pro" required>
                 </div>
-
-                <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
-                    <div class="form-group-pro">
-                        <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Category <span style="color: #ef4444;">*</span>
-                        </label>
-                        <input type="text" name="category" id="quickEditOptionCategory" class="control-pro" required
-                            list="quickEditOptionCategorySuggestions" maxlength="60" autocomplete="off"
-                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 600;" />
-                        <datalist id="quickEditOptionCategorySuggestions"></datalist>
+                <div class="form-group-pro">
+                    <label for="editMenuItemCategory">Food Category <span>*</span></label>
+                    <select id="editMenuItemCategory" class="control-pro" required onchange="window.toggleCatalogEditCustomCategory('menu', this.value)">
+                        <option value="" disabled>Select a food category</option>
+                        <option>Beef</option><option>Pork</option><option>Chicken</option><option>Seafood</option>
+                        <option>Vegetables</option><option>Rice &amp; Noodles</option><option>Pasta</option>
+                        <option>Appetizers</option><option>Dessert</option><option>Beverages</option><option>Other</option>
+                    </select>
+                </div>
+                <div class="form-group-pro" id="editMenuItemCustomCategoryWrapper" hidden>
+                    <label for="editMenuItemCustomCategory">Custom category <span>*</span></label>
+                    <input type="text" id="editMenuItemCustomCategory" class="control-pro" maxlength="60" placeholder="Enter a category">
+                </div>
+                <div class="form-group-pro">
+                    <label for="editMenuItemUpgradeFee">Dish swap fee per guest (₱) <small>(Optional)</small></label>
+                    <input type="text" id="editMenuItemUpgradeFee" class="control-pro" inputmode="decimal" maxlength="11" placeholder="Amount" oninput="window.sanitizeMoneyInput(this); window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError')">
+                    <small id="editMenuItemUpgradeFeeError" class="swap-fee-error" aria-live="polite"></small>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editMenuItemDescription">Description <small>(Optional)</small></label>
+                    <textarea id="editMenuItemDescription" class="control-pro" rows="2" placeholder="Details, ingredients, specifications or notes..."></textarea>
+                </div>
+                <div class="form-group-pro">
+                    <label>Photo <small>(Optional)</small></label>
+                    <div class="catalog-edit-photo-zone" onclick="document.getElementById('editMenuItemImage').click()">
+                        <div id="editMenuItemPhotoPreview" class="catalog-edit-photo-preview"></div>
+                        <div><strong id="editMenuItemPhotoHint">Upload photo</strong><small>JPG or PNG · shown on package details</small></div>
                     </div>
-
-                    <div class="form-group-pro">
-                        <label id="quickEditOptionUnitLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Unit / Pricing
-                        </label>
-                        <select name="unit_type" id="quickEditOptionUnit" class="control-pro"
-                            style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem;">
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group-pro" id="quickEditOptionPriceWrapper" style="margin-bottom: 1rem;">
-                    <label id="quickEditOptionPriceLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Price (₱) <span style="color: #ef4444;">*</span>
-                    </label>
-                    <input type="number" step="0.01" min="0" name="price" id="quickEditOptionPrice" class="control-pro" value="0.00"
-                        style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #0f172a;" />
-                </div>
-
-                <div class="form-group-pro" style="margin-bottom: 1rem;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Photo <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
-                    </label>
-                    <div id="quickEditOptionPhotoZone" onclick="document.getElementById('quickEditOptionImage').click()"
-                        style="border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 0.85rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 12px;">
-                        <div id="quickEditOptionPhotoPreview" style="width: 56px; height: 56px; border-radius: 10px; background: #e2e8f0; color: #94a3b8; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
-                            <i class="fas fa-camera"></i>
-                        </div>
-                        <div style="min-width: 0;">
-                            <div style="font-size: 0.85rem; font-weight: 800; color: #334155;" id="quickEditOptionPhotoHint">Upload or replace photo</div>
-                            <div style="font-size: 0.75rem; color: #94a3b8;">JPG or PNG · shows on package details</div>
-                        </div>
-                    </div>
-                    <input type="file" name="image" id="quickEditOptionImage" accept="image/*" style="display: none;"
-                        onchange="window.previewQuickCatalogPhoto('edit', event)" />
-                </div>
-
-                <div class="form-group-pro" style="margin-bottom: 0.5rem;">
-                    <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Description <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>
-                    </label>
-                    <textarea name="description" id="quickEditOptionDescription" class="control-pro" rows="2"
-                        placeholder="Details, ingredients, specifications or notes..."
-                        style="width: 100%; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; resize: vertical;"></textarea>
+                    <input type="file" id="editMenuItemImage" accept="image/*" hidden onchange="window.previewCatalogEditPhoto('menu', event)">
                 </div>
             </div>
-            <div class="occ-modal-footer"
-                style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
-                <button type="button" class="btn-secondary-pro" onclick="window.closeQuickEditOptionModal()"
-                    style="padding: 0.55rem 1.15rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700;">Cancel</button>
-                <button type="submit" id="btnQuickEditSubmit" class="btn-primary-pro"
-                    style="padding: 0.55rem 1.35rem; border-radius: 8px; font-size: 0.85rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-check"></i>
-                    <span>Save Changes</span>
-                </button>
+            <div class="occ-modal-footer catalog-edit-footer">
+                <button type="submit" class="btn-primary-pro" id="saveEditMenuItem">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Service catalog edit modal -->
+<div class="occ-modal-overlay catalog-edit-modal" id="editServiceItemModal" data-backdrop-dismiss="false" style="z-index: 2450; display: none;">
+    <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 600px; border-radius: 16px; overflow: hidden;">
+        <div class="occ-modal-header catalog-edit-header">
+            <div>
+                <h3 class="occ-modal-title">Edit service</h3>
+                <p>Update this service in your catalog.</p>
+            </div>
+            <button type="button" class="occ-modal-close" aria-label="Close edit service" onclick="window.closeCatalogEditModal('editServiceItemModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="editServiceItemForm" onsubmit="window.submitCatalogItemEdit(event, 'service')">
+            <input type="hidden" id="editServiceItemId">
+            <div class="occ-modal-body catalog-edit-body">
+                <div class="form-group-pro">
+                    <label for="editServiceItemName">Service Name <span>*</span></label>
+                    <input type="text" id="editServiceItemName" class="control-pro" required>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editServiceItemFee">Service Fee (₱) <small>(Optional)</small></label>
+                    <input type="text" id="editServiceItemFee" class="control-pro" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Optional" oninput="window.validateCatalogEditServiceFee()">
+                    <small id="editServiceItemFeeError" aria-live="polite"></small>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editServiceItemDescription">Description <small>(Optional)</small></label>
+                    <textarea id="editServiceItemDescription" class="control-pro" rows="2" placeholder="Details, inclusions, specifications or notes..."></textarea>
+                </div>
+                <div class="form-group-pro">
+                    <label>Photo <small>(Optional)</small></label>
+                    <div class="catalog-edit-photo-zone" onclick="document.getElementById('editServiceItemImage').click()">
+                        <div id="editServiceItemPhotoPreview" class="catalog-edit-photo-preview"></div>
+                        <div><strong id="editServiceItemPhotoHint">Upload photo</strong><small>JPG or PNG · shown on package details</small></div>
+                    </div>
+                    <input type="file" id="editServiceItemImage" accept="image/*" hidden onchange="window.previewCatalogEditPhoto('service', event)">
+                </div>
+            </div>
+            <div class="occ-modal-footer catalog-edit-footer">
+                <button type="submit" class="btn-primary-pro" id="saveEditServiceItem">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Equipment catalog edit modal -->
+<div class="occ-modal-overlay catalog-edit-modal" id="editEquipmentItemModal" data-backdrop-dismiss="false" style="z-index: 2450; display: none;">
+    <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 600px; border-radius: 16px; overflow: hidden;">
+        <div class="occ-modal-header catalog-edit-header">
+            <div>
+                <h3 class="occ-modal-title">Edit equipment</h3>
+                <p>Update this equipment item in your catalog.</p>
+            </div>
+            <button type="button" class="occ-modal-close" aria-label="Close edit equipment" onclick="window.closeCatalogEditModal('editEquipmentItemModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="editEquipmentItemForm" onsubmit="window.submitCatalogItemEdit(event, 'equipment')">
+            <input type="hidden" id="editEquipmentItemId">
+            <div class="occ-modal-body catalog-edit-body">
+                <div class="form-group-pro">
+                    <label for="editEquipmentItemName">Equipment / Item Name <span>*</span></label>
+                    <input type="text" id="editEquipmentItemName" class="control-pro" required>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editEquipmentItemDescription">Description <small>(Optional)</small></label>
+                    <textarea id="editEquipmentItemDescription" class="control-pro" rows="2" placeholder="Describe the item, condition, dimensions..."></textarea>
+                </div>
+                <div class="form-group-pro">
+                    <label>Photo <small>(Optional)</small></label>
+                    <div class="catalog-edit-photo-zone" onclick="document.getElementById('editEquipmentItemImage').click()">
+                        <div id="editEquipmentItemPhotoPreview" class="catalog-edit-photo-preview"></div>
+                        <div><strong id="editEquipmentItemPhotoHint">Upload photo</strong><small>JPG or PNG · shown on package details</small></div>
+                    </div>
+                    <input type="file" id="editEquipmentItemImage" accept="image/*" hidden onchange="window.previewCatalogEditPhoto('equipment', event)">
+                </div>
+            </div>
+            <div class="occ-modal-footer catalog-edit-footer">
+                <button type="submit" class="btn-primary-pro" id="saveEditEquipmentItem">Save changes</button>
             </div>
         </form>
     </div>

@@ -30,7 +30,6 @@
         <form id="serviceWizardForm" action="/caterer/api/services/add-service-wizard" method="POST" enctype="multipart/form-data" novalidate style="display: flex; flex-direction: column; max-height: 75vh;">
             <input type="hidden" name="details_json" id="serviceDetailsJson">
             <input type="hidden" name="status" id="serviceStatusInput" value="Draft">
-            <input type="hidden" name="category" value="Service">
             <input type="hidden" name="base_duration_hours" value="3">
 
             <div class="occ-modal-body" style="flex: 1; overflow-y: auto; padding: 1.75rem 2rem;">
@@ -42,26 +41,18 @@
                         <input type="text" name="name" class="control-pro" placeholder="e.g. Acoustic Band, Photobooth, Event Staff" required>
                     </div>
 
-                    <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem;">
+                    <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 1rem;">
                         <div class="form-group-pro">
-                            <label>Service Fee / Starting Price (₱) *</label>
+                            <label>Service Fee / Starting Price (₱) <span style="font-weight: 400; color: #94a3b8;">(Optional)</span></label>
                             <input type="text" name="price" id="serviceWizardPriceInput"
-                                class="control-pro js-format-comma" placeholder="0.00" required
+                                class="control-pro js-format-comma" placeholder="Optional"
                                 inputmode="decimal" maxlength="12" data-max-integer-digits="8"
                                 data-max-decimal-digits="2" oninput="window.validateServiceWizardPrice()">
                             <small id="serviceWizardPriceError" aria-live="polite"
                                 style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
                             <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">
-                                Up to ₱99,999,999.99. Commas are added automatically.
+                                Optional. Whole numbers or up to 2 decimal places; commas are added automatically.
                             </small>
-                        </div>
-                        <div class="form-group-pro">
-                            <label>Pricing Type *</label>
-                            <select name="unit_type" class="control-pro" required>
-                                <option value="Per Event">Per Event (Fixed)</option>
-                                <option value="Per Hour">Per Hour</option>
-                                <option value="Starting Price">Starting Price (Custom Quote)</option>
-                            </select>
                         </div>
                     </div>
                     

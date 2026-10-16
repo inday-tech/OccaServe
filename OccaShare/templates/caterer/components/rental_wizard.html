@@ -41,11 +41,7 @@
                         <input type="text" name="name" class="control-pro" placeholder="e.g. Round Table, Monoblock Chairs, Tent" required>
                     </div>
 
-                    <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem;">
-                        <div class="form-group-pro">
-                            <label>Rental Price (₱) *</label>
-                            <input type="number" name="price" class="control-pro" placeholder="0.00" required min="1" step="0.01">
-                        </div>
+                    <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 1rem;">
                         <div class="form-group-pro">
                             <label>Pricing Unit *</label>
                             <select name="unit_type" class="control-pro" required>
@@ -57,11 +53,6 @@
                         </div>
                     </div>
 
-                    <div class="form-group-pro" style="margin-bottom: 1rem;">
-                        <label>Available Quantity / Stock *</label>
-                        <input type="number" name="total_stock" class="control-pro" placeholder="e.g. 50" required min="1" value="50">
-                    </div>
-                    
                     <div class="form-group-pro" style="margin-bottom: 1rem;">
                         <label>Description <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span></label>
                         <textarea name="description" class="control-pro" placeholder="Describe the item, condition, dimensions..." style="height: 80px;"></textarea>

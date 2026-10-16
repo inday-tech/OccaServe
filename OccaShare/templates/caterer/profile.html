@@ -1698,7 +1698,10 @@
         document.getElementById('inv-modal-type').innerText = item.type;
         document.getElementById('inv-modal-title').innerText = item.name;
         document.getElementById('inv-modal-desc').innerText = item.description || 'No description provided.';
-        document.getElementById('inv-modal-price').innerHTML = `₱${parseFloat(item.price).toLocaleString()} <span class="text-xs text-slate-400 font-bold">/${item.unit_type}</span>`;
+        const price = Number(item.price) || 0;
+        const priceElement = document.getElementById('inv-modal-price');
+        priceElement.parentElement.style.display = item.type === 'Service' && price <= 0 ? 'none' : '';
+        priceElement.innerHTML = `₱${price.toLocaleString('en-PH', { maximumFractionDigits: 2 })} <span class="text-xs text-slate-400 font-bold">/${item.unit_type}</span>`;
         
         document.getElementById('inv-modal-qty').querySelector('.val').innerText = item.display_qty ? `${item.display_qty} Units Available` : 'Available';
         document.getElementById('inv-modal-min').querySelector('.val').innerText = item.min_hours ? `Minimum ${item.min_hours} Hours` : 'Flexible Duration';

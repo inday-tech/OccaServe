@@ -2011,9 +2011,14 @@ async def customer_omni_search(
 
         for s in services:
             caterer_name = s.caterer.business_name if s.caterer else "Caterer"
+            service_fee = float(s.selling_price or 0)
+            fee_label = (
+                f" • ₱{service_fee:,.0f}" if service_fee.is_integer()
+                else f" • ₱{service_fee:,.2f}"
+            ) if service_fee > 0 else ""
             results.append({
                 "title": s.name,
-                "subtitle": f"Service • ₱{float(s.selling_price or 0):,.2f} • {caterer_name}",
+                "subtitle": f"Service{fee_label} • {caterer_name}",
                 "icon": "fas fa-concierge-bell",
                 "link": f"/customer/marketplace/{s.caterer_id}#services",
                 "type": "service"
