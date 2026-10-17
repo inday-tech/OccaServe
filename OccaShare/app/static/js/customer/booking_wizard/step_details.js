@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const pricePerHead = Number(window.pricePerHead || 0);
         const catererId = Number(window.catererId || 0);
         let minGuests = Number(window.minGuests || 1);
-        let maxGuests = Math.min(Number(window.maxGuests || 999), 999);
+        let maxGuests = Math.min(Number(window.maxGuests || 999999), 999999);
         const phCities = window.PH_CITIES || [];
         
         let parsedRules = {};
@@ -48,6 +48,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const citySelect = document.getElementById('city_select');
         const barangaySelect = document.getElementById('barangay_select');
         const venueHidden = document.getElementById('venue_address_hidden');
+        const venueSearch = document.getElementById('venue-search');
+        const venueLat = document.getElementById('venue_latitude');
+        const venueLng = document.getElementById('venue_longitude');
         const eventTypeSelect = document.getElementById('event_type_select');
         const otherEventWrap = document.getElementById('other-event-wrap');
         const otherEventInput = document.getElementById('other_event_type');
@@ -93,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- 1.5 Format Guest Count ---
     window.formatGuestCount = function (input) {
-        let rawValue = input.value.replace(/\D/g, '').slice(0, 3);
+        let rawValue = input.value.replace(/\D/g, '').slice(0, 6);
         if (!rawValue) {
             guestInput.value = "";
             input.value = "";
@@ -131,13 +134,13 @@ document.addEventListener('DOMContentLoaded', function () {
         window.basePrice = Number(pkg.price_per_head || pkg.price || 0);
         window.additionalGuestPrice = Number(pkg.additional_guest_price || 0);
         window.minGuests = Number(pkg.min_guests || 1);
-        window.maxGuests = Math.min(Number(pkg.max_guests || 999), 999);
+        window.maxGuests = 999999;
 
         // 3. Update guest count labels & bounds
         const minSpan = document.getElementById('min_guests_span');
         if (minSpan) minSpan.innerText = window.minGuests;
         const maxSpan = document.getElementById('max_guests_span');
-        if (maxSpan) maxSpan.innerText = window.maxGuests || '999';
+        if (maxSpan) maxSpan.innerText = window.maxGuests || '999999';
         const errGuests = document.getElementById('err-guests');
         if (errGuests) errGuests.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
 
@@ -222,7 +225,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             let html = '';
             items.forEach(item => {
-                const qtyStr = item.quantity ? ` <span style="color: #64748b; font-weight: 500;"> — ${escapeHtml(item.quantity)}</span>` : '';
+                const qtyText = String(item.quantity || '').trim();
+                const qtyStr = qtyText && !/\bincluded\b|\bper staff\b|^1\s*(per staff)?$/i.test(qtyText) ? ` <span style="color: #64748b; font-weight: 500;"> — ${escapeHtml(qtyText)}</span>` : '';
                 const descStr = item.description ? `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">${escapeHtml(item.description)}</div>` : '';
                 html += `
                 <div class="inclusion-line-item" style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
@@ -371,11 +375,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const calcDeliveryFee = document.getElementById('calc-delivery-fee');
         if (calcDeliveryFee) {
             if (window.deliveryFeeStatus === "manual_quote") {
-                calcDeliveryFee.innerText = "TBD (Manual Quote)";
+                calcDeliveryFee.innerText = "Coordinate with caterer";
             } else if (window.deliveryFeeStatus === "error") {
                 calcDeliveryFee.innerHTML = '<span style="color:red;">Out of Coverage</span>';
             } else if (window.deliveryFeeStatus === "pending") {
-                calcDeliveryFee.innerText = "---";
+                calcDeliveryFee.innerText = "Coordinate with caterer";
             } else {
                 calcDeliveryFee.innerText = '+₱' + (window.currentDeliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
             }
@@ -750,7 +754,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const b = brgyEl ? (brgyEl.tagName === 'SELECT' ? (brgyEl.options[brgyEl.selectedIndex]?.value || brgyEl.value || '') : brgyEl.value) : '';
         
         if (p && c && b && !p.startsWith('--') && !c.startsWith('--') && !b.startsWith('--')) {
-            if (venueHidden) venueHidden.value = `${b}, ${c}, ${p}`;
+            if (venueHidden && !venueHidden.value) venueHidden.value = `${b}, ${c}, ${p}`;
             
             // Fetch dynamic delivery fee
             try {
@@ -784,7 +788,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             updateCalculator();
         } else {
-            if (venueHidden) venueHidden.value = "";
             window.currentDeliveryFee = 0;
             window.deliveryFeeStatus = "pending";
             updateCalculator();
@@ -792,12 +795,70 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     window.updateHiddenVenue = updateHiddenVenue;
 
+    function initVenueMap() {
+        const mapEl = document.getElementById('venue-map');
+        if (!mapEl || !window.google?.maps) return;
+        const geocoder = new google.maps.Geocoder();
+        const fallback = { lat: 14.2811, lng: 121.4150 };
+        const savedPoint = Number(venueLat?.value) && Number(venueLng?.value)
+            ? { lat: Number(venueLat.value), lng: Number(venueLng.value) } : fallback;
+        const map = new google.maps.Map(mapEl, { center: savedPoint, zoom: venueLat?.value ? 17 : 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
+        const marker = new google.maps.Marker({ map, position: savedPoint, draggable: true });
+        const setLocation = (point, knownAddress = '') => {
+            venueLat.value = point.lat().toFixed(7);
+            venueLng.value = point.lng().toFixed(7);
+            marker.setPosition(point);
+            geocoder.geocode({ location: point }, (results, status) => {
+                if (status !== 'OK' || !results?.[0]) return;
+                const result = results[0];
+                const parts = result.address_components || [];
+                const valueFor = (...types) => parts.find(part => types.some(type => part.types.includes(type)))?.long_name || '';
+                const brgy = valueFor('sublocality_level_1', 'neighborhood', 'sublocality');
+                const city = valueFor('locality', 'administrative_area_level_2');
+                const province = valueFor('administrative_area_level_1');
+                if (provinceSelect) provinceSelect.value = province;
+                if (citySelect) citySelect.value = city;
+                if (barangaySelect) barangaySelect.value = brgy;
+                venueHidden.value = knownAddress || result.formatted_address || `${brgy}, ${city}, ${province}`;
+                venueSearch.value = venueHidden.value;
+                document.getElementById('err-venue')?.classList.remove('show');
+                updateHiddenVenue();
+            });
+        };
+        marker.addListener('dragend', () => setLocation(marker.getPosition()));
+        map.addListener('click', event => setLocation(event.latLng));
+        if (venueSearch && google.maps.places) {
+            const autocomplete = new google.maps.places.Autocomplete(venueSearch, { componentRestrictions: { country: 'ph' }, fields: ['formatted_address', 'geometry', 'address_components'] });
+            autocomplete.bindTo('bounds', map);
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                if (!place.geometry?.location) return;
+                map.setCenter(place.geometry.location);
+                map.setZoom(17);
+                setLocation(place.geometry.location, place.formatted_address || '');
+            });
+        }
+        if (!venueLat?.value && venueSearch?.value) geocoder.geocode({ address: venueSearch.value }, (results, status) => {
+            if (status === 'OK' && results?.[0]) {
+                map.setCenter(results[0].geometry.location);
+                map.setZoom(17);
+                setLocation(results[0].geometry.location, results[0].formatted_address || '');
+            }
+        });
+    }
+    const mapWait = window.setInterval(() => {
+        if (!window.google?.maps) return;
+        window.clearInterval(mapWait);
+        initVenueMap();
+    }, 100);
+    window.setTimeout(() => window.clearInterval(mapWait), 10000);
+
     function loadExistingLocation() {
-        if (provinceSelect && !provinceSelect.value) {
+        if (provinceSelect && provinceSelect.tagName === 'SELECT' && !provinceSelect.value) {
             provinceSelect.value = "Laguna";
         }
         const existing = venueHidden ? venueHidden.value : '';
-        if (existing && existing.includes(',')) {
+        if (provinceSelect?.tagName === 'SELECT' && existing && existing.includes(',')) {
             const parts = existing.split(',').map(s => s.trim());
             if (parts.length >= 3) {
                 const brgy = parts[0];
@@ -817,7 +878,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
         }
-        if (provinceSelect && provinceSelect.value) {
+        if (provinceSelect?.tagName === 'SELECT' && provinceSelect.value) {
             populateCities(provinceSelect.value);
         }
     }
@@ -899,11 +960,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const g = parseInt(raw, 10);
         const errSpan = document.getElementById('err-guests');
 
-        if (!/^\d{1,3}$/.test(raw) || !Number.isInteger(g) || g < 1 || g > 999) {
+        if (!/^\d{1,6}$/.test(raw) || !Number.isInteger(g) || g < 1 || g > 999999) {
             guestDisplay.classList.add('error');
             guestDisplay.classList.remove('is-valid');
             if (errSpan) {
-            errSpan.innerText = 'Number of guests must be between 1 and 999.';
+                errSpan.innerText = 'Enter a guest count between 1 and 999999.';
                 errSpan.classList.add('show');
             }
             return false;
@@ -914,16 +975,6 @@ document.addEventListener('DOMContentLoaded', function () {
             guestDisplay.classList.remove('is-valid');
             if (errSpan) {
                 errSpan.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
-                errSpan.classList.add('show');
-            }
-            return false;
-        }
-
-        if (window.maxGuests > 0 && g > window.maxGuests) {
-            guestDisplay.classList.add('error');
-            guestDisplay.classList.remove('is-valid');
-            if (errSpan) {
-                errSpan.innerText = `Maximum guest capacity is ${window.maxGuests} guests for this package.`;
                 errSpan.classList.add('show');
             }
             return false;
@@ -940,7 +991,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         guestDisplay.addEventListener('keyup', validateGuestCount);
         guestDisplay.addEventListener('change', validateGuestCount);
-        guestDisplay.addEventListener('blur', validateGuestCount);
+        guestDisplay.addEventListener('blur', () => {
+            const count = parseInt((guestDisplay.value || '').replace(/,/g, ''), 10);
+            if (!Number.isInteger(count) || count < window.minGuests) {
+                guestDisplay.value = Number(window.minGuests || 1).toLocaleString();
+                if (guestInput) guestInput.value = String(window.minGuests || 1);
+            }
+            validateGuestCount();
+            if (typeof window.updateCalculator === 'function') window.updateCalculator();
+        });
     }
 
     // --- Real-time Date Validation ---
@@ -1358,6 +1417,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // 5. Event time
                 check('event_time', validateEventTime());
+                const endTime = document.getElementById('event_end_time');
+                const validEnd = !!(endTime?.value && timeInput?.value && endTime.value > timeInput.value);
+                check('event_end_time', validEnd);
+                if (!validEnd) document.getElementById('err-end-time')?.classList.add('show');
 
                 // 5.1 Booking availability
                 if (!isAvailabilityValid) {
@@ -1365,27 +1428,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     isValid = false;
                 }
 
-                // 6. Location — construct venue_address from selects NOW
-                const isProvValid = validateProvince();
-                const isCityValid = validateCity();
-                const isBrgyValid = validateBarangay();
-                check('province', isProvValid);
-                check('city', isCityValid);
-                check('barangay', isBrgyValid);
-
-                const pEl = document.getElementById('province_select');
-                const cEl = document.getElementById('city_select');
-                const bEl = document.getElementById('barangay_select');
-                const pVal = pEl ? (pEl.options[pEl.selectedIndex] ? pEl.options[pEl.selectedIndex].value : '') : '';
-                const cVal = cEl ? (cEl.options[cEl.selectedIndex] ? cEl.options[cEl.selectedIndex].value : '') : '';
-                const bVal = bEl ? (bEl.options[bEl.selectedIndex] ? bEl.options[bEl.selectedIndex].value : '') : '';
-
-                if (pVal && pVal !== '' && cVal && cVal !== '' && bVal && bVal !== '') {
-                    if (venueHidden) venueHidden.value = `${bVal}, ${cVal}, ${pVal}`;
-                    console.log('[BookingWizard] OK: location =', venueHidden ? venueHidden.value : 'n/a');
-                } else {
-                    isValid = false;
-                }
+                // 6. Exact venue pin and reverse-geocoded address
+                const pinValid = !!(venueHidden?.value && venueLat?.value && venueLng?.value);
+                check('venue_pin', pinValid);
+                if (!pinValid) document.getElementById('err-venue')?.classList.add('show');
 
                 // 7. Delivery fee coverage
                 if (window.deliveryFeeStatus === "error") {

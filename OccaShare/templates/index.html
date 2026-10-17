@@ -11,6 +11,19 @@
         scroll-behavior: smooth;
     }
 
+    /* Keep the trust counts compact so the browse action stays prominent. */
+    .section-stats-bar { padding: 1.15rem 0; }
+    .stats-grid-horizontal { gap: 1.25rem; }
+    .stat-number { font-size: 1.75rem; line-height: 1.1; }
+    .stat-label { font-size: 0.72rem; letter-spacing: 0.07em; }
+    .stat-divider { height: 34px; }
+    @media (max-width: 768px) {
+        .stats-grid-horizontal { flex-direction: row; gap: 0.5rem; }
+        .stat-divider { display: block; height: 30px; }
+        .stat-number { font-size: 1.45rem; }
+        .stat-label { font-size: 0.62rem; letter-spacing: 0.03em; text-align: center; }
+    }
+
     /* ── Unified Search Bar ── */
     .unified-search-bar {
         max-width: 720px;
@@ -722,7 +735,7 @@
                 <div class="stat-divider"></div>
                 <div class="stat-item">
                     <span class="stat-number" data-target="{{ stats.hosts }}">0</span>
-                    <span class="stat-label">Happy Hosts</span>
+                    <span class="stat-label">Platform Reviews</span>
                 </div>
             </div>
         </div>
@@ -872,8 +885,8 @@
         style="background-color: var(--lp-bg-light); padding: 6rem 0;">
         <div class="container">
             <div class="section-header" style="text-align: center; margin-bottom: 3rem;">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--lp-secondary);">What the Hosts Say</h2>
-                <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Real reviews from our community.</p>
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--lp-secondary);">What Customers Say About OccaServe</h2>
+                <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Feedback from customers about their experience with our platform.</p>
             </div>
 
             <div class="testimonial-viewport">
@@ -890,14 +903,13 @@
                         </div>
                         <p class="testimonial-quote">"{{ review.comment }}"</p>
                         <div class="testimonial-author">
-                            <img src="https://ui-avatars.com/api/?name=VC&background=f97316&color=fff"
-                                class="testimonial-avatar" alt="Verified Customer">
+                            {% set reviewer = review.user %}
+                            {% set reviewer_name = (((reviewer.first_name or '') ~ ' ' ~ (reviewer.last_name or ''))|trim or 'OccaServe Customer') if reviewer else 'OccaServe Customer' %}
+                            <img src="https://ui-avatars.com/api/?name={{ reviewer_name|urlencode }}&background=f97316&color=fff"
+                                class="testimonial-avatar" alt="{{ reviewer_name }}">
                             <div>
-                                <span style="display: block; font-weight: 700; color: var(--lp-secondary);">Verified Customer</span>
-                                <span style="font-size: 0.85rem; color: var(--lp-text-muted);">
-                                    {{ review.booking.event_type if review.booking and review.booking.event_type else
-                                    'Verified Client' }}
-                                </span>
+                                <span style="display: block; font-weight: 700; color: var(--lp-secondary);">{{ reviewer_name }}</span>
+                                <span style="font-size: 0.85rem; color: var(--lp-text-muted);">OccaServe Platform Review</span>
                             </div>
                         </div>
                     </div>

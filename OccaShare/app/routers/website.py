@@ -65,12 +65,9 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
 
     try:
         highlighted_reviews = db.query(models.PlatformFeedback).filter(
-            models.PlatformFeedback.is_archived == False
+            models.PlatformFeedback.is_archived.is_(False),
+            models.PlatformFeedback.role == 'customer'
         ).order_by(models.PlatformFeedback.created_at.desc()).limit(15).all()
-
-        # Fallback: show highly-rated caterer reviews if no platform feedback is featured yet
-        if not highlighted_reviews:
-            highlighted_reviews = db.query(models.Review).filter(models.Review.rating >= 4).order_by(models.Review.created_at.desc()).limit(3).all()
     except Exception as e:
         print(f"[HOMEPAGE ERROR] Failed to load reviews: {e}")
         db.rollback()
@@ -90,9 +87,9 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
             models.Booking.status.in_(['paid', 'completed'])
         ).scalar() or 0
 
-        total_hosts = db.query(func.count(models.User.id)).filter(
-            models.User.role == 'customer',
-            models.User.status == 'active'
+        total_hosts = db.query(func.count(models.PlatformFeedback.id)).filter(
+            models.PlatformFeedback.is_archived.is_(False),
+            models.PlatformFeedback.role == 'customer'
         ).scalar() or 0
     except Exception as e:
         print(f"[STATS ERROR] Failed to load homepage stats: {e}")

@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
 from sqlalchemy import or_, and_
 from sqlalchemy.orm import Session
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import os
 import shutil
 import uuid
@@ -183,6 +183,12 @@ async def customer_dashboard(
         return 0.0
         
     total_spent = sum(get_actual_paid(b) for b in bookings if b.status != 'cancelled')
+
+    dashboard_booking = max(
+        (booking for booking in bookings if (booking.status or '').lower() != 'cancelled'),
+        key=lambda booking: booking.id,
+        default=None,
+    )
     
     # Get the single most recent active booking for the Journey Tracker
     latest_booking = db.query(models.Booking).filter(
@@ -200,16 +206,6 @@ async def customer_dashboard(
         models.CatererProfile.account_status == 'Active'
     ).order_by(models.CatererProfile.rating.desc(), models.CatererProfile.review_count.desc()).limit(6).all()
     
-    # Fallback if no verified caterer profiles yet, query published caterers
-    if not featured_caterers:
-        featured_caterers = db.query(models.CatererProfile).filter(
-            models.CatererProfile.status == "Published"
-        ).order_by(models.CatererProfile.rating.desc()).limit(6).all()
-
-    # Fallback to any caterer profiles if database has test data
-    if not featured_caterers:
-        featured_caterers = db.query(models.CatererProfile).order_by(models.CatererProfile.id.desc()).limit(6).all()
-
     return templates.TemplateResponse("customer/dashboard.html", {
         "request": request,
         "user": user,
@@ -219,6 +215,7 @@ async def customer_dashboard(
         "reviews_count": reviews_count,
         "total_spent": total_spent,
         "latest_booking": latest_booking,
+        "dashboard_booking": dashboard_booking,
         "current_page": page,
         "total_pages": total_pages,
         "active_page": "overview",
@@ -890,12 +887,22 @@ async def customer_profile(
 ):
     # Calculate Profile Completion
     _, profile_completion, missing_fields = is_customer_profile_complete(user)
+    image_change_available_at = None
+    can_change_profile_image = True
+    if user.profile_image_updated_at:
+        image_updated_at = user.profile_image_updated_at
+        if image_updated_at.tzinfo is None:
+            image_updated_at = image_updated_at.replace(tzinfo=timezone.utc)
+        image_change_available_at = image_updated_at + timedelta(days=30)
+        can_change_profile_image = datetime.now(timezone.utc) >= image_change_available_at
     
     return templates.TemplateResponse("customer/profile.html", {
         "request": request,
         "user": user,
         "profile_completion": profile_completion,
         "missing_fields": missing_fields,
+        "can_change_profile_image": can_change_profile_image,
+        "image_change_available_at": image_change_available_at,
         "active_page": "profile"
     })
 
@@ -921,15 +928,24 @@ async def customer_update_personal(
     if not first_name or not last_name:
         return {"success": False, "message": "First name and last name are required."}
         
-    if not re.match(r"^09[0-9]{9}$", phone_number):
-        return {"success": False, "message": "Please enter a valid 11-digit mobile number starting with 09."}
+    phone_digits = re.sub(r"\D", "", phone_number or "")
+    if phone_digits.startswith("63"):
+        phone_digits = phone_digits[2:]
+    if len(phone_digits) == 10 and phone_digits.startswith("9"):
+        phone_number = "0" + phone_digits
+    elif len(phone_digits) == 11 and phone_digits.startswith("09"):
+        phone_number = phone_digits
+    else:
+        return {"success": False, "message": "Enter a valid contact number with 10 digits after +63."}
+    if re.search(r"(.)\1{4,}", phone_number) or re.search(r"(\d{2,})\1{2,}", phone_number) or phone_number in {"09123456789", "09987654321", "09000000000"}:
+        return {"success": False, "message": "Enter a valid contact number; repeated or test number patterns are not allowed."}
         
     try:
         parsed_dob = datetime.strptime(dob, "%Y-%m-%d").date()
         today = date.today()
         age = today.year - parsed_dob.year - ((today.month, today.day) < (parsed_dob.month, parsed_dob.day))
-        if age < 18:
-            return {"success": False, "message": "You must be at least 18 years old."}
+        if age < 18 or age > 60:
+            return {"success": False, "message": "You must be 18 to 60 years old."}
         user.dob = parsed_dob
     except ValueError:
         return {"success": False, "message": "Invalid date format for birthday."}
@@ -1009,9 +1025,17 @@ async def customer_upload_image(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
-    allowed_types = ["image/jpeg", "image/png", "image/webp"]
+    allowed_types = ["image/jpeg", "image/png"]
     if profile_image.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type. Only JPG, PNG, and WEBP allowed.")
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPG and PNG images are allowed.")
+
+    if user.profile_image_updated_at:
+        image_updated_at = user.profile_image_updated_at
+        if image_updated_at.tzinfo is None:
+            image_updated_at = image_updated_at.replace(tzinfo=timezone.utc)
+        next_change_at = image_updated_at + timedelta(days=30)
+        if datetime.now(timezone.utc) < next_change_at:
+            raise HTTPException(status_code=429, detail=f"You can change your profile picture again on {next_change_at.strftime('%b %d, %Y')}.")
         
     content_bytes = await profile_image.read()
     # [SECURITY] Enforce 5MB max file size for profile images
@@ -1019,14 +1043,19 @@ async def customer_upload_image(
     if len(content_bytes) > MAX_PROFILE_IMG_SIZE:
         raise HTTPException(status_code=413, detail="Profile picture must be 5MB or smaller.")
 
-    if user.profile_image_url:
-        delete_file_from_cloudinary(user.profile_image_url)
+    is_jpeg = content_bytes.startswith(b"\xff\xd8\xff")
+    is_png = content_bytes.startswith(b"\x89PNG\r\n\x1a\n")
+    if not (is_jpeg or is_png):
+        raise HTTPException(status_code=400, detail="Choose a valid JPG or PNG image.")
 
     c_url = upload_file_to_cloudinary(content_bytes, folder="profile_images")
     if not c_url:
         raise HTTPException(status_code=500, detail="Failed to upload profile picture to Cloudinary.")
 
+    if user.profile_image_url:
+        delete_file_from_cloudinary(user.profile_image_url)
     user.profile_image_url = c_url
+    user.profile_image_updated_at = datetime.now(timezone.utc)
     db.commit()
     return {"success": True, "image_url": user.profile_image_url, "message": "Profile picture updated."}
 
@@ -1408,7 +1437,7 @@ async def caterer_detail(
         db.commit()
 
     # Filter active data only
-    active_packages = [p for p in caterer.packages if p.is_active]
+    active_packages = [p for p in caterer.packages if p.is_active and (p.status or '').lower() == 'active']
     import json
     for p in active_packages:
         raw_inclusions = []
@@ -1549,6 +1578,7 @@ async def caterer_detail(
         models.Booking.caterer_id == caterer.id,  
         models.Booking.status == 'completed'
     ).count()
+    visible_reviews = [review for review in (caterer.reviews or []) if not review.is_archived]
 
     response = templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
@@ -1561,7 +1591,8 @@ async def caterer_detail(
         "gallery_items": caterer.gallery_items,
         "public_portfolios": public_portfolios,
         "completed_events_count": completed_events_count,
-        "reviews": caterer.reviews,
+        "reviews": visible_reviews,
+        "visible_review_count": len(visible_reviews),
         "user": user,
         "has_previous_bookings": has_previous_bookings,
         "has_previous_communication": has_previous_communication,

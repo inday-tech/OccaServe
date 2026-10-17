@@ -48,6 +48,8 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_time TIME",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_end_time TIME",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS venue_address TEXT",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS venue_latitude FLOAT",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS venue_longitude FLOAT",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS event_address TEXT",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS id_address TEXT",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS current_address TEXT",
@@ -248,6 +250,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS city_municipality VARCHAR",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS barangay VARCHAR",
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS street_address TEXT",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_updated_at TIMESTAMP WITH TIME ZONE",
         
         # website_config
         "ALTER TABLE website_config ADD COLUMN IF NOT EXISTS admin_gcash_name VARCHAR",

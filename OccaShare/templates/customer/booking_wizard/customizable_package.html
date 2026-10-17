@@ -142,13 +142,35 @@
         box-shadow: 0 2px 8px rgba(234, 88, 12, 0.08);
     }
     .cust-item-checkbox {
-        width: 19px;
-        height: 19px;
-        accent-color: #ea580c;
+        width: 13px;
+        height: 13px;
+        appearance: none;
+        -webkit-appearance: none;
+        border: 1.5px solid #94a3b8;
+        border-radius: 50%;
+        background: #fff;
         margin-top: 3px;
         cursor: pointer;
         flex-shrink: 0;
+        position: relative;
     }
+    .cust-item-checkbox:checked { border-color: #ea580c; }
+    .cust-item-checkbox:checked::after {
+        content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #ea580c;
+    }
+    .cust-tracker-box .tracker-chips-wrapper,
+    .cust-tracker-box .tracker-progress-bar-bg,
+    .menu-cat-header-wrap .cat-quota-pill,
+    .menu-cat-header-wrap .cat-badge-counter,
+    .cust-tag-section,
+    .menu-cat-header-wrap .cat-header-dot,
+    .menu-cat-header-wrap .cat-header-right { display:none !important; }
+    .menu-cat-header-wrap { display:flex; align-items:center; margin:0 0 .55rem; padding:0 .1rem; }
+    .menu-cat-header-wrap .cat-header-left { display:flex; align-items:center; gap:.35rem; min-width:0; }
+    .menu-cat-header-wrap .cat-header-name { color:#334155; font-size:.82rem; font-weight:750; }
+    .menu-cat-header-wrap .cat-quota-pill { display:inline-flex !important; font-size:.7rem; color:#64748b; }
+    .menu-cat-remove { display:inline-flex; align-items:center; gap:.3rem; margin-left:auto; color:#64748b; font-size:.7rem; white-space:nowrap; cursor:pointer; }
+    .menu-cat-remove input { width:13px; height:13px; accent-color:#ea580c; margin:0; }
 
     /* Price & Upgrade badges */
     .price-badge-pax {
@@ -527,21 +549,74 @@
         transform: none;
         box-shadow: none;
     }
+    .customize-package-banner { margin:0 0 .85rem; }
+    .customize-package-banner .cust-badge-type { display:inline-flex; padding:.35rem .65rem; border:1px solid #fed7aa; border-radius:999px; background:#fff7ed; color:#9a3412; font-size:.75rem; font-weight:700; }
+    @media (max-width: 640px) {
+        .wizard-container { width:calc(100% + 1rem); margin-left:-.5rem; padding:.75rem .45rem !important; box-sizing:border-box; }
+        .wizard-content-wrap, .customize-package-banner, #customizationForm, .cust-layout-grid,
+        .cust-main-col, .cust-sidebar-col, .cust-section-card, .cust-summary-card { width:100%; max-width:100%; min-width:0; box-sizing:border-box; }
+        .cust-layout-grid { display:flex; flex-direction:column; gap:.75rem; }
+        .cust-sidebar-col { order:-1; position:static !important; top:auto !important; z-index:auto; align-self:stretch; }
+        .cust-section-card { padding:.8rem !important; margin:0 0 .75rem !important; border-radius:12px !important; }
+        .cust-section-header { gap:.35rem; margin-bottom:.65rem; padding-bottom:.5rem; }
+        .cust-section-title { font-size:.92rem !important; line-height:1.3; gap:.35rem; }
+        .cust-tag-section { display:none !important; }
+        .cust-item-card { width:100%; max-width:100%; min-width:0; box-sizing:border-box; padding:.65rem .7rem; gap:.55rem; border-radius:10px; }
+        .cust-item-card > div { min-width:0; flex:1 1 auto; }
+        .cust-item-card > div > div:first-child { flex-wrap:wrap !important; }
+        .cust-item-checkbox { width:12px !important; height:12px !important; min-width:12px !important; min-height:12px !important; max-width:12px !important; max-height:12px !important; flex:0 0 12px !important; border-radius:50% !important; margin-top:2px; }
+        .cust-section-card [style*="grid-template-columns"] { grid-template-columns:minmax(0,1fr) !important; gap:.5rem !important; }
+        .cust-section-card [style*="font-size: 0.92rem"], .cust-section-card [style*="font-size: 0.9rem"] { font-size:.82rem !important; }
+        .cust-section-card p { font-size:.78rem !important; line-height:1.45 !important; }
+        .menu-cat-header-wrap { display:flex !important; align-items:flex-start; flex-wrap:wrap; gap:.3rem .5rem; }
+        .menu-cat-header-wrap .cat-header-left { width:100%; flex-wrap:wrap; }
+        .menu-cat-header-wrap .cat-header-name { font-size:.8rem; }
+        .menu-cat-header-wrap .cat-quota-pill { font-size:.66rem !important; }
+        .menu-cat-remove { width:100%; margin-left:0; font-size:.68rem; }
+        .menu-cat-remove input { width:13px; height:13px; min-width:13px; flex:0 0 13px; }
+        .menu-cat-group { min-width:0; }
+        .cust-section-card > div[style*="flex-direction: column"] { gap:.65rem !important; }
+        .cust-summary-card { padding:.9rem !important; position:static; border-radius:12px; box-shadow:0 5px 18px rgba(15,23,42,.12); }
+        .cust-summary-card > h3 { font-size:.95rem !important; margin-bottom:.7rem !important; padding-bottom:.5rem !important; }
+        .summary-row { min-width:0; gap:.5rem; align-items:flex-start; font-size:.78rem; margin-bottom:.55rem; }
+        .summary-row > * { min-width:0; overflow-wrap:anywhere; }
+        .summary-total-row { padding-top:.65rem; margin-top:.65rem; }
+        #summaryEstimatedTotal { font-size:1.2rem !important; overflow-wrap:anywhere; }
+        .btn-continue-cust { padding:.7rem .85rem; font-size:.85rem; border-radius:9px; }
+        #custGuestCount { width:110px !important; max-width:110px; font-size:1rem !important; padding:.5rem .65rem !important; }
+        .price-badge-service,.price-badge-upgrade,.price-badge-included,.price-badge-equip { white-space:normal; max-width:100%; font-size:.68rem; padding:2px 5px; }
+    }
+    /* Keep the multi-select controls compact and truly circular at every viewport. */
+    .cust-item-checkbox {
+        display:block !important;
+        box-sizing:border-box !important;
+        width:12px !important;
+        height:12px !important;
+        min-width:12px !important;
+        min-height:12px !important;
+        max-width:12px !important;
+        max-height:12px !important;
+        flex:0 0 12px !important;
+        padding:0 !important;
+        border:1.25px solid #94a3b8 !important;
+        border-radius:50% !important;
+        appearance:none !important;
+        -webkit-appearance:none !important;
+        background:#fff !important;
+        background-image:none !important;
+    }
+    .cust-item-checkbox:checked {
+        border-color:#ea580c !important;
+        background:#ea580c !important;
+        box-shadow:inset 0 0 0 3px #fff !important;
+    }
+    .cust-item-checkbox::after { display:none !important; }
 </style>
 {% endblock %}
 
 {% block wizard_content %}
-<!-- Package Header Banner -->
-<div class="cust-wizard-header">
-    <span class="cust-badge-type">
-        <i class="fas fa-sliders-h"></i> Build Your Own Catering Package
-    </span>
-    <h1 class="cust-header-title">{{ package.name or 'Custom Catering Package' }}</h1>
-    <div class="cust-header-meta">
-        <span><i class="fas fa-utensils" style="color: #ea580c;"></i> {{ caterer.business_name }}</span>
-        <span><i class="fas fa-users" style="color: #3b82f6;"></i> Min {{ package.min_guests or caterer.min_pax or 50 }}{% if package.max_guests %} - Max {{ package.max_guests }}{% endif %} Pax</span>
-        <span><i class="fas fa-clock" style="color: #10b981;"></i> {% if package.service_duration_confirmed and package.service_duration %}{{ package.service_duration }} Hours Service{% else %}Service duration not specified{% endif %}</span>
-    </div>
+<div class="customize-package-banner">
+    <span class="cust-badge-type">Customize your package</span>
 </div>
 
 <form id="customizationForm" method="POST" action="/bookings/customize/save">
@@ -584,12 +659,12 @@
                                    id="custGuestCount" 
                                    name="guest_count"
                                    class="form-input" 
-                                   value="{{ [initial_guest_count or 50, 999] | min }}" 
+        value="{{ [initial_guest_count or 50, 999999] | min }}"
                                    min="{{ package.min_guests or caterer.min_pax or 10 }}" 
-                                   max="{{ [(package.max_guests or 999), 999] | min }}" 
-                                   maxlength="3"
+                                   max="999999"
+                                   maxlength="6"
                                    step="1"
-                                   oninput="if(this.value.length > 3) this.value = this.value.slice(0, 3); handleGuestCountChange(this.value)"
+                                   oninput="if(this.value.length > 6) this.value = this.value.slice(0, 6); handleGuestCountChange(this.value)"
                                    onblur="handleGuestCountBlur(this)"
                                    style="width: 140px; font-size: 1.1rem; font-weight: 800; padding: 0.6rem 0.9rem; border: 1.5px solid #cbd5e1; border-radius: 10px;">
                             <span style="font-size: 0.9rem; font-weight: 700; color: #64748b;">guests / persons</span>
@@ -618,7 +693,7 @@
                 </div>
 
                 <p style="font-size: 0.85rem; color: #64748b; margin-top: -0.5rem; margin-bottom: 1.25rem;">
-                    Select the dishes and beverages you would like included in your catering service based on your package category allowances.
+                    Choose up to the allowed number in each category. Leave a category empty to remove it; any caterer-set credit appears in your estimate.
                 </p>
 
                 <!-- Menu Selection Quota & Progress Tracker -->
@@ -629,14 +704,14 @@
                                 <i class="fas fa-clipboard-check"></i>
                             </div>
                             <div>
-                                <h4 class="tracker-title">Menu Selection Quota</h4>
-                                <p class="tracker-subtitle">Select your allowed menu variants per category.</p>
+                                <h4 class="tracker-title">Menu Selections</h4>
+                                <p class="tracker-subtitle">Choose any available dishes, including multiple items from one category.</p>
                             </div>
                         </div>
                         <div class="tracker-total-stat">
                             <span class="stat-label">Total Selected</span>
                             <div class="stat-value">
-                                <span id="trackerTotalSelected" style="color: #ea580c;">0</span><span class="stat-divider">/</span><span id="trackerTotalAllowed">0</span>
+                                <span id="trackerTotalSelected" style="color: #ea580c;">0</span>
                             </div>
                         </div>
                     </div>
@@ -663,7 +738,7 @@
                                 <span class="cat-header-dot"></span>
                                 <span class="cat-header-name">{{ category }}</span>
                                 <span class="cat-quota-pill">
-                                    <i class="fas fa-check-circle" style="margin-right: 3px;"></i> Choose {{ quota }} variant{{ 's' if quota > 1 else '' }}
+                                    Up to {{ quota }} choice{{ 's' if quota > 1 else '' }}
                                 </span>
                             </div>
                             <div class="cat-header-right">
@@ -672,6 +747,11 @@
                                     0 / {{ quota }} selected
                                 </span>
                             </div>
+                            {% set removal_credit = (selection_rules.category_removal_credits.get(category, 0) if (selection_rules and selection_rules is mapping and selection_rules.category_removal_credits is mapping) else 0) %}
+                            <label class="menu-cat-remove">
+                                <input type="checkbox" class="category-remove-checkbox" data-category="{{ category }}" onchange="handleCategoryRemovalToggle(this)">
+                                Remove category{% if removal_credit|float > 0 %} (−₱{{ "{:,.2f}".format(removal_credit|float) }}/guest){% endif %}
+                            </label>
                         </div>
 
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem;">
@@ -761,6 +841,10 @@
                                data-category="{{ svc.category or 'Service' }}"
                                data-price="{{ svc.selling_price or 0 }}"
                                data-unit="{{ unit_text }}"
+                               data-unit-type="{{ svc.unit_type or 'per_event' }}"
+                               data-capacity-type="{{ svc.capacity_type or 'unit_based' }}"
+                               data-staff-ratio="{{ svc.staff_to_pax_ratio or 0 }}"
+                               data-min-staff="{{ svc.min_staff_required or 1 }}"
                                onchange="handleServiceItemToggle(this)">
                         <div style="flex: 1; min-width: 0;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
@@ -796,6 +880,29 @@
 
 
 
+            <!-- SECTION C: OPTIONAL EQUIPMENT -->
+            {% if available_equipment %}
+            <div class="cust-section-card">
+                <div class="cust-section-header">
+                    <h3 class="cust-section-title">Available Equipment</h3>
+                    <span id="badgeEquipmentSelectedCount" style="font-size:.78rem;font-weight:700;color:#9a3412;background:#ffedd5;padding:3px 10px;border-radius:20px;">0 Selected</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:.75rem;">
+                    {% for equipment in available_equipment %}
+                    {% set equipment_price = equipment.addon_price or equipment.rental_price or 0 %}
+                    <label class="cust-item-card" id="card_equipment_{{ equipment.id }}">
+                        <input type="checkbox" class="cust-item-checkbox equipment-checkbox" value="{{ equipment.id }}"
+                               data-id="{{ equipment.id }}" data-name="{{ equipment.name }}" data-price="{{ equipment_price }}"
+                               data-unit="{{ equipment.unit_type or 'piece' }}" onchange="handleEquipmentItemToggle(this)">
+                        <span style="flex:1;min-width:0;color:#0f172a;font-size:.88rem;font-weight:650;">{{ equipment.name }}
+                            {% if equipment_price > 0 %}<small style="display:block;margin-top:.2rem;color:#64748b;font-weight:500;">₱{{ "{:,.2f}".format(equipment_price) }} / {{ equipment.unit_type or 'piece' }}</small>{% endif %}
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- SECTION D: SPECIAL REQUESTS -->
             <div class="cust-section-card">
                 <h3 class="cust-section-title" style="margin-bottom: 0.75rem;">
@@ -825,13 +932,19 @@
                 </div>
 
                 <div class="summary-row" id="rowFoodSubtotal">
-                    <span id="lblFoodSummary">Menu Upgrades (0):</span>
+                    <span id="lblFoodSummary">Menu choices (0):</span>
                     <strong id="valFoodSummary" style="color: #15803d;">₱0.00</strong>
                 </div>
 
                 <div class="summary-row" id="rowServicesSubtotal">
                     <span id="lblServicesSummary">Services (0 items):</span>
                     <strong id="valServicesSummary" style="color: #1e40af;">₱0.00</strong>
+                </div>
+                <div class="summary-row" id="rowEquipmentSubtotal" style="display:none;">
+                    <span>Equipment:</span><strong id="valEquipmentSummary" style="color:#9a3412;">₱0.00</strong>
+                </div>
+                <div class="summary-row" id="rowTransportationEstimate">
+                    <span>Transportation:</span><strong>Set after venue details</strong>
                 </div>
 
 
@@ -867,26 +980,17 @@
 
 {% block step_js %}
 <script>
-const rawSelectionRules = {{ (selection_rules or {}) | tojson }};
 const packagePricingMode = {{ (package.pricing_mode or 'per_pax') | tojson }};
 const isPerPax = packagePricingMode !== 'fixed';
 const basePackagePrice = parseFloat({{ (package.price_per_head or package.price or 0) | tojson }}) || 0;
 const minGuestCapacity = {{ (package.min_guests or caterer.min_pax or 10) | tojson }};
-const maxGuestCapacity = Math.min({{ (package.max_guests or 999) | tojson }}, 999);
+const maxGuestCapacity = 999999;
 let currentGuestCount = Math.min(Math.max(parseInt(document.getElementById('custGuestCount')?.value, 10) || minGuestCapacity, minGuestCapacity), maxGuestCapacity);
 
-// Extract category quotas strictly from selection_rules.category_quotas
-let categoryQuotas = {};
-let totalVariantsAllowed = 0;
-
-if (rawSelectionRules && typeof rawSelectionRules === 'object') {
-    if (rawSelectionRules.category_quotas && typeof rawSelectionRules.category_quotas === 'object') {
-        categoryQuotas = Object.assign({}, rawSelectionRules.category_quotas);
-    }
-    if (rawSelectionRules.total_variants_allowed) {
-        totalVariantsAllowed = parseInt(rawSelectionRules.total_variants_allowed, 10) || 0;
-    }
-}
+const categoryQuotas = {};
+const categoryRemovalCredits = {{ (selection_rules.get('category_removal_credits', {}) if (selection_rules and selection_rules is mapping) else {}) | tojson }};
+const removedCategories = new Set();
+const totalVariantsAllowed = 0;
 
 // Toast notification helper
 let toastTimer = null;
@@ -917,10 +1021,10 @@ function handleGuestCountChange(val) {
     const inputEl = document.getElementById('custGuestCount');
     const errEl = document.getElementById('custGuestCountError');
 
-    // Remove any non-numeric characters and cap to 3 digits (1-999)
+    // Accept up to six numeric digits and enforce the package's real capacity.
     let sanitized = String(val !== undefined && val !== null ? val : '').replace(/\D/g, '');
-    if (sanitized.length > 3) {
-        sanitized = sanitized.slice(0, 3);
+    if (sanitized.length > 6) {
+        sanitized = sanitized.slice(0, 6);
     }
     if (inputEl && inputEl.value !== sanitized) {
         inputEl.value = sanitized;
@@ -929,7 +1033,7 @@ function handleGuestCountChange(val) {
     if (!sanitized) {
         currentGuestCount = 0;
         if (errEl) {
-            errEl.innerText = `Please enter expected number of guests (min. ${minGuestCapacity} pax, max 3 digits).`;
+            errEl.innerText = `Please enter at least ${minGuestCapacity} guests.`;
             errEl.style.display = 'block';
         }
         if (inputEl) inputEl.style.borderColor = '#dc2626';
@@ -986,58 +1090,11 @@ function handleGuestCountBlur(input) {
     }
 }
 
-// Render dynamic chips inside the Quota Tracker banner
+// Keep the selection counter without per-category quotas.
 function renderTrackerChips() {
     const container = document.getElementById('trackerCategoryChips');
     if (!container) return;
-
-    // Gather categories strictly from rendered food checkboxes on the page
-    const categoriesSet = new Set();
-    document.querySelectorAll('.food-checkbox').forEach(cb => {
-        const cat = (cb.dataset.category || '').trim();
-        if (cat) categoriesSet.add(cat);
-    });
-
-    const categories = Array.from(categoriesSet).sort();
-
-    if (categories.length === 0) {
-        const tracker = document.getElementById('menuSelectionTracker');
-        if (tracker) tracker.style.display = 'none';
-        return;
-    }
-
-    // Guarantee each category has a valid quota (minimum 1)
-    categories.forEach(cat => {
-        const q = parseInt(categoryQuotas[cat], 10);
-        if (isNaN(q) || q <= 0) {
-            categoryQuotas[cat] = 1;
-        }
-    });
-
-    // Compute totalVariantsAllowed from category quotas sum if not explicit
-    let sumAllowed = 0;
-    categories.forEach(cat => {
-        sumAllowed += (parseInt(categoryQuotas[cat], 10) || 1);
-    });
-    if (!totalVariantsAllowed || totalVariantsAllowed > sumAllowed) {
-        totalVariantsAllowed = sumAllowed;
-    }
-
-    const totalAllowedEl = document.getElementById('trackerTotalAllowed');
-    if (totalAllowedEl) totalAllowedEl.innerText = totalVariantsAllowed;
-
-    container.innerHTML = categories.map(cat => {
-        const quota = parseInt(categoryQuotas[cat], 10) || 1;
-        const safeCat = cat.replace(/\s+/g, '_').replace(/\//g, '_');
-        
-        return `
-            <div class="tracker-chip" id="trackerChip_${safeCat}" onclick="scrollToCategory('${safeCat}')" title="Click to jump to ${cat}">
-                <span>${cat}:</span>
-                <strong id="trackerChipVal_${safeCat}">0/${quota}</strong>
-            </div>
-        `;
-    }).join('');
-
+    container.replaceChildren();
     updateTrackerProgress();
 }
 
@@ -1113,55 +1170,48 @@ function updateTrackerProgress() {
     }
 }
 
-// Handle Food Checkbox Toggle with Smart Auto-Swap & Category Quota Enforcement
+// Food selections are multi-select, so customers can swap or add dishes freely.
 function handleFoodItemToggle(input) {
-    const card = document.getElementById(`card_food_${input.value}`);
-    const cat = (input.dataset.category || 'Others').trim();
-    const rawQuota = parseInt(categoryQuotas[cat], 10);
-    const quota = (!isNaN(rawQuota) && rawQuota > 0) ? rawQuota : 1;
-
-    if (input.checked) {
-        // Enforce category quota
-        if (quota > 0) {
-            const checkedInCat = Array.from(document.querySelectorAll(`.food-checkbox:checked`))
-                .filter(cb => cb.dataset.category === cat && cb.value !== input.value);
-
-            if (quota === 1) {
-                // Smart Auto-Swap: If quota is 1 and another dish in the same category was previously selected, swap to the new dish
-                if (checkedInCat.length > 0) {
-                    const prev = checkedInCat[0];
-                    prev.checked = false;
-                    const prevCard = document.getElementById(`card_food_${prev.value}`);
-                    if (prevCard) prevCard.classList.remove('selected');
-                    const prevSub = document.getElementById(`subtotal_food_${prev.value}`);
-                    if (prevSub) prevSub.style.display = 'none';
-                    showSelectionToast(`Swapped to ${input.dataset.name}`, 'info');
-                }
-            } else if (checkedInCat.length >= quota) {
-                // Quota > 1 and already at limit: prevent selection and guide user
-                input.checked = false;
-                if (card) card.classList.remove('selected');
-                showSelectionToast(`You can only select up to ${quota} variants for ${cat}. Uncheck a dish first to swap.`, 'warning');
-                return;
-            }
-        }
-
-        // Global package variant limit check
-        if (totalVariantsAllowed > 0) {
-            const totalChecked = document.querySelectorAll('.food-checkbox:checked').length;
-            if (totalChecked > totalVariantsAllowed) {
-                input.checked = false;
-                if (card) card.classList.remove('selected');
-                showSelectionToast(`Maximum package limit of ${totalVariantsAllowed} variants reached.`, 'warning');
-                return;
-            }
-        }
-
-        if (card) card.classList.add('selected');
-    } else {
-        if (card) card.classList.remove('selected');
+    const category = (input.dataset.category || 'Others').trim();
+    if (input.checked && removedCategories.has(category)) {
+        removedCategories.delete(category);
+        const removeControl = Array.from(document.querySelectorAll('.category-remove-checkbox')).find(cb => (cb.dataset.category || '').trim() === category);
+        if (removeControl) removeControl.checked = false;
+        document.querySelectorAll('.food-checkbox').forEach(cb => { if ((cb.dataset.category || 'Others').trim() === category) cb.disabled = false; });
     }
+    const quota = parseInt(categoryQuotas[category], 10) || 0;
+    if (input.checked && quota > 0) {
+        const checkedInCategory = Array.from(document.querySelectorAll('.food-checkbox:checked'))
+            .filter(cb => (cb.dataset.category || 'Others').trim() === category);
+        if (checkedInCategory.length > quota) {
+            input.checked = false;
+            showSelectionToast(`Choose up to ${quota} ${category} option${quota === 1 ? '' : 's'}.`, 'warning');
+        }
+    }
+    const card = document.getElementById(`card_food_${input.value}`);
+    if (card) card.classList.toggle('selected', input.checked);
 
+    updateTrackerProgress();
+    updateCustomizationState();
+}
+
+function handleCategoryRemovalToggle(input) {
+    const category = (input.dataset.category || '').trim();
+    if (!category) return;
+    if (input.checked) {
+        removedCategories.add(category);
+        document.querySelectorAll('.food-checkbox').forEach(cb => {
+            if ((cb.dataset.category || 'Others').trim() !== category) return;
+            cb.checked = false;
+            cb.disabled = true;
+            document.getElementById(`card_food_${cb.value}`)?.classList.remove('selected');
+        });
+    } else {
+        removedCategories.delete(category);
+        document.querySelectorAll('.food-checkbox').forEach(cb => {
+            if ((cb.dataset.category || 'Others').trim() === category) cb.disabled = false;
+        });
+    }
     updateTrackerProgress();
     updateCustomizationState();
 }
@@ -1175,6 +1225,23 @@ function handleServiceItemToggle(input) {
     updateCustomizationState();
 }
 
+function handleEquipmentItemToggle(input) {
+    const card = document.getElementById(`card_equipment_${input.value}`);
+    if (card) card.classList.toggle('selected', input.checked);
+    updateCustomizationState();
+}
+
+function getServiceQuantity(input, guests) {
+    const unit = String(input.dataset.unitType || input.dataset.unit || '').toLowerCase();
+    if (/pax|guest|person/.test(unit)) return guests;
+    if (String(input.dataset.capacityType || '').toLowerCase() === 'staff_based') {
+        const ratio = parseInt(input.dataset.staffRatio, 10) || 0;
+        const minStaff = parseInt(input.dataset.minStaff, 10) || 1;
+        if (ratio > 0) return Math.max(minStaff, Math.ceil(guests / ratio));
+    }
+    return 1;
+}
+
 // Live Pricing Computation: Total = (base_price + sum(upgrade_fees)) * guest_count + services_total
 function updateCustomizationState() {
     let foodUpgradeSubtotal = 0;
@@ -1182,17 +1249,25 @@ function updateCustomizationState() {
 
     let servicesSubtotal = 0;
     let servicesSelectedCount = 0;
+    let equipmentSubtotal = 0;
+    let equipmentSelectedCount = 0;
+    let foodRemovalCredit = 0;
+    const foodCategories = new Set(Array.from(document.querySelectorAll('.food-checkbox')).map(cb => (cb.dataset.category || 'Others').trim()));
+    for (const category of foodCategories) {
+        if (removedCategories.has(category)) foodRemovalCredit += Math.max(0, Number(categoryRemovalCredits[category]) || 0) * currentGuestCount;
+    }
 
     // 1. Food Upgrades Calculation
     document.querySelectorAll('.food-checkbox').forEach(cb => {
         const id = cb.value;
         const subtotalPill = document.getElementById(`subtotal_food_${id}`);
         // Menu choices are included in the per-guest package rate.
-        const upgradeFee = 0;
+        const upgradeFee = parseFloat(cb.dataset.upgradeFee) || 0;
 
         if (cb.checked) {
             foodSelectedCount++;
-            const itemUpgradeTotal = 0;
+            const itemUpgradeTotal = upgradeFee * currentGuestCount;
+            foodUpgradeSubtotal += itemUpgradeTotal;
             // Menu selections are included in the package rate.
 
             if (subtotalPill) {
@@ -1203,7 +1278,7 @@ function updateCustomizationState() {
                     subtotalPill.style.background = '#fef3c7';
                     subtotalPill.style.borderColor = '#fde68a';
                 } else {
-                    subtotalPill.innerHTML = `<i class="fas fa-check" style="margin-right: 3px;"></i> Included in Package (₱0.00)`;
+                    subtotalPill.innerText = 'Included in package';
                     subtotalPill.style.color = '#15803d';
                     subtotalPill.style.background = '#f0fdf4';
                     subtotalPill.style.borderColor = '#bbf7d0';
@@ -1222,17 +1297,24 @@ function updateCustomizationState() {
 
         if (cb.checked) {
             servicesSelectedCount++;
-            servicesSubtotal += price;
+            const quantity = getServiceQuantity(cb, currentGuestCount);
+            const serviceTotal = price * quantity;
+            servicesSubtotal += serviceTotal;
 
             if (subtotalPill) {
                 subtotalPill.style.display = price > 0 ? 'inline-block' : 'none';
                 if (price > 0) {
-                    subtotalPill.innerText = `₱${price.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
+                    subtotalPill.innerText = `₱${serviceTotal.toLocaleString('en-PH', { maximumFractionDigits: 2 })}`;
                 }
             }
         } else {
             if (subtotalPill) subtotalPill.style.display = 'none';
         }
+    });
+
+    document.querySelectorAll('.equipment-checkbox:checked').forEach(cb => {
+        equipmentSelectedCount++;
+        equipmentSubtotal += parseFloat(cb.dataset.price) || 0;
     });
 
     // 3. Update Header Badges
@@ -1241,6 +1323,8 @@ function updateCustomizationState() {
 
     const badgeSvc = document.getElementById('badgeServicesSelectedCount');
     if (badgeSvc) badgeSvc.innerText = `${servicesSelectedCount} Selected`;
+    const badgeEquipment = document.getElementById('badgeEquipmentSelectedCount');
+    if (badgeEquipment) badgeEquipment.innerText = `${equipmentSelectedCount} Selected`;
 
     // 4. Update Sidebar Summary Rows
     const basePackageTotal = isPerPax ? (basePackagePrice * currentGuestCount) : basePackagePrice;
@@ -1257,12 +1341,16 @@ function updateCustomizationState() {
     const lblFood = document.getElementById('lblFoodSummary');
     const valFood = document.getElementById('valFoodSummary');
     if (lblFood && valFood) {
-        lblFood.innerText = `Menu Upgrades (${foodSelectedCount} items):`;
-        if (foodUpgradeSubtotal > 0) {
-            valFood.innerText = `+₱${foodUpgradeSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+        lblFood.innerText = `Menu choices (${foodSelectedCount}):`;
+        const netFoodAdjustment = foodUpgradeSubtotal - foodRemovalCredit;
+        if (netFoodAdjustment > 0) {
+            valFood.innerText = `+₱${netFoodAdjustment.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
             valFood.style.color = '#b45309';
+        } else if (netFoodAdjustment < 0) {
+            valFood.innerText = `−₱${Math.abs(netFoodAdjustment).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+            valFood.style.color = '#15803d';
         } else {
-            valFood.innerText = `₱0.00 (Included)`;
+            valFood.innerText = 'Included';
             valFood.style.color = '#15803d';
         }
     }
@@ -1274,8 +1362,15 @@ function updateCustomizationState() {
         valSvc.innerText = `₱${servicesSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
     }
 
+    const equipmentRow = document.getElementById('rowEquipmentSubtotal');
+    const equipmentValue = document.getElementById('valEquipmentSummary');
+    if (equipmentRow && equipmentValue) {
+        equipmentRow.style.display = equipmentSelectedCount ? 'flex' : 'none';
+        equipmentValue.innerText = `₱${equipmentSubtotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    }
+
     // 5. Grand Estimated Total: (base_price + sum(upgrade_fees)) * guest_count + servicesSubtotal
-    const grandTotal = basePackageTotal + servicesSubtotal;
+    const grandTotal = Math.max(0, basePackageTotal + foodUpgradeSubtotal + servicesSubtotal + equipmentSubtotal - foodRemovalCredit);
     const txtTotal = document.getElementById('summaryEstimatedTotal');
     if (txtTotal) {
         txtTotal.innerText = `₱${grandTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
@@ -1297,56 +1392,22 @@ function validateAndSubmitCustomization() {
         return;
     }
     if (guestVal > maxGuestCapacity) {
-        const msg = `The maximum guest count allowed is ${maxGuestCapacity} guests (up to 3 digits).`;
+        const msg = `The maximum guest count allowed is ${maxGuestCapacity} guests.`;
         showValidationError(msg, guestInput);
         return;
     }
 
-    // 2. Category Quota Enforcement
-    const catCounts = {};
     const selectedFoodBoxes = Array.from(document.querySelectorAll('.food-checkbox:checked'));
-    selectedFoodBoxes.forEach(cb => {
-        const cat = cb.dataset.category || 'Others';
-        catCounts[cat] = (catCounts[cat] || 0) + 1;
-    });
-
-    for (const [cat, quotaVal] of Object.entries(categoryQuotas)) {
-        const quota = parseInt(quotaVal, 10);
-        if (!isNaN(quota) && quota > 0) {
-            const count = catCounts[cat] || 0;
-            if (count < quota) {
-                const missing = quota - count;
-                const msg = `Please select ${missing} more variant${missing > 1 ? 's' : ''} for ${cat} (${count}/${quota} selected).`;
-                const safeCat = cat.replace(/\s+/g, '_').replace(/\//g, '_');
-                const catGroup = document.getElementById(`catGroup_${safeCat}`);
-                showValidationError(msg, catGroup);
-                return;
-            }
-        }
-    }
-
-    // 3. Package Total Variants Limit
-    if (totalVariantsAllowed > 0 && selectedFoodBoxes.length < totalVariantsAllowed) {
-        const missing = totalVariantsAllowed - selectedFoodBoxes.length;
-        const msg = `This package includes ${totalVariantsAllowed} menu variants. Please select ${missing} more variant${missing > 1 ? 's' : ''}.`;
-        showValidationError(msg, document.getElementById('menuSelectionTracker'));
-        return;
-    }
-
-    // 4. Must select at least one item
     const selectedServiceBoxes = Array.from(document.querySelectorAll('.service-checkbox:checked'));
-    if (selectedFoodBoxes.length === 0 && selectedServiceBoxes.length === 0) {
-        showValidationError('Please select at least one menu item or service to customize your package.');
-        return;
-    }
+    const selectedEquipmentBoxes = Array.from(document.querySelectorAll('.equipment-checkbox:checked'));
 
     // Build payload
     let foodUpgradeSubtotal = 0;
     const foodPayload = selectedFoodBoxes.map(cb => {
         const id = parseInt(cb.value, 10);
-        const upgradeFee = 0;
+        const upgradeFee = parseFloat(cb.dataset.upgradeFee) || 0;
         const price = parseFloat(cb.dataset.price) || 0;
-        const subtotal = 0;
+        const subtotal = upgradeFee * guestVal;
         foodUpgradeSubtotal += subtotal;
 
         return {
@@ -1354,7 +1415,7 @@ function validateAndSubmitCustomization() {
             name: cb.dataset.name,
             category: cb.dataset.category || 'Menu',
             upgrade_fee: upgradeFee,
-            price: price,
+            price: upgradeFee,
             unit: cb.dataset.unit || 'pax',
             qty: guestVal,
             subtotal: subtotal
@@ -1365,7 +1426,9 @@ function validateAndSubmitCustomization() {
     const servicesPayload = selectedServiceBoxes.map(cb => {
         const id = parseInt(cb.value, 10);
         const price = parseFloat(cb.dataset.price) || 0;
-        servicesSubtotal += price;
+        const quantity = getServiceQuantity(cb, guestVal);
+        const subtotal = price * quantity;
+        servicesSubtotal += subtotal;
 
         return {
             id: id,
@@ -1373,13 +1436,26 @@ function validateAndSubmitCustomization() {
             category: cb.dataset.category || 'Service',
             price: price,
             unit: cb.dataset.unit || 'service',
+            qty: quantity,
+            subtotal
+        };
+    });
+
+    const equipmentPayload = selectedEquipmentBoxes.map(cb => {
+        const price = parseFloat(cb.dataset.price) || 0;
+        return {
+            id: parseInt(cb.value, 10),
+            name: cb.dataset.name,
+            price,
+            unit: cb.dataset.unit || 'piece',
             qty: 1,
             subtotal: price
         };
     });
 
     const basePackageTotal = isPerPax ? (basePackagePrice * guestVal) : basePackagePrice;
-    const grandTotal = basePackageTotal + servicesSubtotal;
+    const equipmentSubtotal = equipmentPayload.reduce((total, item) => total + item.subtotal, 0);
+    const grandTotal = basePackageTotal + foodUpgradeSubtotal + servicesSubtotal + equipmentSubtotal;
     const specialReq = document.getElementById('custSpecialRequests')?.value || '';
 
     const finalPayload = {
@@ -1389,11 +1465,16 @@ function validateAndSubmitCustomization() {
         guest_count: guestVal,
         base_price: basePackagePrice,
         base_package_total: basePackageTotal,
-        food_upgrade_total: 0,
+        food_upgrade_total: foodUpgradeSubtotal,
+        food_removal_credit: Math.max(0, Array.from(new Set(Array.from(document.querySelectorAll('.food-checkbox')).map(cb => (cb.dataset.category || 'Others').trim())))
+            .reduce((credit, category) => credit + (removedCategories.has(category) ? Math.max(0, Number(categoryRemovalCredits[category]) || 0) * guestVal : 0), 0)),
+        removed_categories: Array.from(removedCategories),
         selected_food: foodPayload,
         selected_services: servicesPayload,
+        selected_equipment: equipmentPayload,
         food_total: 0,
         services_total: servicesSubtotal,
+        equipment_total: equipmentSubtotal,
         estimated_total: grandTotal,
         special_requests: specialReq
     };
@@ -1419,6 +1500,9 @@ function showValidationError(msg, focusEl) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.cat-badge-counter[data-category]').forEach(el => {
+        categoryQuotas[el.dataset.category] = Number(el.dataset.quota) || 1;
+    });
     renderTrackerChips();
 
     // Restore pre-selected items if user navigated back
@@ -1436,12 +1520,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
+            if (Array.isArray(saved.removed_categories)) {
+                saved.removed_categories.forEach(category => {
+                    const control = Array.from(document.querySelectorAll('.category-remove-checkbox')).find(cb => (cb.dataset.category || '').trim() === String(category).trim());
+                    if (control) { control.checked = true; handleCategoryRemovalToggle(control); }
+                });
+            }
             if (saved.selected_services) {
                 saved.selected_services.forEach(s => {
                     const cb = document.querySelector(`.service-checkbox[value="${s.id}"]`);
                     if (cb) {
                         cb.checked = true;
                         handleServiceItemToggle(cb);
+                    }
+                });
+            }
+            if (saved.selected_equipment) {
+                saved.selected_equipment.forEach(item => {
+                    const cb = document.querySelector(`.equipment-checkbox[value="${item.id}"]`);
+                    if (cb) {
+                        cb.checked = true;
+                        handleEquipmentItemToggle(cb);
                     }
                 });
             }

@@ -336,6 +336,7 @@ window.openAddPackageModal = async function () {
     customizableServiceIds = new Set();
     customizableEquipmentIds = new Set();
     customizableCategoryQuotas = {};
+    customizableCategoryRemovalCredits = {};
     lastMenuQuery = '';
     lastServiceQuery = '';
     lastEquipmentQuery = '';
@@ -513,9 +514,12 @@ window.editPackage = async function (pkgId) {
                 } else {
                     customizableCategoryQuotas = {};
                 }
+                customizableCategoryRemovalCredits = rules.category_removal_credits && typeof rules.category_removal_credits === 'object'
+                    ? Object.assign({}, rules.category_removal_credits) : {};
             }
         } else {
             customizableCategoryQuotas = {};
+            customizableCategoryRemovalCredits = {};
         }
         if (typeof renderCustomizableCatalogs === 'function') renderCustomizableCatalogs();
         if (typeof syncCustomizableSelectionRules === 'function') syncCustomizableSelectionRules();
@@ -2587,6 +2591,7 @@ let customizableMenuIds = new Set();
 let customizableServiceIds = new Set();
 let customizableEquipmentIds = new Set();
 let customizableCategoryQuotas = {};
+let customizableCategoryRemovalCredits = {};
 
 let lastMenuQuery = '';
 let lastServiceQuery = '';
@@ -2882,17 +2887,25 @@ function renderCustomizableMenu(query = '') {
         const selectedInCategory = selectedMenuCounts[category] || 0;
         const quotaValue = customizableCategoryQuotas[category];
         const quotaValid = Number.isInteger(Number(quotaValue)) && Number(quotaValue) >= 1 && Number(quotaValue) <= selectedInCategory;
+        const removalCredit = Number(customizableCategoryRemovalCredits[category]) || 0;
         const encodedCategory = encodeURIComponent(category).replace(/'/g, '%27');
         const categoryHeading = category !== previousCategory
-            ? `<div class="menu-category-heading" data-category="${escapeHtml(category)}">
+            ? `<div class="menu-category-heading" data-category="${escapeHtml(category)}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                     <h5>${escapeHtml(category)}</h5>
-                    <label class="menu-category-quota" title="Required number of menu choices in this category">
+                    <label class="menu-category-quota" title="Maximum number of choices customers can select in this category">
                         <span>Choose</span>
                         <input type="number" min="1" max="${selectedInCategory}" value="${quotaValid ? quotaValue : ''}"
-                            aria-label="Required number of ${escapeHtml(category)} choices"
+                            aria-label="Maximum number of ${escapeHtml(category)} choices"
                             ${selectedInCategory ? '' : 'disabled'}
                             onchange="window.setCategoryQuota('${encodedCategory}', this.value)" />
                         <span>of <span class="menu-category-offered">${selectedInCategory}</span></span>
+                    </label>
+                    <label class="menu-category-removal-credit" style="display:flex;align-items:center;gap:6px;color:#64748b;font-size:.74rem;white-space:nowrap;">
+                        <span>Credit if removed (₱/guest)</span>
+                        <input type="number" min="0" max="999999" step="0.01" value="${removalCredit || ''}"
+                            aria-label="Credit per guest if all ${escapeHtml(category)} choices are removed"
+                            onchange="window.setCategoryRemovalCredit('${encodedCategory}', this.value)"
+                            style="width:96px;min-height:34px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;" />
                     </label>
                </div>`
             : '';
@@ -3009,6 +3022,7 @@ function syncCustomizableSelectionRules() {
     const jsonInput = document.getElementById('package_selection_rules_json');
     if (jsonInput) {
         const cleanQuotas = {};
+        const cleanRemovalCredits = {};
         let total = 0;
         const categoryCounts = getCustomizableMenuCategoryCounts();
         for (const [cat, available] of Object.entries(categoryCounts)) {
@@ -3019,12 +3033,19 @@ function syncCustomizableSelectionRules() {
                 total += num;
             }
         }
+        for (const [cat, rawCredit] of Object.entries(customizableCategoryRemovalCredits)) {
+            const credit = Number(rawCredit);
+            if (Number.isFinite(credit) && credit > 0 && credit <= 999999 && categoryCounts[cat]) {
+                cleanRemovalCredits[cat] = Math.round(credit * 100) / 100;
+            }
+        }
         const payload = {
             package_type: 'customizable',
             available_menu_ids: Array.from(customizableMenuIds),
             available_service_ids: Array.from(customizableServiceIds),
             available_equipment_ids: Array.from(customizableEquipmentIds),
             category_quotas: cleanQuotas,
+            category_removal_credits: cleanRemovalCredits,
             total_variants_allowed: total
         };
         jsonInput.value = JSON.stringify(payload);
@@ -3044,6 +3065,17 @@ window.setCategoryQuota = function(encodedCat, val) {
     renderCategoryQuotas();
     syncCustomizableSelectionRules();
     updatePackageWizardControls();
+};
+
+window.setCategoryRemovalCredit = function(encodedCat, val) {
+    const cat = decodeURIComponent(encodedCat);
+    const credit = Number(String(val || '').trim());
+    if (!Number.isFinite(credit) || credit <= 0 || credit > 999999) {
+        delete customizableCategoryRemovalCredits[cat];
+    } else {
+        customizableCategoryRemovalCredits[cat] = Math.round(credit * 100) / 100;
+    }
+    syncCustomizableSelectionRules();
 };
 
 function renderCategoryQuotas() {
@@ -3092,7 +3124,7 @@ function renderReviewCustomizable() {
                 for (const [cat, val] of Object.entries(customizableCategoryQuotas)) {
                     const num = parseInt(val, 10);
                     if (!isNaN(num) && num > 0) {
-                        summaryParts.push(`<span style="background: #ffffff; border: 1px solid #fed7aa; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #9a3412; font-size: 0.8rem;"><strong style="color: #ea580c;">${num}</strong> required from ${escapeHtml(cat)}</span>`);
+                        summaryParts.push(`<span style="background: #ffffff; border: 1px solid #fed7aa; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #9a3412; font-size: 0.8rem;"><strong style="color: #ea580c;">Up to ${num}</strong> from ${escapeHtml(cat)}</span>`);
                         totalAllowed += num;
                     }
                 }
@@ -3103,17 +3135,17 @@ function renderReviewCustomizable() {
                     <div style="background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 4px;">
                             <h5 style="font-size: 0.75rem; font-weight: 800; color: #c2410c; text-transform: uppercase; margin: 0;">
-                                <i class="fas fa-layer-group" style="margin-right: 5px;"></i>                                 Required Menu Picks by Category
+                                <i class="fas fa-layer-group" style="margin-right: 5px;"></i> Menu Choices by Category
                             </h5>
                             <span style="font-size: 0.75rem; font-weight: 800; color: #ea580c; background: #ffedd5; padding: 2px 8px; border-radius: 12px; border: 1px solid #fed7aa;">
-                                Required: ${totalAllowed} dish${totalAllowed === 1 ? '' : 'es'}
+                                Maximum: ${totalAllowed} dish${totalAllowed === 1 ? '' : 'es'}
                             </span>
                         </div>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
                             ${summaryParts.join('')}
                         </div>
                         <div style="font-size: 0.78rem; color: #9a3412; margin-top: 6px;">
-                            <i class="fas fa-check" style="margin-right: 4px;"></i> Customers must select the required number from every category to continue.
+                            Customers can leave a category empty. A removal credit applies only when a per-guest amount is set for that category.
                         </div>
                     </div>
                 `;

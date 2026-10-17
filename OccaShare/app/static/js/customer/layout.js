@@ -31,8 +31,9 @@ function initSidebar() {
     const toggleBtn = document.getElementById('desktopToggleBtn');
     const html      = document.documentElement;
 
-    // Restore collapsed state
-    if (localStorage.getItem('customerSidebarCollapsed') === 'true') {
+    // A desktop collapsed preference must not make the mobile drawer icons-only.
+    if (window.innerWidth <= 1024) html.classList.remove('sidebar-icons-only');
+    else if (localStorage.getItem('customerSidebarCollapsed') === 'true') {
         html.classList.add('sidebar-icons-only');
     }
 
@@ -52,6 +53,7 @@ window.toggleSidebar = function () {
     const sidebar  = document.getElementById('mainSidebar');
     const overlay  = document.getElementById('sidebarOverlay');
     if (!sidebar) return;
+    if (window.innerWidth <= 1024) document.documentElement.classList.remove('sidebar-icons-only');
     const isOpen = sidebar.classList.toggle('active');
     if (overlay) overlay.classList.toggle('active', isOpen);
     // Prevent body scroll when sidebar is open on mobile

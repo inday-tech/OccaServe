@@ -421,6 +421,39 @@
         .customer-contact-card { max-height:86dvh;padding:14px;border-radius:16px 16px 10px 10px; }
         .customer-contact-option { padding:11px 7px; }
         .customer-contact-meta { max-width:92px;overflow:hidden;text-overflow:ellipsis; }
+
+        /* Keep the embedded chat pane inside the header modal and above the keyboard. */
+        body.embedded-customer-messages { padding:0; height:100%; min-height:0; overflow:hidden; }
+        body.embedded-customer-messages .messages-terminal { height:100%; min-height:0; overflow:hidden; border-radius:0; }
+        .chat-sidebar,.chat-window,#activeChat { min-height:0; }
+        .window-header { gap:.45rem; padding:.65rem .7rem; }
+        .window-header > div:first-child { min-width:0; flex:1 1 auto; gap:.35rem !important; }
+        .window-header .avatar-wrapper { width:36px !important; height:36px !important; flex:0 0 36px; margin-right:.25rem !important; }
+        .window-header .conv-name { max-width:34vw; font-size:.86rem !important; }
+        .window-header .btn-icon { width:36px !important; height:36px !important; border-radius:10px !important; }
+        .mobile-back-btn { width:32px; height:36px; flex:0 0 32px; margin:0 .15rem 0 0; font-size:1rem; }
+        .context-bar { flex-wrap:wrap; gap:.35rem; padding:.45rem .65rem; }
+        .context-pill { max-width:100%; padding:4px 8px; font-size:.6rem; }
+        .messages-scroller { min-height:0; padding:.7rem; gap:.75rem; }
+        .msg-bubble { max-width:88%; padding:.65rem .8rem; border-radius:15px; font-size:.82rem; overflow-wrap:anywhere; }
+        .input-terminal { padding:.55rem .65rem max(.55rem, env(safe-area-inset-bottom)); }
+        .input-box { min-width:0; gap:.35rem; padding:.3rem; border-radius:13px; }
+        .input-box #attachBtn { width:34px; height:38px; flex:0 0 34px; justify-content:center; margin:0 !important; }
+        .input-box #customerAttachLabel { display:none !important; }
+        .input-box #messageInput { min-width:0; width:0; padding:.55rem .25rem; font-size:.84rem; }
+        .btn-send-elite { width:38px; height:38px; flex:0 0 38px; border-radius:11px; }
+        .welcome-terminal { padding:1rem; }
+        .terminal-icon { width:64px; height:64px; border-radius:18px; font-size:1.6rem; margin-bottom:.85rem; }
+        .terminal-title { font-size:1.05rem; margin-bottom:.35rem; }
+        .terminal-text { font-size:.78rem; }
+    }
+
+    @media (max-width:380px) {
+        .window-header .conv-name { max-width:28vw; }
+        .window-header #viewPeerProfile { display:none !important; }
+        .sidebar-heading-row { gap:.4rem; }
+        .sidebar-header { padding:.9rem .75rem !important; }
+        .customer-new-message-btn { min-height:36px; padding:0 9px; font-size:.72rem; }
     }
 
     body.embedded-customer-messages .messages-terminal {

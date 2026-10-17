@@ -230,6 +230,12 @@
                             <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.food_total|float) }}</span>
                         </div>
                         {% endif %}
+                        {% if quotation.package_details.food_removal_credit is defined and quotation.package_details.food_removal_credit|float > 0 %}
+                        <div class="order-line">
+                            <span class="order-label">Removed menu credit</span>
+                            <span class="order-val">−₱{{ "{:,.2f}".format(quotation.package_details.food_removal_credit|float) }}</span>
+                        </div>
+                        {% endif %}
 
                         {% if quotation.package_details.services_total is defined and quotation.package_details.services_total|float > 0 %}
                         <div class="order-line">

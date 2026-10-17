@@ -6,6 +6,14 @@
 
 @media (max-width: 768px) {
 
+    /* Mirror the caterer shell: compact fixed header, menu-driven sidebar. */
+    .customer-header { z-index: 1200; }
+    .customer-sidebar { z-index: 1500; width: min(290px, 86vw); }
+    .sidebar-overlay { z-index: 1400; }
+    .mobile-menu-btn { min-width: 40px; min-height: 40px; flex: 0 0 40px; }
+    .customer-main-wrapper { min-width: 0; }
+    .customer-page-content { min-width: 0; overflow-x: clip; }
+
     /* ── 1. MAIN CONTENT AREA ── */
     .customer-page-content {
         padding: 0.85rem 0.9rem 2rem !important;
@@ -13,10 +21,7 @@
         padding-top: 85px !important; /* space for header */
     }
 
-    .back-navigation {
-        margin-left: 3.5rem !important; /* Clear the floating burger */
-        margin-bottom: 1.5rem !important;
-    }
+    .back-navigation { margin-left: 0 !important; margin-bottom: 1rem !important; }
 
     /* ── 2. PAGE HEADER — all pages ── */
     .page-header,

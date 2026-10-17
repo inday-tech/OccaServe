@@ -146,19 +146,19 @@
     }
 
     .btn-save {
-        background: #0f172a;
-        color: white;
-        border: none;
+        background: #fff7ed;
+        color: #c2410c;
+        border: 1px solid #fed7aa;
         padding: 0.85rem 2.5rem;
         border-radius: 0.75rem;
         font-size: 0.95rem;
         font-weight: 600;
         cursor: pointer;
         transition: 0.2s;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+        box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
     }
-    .btn-save:hover { background: #1e293b; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(15, 23, 42, 0.2); }
-    .btn-save:disabled { background: var(--dm-slate-400); cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-save:hover { background: #ffedd5; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(249, 115, 22, 0.12); }
+    .btn-save:disabled { background: #f1f5f9; color: #94a3b8; border-color: #e2e8f0; cursor: not-allowed; transform: none; box-shadow: none; }
 
     /* ── AVATAR UPLOADER ── */
     .avatar-section {
@@ -187,27 +187,49 @@
     
     .avatar-actions { display: flex; gap: 1rem; }
     .btn-upload {
-        background: var(--dm-slate-50);
-        border: 1px solid var(--dm-slate-200);
-        color: var(--up-slate-900);
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #c2410c;
         padding: 0.5rem 1rem;
         border-radius: 0.5rem;
         font-size: 0.85rem;
         font-weight: 700;
         cursor: pointer;
     }
-    .btn-upload:hover { background: white; border-color: var(--up-orange-500); }
+    .btn-upload:hover { background: #ffedd5; border-color: var(--up-orange-500); }
+    .btn-upload.is-disabled { opacity: .55; cursor: not-allowed; }
     .btn-remove {
-        background: #fee2e2;
-        border: 1px solid #fecaca;
-        color: #ef4444;
+        background: #fff1f2;
+        border: 1px solid #fecdd3;
+        color: #be123c;
         padding: 0.5rem 1rem;
         border-radius: 0.5rem;
         font-size: 0.85rem;
         font-weight: 700;
         cursor: pointer;
     }
-    .btn-remove:hover { background: #fca5a5; }
+    .btn-remove:hover { background: #ffe4e6; }
+    .phone-field { display:flex; align-items:center; border:1.5px solid #cbd5e1; border-radius:.75rem; overflow:hidden; background:#fff; }
+    .phone-field:focus-within { border-color:var(--up-orange-500); box-shadow:0 0 0 3px var(--up-orange-50); }
+    .phone-prefix { padding:0 .9rem; color:#64748b; font-weight:700; border-right:1px solid #e2e8f0; white-space:nowrap; }
+    .phone-field .form-input { border:0; box-shadow:none; min-width:0; flex:1; }
+    .profile-section-heading { display:flex; align-items:flex-start; gap:.85rem; margin-bottom:1.25rem; }
+    .profile-section-heading .heading-icon { width:40px; height:40px; display:grid; place-items:center; flex:none; border-radius:12px; color:#ea580c; background:#fff7ed; }
+    .profile-section-heading h2 { margin:0; font-size:1.2rem; color:#0f172a; }
+    .profile-section-heading p { margin:.25rem 0 0; font-size:.84rem; color:#64748b; }
+    .profile-card { background:#fff; border:1px solid #eef2f7; border-radius:1rem; padding:1.5rem; }
+    .profile-fields { border:0; padding:0; margin:0; min-width:0; }
+    .profile-edit-actions { display:flex; align-items:center; gap:.6rem; margin-top:1rem; }
+    .profile-edit-actions[hidden] { display:none !important; }
+    .btn-profile-edit,.btn-profile-cancel { padding:.72rem 1.15rem; border-radius:.7rem; border:1px solid #fed7aa; background:#fff7ed; color:#c2410c; font-size:.88rem; font-weight:700; cursor:pointer; }
+    .btn-profile-edit:hover,.btn-profile-cancel:hover { background:#ffedd5; }
+    .profile-fields:disabled .form-input { background:#f8fafc; color:#475569; cursor:default; }
+    .profile-tab { border-radius:10px 10px 0 0; }
+    .profile-tab:hover:not(.active) { color:#c2410c; background:#fff7ed; }
+    .dash-header { padding:1.75rem 2rem; }
+    .btn-delete-account { background:#fff1f2; color:#be123c; border:1px solid #fecdd3; padding:.8rem 1.25rem; border-radius:.75rem; font-size:.9rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .btn-delete-account:hover { background:#ffe4e6; }
+    @media (max-width:768px) { .profile-card { padding:1rem; } .dash-header { padding:1.25rem; } }
 
     /* ── RESPONSIVE & MOBILE FIXES ── */
     @media (max-width: 768px) {
@@ -310,9 +332,9 @@
     
     <!-- 1. PERSONAL INFO TAB -->
     <div id="tab-personal" class="tab-pane active">
-        <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--up-slate-900);">Personal Details</h2>
+        <div class="profile-section-heading"><span class="heading-icon"><i class="fas fa-user"></i></span><div><h2>Personal Details</h2><p>Keep your contact and account information up to date.</p></div></div>
         
-        <div class="avatar-section">
+        <div class="profile-card avatar-section">
             <div class="avatar-preview">
                 {% if user.profile_image_url %}
                 <img src="{{ user.profile_image_url }}" id="avatar-img">
@@ -322,18 +344,23 @@
                 {% endif %}
             </div>
             <div>
-                <h4 style="margin:0 0 10px; font-size: 1rem;">Profile Picture</h4>
+                <h4 style="margin:0 0 6px; font-size: 1rem; color:#0f172a;">Profile Picture</h4>
+                <p style="margin:0 0 12px; color:#64748b; font-size:.82rem;">JPG or PNG only · Up to 5 MB</p>
                 <div class="avatar-actions">
-                    <label class="btn-upload">
-                        <i class="fas fa-upload"></i> Upload Image
-                        <input type="file" hidden accept="image/jpeg, image/png, image/webp" onchange="uploadImage(this)">
+                    <label class="btn-upload {{ 'is-disabled' if not can_change_profile_image }}" {% if not can_change_profile_image %}aria-disabled="true" title="You can change your profile picture again on {{ image_change_available_at.strftime('%b %d, %Y') }}"{% endif %}>
+                        <i class="fas {{ 'fa-camera' if user.profile_image_url else 'fa-upload' }}"></i> {{ 'Change Picture' if user.profile_image_url else 'Upload Picture' }}
+                        <input type="file" hidden accept=".jpg,.jpeg,.png,image/jpeg,image/png" onchange="uploadImage(this)" {% if not can_change_profile_image %}disabled{% endif %}>
                     </label>
-                    <button class="btn-remove" onclick="removeImage()"><i class="fas fa-trash"></i> Remove</button>
+                    {% if user.profile_image_url %}
+                    <button type="button" class="btn-remove" onclick="removeImage()"><i class="fas fa-trash-alt"></i> Remove Picture</button>
+                    {% endif %}
                 </div>
+                {% if not can_change_profile_image %}<small style="display:block;margin-top:10px;color:#64748b;">You can update your picture again on {{ image_change_available_at.strftime('%b %d, %Y') }}.</small>{% endif %}
             </div>
         </div>
 
         <form id="form-personal" onsubmit="submitForm(event, '/customer/profile/update-personal')" novalidate>
+            <fieldset class="profile-fields" disabled>
             <div class="form-grid">
                 <div class="form-group">
                     <label>First Name <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
@@ -359,17 +386,17 @@
                     <small style="color:var(--dm-slate-400); margin-top:4px;">Email cannot be changed.</small>
                 </div>
                 <div class="form-group">
-                    <label>Mobile Number <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
-                    <input type="tel" name="phone_number" class="form-input" value="{{ user.phone_number or '' }}" required placeholder="09XX XXX XXXX" pattern="^09[0-9]{9}$" title="Must be a valid 11-digit Philippine mobile number starting with 09" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11);">
-                    <span class="error-msg">Please enter a valid 11-digit number starting with 09.</span>
+                    <label>Contact Number <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
+                    <div class="phone-field"><span class="phone-prefix">+63</span><input type="tel" name="phone_number" class="form-input" value="{{ user.phone_number[1:] if user.phone_number and user.phone_number.startswith('0') else (user.phone_number or '') }}" required placeholder="9XXXXXXXXX" inputmode="numeric" autocomplete="tel-national" maxlength="10" pattern="^9[0-9]{9}$" title="Enter 10 digits after +63" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"></div>
+                    <span class="error-msg">Enter 10 digits after +63.</span>
                 </div>
             </div>
 
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Birthday <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
+                    <label>Date of Birth <span style="text-transform:none; font-weight:500; color: #ef4444;">*</span></label>
                     <input type="date" name="dob" class="form-input" value="{{ user.dob.strftime('%Y-%m-%d') if user.dob else '' }}" required>
-                    <span class="error-msg">You must be at least 18 years old.</span>
+                    <span class="error-msg">You must be 18 to 60 years old.</span>
                 </div>
                 <div class="form-group">
                     <label>Gender <span style="text-transform:none; font-weight:500;">(Optional)</span></label>
@@ -382,18 +409,17 @@
                     <span class="error-msg">Please select a valid gender.</span>
                 </div>
             </div>
-
-            <div style="margin-top: 1rem;">
-                <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Personal Info</button>
-            </div>
+            </fieldset>
+            <div class="profile-edit-actions" id="personal-view-actions"><button type="button" class="btn-profile-edit" onclick="beginProfileEdit('personal')"><i class="fas fa-pen"></i> Edit Personal Info</button></div>
+            <div class="profile-edit-actions" id="personal-edit-actions" hidden><button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Changes</button><button type="button" class="btn-profile-cancel" onclick="cancelProfileEdit()">Cancel</button></div>
         </form>
     </div>
 
     <!-- 2. ADDRESS & EMERGENCY TAB -->
     <div id="tab-address" class="tab-pane">
         <form id="form-address" onsubmit="submitForm(event, '/customer/profile/update-address')" novalidate>
-            <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--up-slate-900);">Default Address</h2>
-            <p style="font-size: 0.82rem; color: var(--dm-slate-400); margin-bottom: 1.5rem;">This will be used as the default address for your bookings. You can change this per booking.</p>
+            <div class="profile-section-heading"><span class="heading-icon"><i class="fas fa-map-marker-alt"></i></span><div><h2>Default Address</h2><p>This address will be prefilled when you make a booking.</p></div></div>
+            <fieldset class="profile-fields" disabled>
 
             <!-- Province -->
             <div class="form-group">
@@ -437,9 +463,9 @@
                 <div id="addr-summary-text" style="font-size: 0.9rem; color: #0c4a6e; font-weight: 600;"></div>
             </div>
 
-            <div style="margin-bottom: 2.5rem;">
-                <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Address</button>
-            </div>
+            </fieldset>
+            <div class="profile-edit-actions" id="address-view-actions"><button type="button" class="btn-profile-edit" onclick="beginProfileEdit('address')"><i class="fas fa-pen"></i> Edit Address</button></div>
+            <div class="profile-edit-actions" id="address-edit-actions" hidden><button type="submit" class="btn-save"><i class="fas fa-save"></i> Save Address</button><button type="button" class="btn-profile-cancel" onclick="cancelProfileEdit()">Cancel</button></div>
         </form>
 
         <form id="form-emergency" onsubmit="submitForm(event, '/customer/profile/update-emergency')" novalidate>
@@ -543,7 +569,7 @@
                     <h4 style="margin: 0 0 4px; font-size: 1rem; font-weight: 800; color: #991b1b;">Delete Account</h4>
                     <p style="margin: 0; font-size: 0.8rem; color: #b91c1c;">Once you delete your account, there is no going back. Please be certain.</p>
                 </div>
-                <button type="button" onclick="confirmAccountDeletion()" style="background: #ef4444; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: 0.2s; white-space: nowrap; box-shadow: 0 4px 10px rgba(239,68,68,0.2);">
+                <button type="button" class="btn-delete-account" onclick="confirmAccountDeletion()">
                     <i class="fas fa-trash-alt"></i> Delete My Account
                 </button>
             </div>
@@ -689,15 +715,43 @@
         el.classList.add('active');
     }
 
+    async function beginProfileEdit(section) {
+        const result = await Swal.fire({
+            title: section === 'personal' ? 'Edit personal information?' : 'Edit your address?',
+            text: 'You can review your changes before saving them.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, edit',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#f97316',
+            cancelButtonColor: '#e2e8f0'
+        });
+        if (!result.isConfirmed) return;
+        const form = document.getElementById(`form-${section}`);
+        form.querySelector('.profile-fields').disabled = false;
+        document.getElementById(`${section}-view-actions`).hidden = true;
+        document.getElementById(`${section}-edit-actions`).hidden = false;
+    }
+
+    function cancelProfileEdit() {
+        window.location.reload();
+    }
+
     document.addEventListener("DOMContentLoaded", function() {
-        // Enforce 18+ years old on Birthday field
+        const contactInput = document.querySelector('input[name="phone_number"]');
+        if (contactInput) {
+            let digits = contactInput.value.replace(/\D/g, '');
+            if (digits.startsWith('63')) digits = digits.slice(2);
+            if (digits.startsWith('0')) digits = digits.slice(1);
+            contactInput.value = digits.slice(0, 10);
+        }
+        // Match customer registration: the account holder must be 18 to 60.
         const dobInput = document.querySelector('input[name="dob"]');
         if (dobInput) {
             const today = new Date();
-            const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-            const minDate = new Date(today.getFullYear() - 50, today.getMonth(), today.getDate());
-            dobInput.max = maxDate.toISOString().split("T")[0];
-            dobInput.min = minDate.toISOString().split("T")[0]; // Limit to max 50 years old
+            const formatLocalDate = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            dobInput.max = formatLocalDate(new Date(today.getFullYear() - 18, today.getMonth(), today.getDate()));
+            dobInput.min = formatLocalDate(new Date(today.getFullYear() - 60, today.getMonth(), today.getDate()));
         }
 
         const newPwd = document.getElementById('new_password');
@@ -823,6 +877,20 @@
     async function submitForm(e, url) {
         e.preventDefault();
         const form = e.target;
+
+        if (form.id === 'form-personal' || form.id === 'form-address') {
+            const confirmation = await Swal.fire({
+                title: 'Save these changes?',
+                text: 'Your profile will be updated with the information shown here.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Save changes',
+                cancelButtonText: 'Keep editing',
+                confirmButtonColor: '#f97316',
+                cancelButtonColor: '#e2e8f0'
+            });
+            if (!confirmation.isConfirmed) return;
+        }
         
         if (!validateForm(form)) {
             return;
@@ -836,6 +904,20 @@
 
         try {
             const formData = new FormData(form);
+
+            if (form.id === 'form-personal') {
+                const contactInput = form.querySelector('[name="phone_number"]');
+                const subscriberNumber = (contactInput.value || '').replace(/\D/g, '').replace(/^63/, '');
+                if (!/^9\d{9}$/.test(subscriberNumber)) {
+                    contactInput.setCustomValidity('Enter 10 digits after +63.');
+                    contactInput.reportValidity();
+                    contactInput.setCustomValidity('');
+                    return;
+                }
+                formData.set('phone_number', `0${subscriberNumber}`);
+                const dobResult = validateCustomerDob(form.querySelector('[name="dob"]'));
+                if (!dobResult) return;
+            }
 
             // FIX: If the PSGC API is still loading or failed, the selects are disabled.
             // Disabled inputs are excluded from FormData, which causes the backend to erase them (set to None).
@@ -980,6 +1062,27 @@
         if (!input.files || !input.files[0]) return;
         
         const file = input.files[0];
+        const confirmation = await Swal.fire({
+            title: document.getElementById('avatar-img')?.style.display === 'none' ? 'Upload this profile picture?' : 'Change your profile picture?',
+            text: `Use "${file.name}" as your profile picture? You can change it again after 30 days.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, upload',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#f97316',
+            cancelButtonColor: '#e2e8f0'
+        });
+        if (!confirmation.isConfirmed) { input.value = ''; return; }
+        if (!['image/jpeg', 'image/png'].includes(file.type)) {
+            Swal.fire('Invalid image', 'Choose a JPG or PNG picture.', 'error');
+            input.value = '';
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            Swal.fire('Image too large', 'Choose an image that is 5 MB or smaller.', 'error');
+            input.value = '';
+            return;
+        }
         const formData = new FormData();
         formData.append('profile_image', file);
         
@@ -1003,6 +1106,17 @@
     }
 
     async function removeImage() {
+        const confirmation = await Swal.fire({
+            title: 'Remove profile picture?',
+            text: 'Your current profile picture will be removed from your account.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, remove it',
+            cancelButtonText: 'Keep picture',
+            confirmButtonColor: '#e11d48',
+            cancelButtonColor: '#e2e8f0'
+        });
+        if (!confirmation.isConfirmed) return;
         try {
             const res = await fetch('/customer/profile/remove-image', { method: 'POST' });
             const data = await res.json();
@@ -1010,6 +1124,28 @@
                 window.location.reload();
             }
         } catch(e) {}
+    }
+
+    function validateCustomerDob(input) {
+        if (!input || !input.value) return false;
+        const parts = input.value.split('-').map(Number);
+        const birthDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (birthDate.getFullYear() !== parts[0] || birthDate.getMonth() !== parts[1] - 1 || birthDate.getDate() !== parts[2]) {
+            input.setCustomValidity('Enter a valid date of birth.');
+            input.reportValidity();
+            input.setCustomValidity('');
+            return false;
+        }
+        const today = new Date();
+        let age = today.getFullYear() - parts[0];
+        if (today.getMonth() + 1 < parts[1] || (today.getMonth() + 1 === parts[1] && today.getDate() < parts[2])) age--;
+        if (age < 18 || age > 60) {
+            input.setCustomValidity('You must be 18 to 60 years old.');
+            input.reportValidity();
+            input.setCustomValidity('');
+            return false;
+        }
+        return true;
     }
 </script>
 {% endblock %}

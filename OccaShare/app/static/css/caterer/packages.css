@@ -5839,6 +5839,25 @@ textarea.control-pro {
     opacity: 0.5;
 }
 
+#packageModal .menu-category-removal-credit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #64748b;
+    font-size: 0.68rem;
+    white-space: nowrap;
+}
+
+#packageModal .menu-category-removal-credit input {
+    width: 82px !important;
+    min-height: 28px !important;
+    padding: 3px 6px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 6px !important;
+    font-size: 0.75rem !important;
+    font-weight: 650;
+}
+
 #packageModal .customizable-required-summary {
     display: inline-flex;
     align-items: center;

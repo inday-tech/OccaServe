@@ -1281,6 +1281,11 @@ async def customize_package_page(
     package = db.query(models.CateringPackage).get(actual_pkg_id)
     if not package or package.caterer_id != caterer.id:
         return RedirectResponse(url=f"/customer/caterer/{caterer_id}", status_code=303)
+    if package.pricing_mode != "customizable":
+        sess_data.pop("customization", None)
+        sess_data.pop("custom_estimated_total", None)
+        request.session["booking_data"] = sess_data
+        return RedirectResponse(url="/bookings/step/details", status_code=303)
 
     rules = package.selection_rules or {}
     if isinstance(rules, str):
@@ -1336,7 +1341,7 @@ async def customize_package_page(
     # Initial guest count from session or package min_guests or caterer min_pax
     raw_guest_count = sess_data.get("guest_count") or package.min_guests or caterer.min_pax or 50
     try:
-        initial_guest_count = min(max(int(raw_guest_count), int(package.min_guests or caterer.min_pax or 10)), 999)
+        initial_guest_count = min(max(int(raw_guest_count), int(package.min_guests or caterer.min_pax or 10)), 999999)
     except (ValueError, TypeError):
         initial_guest_count = 50
     saved_customization = sess_data.get("customization", {})
@@ -1376,6 +1381,18 @@ async def save_customization_selection(
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/customize/{caterer_id}?package_id={package_id}", status_code=303)
 
+    package = db.query(models.CateringPackage).filter(
+        models.CateringPackage.id == package_id,
+        models.CateringPackage.caterer_id == caterer_id
+    ).first()
+    if not package or package.pricing_mode != "customizable":
+        booking_data = request.session.get("booking_data", {})
+        booking_data.update({"caterer_id": caterer_id, "package_id": package_id, "user_id": user.id})
+        booking_data.pop("customization", None)
+        booking_data.pop("custom_estimated_total", None)
+        request.session["booking_data"] = booking_data
+        return RedirectResponse(url="/bookings/step/details", status_code=303)
+
     parsed_customization = {}
     if customization_json:
         try:
@@ -1383,29 +1400,8 @@ async def save_customization_selection(
         except Exception as e:
             print(f"[CustomizeSave] Error parsing JSON: {e}")
 
-    # Validate category quotas if defined
-    package = db.query(models.CateringPackage).get(package_id)
-    if package and package.selection_rules:
-        rules = package.selection_rules if isinstance(package.selection_rules, dict) else {}
-        if isinstance(package.selection_rules, str):
-            try:
-                rules = json.loads(package.selection_rules)
-            except Exception:
-                rules = {}
-        quotas = rules.get("category_quotas") if isinstance(rules.get("category_quotas"), dict) else {}
-        if quotas and isinstance(quotas, dict):
-            cat_counts = {}
-            for f in parsed_customization.get("selected_food", []):
-                cat = f.get("category") or "Others"
-                cat_counts[cat] = cat_counts.get(cat, 0) + 1
-            for cat, allowed in quotas.items():
-                if allowed is not None and str(allowed).isdigit():
-                    allowed_int = int(allowed)
-                    if allowed_int > 0 and cat_counts.get(cat, 0) > allowed_int:
-                        return RedirectResponse(
-                            url=f"/bookings/customize/{caterer_id}?package_id={package_id}&error_msg=You+can+only+select+{allowed_int}+menu+variants+for+{cat}.",
-                            status_code=303
-                        )
+    # Customizable package menu choices are intentionally multi-select; package
+    # category quotas must not prevent customers from adding or swapping dishes.
 
     booking_data = request.session.get("booking_data", {})
     booking_data["caterer_id"] = caterer_id
@@ -1417,9 +1413,9 @@ async def save_customization_selection(
     if "guest_count" in parsed_customization:
         try:
             g_count = int(parsed_customization["guest_count"])
-            # Enforce max 3 digits (1-999)
-            if g_count > 999:
-                g_count = 999
+            # Limit guest counts to a six-digit value.
+            if g_count > 999999:
+                g_count = 999999
             elif g_count < 1:
                 g_count = 1
             booking_data["guest_count"] = g_count
@@ -1760,7 +1756,7 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
             "price_unit": p.price_unit or 'per_guest',
             "additional_guest_price": float(p.additional_guest_price or 0),
             "min_guests": p.min_guests or caterer.min_pax or 10,
-            "max_guests": p.max_guests or 1000,
+        "max_guests": 999999,
             "service_duration": p.service_duration or 4,
             "booking_lead_time": p.booking_lead_time or caterer.booking_lead_time or 7,
             "grouped_inclusions": get_package_grouped_inclusions(p)
@@ -1798,8 +1794,8 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
 
     grouped_inclusions = get_package_grouped_inclusions(package) if package else {"food": [], "services": [], "equipment": []}
 
-    customization = data.get("customization")
-    if not customization and booking and booking.custom_requirements:
+    customization = data.get("customization") if package and package.pricing_mode == "customizable" else None
+    if not customization and package and package.pricing_mode == "customizable" and booking and booking.custom_requirements:
         customization = booking.custom_requirements.get("customization")
 
     # Preserve the guest count entered on the customization step when the
@@ -1812,7 +1808,7 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         or 50
     )
     try:
-        initial_guest_count = min(max(int(initial_guest_count), 1), 999)
+        initial_guest_count = min(max(int(initial_guest_count), 1), 999999)
     except (TypeError, ValueError):
         initial_guest_count = 50
 
@@ -1854,6 +1850,8 @@ async def step_details_submit(
     event_end_time: Optional[str] = Form(None),
     guest_count: Optional[str] = Form("0"),
     venue_address: Optional[str] = Form(""),
+    venue_latitude: Optional[str] = Form(None),
+    venue_longitude: Optional[str] = Form(None),
     total_price: Optional[float] = Form(0.0),
     reservation_fee: Optional[float] = Form(0.0),
     selected_items: list[int] = Form(default=[]),
@@ -1894,6 +1892,12 @@ async def step_details_submit(
 
     cleaned_booking_str = _clean_str(booking_id)
     booking_id_int = int(cleaned_booking_str) if cleaned_booking_str and cleaned_booking_str.isdigit() else None
+
+    try:
+        venue_latitude = float(venue_latitude) if venue_latitude not in (None, "") else None
+        venue_longitude = float(venue_longitude) if venue_longitude not in (None, "") else None
+    except (TypeError, ValueError):
+        venue_latitude = venue_longitude = None
 
     # Safely parse guest count (stripping any formatting commas)
     cleaned_guest_str = (_clean_str(guest_count) or "0").replace(",", "")
@@ -1940,6 +1944,7 @@ async def step_details_submit(
     print(f"[StepDetails PARSED] date={cleaned_date_str!r} -> {event_date_parsed}, time={cleaned_time_str!r} -> {event_time_parsed}, pkg={package_id_int}, booking={booking_id_int}")
 
     package = db.query(models.CateringPackage).get(package_id_int) if package_id_int else None
+    package_is_customizable = bool(package and package.pricing_mode == "customizable")
 
     event_name_clean = _clean_str(event_name) or ""
     event_type_clean = _clean_str(event_type) or ""
@@ -1991,6 +1996,8 @@ async def step_details_submit(
     if not event_time_parsed:
         print(f"[StepDetails REJECT] event_time_parsed is None! raw event_time={event_time!r}, cleaned={cleaned_time_str!r}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Valid+event+time+is+required", status_code=303)
+    if not event_end_time_parsed or event_end_time_parsed <= event_time_parsed:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Egress+must+be+after+ingress.", status_code=303)
     if not event_name_clean:
         print(f"[StepDetails REJECT] event_name_clean is empty! raw={event_name!r}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-name:Event+name+is+required", status_code=303)
@@ -2001,6 +2008,9 @@ async def step_details_submit(
     # Construct venue address if missing from hidden field
     if not venue_address and province and city and barangay:
         venue_address = f"{barangay}, {city}, {province}"
+    if (not venue_address or venue_latitude is None or venue_longitude is None
+            or not -90 <= venue_latitude <= 90 or not -180 <= venue_longitude <= 180):
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Please+pin+the+exact+venue+location+on+the+map.", status_code=303)
 
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
@@ -2051,15 +2061,13 @@ async def step_details_submit(
         return RedirectResponse(url=f"{redirect_base}?booking_error=You+already+have+a+booking+request+for+this+exact+schedule+and+caterer.", status_code=303)
 
     # 🚨 VALIDATION 4: Guest Count Bounds
-    if guest_count_int < 1 or guest_count_int > 999:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Number+of+guests+must+be+between+1+and+999.", status_code=303)
+    if guest_count_int < 1 or guest_count_int > 999999:
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Enter+a+guest+count+between+1+and+999999.", status_code=303)
 
     is_package = package_id_int is not None
     min_guests_required = caterer.min_pax or 50 if is_package else 1
     if package:
         min_guests_required = package.min_guests or caterer.min_pax or 50
-        if package.max_guests and guest_count_int > package.max_guests:
-            return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+exceeds+the+package+maximum+capacity+of+{package.max_guests}.", status_code=303)
 
     if guest_count_int < min_guests_required:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Guest+count+cannot+be+less+than+the+minimum+requirement+of+{min_guests_required}.", status_code=303)
@@ -2100,6 +2108,8 @@ async def step_details_submit(
         booking.event_time = event_time_parsed
         booking.event_end_time = event_end_time_parsed
         booking.venue_address = venue_address
+        booking.venue_latitude = venue_latitude
+        booking.venue_longitude = venue_longitude
         booking.event_address = venue_address
         booking.guest_count = guest_count_int
         booking.total_price = total_price
@@ -2119,19 +2129,22 @@ async def step_details_submit(
             custom_reqs["celebrant_name"] = celebrant_name
         else:
             custom_reqs.pop("celebrant_name", None)
-        sess_cust = request.session.get("booking_data", {}).get("customization")
-        if not sess_cust and booking.custom_requirements:
+        sess_cust = request.session.get("booking_data", {}).get("customization") if package_is_customizable else None
+        if package_is_customizable and not sess_cust and booking.custom_requirements:
             sess_cust = booking.custom_requirements.get("customization")
         if sess_cust:
             custom_reqs["package_type"] = "customizable"
             custom_reqs["customization"] = sess_cust
+        else:
+            custom_reqs.pop("package_type", None)
+            custom_reqs.pop("customization", None)
         booking.custom_requirements = custom_reqs
         
         # Clear old items to re-save
         db.query(models.BookingMenuItem).filter(models.BookingMenuItem.booking_id == booking.id).delete()
     else:
         # Create New Draft
-        sess_cust = request.session.get("booking_data", {}).get("customization")
+        sess_cust = request.session.get("booking_data", {}).get("customization") if package_is_customizable else None
         new_custom_reqs = {}
         if theme_motif: new_custom_reqs["theme_motif"] = theme_motif
         if celebrant_name: new_custom_reqs["celebrant_name"] = celebrant_name
@@ -2149,6 +2162,8 @@ async def step_details_submit(
             event_time=event_time_parsed,
             event_end_time=event_end_time_parsed,
             venue_address=venue_address,
+            venue_latitude=venue_latitude,
+            venue_longitude=venue_longitude,
             event_address=venue_address,
             guest_count=guest_count_int,
             total_price=total_price,
@@ -2191,7 +2206,7 @@ async def step_details_submit(
 
     # 3. Save Selected Items and Validate Rules
     package = db.query(models.CateringPackage).get(package_id_int) if package_id_int else None
-    is_customizable_package = bool((package and getattr(package, 'pricing_mode', '') == 'customizable') or (sess_cust and isinstance(sess_cust, dict)))
+    is_customizable_package = package_is_customizable
 
     # Selection Rule Validation (Only for fixed packages with category limits)
     if not is_customizable_package and package and package.selection_rules and isinstance(package.selection_rules, dict):
@@ -2222,17 +2237,94 @@ async def step_details_submit(
         sess_cust["base_price"] = base_price
         sess_cust["base_package_total"] = base_pkg_tot
 
+        package_rules = (package.selection_rules or {}) if package else {}
+        if isinstance(package_rules, str):
+            try:
+                package_rules = json.loads(package_rules)
+            except Exception:
+                package_rules = {}
+        allowed_menu_ids = {int(value) for value in package_rules.get("available_menu_ids", []) if str(value).isdigit()}
+        removal_credits = package_rules.get("category_removal_credits", {})
+        removal_credits = removal_credits if isinstance(removal_credits, dict) else {}
+        category_quotas = package_rules.get("category_quotas", {})
+        category_quotas = category_quotas if isinstance(category_quotas, dict) else {}
+
+        # Verify every chosen dish belongs to this caterer's customizable package.
+        verified_food = []
+        selected_food_categories = {}
+        for food in sess_cust.get("selected_food", []):
+            try:
+                f_id = int(food.get("id"))
+            except (TypeError, ValueError, AttributeError):
+                continue
+            if f_id not in allowed_menu_ids:
+                continue
+            mi = db.query(models.MenuItem).filter(
+                models.MenuItem.id == f_id,
+                models.MenuItem.caterer_id == caterer_id,
+                models.MenuItem.is_archived == False
+            ).first()
+            if not mi:
+                continue
+            category = mi.category or "Others"
+            food.update({"id": f_id, "name": mi.name, "category": category})
+            verified_food.append(food)
+            selected_food_categories[category] = selected_food_categories.get(category, 0) + 1
+        sess_cust["selected_food"] = verified_food
+        bounded_food = []
+        bounded_counts = {}
+        for category, count in selected_food_categories.items():
+            try:
+                quota = max(1, int(category_quotas.get(category, 1)))
+            except (TypeError, ValueError):
+                quota = 1
+            bounded_counts[category] = quota
+        for food in verified_food:
+            category = food.get("category") or "Others"
+            if bounded_counts.get(category, 1) > 0:
+                bounded_food.append(food)
+                bounded_counts[category] -= 1
+        sess_cust["selected_food"] = bounded_food
+        selected_food_categories = {}
+        for food in bounded_food:
+            category = food.get("category") or "Others"
+            selected_food_categories[category] = selected_food_categories.get(category, 0) + 1
+
+        configured_items = []
+        if allowed_menu_ids:
+            configured_items = db.query(models.MenuItem).filter(
+                models.MenuItem.id.in_(allowed_menu_ids),
+                models.MenuItem.caterer_id == caterer_id,
+                models.MenuItem.is_archived == False
+            ).all()
+        configured_categories = {item.category or "Others" for item in configured_items}
+        requested_removed_categories = sess_cust.get("removed_categories", [])
+        if not isinstance(requested_removed_categories, list):
+            requested_removed_categories = []
+        removed_categories = {str(category).strip() for category in requested_removed_categories if str(category).strip() in configured_categories}
+        food_removal_credit = 0.0
+        for category in removed_categories:
+            if selected_food_categories.get(category, 0) == 0:
+                try:
+                    credit_per_guest = min(999999.0, max(0.0, float(removal_credits.get(category, 0) or 0)))
+                except (TypeError, ValueError):
+                    credit_per_guest = 0.0
+                food_removal_credit += credit_per_guest * guest_count_int
+        sess_cust["removed_categories"] = list(removed_categories)
+
         food_tot = 0.0
         # Save customizable selected food items with upgrade fees
         for food in sess_cust.get("selected_food", []):
             f_id = food.get("id")
-            f_price = 0.0
+            mi = db.query(models.MenuItem).get(f_id)
+            f_price = float(getattr(mi, "upgrade_fee", 0) or 0) if mi else 0.0
             f_qty = guest_count_int
+            food["upgrade_fee"] = f_price
+            food["price"] = f_price
             food["qty"] = f_qty
             f_sub = f_price * f_qty
             food["subtotal"] = f_sub
             food_tot += f_sub
-            mi = db.query(models.MenuItem).get(f_id)
             if mi:
                 db.add(models.BookingMenuItem(
                     booking_id=booking.id,
@@ -2277,9 +2369,10 @@ async def step_details_submit(
                 ))
 
         sess_cust["food_total"] = food_tot
+        sess_cust["food_removal_credit"] = food_removal_credit
         sess_cust["services_total"] = srv_tot
         sess_cust["equipment_total"] = eq_tot
-        computed_total = base_pkg_tot + srv_tot + eq_tot + float(booking.travel_fee or 0.0)
+        computed_total = max(0.0, base_pkg_tot + food_tot + srv_tot + eq_tot - food_removal_credit + float(booking.travel_fee or 0.0))
         sess_cust["estimated_total"] = computed_total
         
         c_req = booking.custom_requirements or {}

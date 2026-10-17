@@ -24,6 +24,7 @@ class User(Base):
     barangay = Column(String, nullable=True)
     street_address = Column(Text, nullable=True)  # House/Unit No., Street, Landmark
     profile_image_url = Column(String, nullable=True)
+    profile_image_updated_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(String, default="active")
     status_reason = Column(Text, nullable=True)
     investigation_notes = Column(Text, nullable=True)
@@ -663,6 +664,8 @@ class Booking(Base):
     event_time = Column(Time, nullable=True)
     event_end_time = Column(Time, nullable=True)
     venue_address = Column(Text, nullable=True) # Legacy, keeping for backwards compatibility
+    venue_latitude = Column(Float, nullable=True)
+    venue_longitude = Column(Float, nullable=True)
     
     # --- SECTION A: Event Details ---
     event_address = Column(Text, nullable=True) # The actual venue/location of the event

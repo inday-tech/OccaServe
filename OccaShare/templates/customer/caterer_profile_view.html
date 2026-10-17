@@ -30,7 +30,7 @@
     /* ---- BASE CONTAINER ---- */
     .hub-container {
         font-family: 'Poppins', sans-serif;
-        max-width: 1300px;
+        max-width: 1180px;
         margin: 0 auto;
         padding: 0.75rem;
         width: 100%;
@@ -187,15 +187,15 @@
     #hub-tab-overview { order: 7; }
 
     .tab-content {
-        margin-bottom: 3.5rem;
-        scroll-margin-top: 100px;
+        margin-bottom: 1.25rem;
+        scroll-margin-top: 115px;
     }
 
     /* ---- MAIN CONTENT LAYOUT ---- */
     .hub-main-grid {
         display: grid;
-        grid-template-columns: 1fr 380px;
-        gap: 0.75rem;
+        grid-template-columns: minmax(0, 1fr) 300px;
+        gap: 1rem;
         align-items: start;
     }
 
@@ -554,13 +554,13 @@
         /* --- Container & Cards: no overflow, full width --- */
         .hub-container {
             padding: 0.5rem !important;
-            padding-bottom: 280px !important;
+            padding-bottom: 1.25rem !important;
             width: 100% !important;
             max-width: 100vw !important;
         }
 
         .intel-card {
-            padding: 1rem !important;
+            padding: 1.1rem !important;
             width: 100% !important;
             max-width: 100% !important;
             border-radius: 12px !important;
@@ -573,7 +573,7 @@
         pointer-events: auto !important;
             overflow-x: auto !important;
             scrollbar-width: none !important;
-            gap: 1rem !important;
+            gap: 0.75rem !important;
             padding-bottom: 0.4rem !important;
             flex-wrap: nowrap !important;
         }
@@ -581,7 +581,7 @@
         .tab-btn {
             flex-shrink: 0 !important;
             white-space: nowrap !important;
-            font-size: 0.85rem !important;
+            font-size: 0.78rem !important;
         }
 
         /* --- Hero: Mobile Storefront Adjustments --- */
@@ -675,9 +675,12 @@
         .dish-grid {
             display: grid !important;
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-            gap: 0.6rem !important;
+            gap: 0.8rem !important;
             width: 100% !important;
         }
+        .pkg-grid { grid-template-columns: minmax(0,1fr) !important; gap: 1rem !important; }
+        .pkg-item .ei-body > div:last-child { width:100%; }
+        .pkg-item .ei-body > div:last-child > * { width:100%; min-height:42px; box-sizing:border-box; }
 
         /* Card base */
         .elite-item-card {
@@ -688,24 +691,25 @@
 
         /* Package card adjustments */
         .pkg-grid .ei-img-box {
-            height: 80px !important;
+            height: 112px !important;
         }
         .pkg-grid .ei-body {
-            padding: 0.6rem !important;
-            gap: 4px !important;
+            padding: 0.8rem !important;
+            gap: 6px !important;
         }
         .pkg-grid .ei-name {
-            font-size: 0.78rem !important;
+            font-size: 0.84rem !important;
             min-height: auto !important;
             font-weight: 700 !important;
         }
         .pkg-grid .ei-price {
-            font-size: 0.9rem !important;
+            font-size: 0.95rem !important;
             margin-top: 0.15rem !important;
         }
         .pkg-grid .btn-elite-sm {
-            padding: 0.45rem 0.5rem !important;
-            font-size: 0.68rem !important;
+            min-height: 40px !important;
+            padding: 0.55rem 0.6rem !important;
+            font-size: 0.74rem !important;
             margin-top: 0.4rem !important;
             border-radius: 8px !important;
             gap: 4px !important;
@@ -1363,6 +1367,121 @@
             grid-template-columns: minmax(0, 1fr);
         }
     }
+
+    /* Compact storefront profile: keep the caterer identity and packages above the fold. */
+    .hub-container .storefront-hero { margin-bottom:.8rem !important; overflow:visible !important; }
+    .hub-container .storefront-hero-body { display:flex; align-items:center; gap:1rem; }
+    .hub-container .storefront-hero-content { flex:1; min-width:0; }
+    .mobile-business-address { display:none !important; }
+    .hub-container .storefront-heading-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+    .hub-container .storefront-heading-row h1 { min-width:0; }
+    #business-hours-banner { flex:0 0 auto; align-items:center; gap:.55rem !important; max-width:340px; margin:0 !important; padding:.55rem .75rem !important; border-radius:10px !important; box-shadow:none !important; }
+    #business-hours-banner .hours-status-content { min-width:0; }
+    #business-hours-banner h3 { font-size:.72rem !important; line-height:1.25; }
+    #business-hours-banner p { font-size:.67rem !important; line-height:1.3; }
+    .hub-container .hub-tabs { margin:0 0 .8rem; padding:.45rem .6rem; gap:1.25rem; background:#fff; border:1px solid #e2e8f0; border-radius:12px; }
+    .hub-container .tab-btn { font-size:.82rem; }
+    .hub-container .intel-card { padding:1.15rem; margin-bottom:.85rem; }
+    .hub-container #hub-tab-packages > .intel-card { padding:1.15rem !important; }
+    .hub-container .section-title { margin-bottom:.9rem; letter-spacing:.08em; }
+    .hub-container .pkg-grid { gap:1rem; grid-template-columns:repeat(auto-fill,minmax(235px,1fr)); align-items:stretch; }
+    .hub-container .pkg-item { height:100%; display:flex; flex-direction:column; }
+    .hub-container .pkg-item .ei-body { flex:1; display:flex; flex-direction:column; gap:.35rem; }
+    .hub-container .pkg-item .ei-body > div:last-child { margin-top:auto !important; padding-top:.75rem; }
+    .hub-container .pkg-item .ei-body > div:last-child button,
+    .hub-container .pkg-item .ei-body > div:last-child a { min-height:40px; display:flex; align-items:center; justify-content:center; box-sizing:border-box; }
+    .hub-container .pkg-item .ei-img-box { height:100px; }
+    .hub-container .pkg-item .ei-body { padding:.9rem; }
+    .hub-container .pkg-item .ei-name { font-size:.9rem; min-height:2.2rem; }
+    .hub-container .pkg-item .ei-price { font-size:1rem; }
+    .hub-container .policy-grid { grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)) !important; gap:.85rem !important; margin-top:1rem !important; }
+    .hub-container .policy-grid > .meta-pill { box-sizing:border-box; min-width:0; padding:1rem !important; gap:.75rem !important; border-radius:12px !important; box-shadow:0 2px 8px rgba(15,23,42,.035) !important; align-items:flex-start; }
+    .hub-container .policy-grid > .meta-pill > div:first-child { width:34px !important; height:34px !important; flex:0 0 34px; border-radius:9px !important; font-size:.95rem !important; }
+    .hub-container .policy-grid > .meta-pill > div:nth-child(2) { min-width:0; flex:1; }
+    .hub-container .policy-grid > .meta-pill > div:nth-child(2) > div:first-child { font-size:.68rem !important; line-height:1.35; }
+    .hub-container .policy-grid > .meta-pill > div:nth-child(2) > div:nth-child(2) { font-size:.82rem !important; line-height:1.55 !important; text-align:justify; overflow-wrap:anywhere; }
+    .hub-container #hub-tab-overview .intel-card p { font-size:.86rem !important; line-height:1.65 !important; text-align:justify; }
+    .pkg-fixed-scroll .pkg-cat-section > div[style*="grid-template-columns"],
+    .pkg-fixed-scroll .pkg-food-subgroup > div[style*="grid-template-columns"] { grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)) !important; }
+    .pkg-fixed-scroll [style*="grid-template-columns"] > div { min-width:0; overflow-wrap:anywhere; }
+    .pkg-fixed-scroll strong,.pkg-fixed-scroll span { overflow-wrap:anywhere; }
+    .pkg-item .package-action-link { background:#ea580c !important; border-color:#ea580c !important; color:#fff !important; opacity:1; filter:none; }
+    .pkg-item .package-action-link:hover { background:#c2410c !important; border-color:#c2410c !important; }
+    a.pkg-fixed-cta { background:#ea580c !important; border-color:#ea580c !important; color:#fff !important; opacity:1 !important; filter:none !important; box-shadow:0 3px 8px rgba(234,88,12,.2); }
+    .pkg-fixed-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .pkg-simple-inclusion-section { margin:0 0 1rem; }
+    .pkg-simple-inclusion-section h4 { margin:0 0 .5rem; color:var(--hub-text-dark); font-size:.9rem; font-weight:800; }
+    .pkg-simple-inclusion-list { list-style:disc; margin:0; padding:0 0 0 1.2rem; display:flex; flex-direction:column; gap:.35rem; }
+    .pkg-simple-inclusion-list li { display:list-item; padding:.15rem 0 .35rem; color:var(--hub-text-dark); font-size:.82rem; line-height:1.4; }
+    .pkg-simple-inclusion-list li::marker { color:var(--hub-slate-400); }
+    .pkg-simple-inclusion-list li small { display:block; margin-top:.1rem; color:var(--hub-slate-600); font-size:.74rem; font-weight:400; }
+    .pkg-simple-optional { margin-top:.75rem; }
+    .pkg-simple-optional h5 { margin:0 0 .4rem; font-size:.8rem; color:var(--hub-slate-600); }
+    @media (max-width:767px) {
+        .hub-container .storefront-hero-body { display:grid !important; grid-template-columns:72px minmax(0,1fr); grid-auto-rows:auto; height:auto !important; min-height:0 !important; overflow:visible !important; align-items:start !important; text-align:left !important; padding:.75rem !important; gap:.35rem .7rem !important; }
+        .hub-container .storefront-logo-box { position:relative !important; inset:auto !important; width:72px !important; height:72px !important; flex:0 0 72px !important; margin:0 !important; grid-column:1; grid-row:1; }
+        .hub-container .storefront-hero-content { min-width:0 !important; width:100%; margin:0 !important; display:flex !important; flex-direction:column !important; align-items:stretch !important; text-align:left !important; grid-column:2; grid-row:1; }
+        .hub-container .storefront-hero-content h1 { font-size:1.05rem !important; line-height:1.25 !important; flex-wrap:wrap; overflow-wrap:anywhere; }
+        .hub-container .storefront-hero-content > div { font-size:.72rem !important; line-height:1.5; }
+        .hub-container { padding-left:.15rem !important; padding-right:.15rem !important; }
+        .hub-container .storefront-heading-row { display:block !important; }
+        .hub-container .storefront-heading-row h1 { display:flex; align-items:center; flex-wrap:wrap !important; gap:.35rem !important; margin:0 0 .3rem !important; font-size:1rem !important; line-height:1.25 !important; }
+        .hub-container .storefront-heading-row .business-name-text { flex:0 1 auto; min-width:0; max-width:100%; overflow-wrap:anywhere; }
+        .hub-container .storefront-heading-row .verified-badge { flex:0 0 auto; font-size:.72rem !important; white-space:nowrap; margin:0 !important; }
+        .hub-container .business-metadata { display:grid !important; grid-template-columns:minmax(0,1fr) !important; width:100%; gap:.18rem !important; margin:.1rem 0 0 !important; font-size:.69rem !important; line-height:1.35 !important; text-align:left !important; }
+        .hub-container .desktop-business-address { display:none !important; }
+        .hub-container .mobile-business-address { display:flex !important; grid-column:1 / -1; grid-row:2; min-width:0; align-items:flex-start; gap:.4rem; font-size:.69rem; line-height:1.35; color:var(--hub-slate-600); overflow-wrap:anywhere; }
+        .hub-container .mobile-business-address span { min-width:0; }
+        .hub-container .business-address-meta i { margin-top:.15rem; }
+        .hub-container .business-rating-meta,.hub-container .business-completed-meta { display:none !important; }
+        #business-hours-banner { grid-column:1 / -1; grid-row:3; order:0; display:flex !important; align-items:center; width:100%; max-width:100%; min-width:0; height:auto; box-sizing:border-box; padding:.45rem .5rem !important; margin:0 !important; white-space:nowrap; overflow-x:auto !important; overflow-y:hidden !important; }
+        #business-hours-banner .hours-status-content { display:flex; align-items:center; gap:.35rem; width:max-content; min-width:max-content; white-space:nowrap; }
+        #business-hours-banner h3,#business-hours-banner p { display:inline; flex:0 0 auto; max-width:none; white-space:nowrap; margin:0 !important; line-height:1.3 !important; overflow:visible; }
+        #business-hours-banner h3 { font-size:.66rem !important; }
+        #business-hours-banner p { font-size:.62rem !important; }
+        #business-hours-banner::-webkit-scrollbar { display:none; }
+        .hub-container .business-metadata { display:grid !important; width:100%; flex-wrap:wrap; align-items:flex-start !important; justify-content:flex-start; gap:.18rem !important; font-size:.69rem !important; line-height:1.35 !important; text-align:left !important; }
+        .hub-container .business-metadata > span { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+        .hub-container .policy-grid { grid-template-columns:minmax(0,1fr) !important; gap:.65rem !important; }
+        .hub-container .policy-grid > .meta-pill { padding:.85rem !important; gap:.65rem !important; }
+        .hub-container .policy-grid > .meta-pill > div:first-child { width:30px !important; height:30px !important; flex-basis:30px; font-size:.82rem !important; }
+        .hub-container .policy-grid > .meta-pill > div:nth-child(2) > div:first-child { font-size:.65rem !important; }
+        .hub-container .policy-grid > .meta-pill > div:nth-child(2) > div:nth-child(2) { font-size:.78rem !important; line-height:1.5 !important; }
+        .hub-container .storefront-text-col h1 { justify-content:flex-start !important; font-size:1.1rem !important; }
+        .hub-container .storefront-text-col > div { justify-content:flex-start !important; font-size:.72rem !important; }
+        .hub-container .hub-tabs { gap:.9rem !important; }
+        .hub-container .tab-btn { font-size:.76rem !important; }
+    }
+    @media (max-width:640px) {
+        #pkg-modal { padding:.4rem !important; align-items:center !important; }
+        #pkg-modal:not(.fixed-package-modal) .m-box-elite { width:100%; max-width:100%; max-height:calc(100dvh - .8rem); padding:1rem .85rem; border-radius:14px; overflow-x:hidden; overflow-y:auto; box-sizing:border-box; }
+        #pkg-modal:not(.fixed-package-modal) .m-box-elite h2 { font-size:1.05rem !important; line-height:1.25; overflow-wrap:anywhere; }
+        #pkg-modal.fixed-package-modal { padding:.4rem !important; }
+        #pkg-modal.fixed-package-modal .m-box-elite { width:100%; height:calc(100dvh - .8rem); max-height:calc(100dvh - .8rem); border-radius:14px; }
+        .pkg-fixed-header { padding:.75rem 3rem .7rem .8rem; }
+        .pkg-fixed-header > div:first-child { font-size:.62rem !important; }
+        .pkg-fixed-header h2 { font-size:1rem !important; line-height:1.25 !important; overflow-wrap:anywhere; }
+        .pkg-fixed-header > div:nth-of-type(2) { font-size:1.1rem !important; }
+        .pkg-fixed-header > div:nth-of-type(3) { font-size:.7rem !important; }
+        .pkg-fixed-summary { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.35rem; margin-top:.55rem; }
+        .pkg-fixed-summary-item { padding:.45rem .5rem; }
+        .pkg-fixed-summary-label { font-size:.58rem; }
+        .pkg-fixed-summary-value { font-size:.72rem; }
+        .pkg-fixed-scroll { padding:0 .8rem .65rem; }
+        .pkg-fixed-scroll .pkg-category-filter-bar { margin-bottom:.55rem; padding:.5rem 0; gap:.4rem; }
+        .pkg-fixed-scroll .pkg-cat-btn { padding:6px 9px; font-size:.68rem; gap:4px; }
+        .pkg-fixed-footer { padding:.65rem .8rem; }
+        .pkg-fixed-footer .pkg-fixed-cta { min-height:42px; font-size:.82rem; }
+        .pkg-fixed-scroll .pkg-cat-section h4 { font-size:.68rem !important; line-height:1.3; }
+        .pkg-fixed-scroll .pkg-food-subgroup > div[style*="grid-template-columns"] { grid-template-columns:minmax(0,1fr) !important; }
+    }
+    @media (max-width:380px) {
+        .pkg-fixed-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    }
+    @media (min-width:768px) {
+        .hub-container .pkg-grid { grid-template-columns:repeat(auto-fill,minmax(245px,1fr)); gap:1.1rem; }
+        .hub-container .intel-card { padding:1.35rem; }
+    }
 </style>
 {% endblock %}
 
@@ -1370,62 +1489,33 @@
 <div class="hub-container">
     <!-- MARKETPLACE STOREFRONT HERO -->
     <div class="storefront-hero" style="position: relative; background: #fff; border-radius: 16px; border: 1px solid var(--hub-slate-200); overflow: hidden; margin-bottom: 2rem;">
-        <div style="height: 240px; width: 100%; position: relative;">
-            {% if caterer.cover_image_url %}
-            <img src="{{ caterer.cover_image_url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="{{ caterer.business_name }}">
-            {% else %}
-            <img src="https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1200" style="width: 100%; height: 100%; object-fit: cover;" alt="Cover">
-            {% endif %}
-            <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(15, 23, 42, 0.3) 0%, transparent 100%);"></div>
-        </div>
-        <div class="storefront-hero-body" style="padding: 1.5rem 2rem; position: relative; min-height: 120px;">
-            <div class="storefront-logo-box" style="position: absolute; top: -50px; left: 2rem; width: 110px; height: 110px; border-radius: 16px; border: 4px solid #fff; background: #fff; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 2;">
+        <div class="storefront-hero-body" style="padding:1rem 1.25rem;position:relative;min-height:0;display:flex;align-items:center;gap:1rem;">
+            <div class="storefront-logo-box" style="position:relative;inset:auto;width:76px;height:76px;flex:0 0 76px;border-radius:16px;border:1px solid #e2e8f0;background:#fff;overflow:hidden;box-shadow:0 2px 8px rgba(15,23,42,.06);">
                 {% if caterer.logo_url or (caterer.user and caterer.user.profile_image_url) %}
-                <img src="{{ caterer.logo_url or caterer.user.profile_image_url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="{{ caterer.business_name }}">
+                <img src="{{ caterer.logo_url or caterer.user.profile_image_url }}" style="width:100%;height:100%;object-fit:cover;" alt="{{ caterer.business_name }}">
                 {% else %}
-                <img src="https://ui-avatars.com/api/?name={{ caterer.business_name|urlencode }}&background=f1f5f9&color=FF7B54" style="width: 100%; height: 100%; object-fit: cover;">
+                <div style="width:100%;height:100%;display:grid;place-items:center;background:#fff7ed;color:#c2410c;font-size:1.5rem;font-weight:800;">{{ caterer.business_name[:1]|upper }}</div>
                 {% endif %}
             </div>
-            
-            <div class="storefront-hero-content" style="margin-left: 130px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
-                <div class="storefront-text-col">
-                    <h1 style="font-size: 1.8rem; font-weight: 900; color: var(--hub-text-dark); margin: 0 0 6px 0; display: flex; align-items: center; gap: 10px;">
-                        {{ caterer.business_name }}
-                        {% if caterer.is_verified %}
-                        <i class="fas fa-certificate" style="color: #3b82f6; font-size: 1.25rem; filter: drop-shadow(0 2px 4px rgba(59,130,246,0.3));" title="Verified Business"></i>
-                        {% endif %}
+            <div class="storefront-hero-content" style="min-width:0;display:block;">
+                <div class="storefront-heading-row">
+                    <h1 style="font-size:1.35rem;font-weight:800;color:var(--hub-text-dark);margin:0 0 .35rem;display:flex;align-items:center;gap:8px;">
+                        <span class="business-name-text">{{ caterer.business_name }}</span>
+                        {% if caterer.is_verified %}<i class="fas fa-circle-check verified-badge" style="color:#2563eb;font-size:.95rem;" title="Verified Business"></i>{% endif %}
                     </h1>
-                    
-                    <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; font-size: 0.88rem; color: var(--hub-slate-600);">
-                        {% if caterer.business_type %}
-                        <span style="font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--hub-slate-100);">{{ caterer.business_type }}</span>
-                        {% endif %}
-                        <span style="font-weight: 800; color: #b45309; display: flex; align-items: center; gap: 4px; background: #fef3c7; padding: 3px 8px; border-radius: 6px;">
-                            <i class="fas fa-star"></i> {{ "%.1f"|format(caterer.rating or 0) }} 
-                            <span style="color: #d97706; font-size: 0.75rem;">({{ reviews|length }} Reviews)</span>
-                        </span>
-                        
-                        <span style="display: flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-map-marker-alt" style="color: var(--hub-primary);"></i> {{ [caterer.contact_address, caterer.barangay, caterer.city] | select | join(', ') or 'Address not specified' }}
-                        </span>
-                        
-                        <span style="display: flex; align-items: center; gap: 6px; color: #10b981; font-weight: 700;">
-                            <i class="fas fa-calendar-check"></i> {{ completed_events_count }} Events Done
-                        </span>
-                    </div>
                 </div>
-                
-                <div class="storefront-hero-actions" style="display: flex; gap: 10px; align-items: center;">
-                    <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="btn-hub-main" style="padding: 0.65rem 1.25rem; font-size: 0.85rem; border-radius: 100px; width: auto; margin: 0;">
-                        View Offerings
-                    </a>
+                <div class="business-metadata" style="display:flex;align-items:center;gap:.5rem .9rem;flex-wrap:wrap;font-size:.78rem;color:var(--hub-slate-600);">
+                    {% if caterer.business_type %}<span class="business-type-meta"><i class="fas fa-utensils" style="color:var(--hub-primary);"></i> {{ caterer.business_type }}</span>{% endif %}
+                    {% if visible_review_count > 0 %}<span class="business-rating-meta" style="font-weight:700;color:#92400e;"><i class="fas fa-star" style="color:#f59e0b;"></i> {{ "%.1f"|format(caterer.rating or 0) }} <span style="font-weight:500;">({{ visible_review_count }} reviews)</span></span>{% endif %}
+                    {% set business_address = caterer.address_details or caterer.contact_address or caterer.city %}
+                    {% if business_address %}<span class="business-address-meta desktop-business-address"><i class="fas fa-location-dot" style="color:var(--hub-primary);"></i> {{ business_address }}</span>{% endif %}
+                    {% if completed_events_count > 0 %}<span class="business-completed-meta"><i class="fas fa-calendar-check" style="color:#10b981;"></i> {{ completed_events_count }} completed events</span>{% endif %}
                 </div>
             </div>
+            {% if business_address %}<div class="business-address-meta mobile-business-address"><i class="fas fa-location-dot" style="color:var(--hub-primary);"></i><span>{{ business_address }}</span></div>{% endif %}
+            <div id="business-hours-banner" class="hidden" style="background:#fff; border-radius:12px; padding:1.25rem; border:1px solid var(--hub-slate-200); box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem; transition:all 0.3s;"></div>
         </div>
     </div>
-
-    <!-- Business Hours Status Banner -->
-    <div id="business-hours-banner" class="hidden" style="background:#fff; border-radius:12px; padding:1.25rem; border:1px solid var(--hub-slate-200); box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem; transition:all 0.3s;"></div>
 
     {% if caterer_unavailable %}
     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:1rem 1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:0.75rem;">
@@ -1439,7 +1529,7 @@
 
     <!-- TABS NAVIGATION -->
     <div class="hub-tabs">
-        <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-packages')" class="tab-btn active"><i class="fas fa-gift" style="margin-right: 4px;"></i> Packages</a>
+        <a href="#hub-tab-packages" onclick="hubSwitchTab('hub-tab-packages'); return false;" class="tab-btn active"><i class="fas fa-gift" style="margin-right: 4px;"></i> Packages</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-portfolio')" class="tab-btn"><i class="fas fa-camera-retro" style="margin-right: 4px;"></i> Gallery</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-policies')" class="tab-btn"><i class="fas fa-star" style="margin-right: 4px;"></i> Reviews &amp; Rules</a>
         <a href="javascript:void(0)" onclick="hubSwitchTab('hub-tab-overview')" class="tab-btn"><i class="fas fa-info-circle" style="margin-right: 4px;"></i> About Us</a>
@@ -1496,8 +1586,8 @@
             sections.forEach(sec => observer.observe(sec));
         });
 
-        // Business Hours Logic
-        document.addEventListener('DOMContentLoaded', function() {
+        // Business Hours Logic. This template script may load after DOMContentLoaded.
+        const renderBusinessHours = function() {
             const rules = window.catererRules;
             const openTime = (rules && rules.business_hours && rules.business_hours.open_time) ? rules.business_hours.open_time : '08:00';
             const closeTime = (rules && rules.business_hours && rules.business_hours.close_time) ? rules.business_hours.close_time : '18:00';
@@ -1526,7 +1616,8 @@
             const formatDays = (days) => {
                 if (!days || days.length === 0) return 'Daily';
                 if (days.length === 7) return 'Daily';
-                return days.join(', ');
+                const shortDays = { Sunday: 'Sun', Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat' };
+                return days.map(day => shortDays[day] || day).join(' · ');
             };
             
             const openMins = parseTime(openTime);
@@ -1543,45 +1634,23 @@
                     banner.classList.remove('hidden');
                     banner.style.background = '#ecfdf5';
                     banner.style.borderColor = '#d1fae5';
-                    banner.innerHTML = `
-                        <div style="width:48px; height:48px; border-radius:50%; background:#d1fae5; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            <i class="fas fa-door-open" style="color:#059669; font-size:1.25rem;"></i>
-                        </div>
-                        <div>
-                            <h3 style="color:#065f46; font-weight:800; font-size:0.95rem; margin-bottom:2px;">Open & Accepting Bookings</h3>
-                            <p style="color:#059669; font-size:0.8rem; margin:0;">Business Hours: <span style="font-weight:900;">${formatTimeAmPm(openTime)} - ${formatTimeAmPm(closeTime)}</span> (${formattedDays})</p>
-                        </div>
-                    `;
+                    banner.innerHTML = `<div class="hours-status-content"><h3 style="color:#065f46;font-weight:800;">Open · Accepting bookings</h3><p style="color:#047857;"><strong>${formatTimeAmPm(openTime)}–${formatTimeAmPm(closeTime)}</strong> · ${formattedDays}</p></div>`;
                 } else {
                     banner.classList.remove('hidden');
                     banner.style.background = '#fef2f2';
                     banner.style.borderColor = '#fee2e2';
-                    banner.innerHTML = `
-                        <div style="width:48px; height:48px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            <i class="fas fa-door-closed" style="color:#dc2626; font-size:1.25rem;"></i>
-                        </div>
-                        <div>
-                            <h3 style="color:#991b1b; font-weight:800; font-size:0.95rem; margin-bottom:2px;">Currently Closed</h3>
-                            <p style="color:#dc2626; font-size:0.8rem; line-height:1.4; margin:0;">We are not accepting bookings at this time. Our business hours are from <span style="font-weight:900;">${formatTimeAmPm(openTime)} to ${formatTimeAmPm(closeTime)}</span> (${formattedDays}). Please come back during these hours!</p>
-                        </div>
-                    `;
+                    banner.innerHTML = `<div class="hours-status-content"><h3 style="color:#991b1b;font-weight:800;">Closed · Bookings paused</h3><p style="color:#b91c1c;"><strong>${formatTimeAmPm(openTime)}–${formatTimeAmPm(closeTime)}</strong> · ${formattedDays}</p></div>`;
                     
-                    // Disable booking buttons visually and functionally
-                    document.querySelectorAll('a[href^="/bookings/start"], .btn-hub-main, .book-action-btn, #btn-contact-caterer, .btn-checkout').forEach(btn => {
-                        // Skip if it's a tab button
-                        if (btn.classList.contains('tab-btn')) return;
-                        
-                        btn.style.pointerEvents = 'none';
-                        btn.style.opacity = '0.5';
-                        btn.style.filter = 'grayscale(100%)';
-                        btn.title = 'Currently Closed for Bookings';
-                        if (btn.tagName === 'A') {
-                            btn.removeAttribute('href');
-                        }
-                    });
+                    // A caterer being closed right now should not block a future
+                    // booking. The server availability flag remains authoritative.
                 }
             }
-        });
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderBusinessHours, { once: true });
+        } else {
+            renderBusinessHours();
+        }
 
         window.filterMenu = function(cat, btn) {
             document.querySelectorAll('#menu-category-filter .category-chip').forEach(c => c.classList.remove('active'));
@@ -1862,24 +1931,7 @@
             if (foodCount > 0) {
                 const subcatKeys = Object.keys(foodBySubcat);
                 const showSubfilter = subcatKeys.length > 0;
-
-                let subchipsHtml = '';
-                if (showSubfilter) {
-                    subchipsHtml = `
-                    <div class="pkg-food-subfilter">
-                        <button type="button" class="pkg-subchip active" data-sub="all" onclick="window.filterPkgFoodSub('all', this)">
-                            All Dishes <span class="subchip-count">${foodCount}</span>
-                        </button>
-                        ${subcatKeys.map(sub => {
-                            const count = foodBySubcat[sub].length;
-                            const slug = sub.toLowerCase().replace(/[^a-z0-9]/g, '-');
-                            return `
-                            <button type="button" class="pkg-subchip" data-sub="${slug}" onclick="window.filterPkgFoodSub('${slug}', this)">
-                                ${sub} <span class="subchip-count">${count}</span>
-                            </button>`;
-                        }).join('')}
-                    </div>`;
-                }
+                const subchipsHtml = '';
 
                 let foodGroupsHtml = subcatKeys.map(sub => {
                     const slug = sub.toLowerCase().replace(/[^a-z0-9]/g, '-');
@@ -1897,9 +1949,6 @@
                                     <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
                                         <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
                                             <i class="fas fa-check-circle" style="color: #16a34a; font-size: 0.75rem; margin-right: 4px;"></i>${item.name}
-                                        </span>
-                                        <span style="font-size: 0.64rem; font-weight: 700; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 6px; border-radius: 12px; white-space: nowrap; flex-shrink: 0;">
-                                            ${sub}
                                         </span>
                                     </div>
                                     ${item.description ? `
@@ -1922,6 +1971,15 @@
                     ${foodGroupsHtml}
                 </div>`;
             }
+
+            const flatFoodItems = Object.values(foodBySubcat).flat();
+            foodHtml = flatFoodItems.length ? `
+                <section class="pkg-simple-inclusion-section">
+                    <h4>Menu</h4>
+                    <ul class="pkg-simple-inclusion-list">
+                        ${flatFoodItems.map(item => `<li><span>${item.name}</span>${item.description ? `<small>${item.description}</small>` : ''}</li>`).join('')}
+                    </ul>
+                </section>` : '';
 
             // 2. Services Section
             let serviceSecHtml = '';
@@ -1946,21 +2004,24 @@
                         <div style="flex: 1; min-width: 0;">
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
                                 <strong style="font-size: 0.82rem; font-weight: 800; color: #1e3a8a;">${item.name}</strong>
-                                <span style="font-size: 0.65rem; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 1px 7px; border-radius: 12px; white-space: nowrap;">
-                                    ${item.quantity || 'Included'}
-                                </span>
+                                ${item.quantity && !/included|per staff/i.test(String(item.quantity)) ? `<span style="font-size: 0.65rem; font-weight: 800; color: #1d4ed8; background: #dbeafe; padding: 1px 7px; border-radius: 12px; white-space: nowrap;">${item.quantity}</span>` : ''}
                             </div>
                             ${renderServiceNotesDropdown(item.description)}
                         </div>
                     </div>
                 `).join('');
 
+                incServicesCards = `
+                    <ul class="pkg-simple-inclusion-list">
+                        ${servicesIncluded.map(item => `<li><span>${item.name}</span>${item.description ? `<small>${item.description}</small>` : ''}</li>`).join('')}
+                    </ul>`;
+
                 let optionalServicesCards = '';
                 if (!isFixedPackage && oServices && oServices.length > 0) {
                     optionalServicesCards = `
                     <div style="margin-top: 0.85rem;">
                         <div style="font-size: 0.7rem; font-weight: 800; color: #1d4ed8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.45rem; display: flex; align-items: center; gap: 4px;">
-                            <i class="fas fa-plus-circle"></i> Available Optional Add-on Services
+                            Optional Services
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
                             ${oServices.map(s => {
@@ -1978,17 +2039,25 @@
                     </div>`;
                 }
 
+                if (!isFixedPackage && oServices && oServices.length > 0) {
+                    optionalServicesCards = `<div class="pkg-simple-optional"><h5>Optional Services</h5><ul class="pkg-simple-inclusion-list">${oServices.map(service => {
+                        const feeText = service.pricing_type === 'custom_quote'
+                            ? 'Custom quote'
+                            : service.pricing_type === 'starting'
+                                ? `Starting at ₱${Number(service.price).toLocaleString()}`
+                                : service.pricing_type === 'per_pax'
+                                    ? `₱${Number(service.price).toLocaleString()}/pax`
+                                    : `₱${Number(service.price).toLocaleString()} fixed`;
+                        return `<li><span>${service.name}</span><small>${service.description ? `${service.description} · ` : ''}${feeText}</small></li>`;
+                    }).join('')}</ul></div>`;
+                }
+
                 serviceSecHtml = `
-                <div class="pkg-cat-section" data-cat="service" style="margin-bottom: 1.25rem;">
-                    <h4 style="font-size: 0.74rem; font-weight: 800; color: #2563eb; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px;">
-                        <i class="fas fa-concierge-bell"></i> Services Included
-                        <span style="font-size: 0.68rem; background: #eff6ff; border: 1px solid #bfdbfe; padding: 1px 7px; border-radius: 12px; margin-left: auto;">${servicesIncluded.length} included</span>
-                    </h4>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px;">
-                        ${incServicesCards || '<span style="font-size:0.75rem; color:#64748b;">No included services</span>'}
-                    </div>
+                <section class="pkg-simple-inclusion-section">
+                    <h4>Services</h4>
+                    ${incServicesCards || '<p class="pkg-simple-empty">No listed services.</p>'}
                     ${optionalServicesCards}
-                </div>`;
+                </section>`;
             }
 
             // 3. Equipment Section
@@ -2136,26 +2205,12 @@
                    </div>` : '';
 
             const pRules = window.catererRules.package_rules || {};
-            const prepHtml = (pRules.setup_time_hours || pRules.cleanup_time_hours) ? `
-                <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.5rem 0;border-bottom:1px solid var(--hub-slate-100);">
-                    <span style="color:var(--hub-slate-400);font-weight:700;">REQUIRED PREP TIME</span>
-                    <span style="font-weight:800;color:var(--hub-text-dark);">${pRules.setup_time_hours || 0}h Setup / ${pRules.cleanup_time_hours || 0}h Cleanup</span>
-                </div>
-            ` : '';
-
             const serviceHtml = `
                 <div style="background:var(--hub-slate-50);border-radius:12px;padding:0.85rem 1rem;border:1px solid var(--hub-slate-100);margin-bottom:1.1rem;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.35rem 0;border-bottom:1px solid var(--hub-slate-100);">
-                        <span style="color:var(--hub-slate-400);font-weight:700;">GUEST CAPACITY</span>
-                        <span style="font-weight:800;color:var(--hub-text-dark);">
-                            ${pkg.min_guests > 0 ? 'Min. '+pkg.min_guests : '—'}${pkg.max_guests > 0 ? ' · Max. '+pkg.max_guests : ''} pax
-                        </span>
-                    </div>
                     <div style="display:flex;justify-content:space-between;font-size:0.8rem;padding:0.35rem 0;border-bottom:1px solid var(--hub-slate-100);">
                         <span style="color:var(--hub-slate-400);font-weight:700;">SERVICE DURATION</span>
                         <span style="font-weight:800;color:var(--hub-text-dark);">${Number(pkg.duration) > 0 ? `${pkg.duration} hours` : 'Not specified'}</span>
                     </div>
-                    ${prepHtml}
                     ${addGuestHtml}
                     ${overtimeHtml}
                 </div>`;
@@ -2163,22 +2218,10 @@
             const descriptionText = String(pkg.desc || '').trim();
             const displayDescription = /^(?:ok(?:ay)?|test(?:ing)?|n\/?a|none|null|[-.])[\s.!]*$/i.test(descriptionText) ? '' : descriptionText;
             const minGuests = Number(pkg.min_guests) || 0;
-            const maxGuests = Number(pkg.max_guests) || 0;
-            const guestCapacity = [
-                minGuests > 0 ? `Min. ${minGuests}` : '',
-                maxGuests > 0 ? `Max. ${maxGuests}` : ''
-            ].filter(Boolean);
             const packageDetailRows = [];
-            if (guestCapacity.length) packageDetailRows.push(['GUEST CAPACITY', `${guestCapacity.join(' · ')} pax`]);
 
             const durationValue = Number(pkg.duration);
             packageDetailRows.push(['SERVICE DURATION', durationValue > 0 ? `${durationValue} hours` : 'Not specified']);
-
-            const setupHours = Number(pRules.setup_time_hours) || 0;
-            const cleanupHours = Number(pRules.cleanup_time_hours) || 0;
-            if (setupHours > 0 || cleanupHours > 0) {
-                packageDetailRows.push(['REQUIRED PREP TIME', `${setupHours}h Setup / ${cleanupHours}h Cleanup`]);
-            }
 
             const extraPaxPrice = Number(pkg.additional_guest_price) || 0;
             if (extraPaxPrice > 0) {
@@ -2195,7 +2238,7 @@
                     `).join('')}
                 </div>` : '';
 
-            const fixedSupportingText = `Fixed Package${minGuests > 0 ? ` • Minimum ${minGuests} pax` : ''}`;
+            const fixedSupportingText = 'Fixed Package';
             const fixedBookingCta = window.catererAvailable
                 ? `<a href="/bookings/start/{{ caterer.id }}?package_id=${id}" class="btn-hub-main pkg-fixed-cta"><i class="fas fa-calendar-check"></i> Select This Package</a>`
                 : `<div class="btn-hub-main pkg-fixed-cta" aria-disabled="true" style="opacity:0.5;cursor:not-allowed;"><i class="fas fa-ban"></i> Caterer Unavailable</div>`;
@@ -2211,7 +2254,6 @@
                         ${fixedSummaryHtml}
                     </header>
                     <div class="pkg-fixed-scroll">
-                        ${filterTabsHtml}
                         <div id="pkg-sections-wrapper" style="min-height:100px;">
                             ${foodHtml}
                             ${serviceSecHtml}
@@ -2237,7 +2279,6 @@
                     ${pkg.gallery_images.map(img => `<img src="${img}" style="width:100px; height:75px; object-fit:cover; border-radius:8px; border:1px solid #e2e8f0; flex-shrink:0;">`).join('')}
                 </div>` : ''}
                 ${serviceHtml}
-                ${filterTabsHtml}
                 <div id="pkg-sections-wrapper" style="min-height: 100px;">
                     ${foodHtml}
                     ${serviceSecHtml}
@@ -2270,32 +2311,15 @@
             delete window._pkgModalPreviousOverflow;
         };
         
-        window.openMessageModal = function() { 
-            console.log('Hub: Opening Message Modal');
-            document.getElementById('message-modal').classList.add('active'); 
-        };
-        window.closeMessageModal = function() { document.getElementById('message-modal').classList.remove('active'); };
-
-        window.sendHubMessage = async function(e, recipientId) {
-            e.preventDefault();
-            console.log('Hub: Sending message');
-            const body = document.getElementById('hub-msg-body').value;
-            const btn = document.getElementById('hub-send-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-            try {
-                const resp = await fetch('/messages/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ recipient_id: recipientId, content: body })
-                });
-                if (resp.ok) {
-                    alert('Message sent successfully!');
-                    window.closeMessageModal();
-                    document.getElementById('hub-msg-body').value = '';
-                } else { alert('Failed to send message.'); }
-            } catch (err) { alert('An error occurred.'); } 
-            finally { btn.disabled = false; btn.innerHTML = 'Send Direct Message'; }
+        window.openMessageModal = function() {
+            const messagesUrl = new URL('/customer/messages', window.location.origin);
+            messagesUrl.searchParams.set('caterer_id', '{{ caterer.user_id }}');
+            messagesUrl.searchParams.set('caterer_name', {{ caterer.business_name|tojson }});
+            if (typeof window.openCustomerMessagesModal === 'function') {
+                window.openCustomerMessagesModal(`${messagesUrl.pathname}${messagesUrl.search}`);
+            } else {
+                window.location.href = `${messagesUrl.pathname}${messagesUrl.search}`;
+            }
         };
 
     </script>
@@ -2308,9 +2332,8 @@
             <div id="hub-tab-overview" class="tab-content active">
                 <div class="intel-card">
                     <h2 class="section-title">About Us</h2>
-                    <p style="color: var(--hub-slate-600); font-size: 1rem; line-height: 1.8; margin-bottom: 1.5rem;">
-                        {{ caterer.description or 'A premier catering partner dedicated to delivering exceptional
-                        culinary experiences for weddings, corporate events, and private celebrations.' }}
+                    <p style="color: var(--hub-slate-600); font-size: 0.9rem; line-height: 1.65; margin-bottom: 1rem;">
+                        {{ caterer.description or 'Business description has not been added yet.' }}
                     </p>
                     
                     {% set pub = caterer.scheduling_rules.get('public_profile', {}) if caterer.scheduling_rules else {} %}
@@ -2398,7 +2421,7 @@
             <div id="hub-tab-packages" class="tab-content">
                 {% if packages %}
                 <div class="intel-card" style="padding: 1.75rem;">
-                    <h2 class="section-title">Ready-to-Book Packages</h2>
+                    <h2 class="section-title">Packages <span style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:none;letter-spacing:0;">{{ packages|length }} available</span></h2>
                     <div class="pkg-grid">
                         {% for pkg in packages %}
                         {% set pkg_mode = (pkg.pricing_mode or 'fixed')|lower %}
@@ -2412,9 +2435,6 @@
                                 </span>
                             </div>
                             <div class="ei-body">
-                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
-                                    <span class="ei-cat">{% if is_custom_pkg %}Build Your Own{% else %}{{ pkg.service_type or 'General' }}{% endif %}</span>
-                                </div>
                                 <span class="ei-name">{{ pkg.name }}</span>
                                 {% if pkg.pricing_mode == 'customizable' %}
                                 <span class="ei-price" style="color: #16a34a; font-size: 0.95rem; font-weight: 800;">
@@ -2446,18 +2466,18 @@
                                 {% endif %}
                                 <div style="display:flex;gap:0.5rem;margin-top:auto;padding-top:1rem;flex-direction:column;">
                                     <button type="button" onclick='window.openPkgDetails("{{ pkg.id }}")' class="btn-elite-sm">
-                                        <i class="fas fa-list-check"></i> View Inclusions
+                                        {% if pkg.pricing_mode == 'customizable' %}View Package Options{% else %}View Inclusions{% endif %}
                                     </button>
                                     {% if caterer_unavailable %}
                                     <span class="btn-hub-main" style="font-size:0.78rem;padding:0.7rem;text-align:center;opacity:0.5;cursor:not-allowed;justify-content:center;">
                                         <i class="fas fa-ban"></i> Unavailable
                                     </span>
                                     {% elif pkg.pricing_mode == 'customizable' %}
-                                    <a href="/bookings/customize/{{ caterer.id }}?package_id={{ pkg.id }}" class="btn-hub-main" style="font-size:0.78rem;padding:0.7rem;text-decoration:none;text-align:center;background:#ea580c;border-color:#ea580c;">
+                                    <a href="/bookings/customize/{{ caterer.id }}?package_id={{ pkg.id }}" class="btn-hub-main package-action-link" style="font-size:0.78rem;padding:0.7rem;text-decoration:none;text-align:center;background:#ea580c;border-color:#ea580c;">
                                         <i class="fas fa-sliders-h"></i> Customize Package
                                     </a>
                                     {% else %}
-                                    <a href="/bookings/start/{{ caterer.id }}?package_id={{ pkg.id }}" class="btn-hub-main" style="font-size:0.78rem;padding:0.7rem;text-decoration:none;text-align:center;">
+                                    <a href="/bookings/start/{{ caterer.id }}?package_id={{ pkg.id }}" class="btn-hub-main package-action-link" style="font-size:0.78rem;padding:0.7rem;text-decoration:none;text-align:center;background:#ea580c;border-color:#ea580c;opacity:1;filter:none;">
                                         <i class="fas fa-calendar-plus"></i> Select Package
                                     </a>
                                     {% endif %}
@@ -3102,24 +3122,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 style="position: absolute; top: 1.25rem; right: 1.25rem; border: none; background: var(--hub-slate-50); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; z-index: 10;"><i
                     class="fas fa-times"></i></button>
             <div id="pkg-content"></div>
-        </div>
-    </div>
-
-    <!-- MESSAGE MODAL -->
-    <div id="message-modal" class="oc-modal-layer" onclick="if(event.target===this)window.closeMessageModal()">
-        <div class="m-box-elite">
-            <button type="button" onclick="window.closeMessageModal()"
-                style="position: absolute; top: 1.25rem; right: 1.25rem; border: none; background: var(--hub-slate-50); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; z-index: 10;"><i
-                    class="fas fa-times"></i></button>
-            <h2 style="font-size: 1.25rem; font-weight: 850; color: var(--hub-text-dark); margin-bottom: 0.5rem;">Message Professional</h2>
-            <p style="color: var(--hub-slate-400); font-size: 0.85rem; margin-bottom: 1.5rem;">Ask about availability, custom menus, or other details.</p>
-            <form onsubmit="window.sendHubMessage(event, '{{ caterer.user_id }}')" style="display: flex; gap: 0.5rem; align-items: flex-end;">
-                <textarea id="hub-msg-body" required placeholder="Hi! I have a question about..."
-                    style="flex: 1; min-height: 50px; max-height: 120px; border: 1.5px solid var(--hub-slate-200); border-radius: 14px; padding: 0.85rem 1rem; font-family: 'Poppins'; resize: vertical; margin-bottom: 0; outline: none; transition: border-color 0.2s;"></textarea>
-                <button type="submit" id="hub-send-btn" class="btn-hub-main" style="width: 50px; height: 50px; border-radius: 14px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Send Direct Message">
-                    <i class="fas fa-paper-plane" style="font-size: 1.25rem;"></i>
-                </button>
-            </form>
         </div>
     </div>
 

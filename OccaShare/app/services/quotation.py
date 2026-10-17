@@ -60,14 +60,14 @@ class QuotationService:
                     base_price = Decimal("0")
         if base_price <= 0 and package:
             base_price = Decimal(str(getattr(package, "price_per_head", None) or getattr(package, "price", 0) or 0))
-        base_total = base_price * Decimal(str(guest_count))
+        is_fixed_package = bool(package and getattr(package, "pricing_mode", "") == "fixed")
+        base_total = base_price if is_fixed_package else base_price * Decimal(str(guest_count))
 
         # From stored customization payload
         if sess_cust and isinstance(sess_cust, dict):
             for food in sess_cust.get("selected_food", []):
-                # Menu selections are included in the per-guest package rate.
-                # Only services/equipment add separate charges.
-                u_price = 0.0
+                # Only the menu item's upgrade fee is charged on top of the package rate.
+                u_price = float(food.get("upgrade_fee", food.get("price", 0)) or 0)
                 # Serving unit is usually per pax / guest
                 unit_str = str(food.get("unit", "pax")).lower()
                 qty = guest_count if ("pax" in unit_str or "guest" in unit_str or not food.get("qty") or food.get("qty") == 1) else int(food.get("qty", guest_count))
@@ -166,7 +166,11 @@ class QuotationService:
         food_total = sum(Decimal(str(f["subtotal"])) for f in selected_food)
         services_total = sum(Decimal(str(s["subtotal"])) for s in selected_services)
         equipment_total = sum(Decimal(str(e["subtotal"])) for e in selected_equipment)
-        customized_subtotal = base_total + food_total + services_total + equipment_total
+        try:
+            food_removal_credit = max(Decimal("0"), Decimal(str(sess_cust.get("food_removal_credit", 0) or 0)))
+        except Exception:
+            food_removal_credit = Decimal("0")
+        customized_subtotal = max(Decimal("0"), base_total + food_total + services_total + equipment_total - food_removal_credit)
 
         addons = []
         travel_fee = Decimal(str(getattr(booking, 'travel_fee', 0) or 0))
@@ -196,6 +200,7 @@ class QuotationService:
             "selected_services": selected_services,
             "selected_equipment": selected_equipment,
             "food_total": float(food_total),
+            "food_removal_credit": float(food_removal_credit),
             "services_total": float(services_total),
             "equipment_total": float(equipment_total),
             "base_price": float(base_price),

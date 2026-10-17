@@ -74,9 +74,10 @@
                     <tr class="review-row-pro animate-up" data-id="{{ r.id }}">
                         <td>
                             <div class="reviewer-meta">
-                                <div class="reviewer-avatar-sm">VC</div>
+                                {% set reviewer_name = (((r.user.first_name or '') ~ ' ' ~ (r.user.last_name or ''))|trim or 'Customer') if r.user else 'Customer' %}
+                                <div class="reviewer-avatar-sm">{{ reviewer_name[:1]|upper }}</div>
                                 <div class="reviewer-info-text">
-                                    <h4 class="reviewer-name">Verified Customer</h4>
+                                    <h4 class="reviewer-name">{{ reviewer_name }}</h4>
                                 </div>
                             </div>
                         </td>

@@ -13,15 +13,17 @@
 /* ===== LAYOUT ===== */
 .details-grid {
     display: grid;
-    grid-template-columns: 1fr 380px;
-    gap: 2rem;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 1100px;
+    margin: 0 auto;
+    gap: 1rem;
     align-items: flex-start;
 }
 
 .form-area {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1rem;
 }
 
 /* ===== PREMIUM CARDS ===== */
@@ -187,7 +189,7 @@ textarea.form-input {
 .field-error {
     color: #ef4444;
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 400;
     margin-top: 0.25rem;
     display: none;
     align-items: center;
@@ -196,14 +198,12 @@ textarea.form-input {
 }
 
 .field-error.show {
-    display: inline-flex;
+    display: block;
 }
 
 .field-error::before {
-    content: '\f06a';
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 700;
-    color: #ef4444;
+    content: none;
+    display:none;
 }
 
 /* ===== INPUT VALIDATION STATES ===== */
@@ -350,8 +350,9 @@ textarea.form-input {
 
 /* ===== COST PROJECTION SIDEBAR ===== */
 .calculator-sidebar {
-    position: sticky;
-    top: 2rem;
+    position: static;
+    width: 100%;
+    margin: 0;
 }
 
 .calc-card {
@@ -641,12 +642,64 @@ textarea.form-input {
 
     .calculator-sidebar {
         position: static;
-        order: -1;
-        margin-bottom: 2rem;
+        order: 0;
+        margin-bottom: 0;
     }
 }
 
 @media (max-width: 768px) {
+
+    .wizard-container { max-width:100% !important; width:100% !important; padding:1rem .3rem 1.5rem !important; min-height:100dvh; overflow-x:clip; }
+    .progress-stepper-premium { justify-content:space-between; gap:.25rem; margin-bottom:1.25rem; padding:0 .1rem; }
+    .progress-stepper-premium::before { top:16px; left:10%; right:10%; }
+    .step-item-p { width:auto; flex:1 1 0; min-width:0; }
+    .step-icon-p { width:34px; height:34px; margin-bottom:.4rem; font-size:.78rem; }
+    .step-item-p.active .step-icon-p { transform:none; }
+    .step-label-p { font-size:.56rem; line-height:1.2; letter-spacing:.02em; }
+    .wizard-header-content { margin-bottom:1.25rem; padding:0 .25rem; }
+    .wizard-title { font-size:1.3rem; line-height:1.25; }
+    .wizard-subtitle { font-size:.82rem; line-height:1.45; }
+    .details-grid { grid-template-columns:minmax(0,1fr); gap:.85rem; min-width:0; }
+    .form-area { min-width:0; gap:.85rem; }
+    .c-card-premium { min-width:0; padding:.9rem !important; border-radius:14px; box-sizing:border-box; }
+    .c-card-premium:hover { transform:none; }
+    .section-header-wrap { gap:.55rem; margin-bottom:1rem; padding-bottom:.6rem; }
+    .section-icon-wrap { width:28px; height:28px; flex:0 0 28px; font-size:.95rem; }
+    .form-section-title { font-size:.94rem !important; line-height:1.3; }
+    .form-subtitle { font-size:.75rem; line-height:1.45; margin:0 0 .75rem; }
+    .form-group { min-width:0; margin-bottom:.95rem; }
+    .form-label { flex-wrap:wrap; align-items:flex-start; gap:.2rem .5rem; font-size:.68rem; line-height:1.35; }
+    .form-label small { font-size:.65rem; }
+    .form-input,.filter-select-pro { width:100%; min-width:0; height:46px; padding:0 .8rem; box-sizing:border-box; font-size:.86rem; border-radius:10px; }
+    .input-with-icon .form-input,.input-with-icon .filter-select-pro { padding-left:2.5rem; }
+    .input-with-icon i { left:.85rem; font-size:.82rem; }
+    textarea.form-input { min-height:84px; height:auto; padding:.75rem .85rem; }
+    #event_type_display_box { min-height:46px; height:auto; flex-wrap:wrap; gap:.4rem; font-size:.82rem; }
+    #event_type_display_text { min-width:0; flex:1 1 130px; overflow-wrap:anywhere; }
+    #guest_range_label { text-align:right; font-size:.63rem; }
+    .calculator-sidebar { width:100%; min-width:0; margin:0 0 .25rem; padding:0; }
+    .calculator-sidebar > * { max-width:100%; box-sizing:border-box; }
+    .calc-card { width:100%; padding:.85rem !important; border-radius:14px; box-sizing:border-box; }
+    .calc-title { font-size:1rem; margin-bottom:.85rem; }
+    .calc-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.5rem; align-items:start; margin-bottom:.65rem; font-size:.78rem; }
+    .calc-label,.calc-val { min-width:0; font-size:.78rem; line-height:1.35; }
+    .calc-val { text-align:right; overflow-wrap:anywhere; }
+    .calc-total { gap:.5rem; margin:.75rem 0; padding:.65rem .75rem; align-items:center; }
+    .total-label { font-size:.78rem; line-height:1.3; }
+    .total-price { font-size:1rem !important; overflow-wrap:anywhere; white-space:nowrap; }
+    .calc-divider { margin:.75rem 0; }
+    .calc-info-box { margin-top:.75rem; padding:.7rem; gap:.5rem; font-size:.68rem; }
+    #customizable-package-choices-card .section-header-wrap { align-items:flex-start; }
+    #customizable-package-choices-card .form-section-title { font-size:.9rem !important; }
+    #customizable-package-choices-card [style*="display: inline-flex"] { max-width:100%; flex-wrap:wrap; }
+    #package-inclusions-card .inclusion-category-block { padding:.75rem !important; }
+    #package-inclusions-content { gap:.7rem !important; }
+    .inclusions-category-grid { grid-template-columns:minmax(0,1fr) !important; gap:.45rem !important; }
+    .inclusion-line-item { min-width:0; font-size:.8rem !important; overflow-wrap:anywhere; }
+    .wizard-actions { flex-direction:row !important; gap:.55rem; margin-top:1.25rem; padding-top:1rem; }
+    .wizard-actions > .btn-wizard-back,
+    .wizard-actions > .btn-wizard-next { min-width:0; flex:1 1 0; width:50% !important; height:42px; min-height:42px; padding:.65rem .35rem; font-size:.76rem; line-height:1.15; white-space:nowrap; justify-content:center; gap:.3rem; box-sizing:border-box; }
+    #venue-map { height:230px !important; }
 
     .grid-2-col,
     .menu-item-cards,
@@ -660,6 +713,16 @@ textarea.form-input {
     }
 
     .total-price {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
     }
+}
+
+@media (max-width:380px) {
+    .wizard-container { padding-left:.25rem !important; padding-right:.25rem !important; }
+    .c-card-premium { padding:.75rem !important; }
+    .wizard-actions > .btn-wizard-back,
+    .wizard-actions > .btn-wizard-next { padding:.6rem .25rem; font-size:.69rem; }
+    .step-label-p { font-size:.52rem; }
+    .wizard-title { font-size:1.18rem; }
+    .pkg-fixed-summary { grid-template-columns:minmax(0,1fr); }
 }
