@@ -58,6 +58,32 @@
     <input type="hidden" name="reservation_fee" id="reservation_fee_input" value="{{ booking.reservation_fee if booking else 0 }}">
 
     <div class="details-grid">
+        <aside class="calculator-sidebar" id="mobile-price-estimate">
+            <div class="calc-card">
+                <h3 class="calc-title">Price Estimate</h3>
+                <div class="calc-row">
+                    <span class="calc-label">{% if package and package.pricing_mode == 'customizable' %}Menu Included{% else %}Package Price{% endif %}</span>
+                    <span class="calc-val" id="calc-pkg-price-label">{% if package and package.pricing_mode == 'customizable' %}{% if customization and customization.estimated_total is defined and customization.estimated_total > 0 %}₱{{ "{:,.2f}".format(customization.estimated_total) }} (Customization){% else %}See choices above{% endif %}{% elif package and (package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest') %}₱{{ "{:,.2f}".format(package.price_per_head or 0) }}/pax{% else %}₱{{ "{:,.2f}".format(package.price or 0) }} total{% endif %}</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Estimated Guests</span>
+                    <span class="calc-val" id="calc-guests">0</span>
+                </div>
+                <div class="calc-row">
+                    <span class="calc-label">Transportation fee</span>
+                    <span class="calc-val" id="calc-delivery-fee">₱0.00</span>
+                </div>
+                <div class="calc-divider"></div>
+                <div class="calc-total">
+                    <span class="total-label">Estimated Total</span>
+                    <span class="total-price" id="calc-grand-total">₱0.00</span>
+                </div>
+                <div class="calc-info-box">
+                    <i class="fas fa-circle-info"></i>
+                    <span>This is an estimate. The final amount may change after the caterer confirms your menu and transportation needs.</span>
+                </div>
+            </div>
+        </aside>
         <div class="form-area">
             <!-- Essential Information -->
             <div class="c-card-premium">
@@ -154,19 +180,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="event_time">Ingress <small>(Setup / caterer arrival)</small></label>
-                        <div id="custom-time-select" style="position: relative; width: 100%;">
-                            <div id="time-trigger-btn" class="form-input" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                                <span id="time-trigger-text" style="color: {% if booking and booking.event_time %}#0f172a{% else %}#94a3b8{% endif %}; font-weight: 500;">
-                                    {% if booking and booking.event_time %}{{ booking.event_time.strftime('%I:%M %p') }}{% else %}-- Select Time --{% endif %}
-                                </span>
-                                <i id="time-trigger-icon" class="fas fa-chevron-down" style="color: #94a3b8; font-size: 0.8rem; pointer-events: none;"></i>
-                            </div>
-                            <div id="time-dropdown-menu" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; width: 100%; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05); padding: 0.75rem; max-height: 220px; overflow-y: auto; z-index: 100;">
-                                <div id="time-chips-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
-                                </div>
-                            </div>
-                        </div>
-                        <input type="hidden" name="event_time" id="event_time" value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}" data-initial="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}">
+                        <input type="time" name="event_time" id="event_time" class="form-input" value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}" required>
                         <span class="field-error" id="err-time">Choose a setup / arrival time within available operating hours.</span>
                     </div>
                     <div class="form-group">
@@ -178,8 +192,9 @@
                 <div id="availability-chip" class="availability-chip" style="margin-top: 0.75rem; width: 100%;"></div>
             </div>
 
-            <!-- CUSTOMIZABLE PACKAGE CHOICES (If Customizable) -->
-            <div class="c-card-premium" id="customizable-package-choices-card" data-initial-package-id="{{ package.id if package else '' }}" style="display: {% if package and package.pricing_mode == 'customizable' %}block{% else %}none{% endif %}; margin-bottom: 1.5rem; border-color: #fdba74; background: #fffcf9;">
+            {% if package and package.pricing_mode == 'customizable' %}
+            <!-- CUSTOMIZABLE PACKAGE CHOICES -->
+            <div class="c-card-premium" id="customizable-package-choices-card" data-initial-package-id="{{ package.id }}" style="margin-bottom: 1.5rem; border-color: #fdba74; background: #fffcf9;">
                 <div class="section-header-wrap" style="margin-bottom: 0.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;">
                         <span class="custom-package-label" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:20px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:.72rem;font-weight:750;">Customizable package</span>
@@ -335,34 +350,7 @@
                 {% endif %}
                 </div>
             </div>
-
-            <!-- Cost estimate sits immediately before the package inclusions. -->
-            <aside class="calculator-sidebar">
-                <div class="calc-card">
-                    <h3 class="calc-title">Price Estimate</h3>
-                    <div class="calc-row">
-                        <span class="calc-label">{% if package and package.pricing_mode == 'customizable' %}Menu Included{% else %}Package Price{% endif %}</span>
-                        <span class="calc-val" id="calc-pkg-price-label">{% if package and package.pricing_mode == 'customizable' %}{% if customization and customization.estimated_total is defined and customization.estimated_total > 0 %}₱{{ "{:,.2f}".format(customization.estimated_total) }} (Customization){% else %}See choices above{% endif %}{% elif package and (package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest') %}₱{{ "{:,.2f}".format(package.price_per_head or 0) }}/pax{% else %}₱{{ "{:,.2f}".format(package.price or 0) }} total{% endif %}</span>
-                    </div>
-                    <div class="calc-row">
-                        <span class="calc-label">Estimated Guests</span>
-                        <span class="calc-val" id="calc-guests">0</span>
-                    </div>
-                    <div class="calc-row">
-                        <span class="calc-label">Transportation fee</span>
-                        <span class="calc-val" id="calc-delivery-fee">₱0.00</span>
-                    </div>
-                    <div class="calc-divider"></div>
-                    <div class="calc-total">
-                        <span class="total-label">Estimated Total</span>
-                        <span class="total-price" id="calc-grand-total">₱0.00</span>
-                    </div>
-                    <div class="calc-info-box">
-                        <i class="fas fa-circle-info"></i>
-                        <span>This is an estimate. The final amount may change after the caterer confirms your menu and transportation needs.</span>
-                    </div>
-                </div>
-            </aside>
+            {% endif %}
 
             <!-- Included in This Package (Fixed Packages ONLY) -->
             <div class="c-card-premium" id="package-inclusions-card" style="margin-bottom: 1.5rem; {% if not package or package.pricing_mode == 'customizable' or (not grouped_inclusions.food and not grouped_inclusions.services and not grouped_inclusions.equipment) %}display: none;{% endif %}">
@@ -467,7 +455,13 @@
                     <label class="form-label" for="venue-search">Search venue or pin the exact location</label>
                     <input type="text" id="venue-search" class="form-input" autocomplete="off" value="{{ booking.venue_address if booking else '' }}">
                     <div id="venue-map" role="application" aria-label="Pin the exact event venue on the map" style="width:100%;height:260px;border:1px solid #e2e8f0;border-radius:12px;margin-top:.65rem;background:#f1f5f9;"></div>
-                    <small style="display:block;color:#64748b;margin-top:.45rem;">Drag the pin to the exact spot. The address and map coordinates save with your booking when you continue.</small>
+                    <small style="display:block;color:#64748b;margin-top:.45rem;">Search for a venue or move the map pin to the exact spot, then save the location.</small>
+                    <button type="button" id="save-venue-location" class="btn-wizard-next" disabled style="margin-top:.7rem;min-height:40px;padding:.55rem 1rem;font-size:.82rem;">Save pinned location</button>
+                    <small id="venue-pin-status" aria-live="polite" style="display:block;color:#64748b;margin-top:.35rem;"></small>
+                    <div id="saved-venue-address" aria-live="polite" style="display:{% if booking and booking.venue_address and booking.venue_latitude is not none and booking.venue_longitude is not none %}block{% else %}none{% endif %};margin-top:.65rem;padding:.7rem .8rem;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4;color:#166534;font-size:.82rem;line-height:1.45;overflow-wrap:anywhere;">
+                        <strong style="display:block;font-size:.72rem;margin-bottom:.2rem;">Saved venue address</strong>
+                        <span id="saved-venue-address-text">{{ booking.venue_address if booking and booking.venue_address else '' }}</span>
+                    </div>
                     <span class="field-error" id="err-venue">Search for or pin the exact venue location.</span>
                 </div>
 

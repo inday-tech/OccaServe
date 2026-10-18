@@ -13,10 +13,8 @@
 /* ===== LAYOUT ===== */
 .details-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    max-width: 1100px;
-    margin: 0 auto;
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 2rem;
     align-items: flex-start;
 }
 
@@ -24,6 +22,8 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    grid-column: 1;
+    grid-row: 1;
 }
 
 /* ===== PREMIUM CARDS ===== */
@@ -56,6 +56,11 @@
 
 #time-dropdown-menu {
     z-index: 1000 !important;
+}
+
+#save-venue-location:disabled {
+    opacity: .55;
+    cursor: not-allowed;
 }
 
 /* ===== SECTION HEADERS ===== */
@@ -350,9 +355,11 @@ textarea.form-input {
 
 /* ===== COST PROJECTION SIDEBAR ===== */
 .calculator-sidebar {
-    position: static;
-    width: 100%;
-    margin: 0;
+    position: sticky;
+    top: 1.25rem;
+    align-self: start;
+    grid-column: 2;
+    grid-row: 1;
 }
 
 .calc-card {
@@ -635,16 +642,19 @@ textarea.form-input {
 }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 1200px) {
+@media (max-width: 768px) {
     .details-grid {
         grid-template-columns: 1fr;
     }
 
     .calculator-sidebar {
         position: static;
-        order: 0;
+        order: -1;
         margin-bottom: 0;
+        grid-column: 1;
+        grid-row: 1;
     }
+    .form-area { grid-column: 1; grid-row: 2; }
 }
 
 @media (max-width: 768px) {
@@ -679,8 +689,9 @@ textarea.form-input {
     #guest_range_label { text-align:right; font-size:.63rem; }
     .calculator-sidebar { width:100%; min-width:0; margin:0 0 .25rem; padding:0; }
     .calculator-sidebar > * { max-width:100%; box-sizing:border-box; }
-    .calc-card { width:100%; padding:.85rem !important; border-radius:14px; box-sizing:border-box; }
-    .calc-title { font-size:1rem; margin-bottom:.85rem; }
+    .calculator-sidebar .calc-card { width:100%; padding:.9rem !important; border-radius:14px; box-sizing:border-box; }
+    .calculator-sidebar .calc-title { font-size:.94rem; margin-bottom:.65rem; }
+    .wizard-actions { margin-bottom:0; }
     .calc-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.5rem; align-items:start; margin-bottom:.65rem; font-size:.78rem; }
     .calc-label,.calc-val { min-width:0; font-size:.78rem; line-height:1.35; }
     .calc-val { text-align:right; overflow-wrap:anywhere; }

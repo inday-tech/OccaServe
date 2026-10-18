@@ -51,6 +51,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const venueSearch = document.getElementById('venue-search');
         const venueLat = document.getElementById('venue_latitude');
         const venueLng = document.getElementById('venue_longitude');
+        const saveVenueButton = document.getElementById('save-venue-location');
+        const savedVenuePanel = document.getElementById('saved-venue-address');
+        const savedVenueText = document.getElementById('saved-venue-address-text');
+        const venuePinStatus = document.getElementById('venue-pin-status');
         const eventTypeSelect = document.getElementById('event_type_select');
         const otherEventWrap = document.getElementById('other-event-wrap');
         const otherEventInput = document.getElementById('other_event_type');
@@ -804,25 +808,75 @@ document.addEventListener('DOMContentLoaded', function () {
             ? { lat: Number(venueLat.value), lng: Number(venueLng.value) } : fallback;
         const map = new google.maps.Map(mapEl, { center: savedPoint, zoom: venueLat?.value ? 17 : 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
         const marker = new google.maps.Marker({ map, position: savedPoint, draggable: true });
+        let pendingLocation = null;
+        let geocodeRequest = 0;
+        const clearSavedLocation = () => {
+            if (venueHidden) venueHidden.value = '';
+            if (venueLat) venueLat.value = '';
+            if (venueLng) venueLng.value = '';
+            if (savedVenuePanel) savedVenuePanel.style.display = 'none';
+        };
+        const savePendingLocation = () => {
+            if (!pendingLocation || !pendingLocation.address) return;
+            venueLat.value = pendingLocation.lat;
+            venueLng.value = pendingLocation.lng;
+            venueHidden.value = pendingLocation.address;
+            venueSearch.value = pendingLocation.address;
+            if (provinceSelect) provinceSelect.value = pendingLocation.province || '';
+            if (citySelect) citySelect.value = pendingLocation.city || '';
+            if (barangaySelect) barangaySelect.value = pendingLocation.barangay || '';
+            if (savedVenueText) savedVenueText.textContent = pendingLocation.address;
+            if (savedVenuePanel) savedVenuePanel.style.display = 'block';
+            if (venuePinStatus) venuePinStatus.textContent = 'Venue location saved.';
+            if (saveVenueButton) saveVenueButton.disabled = true;
+            document.getElementById('err-venue')?.classList.remove('show');
+            updateHiddenVenue();
+        };
+        if (venueHidden?.value && venueLat?.value && venueLng?.value && savedVenueText) {
+            savedVenueText.textContent = venueHidden.value;
+        }
+        saveVenueButton?.addEventListener('click', savePendingLocation);
+        venueSearch?.addEventListener('input', () => {
+            if (venueSearch.value.trim() === (venueHidden?.value || '').trim()) return;
+            pendingLocation = null;
+            clearSavedLocation();
+            if (saveVenueButton) saveVenueButton.disabled = true;
+            if (venuePinStatus) venuePinStatus.textContent = 'Choose a search result or pin the map, then save the location.';
+        });
         const setLocation = (point, knownAddress = '') => {
-            venueLat.value = point.lat().toFixed(7);
-            venueLng.value = point.lng().toFixed(7);
+            const requestId = ++geocodeRequest;
+            pendingLocation = null;
+            clearSavedLocation();
+            if (saveVenueButton) saveVenueButton.disabled = true;
+            if (venuePinStatus) venuePinStatus.textContent = 'Finding the complete address…';
             marker.setPosition(point);
             geocoder.geocode({ location: point }, (results, status) => {
-                if (status !== 'OK' || !results?.[0]) return;
-                const result = results[0];
-                const parts = result.address_components || [];
+                if (requestId !== geocodeRequest) return;
+                const result = status === 'OK' ? results?.[0] : null;
+                if (!result && !knownAddress) {
+                    if (venuePinStatus) venuePinStatus.textContent = 'Could not find an address for this pin. Move it slightly or search for the venue.';
+                    return;
+                }
+                const parts = result?.address_components || [];
                 const valueFor = (...types) => parts.find(part => types.some(type => part.types.includes(type)))?.long_name || '';
                 const brgy = valueFor('sublocality_level_1', 'neighborhood', 'sublocality');
                 const city = valueFor('locality', 'administrative_area_level_2');
                 const province = valueFor('administrative_area_level_1');
-                if (provinceSelect) provinceSelect.value = province;
-                if (citySelect) citySelect.value = city;
-                if (barangaySelect) barangaySelect.value = brgy;
-                venueHidden.value = knownAddress || result.formatted_address || `${brgy}, ${city}, ${province}`;
-                venueSearch.value = venueHidden.value;
-                document.getElementById('err-venue')?.classList.remove('show');
-                updateHiddenVenue();
+                const address = knownAddress || result?.formatted_address || [brgy, city, province].filter(Boolean).join(', ');
+                if (!address) {
+                    if (venuePinStatus) venuePinStatus.textContent = 'Could not find an address for this pin. Move it slightly or search for the venue.';
+                    return;
+                }
+                pendingLocation = {
+                    lat: point.lat().toFixed(7),
+                    lng: point.lng().toFixed(7),
+                    address,
+                    province,
+                    city,
+                    barangay: brgy
+                };
+                if (saveVenueButton) saveVenueButton.disabled = false;
+                if (venuePinStatus) venuePinStatus.textContent = 'Address found. Save this pinned location to use it for your booking.';
             });
         };
         marker.addListener('dragend', () => setLocation(marker.getPosition()));
@@ -1123,7 +1177,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Real-time Time Validation ---
     const validateEventTime = () => {
         if (!timeInput) return true;
-        const triggerBtn = document.getElementById('time-trigger-btn');
+        const triggerBtn = document.getElementById('time-trigger-btn') || timeInput;
         const errEl = document.getElementById('err-time');
         const v = (timeInput.value || '').trim();
 
@@ -1554,7 +1608,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (errorId === 'err-date') targetInput = dateInput;
             else if (errorId === 'err-time') {
-                // time-trigger-btn is a div, not an input — mark it visually
                 targetInput = timeInput;
                 const timeTrigger = document.getElementById('time-trigger-btn');
                 if (timeTrigger) timeTrigger.classList.add('error');
