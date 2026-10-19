@@ -183,7 +183,7 @@ def background_geocode(caterer_id: int):
             if not addr:
                 return
                 
-            api_key = os.getenv('GOOGLE_MAPS_API_KEY', 'AIzaSyBpFEUgMDrteQk_BIYKSRRID1mhuCEEykY')
+            api_key = os.getenv('GOOGLE_MAPS_API_KEY', '').strip()
             if not api_key:
                 print('[Geocode] No API key found')
                 return
@@ -254,4 +254,3 @@ def is_customer_profile_complete(user) -> tuple:
         
     percent = int((points / 3) * 100)
     return (percent >= 100, percent, missing)
-

@@ -1437,6 +1437,9 @@ function validateAndSubmitCustomization() {
             price: price,
             unit: cb.dataset.unit || 'service',
             qty: quantity,
+            capacity_type: cb.dataset.capacityType || 'unit_based',
+            staff_ratio: parseInt(cb.dataset.staffRatio, 10) || 0,
+            min_staff: parseInt(cb.dataset.minStaff, 10) || 1,
             subtotal
         };
     });
@@ -1455,7 +1458,9 @@ function validateAndSubmitCustomization() {
 
     const basePackageTotal = isPerPax ? (basePackagePrice * guestVal) : basePackagePrice;
     const equipmentSubtotal = equipmentPayload.reduce((total, item) => total + item.subtotal, 0);
-    const grandTotal = basePackageTotal + foodUpgradeSubtotal + servicesSubtotal + equipmentSubtotal;
+    const foodRemovalCredit = Math.max(0, Array.from(new Set(Array.from(document.querySelectorAll('.food-checkbox')).map(cb => (cb.dataset.category || 'Others').trim())))
+        .reduce((credit, category) => credit + (removedCategories.has(category) ? Math.max(0, Number(categoryRemovalCredits[category]) || 0) * guestVal : 0), 0));
+    const grandTotal = Math.max(0, basePackageTotal + foodUpgradeSubtotal + servicesSubtotal + equipmentSubtotal - foodRemovalCredit);
     const specialReq = document.getElementById('custSpecialRequests')?.value || '';
 
     const finalPayload = {
@@ -1466,8 +1471,7 @@ function validateAndSubmitCustomization() {
         base_price: basePackagePrice,
         base_package_total: basePackageTotal,
         food_upgrade_total: foodUpgradeSubtotal,
-        food_removal_credit: Math.max(0, Array.from(new Set(Array.from(document.querySelectorAll('.food-checkbox')).map(cb => (cb.dataset.category || 'Others').trim())))
-            .reduce((credit, category) => credit + (removedCategories.has(category) ? Math.max(0, Number(categoryRemovalCredits[category]) || 0) * guestVal : 0), 0)),
+        food_removal_credit: foodRemovalCredit,
         removed_categories: Array.from(removedCategories),
         selected_food: foodPayload,
         selected_services: servicesPayload,

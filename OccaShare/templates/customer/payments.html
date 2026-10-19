@@ -15,27 +15,6 @@
     }
 
     /* ── PREMIUM STAT CARDS (Dashboard Sync) ── */
-    .premium-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    @media (min-width: 768px) {
-        .premium-stats-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
-    .premium-stat-card {
-        background: #fff; border-radius: 12px; padding: 1.25rem 1.5rem;
-        border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
-        display: flex; flex-direction: column; justify-content: center;
-        transition: all 0.2s ease;
-    }
-    .premium-stat-title { font-size: 0.75rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
-    .premium-stat-value { font-size: 1.4rem; font-weight: 900; line-height: 1.2; margin-bottom: 0.4rem; }
-    .premium-stat-subtitle { font-size: 0.8rem; font-weight: 500; color: #64748b; }
-
     /* ── PANEL (Dashboard Sync) ── */
     .ledger-panel {
         background: #fff; border-radius: 1.25rem; border: 1px solid var(--dm-slate-100);
@@ -90,9 +69,10 @@
         padding: 4px 10px; border-radius: 8px; letter-spacing: 0.04em;
         display: inline-flex; align-items: center; gap: 6px;
     }
-    .tag-paid      { background: rgba(16,185,129,0.1); color: #10b981; }
-    .tag-pending   { background: rgba(249,115,22,0.1); color: #f97316; }
-    .tag-processing { background: rgba(59,130,246,0.1); color: #3b82f6; }
+    .tag-paid      { background: #f0fdf4; color: #16a34a; border:1px solid #bbf7d0; }
+    .tag-pending   { background: #fff7ed; color: #c2410c; border:1px solid #fde8cc; }
+    .tag-processing { background: #eff6ff; color: #2563eb; border:1px solid #bfdbfe; }
+    .tag-cancelled { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
 
     .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
@@ -131,11 +111,34 @@
     .btn-pg-num.active { background: var(--text-dark); color: #fff; border-color: var(--text-dark); }
 
     .page-header { margin-bottom: 1.25rem; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--text-dark); margin: 0; letter-spacing: -0.03em; }
+    .page-header h1 { font-size: 1.45rem; font-weight: 800; color: var(--text-dark); margin: 0; letter-spacing: -0.03em; }
     .page-header p { font-size: 0.88rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
+
+    .payment-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .85rem;
+    }
+    .payment-stats-grid .premium-stat-card {
+        min-width: 0;
+        min-height: 116px;
+        padding: 1.1rem 1.25rem;
+    }
+    .payment-stats-grid .premium-stat-title { margin-bottom: .35rem; }
+    .payment-stats-grid .premium-stat-value { font-size: 1.3rem; overflow-wrap: anywhere; }
+    .payment-stats-grid .premium-stat-subtitle { line-height: 1.3; }
 
     @media (max-width: 991px) {
         .panel-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+    }
+    @media (min-width: 768px) {
+        .payment-stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+        .payment-stats-grid { gap: .65rem; }
+        .payment-stats-grid .premium-stat-card { min-height: 104px; padding: .85rem .8rem; }
+        .payment-stats-grid .premium-stat-title { font-size: .63rem; letter-spacing: .035em; }
+        .payment-stats-grid .premium-stat-value { font-size: 1.05rem; }
+        .payment-stats-grid .premium-stat-subtitle { font-size: .68rem; }
     }
 </style>
 {% endblock %}
@@ -147,50 +150,39 @@
 </div>
 
 <!-- Calculations -->
-{% set total_contract = namespace(value=0.0) %}
-{% set total_paid = namespace(value=0.0) %}
-{% set total_pending = namespace(value=0.0) %}
-
-{% for b in bookings %}
-    {% if b.status != 'cancelled' %}
-        {% set contract = b.total_amount|float if b.total_amount else 0.0 %}
-        {% set total_contract.value = total_contract.value + contract %}
-        
-        {% set paid_amount = 0.0 %}
-        {% if b.payment_status == 'paid' %}
-            {% set paid_amount = contract %}
-        {% elif b.payment_status == 'deposit_paid' %}
-            {% set paid_amount = b.reservation_fee|float if b.reservation_fee else 0.0 %}
-        {% endif %}
-        
-        {% set total_paid.value = total_paid.value + paid_amount %}
-
-        {% if b.payment_status in ['pending', 'pending_payment', 'awaiting_payment', 'deposit_paid'] %}
-            {% set balance = contract - paid_amount %}
-            {% if balance > 0 %}
-                {% set total_pending.value = total_pending.value + balance %}
-            {% endif %}
-        {% endif %}
+{% set totals = namespace(contract=0.0, verified=0.0, under_review=0.0, balance=0.0) %}
+{% for booking in bookings %}
+    {% set summary = payment_summaries.get(booking.id, {}) %}
+    {% if booking.status not in ['cancelled', 'expired'] %}
+        {% set totals.contract = totals.contract + (summary.get('total_amount', 0)|float) %}
+        {% set totals.verified = totals.verified + (summary.get('verified_paid', 0)|float) %}
+        {% set totals.under_review = totals.under_review + (summary.get('pending_review', 0)|float) %}
+        {% set totals.balance = totals.balance + (summary.get('remaining_after_verification', 0)|float) %}
     {% endif %}
 {% endfor %}
 
 <!-- Stat Cards (Matches Bookings UI) -->
-<div class="premium-stats-grid">
-    <div class="premium-stat-card">
-        <div class="premium-stat-title">Total Booking Amount</div>
-        <div class="premium-stat-value" style="color: #3b82f6;">₱{{ "{:,.0f}".format(total_contract.value) }}</div>
-        <div class="premium-stat-subtitle">All active events</div>
-    </div>
-    <div class="premium-stat-card">
-        <div class="premium-stat-title">Total Paid</div>
-        <div class="premium-stat-value" style="color: #10b981;">₱{{ "{:,.0f}".format(total_paid.value) }}</div>
-        <div class="premium-stat-subtitle">Confirmed payments</div>
-    </div>
-    <div class="premium-stat-card">
-        <div class="premium-stat-title">Balance to Pay</div>
-        <div class="premium-stat-value" style="color: #f59e0b;">₱{{ "{:,.0f}".format(total_pending.value) }}</div>
-        <div class="premium-stat-subtitle">Pending obligations</div>
-    </div>
+<div class="premium-stats-grid payment-stats-grid" role="group" aria-label="Filter payment records">
+    <button type="button" class="premium-stat-card payment-stat-card is-selected" data-payment-filter="all" aria-pressed="true">
+        <span class="premium-stat-title">Active booking total</span>
+        <span class="premium-stat-value" style="color: #3b82f6;">₱{{ "{:,.2f}".format(totals.contract) }}</span>
+        <span class="premium-stat-subtitle">Excludes cancelled and expired events</span>
+    </button>
+    <button type="button" class="premium-stat-card payment-stat-card" data-payment-filter="verified" aria-pressed="false">
+        <span class="premium-stat-title">Verified payments</span>
+        <span class="premium-stat-value" style="color: #10b981;">₱{{ "{:,.2f}".format(totals.verified) }}</span>
+        <span class="premium-stat-subtitle">Confirmed received by caterer</span>
+    </button>
+    <button type="button" class="premium-stat-card payment-stat-card" data-payment-filter="review" aria-pressed="false">
+        <span class="premium-stat-title">Under review</span>
+        <span class="premium-stat-value" style="color: #2563eb;">₱{{ "{:,.2f}".format(totals.under_review) }}</span>
+        <span class="premium-stat-subtitle">Submitted, awaiting caterer review</span>
+    </button>
+    <button type="button" class="premium-stat-card payment-stat-card" data-payment-filter="balance" aria-pressed="false">
+        <span class="premium-stat-title">Balance after review</span>
+        <span class="premium-stat-value" style="color: #f59e0b;">₱{{ "{:,.2f}".format(totals.balance) }}</span>
+        <span class="premium-stat-subtitle">After pending payments are reviewed</span>
+    </button>
 </div>
 
 <div class="ledger-panel">
@@ -212,7 +204,6 @@
             <tbody>
                 {% for booking in bookings %}
                 {% set is_fast_track = booking.transaction_type == 'fast_track' %}
-                {% set is_food_order = booking.document_type == 'invoice' %}
                 {% set food_items = booking.selected_items | rejectattr('menu_item_id', 'none') | list if booking.selected_items else [] %}
                 {% set equipment_items = booking.selected_items | rejectattr('equipment_id', 'none') | list if booking.selected_items else [] %}
                 {% set service_items = booking.selected_items | rejectattr('service_id', 'none') | list if booking.selected_items else [] %}
@@ -226,8 +217,6 @@
                     {% set display_title = service_items[0].service.name %}
                 {% elif is_rental_only %}
                     {% set display_title = equipment_items[0].equipment.name ~ (' (and more)' if equipment_items|length > 1 else '') %}
-                {% elif is_food_order %}
-                    {% set display_title = 'Food Order' %}
                 {% elif booking.event_name %}
                     {% set display_title = booking.event_name %}
                 {% endif %}
@@ -235,15 +224,23 @@
                 {% set booking_type_label = 'Package Booking' %}
                 {% if is_rental_only %} {% set booking_type_label = 'Equipment Rental' %}
                 {% elif is_service_only %} {% set booking_type_label = 'Service Booking' %}
-                {% elif is_food_order %} {% set booking_type_label = 'Food Order' %}
                 {% elif is_fast_track %} {% set booking_type_label = 'Custom Booking' %} {% endif %}
+
+                {% set summary = payment_summaries.get(booking.id, {}) %}
+                {% set ps = booking.payment_status or '' %}
+                {% set bs = booking.status or '' %}
+                {% set waiting_for_review = ps in ['proof_submitted','balance_proof_submitted','cash_payment_requested','cash_balance_requested','pending_verification'] %}
+                {% set payment_already_submitted = ps in ['deposit_paid','partially_paid','paid','fully_paid','verified','confirmed'] %}
+                {% set needs_action = ps in ['reupload_requested','balance_reupload_requested'] or (bs in ['pending_payment','awaiting_payment'] and not waiting_for_review and not payment_already_submitted) %}
+                {% set submitted_amount = summary.get('verified_paid', 0)|float + summary.get('pending_review', 0)|float %}
+                {% set has_balance_due = bs not in ['cancelled', 'expired'] and summary.get('remaining_after_verification', 0)|float > 0 %}
                 
-                <tr class="ledger-row payment-row-item" data-search="{{ (display_title or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} {{ booking.booking_ref or '' }} {% if is_rental_only or booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% elif is_food_order %}ORD-{% else %}BK-{% endif %}{{ booking.id }}">
+                <tr class="ledger-row payment-row-item" data-status="{{ bs }}" data-action="{{ 'true' if needs_action else 'false' }}" data-paid="{{ 'true' if summary.get('verified_paid', 0)|float > 0 and bs not in ['cancelled', 'expired'] else 'false' }}" data-review="{{ 'true' if summary.get('pending_review', 0)|float > 0 and bs not in ['cancelled', 'expired'] else 'false' }}" data-balance="{{ 'true' if has_balance_due else 'false' }}" data-search="{{ (display_title or '')|lower }} {{ (booking.caterer.business_name or '')|lower }} {{ booking.booking_ref or '' }} {{ booking.display_booking_ref or '' }} BK-{{ booking.id }}">
                     <td>
                         <span class="event-name">{{ display_title or 'Event' }}</span>
                         <div style="font-size: 0.72rem; color: var(--dm-slate-400); font-weight: 700; margin-bottom: 4px;">{{ booking_type_label }}</div>
                         <span class="event-sub" style="display: inline-flex; align-items: center; gap: 5px;">
-                            <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:800; color:#475569;">#{% if booking.booking_ref %}{{ booking.booking_ref }}{% elif is_rental_only or booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{{ booking.id }}{% elif is_food_order %}ORD-{{ booking.id }}{% else %}{{ booking.display_booking_ref or ('BK-' ~ booking.id) }}{% endif %}</span> 
+                            <span style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:800; color:#475569;">{{ booking.booking_ref or booking.display_booking_ref or ('BK-' ~ booking.id) }}</span>
                             &bull; {{ booking.created_at.strftime('%b %d, %Y') }}
                         </span>
                     </td>
@@ -253,31 +250,50 @@
                         </div>
                     </td>
                     <td>
-                        <div class="price-val">₱{{ "{:,.2f}".format(booking.total_amount|float) if booking.total_amount else 'TBD' }}</div>
-                        {% if booking.payment_status in ['paid', 'deposit_paid'] and booking.reservation_fee %}
-                            <div class="price-paid">Paid: ₱{{ "{:,.2f}".format(booking.reservation_fee|float) }}</div>
-                            
-                            <!-- Balance Deadline Alert -->
-                            {% if (booking.total_amount|float - booking.reservation_fee|float) > 0 %}
-                                <div class="deadline-alert" title="Remaining balance is due on event day" style="background:#fef3c7; color:#b45309; border-color:#fde68a;">
-                                    <i class="fas fa-calendar-day"></i> Due: Event Day
-                                </div>
-                            {% endif %}
+                        <div class="price-val">₱{{ "{:,.2f}".format(summary.get('total_amount', 0)|float) }}</div>
+                        <div class="price-paid">Verified: ₱{{ "{:,.2f}".format(summary.get('verified_paid', 0)|float) }}</div>
+                        {% if summary.get('pending_review', 0)|float > 0 %}
+                        <div class="deadline-alert" style="background:#eff6ff;color:#2563eb;border-color:#bfdbfe;text-transform:none;">
+                            Under review: ₱{{ "{:,.2f}".format(summary.get('pending_review', 0)|float) }}
+                        </div>
                         {% endif %}
                     </td>
                     <td>
-                        {% set p_status = (booking.payment_status or 'pending').lower() %}
-                        {% if p_status in ['paid', 'deposit_paid'] %}
-                            <span class="status-tag tag-paid"><span class="status-dot"></span> Paid</span>
-                        {% elif p_status in ['pending', 'pending_payment', 'awaiting_payment'] %}
-                            <span class="status-tag tag-pending"><span class="status-dot"></span> Pending</span>
+                        {% if ps in ['reupload_requested','balance_reupload_requested'] %}
+                            <span class="status-tag tag-cancelled"><span class="status-dot"></span> Re-upload proof</span>
+                        {% elif waiting_for_review %}
+                            <span class="status-tag tag-processing"><span class="status-dot"></span> Payment review</span>
+                        {% elif bs in ['pending_payment','awaiting_payment'] and payment_already_submitted %}
+                            <span class="status-tag tag-paid"><span class="status-dot"></span> Payment received</span>
+                        {% elif bs in ['pending_payment','awaiting_payment'] %}
+                            <span class="status-tag tag-pending"><span class="status-dot"></span> Pay now</span>
+                        {% elif bs == 'confirmed' %}
+                            <span class="status-tag tag-paid"><span class="status-dot"></span> Confirmed</span>
+                        {% elif bs == 'completed' %}
+                            <span class="status-tag tag-paid"><span class="status-dot"></span> Completed</span>
+                        {% elif bs == 'preparing' %}
+                            <span class="status-tag tag-processing"><span class="status-dot"></span> Preparing</span>
+                        {% elif bs == 'ready_for_delivery' %}
+                            <span class="status-tag tag-processing"><span class="status-dot"></span> Preparation Complete</span>
+                        {% elif bs in ['on_the_way','arrived'] %}
+                            <span class="status-tag tag-processing"><span class="status-dot"></span> On the Way</span>
+                        {% elif bs in ['in_progress','setup_ongoing'] %}
+                            <span class="status-tag tag-processing"><span class="status-dot"></span> Ongoing</span>
+                        {% elif bs == 'pending' and payment_already_submitted %}
+                            <span class="status-tag tag-paid"><span class="status-dot"></span> Payment received</span>
+                        {% elif bs == 'pending' %}
+                            <span class="status-tag tag-pending"><span class="status-dot"></span> Awaiting payment</span>
+                        {% elif bs in ['cancelled', 'expired'] %}
+                            <span class="status-tag tag-cancelled"><span class="status-dot"></span> {{ 'Overdue / Expired' if bs == 'expired' else 'Cancelled' }}</span>
+                        {% elif bs in ['pending_quotation', 'awaiting_customer', 'awaiting_caterer'] %}
+                            <span class="status-tag tag-pending"><span class="status-dot"></span> {{ bs|replace('_',' ')|title }}</span>
                         {% else %}
-                            <span class="status-tag tag-processing"><span class="status-dot"></span> Processing</span>
+                            <span class="status-tag tag-processing"><span class="status-dot"></span> {{ bs|replace('_',' ')|title }}</span>
                         {% endif %}
                     </td>
                     <td style="text-align: right;">
-                        <a href="/customer/bookings/manage/{{ booking.id }}" class="btn-detalye">
-                            View Details
+                        <a href="/customer/bookings?open_detail={{ booking.id }}" class="btn-detalye">
+                            View Event
                         </a>
                     </td>
                 </tr>
@@ -355,13 +371,39 @@
         updatePagination();
     }
 
-    function filterLedger(term) {
-        if (!term) term = "";
+    let paymentFilter = 'all';
+    let paymentSearch = '';
+    function applyPaymentFilters() {
         const all = Array.from(document.querySelectorAll('.payment-row-item'));
-        filteredRows = all.filter(r => r.getAttribute('data-search').includes(term.toLowerCase()));
+        filteredRows = all.filter(row => {
+            const matchesSearch = (row.dataset.search || '').toLowerCase().includes(paymentSearch);
+            const matchesCard = paymentFilter === 'all'
+                || (paymentFilter === 'verified' && row.dataset.paid === 'true')
+                || (paymentFilter === 'review' && row.dataset.review === 'true')
+                || (paymentFilter === 'balance' && row.dataset.balance === 'true');
+            return matchesSearch && matchesCard;
+        });
         currentPage = 1;
         updatePagination();
     }
+
+    function filterLedger(term) {
+        paymentSearch = (term || '').trim().toLowerCase();
+        applyPaymentFilters();
+    }
+
+    document.querySelectorAll('[data-payment-filter]').forEach(card => {
+        card.addEventListener('click', () => {
+            paymentFilter = card.dataset.paymentFilter;
+            document.querySelectorAll('[data-payment-filter]').forEach(item => {
+                const selected = item === card;
+                item.classList.toggle('is-selected', selected);
+                item.setAttribute('aria-pressed', String(selected));
+            });
+            applyPaymentFilters();
+            document.getElementById('ledgerTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
     
     // Connect to the Global Search Bar in the Header
     const globalSearch = document.getElementById('globalSearchInput');

@@ -13,11 +13,10 @@
     <!-- Progress Bar -->
     {% if booking and booking.transaction_type == 'fast_track' %}
         {% if booking.document_type == 'invoice' %}
-            <!-- Food Order: Order -> Payment -->
             <div class="progress-stepper-premium">
                 <div class="step-item-p active completed">
                     <div class="step-icon-p"><i class="fas fa-check"></i></div>
-                    <div class="step-label-p">Order Placed</div>
+                    <div class="step-label-p">Request Submitted</div>
                 </div>
                 <div class="step-item-p {% if current_step >= 4 %}active{% endif %}">
                     <div class="step-icon-p">2</div>

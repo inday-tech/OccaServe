@@ -41,8 +41,8 @@
             You may pay online or in cash to your caterer.
         </p>
         {% elif booking.document_type == 'invoice' %}
-        <h2 class="wizard-title">Pay for Food Order</h2>
-        <p class="wizard-subtitle">Pay the required amount to confirm your food order.</p>
+        <h2 class="wizard-title">Pay Existing Invoice</h2>
+        <p class="wizard-subtitle">Review and pay the amount shown on this invoice.</p>
         {% elif booking.document_type == 'rental_agreement' %}
         <h2 class="wizard-title">Pay Equipment Rental</h2>
         <p class="wizard-subtitle">Pay the rental fee to finalize your equipment booking.</p>
@@ -459,7 +459,6 @@
                             <strong>{{ profile.bank_account_number }}</strong>
                         </div>
                         <button type="button" class="btn-copy-num bank-copy-button" onclick="navigator.clipboard.writeText('{{ profile.bank_account_number }}'); Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Account Number Copied!', showConfirmButton: false, timer: 1500, customClass: { popup: 'small-toast-popup', title: 'small-toast-title' }});"><i class="far fa-copy"></i> Copy Account Number</button>
-                        {% endif %}
                         {% endif %}
                     </div>
                     <div class="instruction-steps-clean mb-3">

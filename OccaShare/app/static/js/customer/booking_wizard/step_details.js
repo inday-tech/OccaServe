@@ -59,6 +59,85 @@ document.addEventListener('DOMContentLoaded', function () {
         const otherEventWrap = document.getElementById('other-event-wrap');
         const otherEventInput = document.getElementById('other_event_type');
         const submitBtn = document.getElementById('submitBtn');
+        const customizePackageLink = document.getElementById('customize-package-link');
+        const getDetailsStorageKey = () => `occaserve:booking-details:${catererId}:${document.getElementById('package_id_hidden')?.value || ''}`;
+        const cancelBookingLink = form?.querySelector('.btn-wizard-back[href*="/marketplace/"]');
+        if (cancelBookingLink) {
+            cancelBookingLink.addEventListener('click', () => {
+                try {
+                    sessionStorage.removeItem(getDetailsStorageKey());
+                } catch (storageError) {
+                    console.warn('Could not clear saved event details:', storageError);
+                }
+            });
+        }
+
+        if (customizePackageLink && form) {
+            const originalLinkContent = customizePackageLink.innerHTML;
+            try {
+                const savedState = JSON.parse(sessionStorage.getItem(getDetailsStorageKey()) || 'null');
+                if (savedState && savedState.fields) {
+                    form.querySelectorAll('[name]').forEach(field => {
+                        if (['caterer_id', 'package_id', 'booking_id'].includes(field.name)) return;
+                        const savedValue = savedState.fields[field.name];
+                        if (savedValue === undefined) return;
+                        if (field.type === 'checkbox' || field.type === 'radio') {
+                            field.checked = Array.isArray(savedValue)
+                                ? savedValue.includes(field.value)
+                                : savedValue === field.value;
+                        } else if (!Array.isArray(savedValue)) {
+                            field.value = savedValue;
+                        }
+                    });
+                    if (guestDisplay && savedState.guestCountDisplay) guestDisplay.value = savedState.guestCountDisplay;
+                    if (venueSearch && savedState.venueSearch !== undefined) venueSearch.value = savedState.venueSearch;
+                    if (savedVenuePanel && venueHidden?.value && venueLat?.value && venueLng?.value) {
+                        if (savedVenueText) savedVenueText.textContent = venueHidden.value;
+                        savedVenuePanel.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                const status = document.getElementById('customize-save-status');
+                if (status) status.textContent = 'Saved event details could not be restored in this browser.';
+                console.warn('Could not restore event details before customization:', error);
+            }
+
+            customizePackageLink.addEventListener('click', (event) => {
+                event.preventDefault();
+                if (customizePackageLink.getAttribute('aria-busy') === 'true') return;
+
+                const status = document.getElementById('customize-save-status');
+                if (status) status.textContent = '';
+                customizePackageLink.setAttribute('aria-busy', 'true');
+                customizePackageLink.textContent = 'Saving details...';
+
+                try {
+                    const fields = {};
+                    form.querySelectorAll('[name]').forEach(field => {
+                        if (field.type === 'checkbox') {
+                            if (!Array.isArray(fields[field.name])) fields[field.name] = [];
+                            if (field.checked) fields[field.name].push(field.value);
+                        } else if (field.type === 'radio') {
+                            if (field.checked) fields[field.name] = field.value;
+                        } else {
+                            fields[field.name] = field.value;
+                        }
+                    });
+                    sessionStorage.setItem(getDetailsStorageKey(), JSON.stringify({
+                        fields,
+                        guestCountDisplay: guestDisplay?.value || '',
+                        venueSearch: venueSearch?.value || ''
+                    }));
+                    const customizeUrl = new URL(customizePackageLink.href, window.location.origin);
+                    if (guestInput?.value) customizeUrl.searchParams.set('guest_count', guestInput.value);
+                    window.location.assign(customizeUrl.toString());
+                } catch (error) {
+                    if (status) status.textContent = 'Could not save your event details in this browser. Please try again.';
+                    customizePackageLink.innerHTML = originalLinkContent;
+                    customizePackageLink.removeAttribute('aria-busy');
+                }
+            });
+        }
 
         // --- 1. Set Min and Max Date based on Lead Time and Max Advance ---
         const getLocalISODate = (date) => {
@@ -293,36 +372,50 @@ document.addEventListener('DOMContentLoaded', function () {
             // + services/equipment. Keep this identical to QuotationService.
             const basePrice = Number(window.basePrice || 0);
             basePackageTotal = basePrice * guests;
-            if (window.customization && (
-                (Array.isArray(window.customization.selected_food) && window.customization.selected_food.length > 0) ||
-                (Array.isArray(window.customization.selected_services) && window.customization.selected_services.length > 0) ||
-                (Array.isArray(window.customization.selected_equipment) && window.customization.selected_equipment.length > 0)
-            )) {
-                let foodTot = 0;
-                window.customization.selected_food.forEach(f => {
-                    // Selected menu items are included in the per-guest rate.
-                    const price = 0;
-                    const unit = String(f.unit || 'pax').toLowerCase();
-                    const qty = (unit.includes('pax') || unit.includes('guest') || !f.qty || f.qty === 1) ? guests : (parseInt(f.qty) || guests);
-                    foodTot += price * qty;
+            if (window.customization) {
+                const saved = window.customization;
+                const foodTot = Array.isArray(saved.selected_food)
+                    ? saved.selected_food.reduce((sum, item) => sum + Number(item.upgrade_fee || item.price || 0) * guests, 0)
+                    : Number(saved.food_upgrade_total !== undefined ? saved.food_upgrade_total : saved.food_total || 0);
+                const serviceTotals = (Array.isArray(saved.selected_services) ? saved.selected_services : []).map(service => {
+                    const unit = String(service.unit || '').toLowerCase();
+                    let quantity = Number(service.qty) || 1;
+                    if (/pax|guest|person/.test(unit)) {
+                        quantity = guests;
+                    } else if (String(service.capacity_type || '').toLowerCase() === 'staff_based') {
+                        const ratio = Number(service.staff_ratio) || 0;
+                        const minimum = Number(service.min_staff) || 1;
+                        if (ratio > 0) quantity = Math.max(minimum, Math.ceil(guests / ratio));
+                    }
+                    return { quantity, amount: Number(service.price || 0) * quantity };
                 });
-                let srvTot = 0;
-                (window.customization.selected_services || []).forEach(s => {
-                    const price = parseFloat(s.price || s.unit_price || 0);
-                    const qty = parseInt(s.qty) || 1;
-                    srvTot += price * qty;
-                });
-                let eqTot = 0;
-                (window.customization.selected_equipment || []).forEach(e => {
-                    const price = parseFloat(e.price || e.unit_price || 0);
-                    const qty = parseInt(e.qty) || 1;
-                    eqTot += price * qty;
-                });
-                basePackageTotal += foodTot + srvTot + eqTot;
-            } else if (window.customization) {
-                // Older saved payloads may have totals but no item arrays.
-                const savedTotal = parseFloat(window.customization.estimated_total) || 0;
-                if (savedTotal > 0) basePackageTotal = savedTotal;
+                const srvTot = serviceTotals.reduce((sum, service) => sum + service.amount, 0);
+                const equipmentItems = Array.isArray(saved.selected_equipment) ? saved.selected_equipment : [];
+                const eqTot = equipmentItems.reduce((sum, equipment) => sum + Number(equipment.price || 0) * (Number(equipment.qty) || 1), 0);
+                const previousGuests = Number(saved.guest_count) || guests;
+                const foodCredit = Number(saved.food_removal_credit || 0) * guests / previousGuests;
+                const hasSelections = (Array.isArray(saved.selected_food) && saved.selected_food.length > 0) ||
+                    (Array.isArray(saved.selected_services) && saved.selected_services.length > 0) ||
+                    (Array.isArray(saved.selected_equipment) && saved.selected_equipment.length > 0) ||
+                    foodCredit > 0;
+
+                if (hasSelections) {
+                    basePackageTotal = Math.max(0, basePackageTotal + foodTot + srvTot + eqTot - foodCredit);
+                } else if (Number(saved.estimated_total) > 0) {
+                    basePackageTotal = Number(saved.estimated_total);
+                }
+
+                const formatMoney = amount => `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+                const foodTotalEl = document.getElementById('custom-food-group-total');
+                const serviceTotalEl = document.getElementById('custom-services-group-total');
+                const equipmentTotalEl = document.getElementById('custom-equipment-group-total');
+                const estimateEl = document.getElementById('custom-choice-estimated-total');
+                const creditEl = document.getElementById('custom-choice-credit');
+                if (foodTotalEl) foodTotalEl.innerText = `Upgrades ${formatMoney(foodTot)}`;
+                if (serviceTotalEl) serviceTotalEl.innerText = formatMoney(srvTot);
+                if (equipmentTotalEl) equipmentTotalEl.innerText = formatMoney(eqTot);
+                if (estimateEl) estimateEl.innerText = formatMoney(basePackageTotal);
+                if (creditEl) creditEl.innerText = `Includes ${formatMoney(foodCredit)} menu credit.`;
             }
 
             total = basePackageTotal;
@@ -901,11 +994,25 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     const mapWait = window.setInterval(() => {
+        if (window.googleMapsAuthorizationFailed) {
+            window.clearInterval(mapWait);
+            return;
+        }
         if (!window.google?.maps) return;
         window.clearInterval(mapWait);
-        initVenueMap();
+        try {
+            initVenueMap();
+        } catch (error) {
+            console.error('Could not initialize Google Maps venue picker:', error);
+            if (venuePinStatus) venuePinStatus.textContent = 'The map could not be initialized. Check the browser console for details.';
+        }
     }, 100);
-    window.setTimeout(() => window.clearInterval(mapWait), 10000);
+    window.setTimeout(() => {
+        window.clearInterval(mapWait);
+        if (!window.google?.maps && venuePinStatus && !venuePinStatus.textContent) {
+            window.googleMapsLoadFailed?.();
+        }
+    }, 10000);
 
     function loadExistingLocation() {
         if (provinceSelect && provinceSelect.tagName === 'SELECT' && !provinceSelect.value) {
@@ -1484,11 +1591,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // 6. Exact venue pin and reverse-geocoded address
                 const pinValid = !!(venueHidden?.value && venueLat?.value && venueLng?.value);
-                check('venue_pin', pinValid);
-                if (!pinValid) document.getElementById('err-venue')?.classList.add('show');
+                check('venue_pin', pinValid || window.localDevelopment);
+                if (!pinValid && !window.localDevelopment) document.getElementById('err-venue')?.classList.add('show');
 
                 // 7. Delivery fee coverage
-                if (window.deliveryFeeStatus === "error") {
+                if (window.deliveryFeeStatus === "error" && !window.localDevelopment) {
                     console.warn('[BookingWizard] FAILED: out of delivery coverage');
                     isValid = false;
                     if (window.Swal) {
@@ -1579,6 +1686,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 } else {
                     console.log('[BookingWizard] All valid — submitting form to server');
+                    try {
+                        sessionStorage.removeItem(getDetailsStorageKey());
+                    } catch (storageError) {
+                        console.warn('Could not clear saved event details:', storageError);
+                    }
                 }
             } catch (err) {
                 console.error('Fatal validation error:', err);

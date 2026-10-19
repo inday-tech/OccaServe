@@ -4,31 +4,6 @@
 
 {% block extra_css %}
 <style>
-    .dashboard-marketplace-cta {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        width: 100%;
-        padding: 0.85rem;
-        background: #fff7ed;
-        border: 1px solid #fed7aa;
-        color: #c2410c;
-        text-decoration: none;
-        border-radius: 8px;
-        font-size: 0.95rem;
-        font-weight: 700;
-        transition: background-color 0.2s, border-color 0.2s, color 0.2s;
-    }
-
-    .dashboard-marketplace-cta:hover,
-    .dashboard-marketplace-cta:focus-visible {
-        background: #ffedd5;
-        border-color: #fdba74;
-        color: #9a3412;
-        outline: none;
-    }
-
     /* ── PREMIUM STAT CARDS (Text-Only, Colored Numbers) ── */
     .premium-stats-grid {
         display: grid;
@@ -44,6 +19,7 @@
     }
 
     .premium-stat-card {
+        min-width: 0;
         background: #fff;
         border-radius: 12px;
         padding: 1.25rem 1.5rem;
@@ -52,13 +28,22 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
+        color: inherit;
+        text-decoration: none;
+        cursor: pointer;
         transition: all 0.2s ease;
     }
 
-    .premium-stat-card:hover {
+    .premium-stat-card:hover,
+    .premium-stat-card:focus-visible {
         transform: translateY(-2px);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
         border-color: var(--primary-color);
+    }
+
+    .premium-stat-card:focus-visible {
+        outline: 3px solid rgba(249, 115, 22, 0.25);
+        outline-offset: 2px;
     }
 
     .premium-stat-title {
@@ -614,6 +599,55 @@
     #onboarding-grid > div:last-child > .panel:first-child > div:last-child { padding:1rem !important; }
     .premium-stat-card { padding:1rem 1.1rem; }
     .premium-stat-value { font-size:1.25rem; }
+    @media (max-width:640px) {
+        .dash-header h1 { font-size:1.3rem !important; }
+        .premium-stats-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; }
+        .premium-stat-card { padding:.85rem .8rem; border-radius:10px; }
+        .premium-stat-title { font-size:.63rem; letter-spacing:.035em; }
+        .premium-stat-value { font-size:1.12rem; overflow-wrap:anywhere; }
+        .premium-stat-subtitle { font-size:.68rem; line-height:1.3; }
+        .spotlight-info,.spotlight-progress { padding:1rem; }
+        .spotlight-title { font-size:1rem; overflow-wrap:anywhere; }
+        .steps-row { gap:.25rem; padding:0; }
+        .steps-row::before { left:26px; right:26px; top:18px; }
+        .step-label { font-size:.62rem; text-align:center; }
+        .data-grid { grid-template-columns:minmax(0,1fr); }
+        .data-grid > .panel { min-width:0; overflow:hidden; }
+        .data-grid .data-table {
+            display:block !important;
+            width:100% !important;
+            min-width:0 !important;
+            max-width:100% !important;
+            table-layout:fixed !important;
+        }
+        .data-grid .data-table thead { display:none !important; }
+        .data-grid .data-table tbody { display:grid !important; width:100% !important; }
+        .data-grid .data-table tbody tr {
+            display:grid !important;
+            grid-template-columns:minmax(0,1fr) auto;
+            width:100% !important;
+            padding:.45rem .65rem;
+            border-bottom:1px solid #f1f5f9;
+        }
+        .data-grid .data-table td {
+            display:block !important;
+            min-width:0;
+            padding:.3rem .35rem !important;
+            white-space:normal !important;
+            font-size:.72rem;
+        }
+        .data-grid .data-table td:first-child { grid-column:1; grid-row:1; }
+        .data-grid .data-table td:nth-child(2) { grid-column:1; grid-row:2; }
+        .data-grid .data-table td:nth-child(3) { grid-column:1; grid-row:3; }
+        .data-grid .data-table td:last-child {
+            grid-column:2;
+            grid-row:1 / span 3;
+            align-self:center;
+        }
+        .booking-name,.booking-sub { overflow-wrap:anywhere; }
+        .data-grid .panel-header { padding:.85rem 1rem; }
+        .data-grid .panel-header h3 { font-size:.92rem; }
+    }
 </style>
 {% endblock %}
 
@@ -626,11 +660,11 @@
     <div class="dash-header" style="padding:1.5rem;background:#fff;border-radius:1.1rem;border:1px solid #f1f5f9;box-shadow:0 4px 18px rgba(15,23,42,.03);margin-bottom:1rem;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center;">
         <div style="position:relative;z-index:1;max-width:650px;">
             <div style="display:inline-block;padding:4px 9px;background:#fff7ed;color:#c2410c;border-radius:100px;font-size:.68rem;font-weight:700;margin-bottom:.65rem;letter-spacing:.04em;text-transform:uppercase;">Customer Dashboard</div>
-            <h1 style="color:#0f172a;font-size:1.65rem;font-weight:800;margin-bottom:.45rem;letter-spacing:-.03em;line-height:1.2;">
+            <h1 style="color:#0f172a;font-size:1.45rem;font-weight:800;margin-bottom:.45rem;letter-spacing:-.03em;line-height:1.25;">
                 Welcome to OccaServe, {{ user.first_name or 'there' }}
             </h1>
-            <p style="color: #64748b; font-size: 1.05rem; font-weight: 400; line-height: 1.6; margin: 0;">
-                Discover top-tier caterers, book curated packages, and rent premium event equipment—all in one seamless platform. Let's make your next event unforgettable.
+            <p style="color: #64748b; font-size: 0.9rem; font-weight: 400; line-height: 1.55; margin: 0;">
+                Find caterers, compare packages, and manage your event in one place.
             </p>
         </div>
     </div>
@@ -657,11 +691,6 @@
                         <div style="flex: 1;">
                             <h4 style="margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 700; color: #0f172a;">{{ 'Your profile is complete' if profile_completion == 100 else 'Complete your profile' }}</h4>
                             <p style="margin: 0; font-size: 0.85rem; color: #64748b; line-height: 1.4;">{{ 'You are ready to browse caterers and request a booking.' if profile_completion == 100 else 'Add your contact details so caterers can reach you.' }}</p>
-                            {% if profile_completion < 100 %} 
-                            <a href="/customer/profile" style="display: inline-block; margin-top: 10px; font-size: 0.8rem; font-weight: 600; color: var(--primary-color); text-decoration: none;">Update Profile <i class="fas fa-arrow-right" style="font-size: 0.7rem; margin-left: 4px;"></i></a>
-                            {% else %}
-                            <a href="/customer/marketplace" style="display: inline-block; margin-top: 10px; font-size: 0.8rem; font-weight: 600; color: var(--primary-color); text-decoration: none;">Browse Caterers <i class="fas fa-arrow-right" style="font-size: 0.7rem; margin-left: 4px;"></i></a>
-                            {% endif %}
                         </div>
                     </div>
                     
@@ -694,11 +723,6 @@
 
                 </div>
 
-                <div style="margin-top: 2rem;">
-                    <a href="/customer/marketplace" class="dashboard-marketplace-cta">
-                        <i class="fas fa-store"></i> Explore Marketplace
-                    </a>
-                </div>
             </div>
         </div>
 
@@ -780,9 +804,6 @@
                         </div>
                     {% endif %}
 
-                    <a href="/customer/marketplace" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.65rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; font-size: 0.8rem; font-weight: 700; color: #475569; text-decoration: none; margin-top: 0.25rem; transition: all 0.2s;" onmouseover="this.style.background='#fff'; this.style.borderColor='var(--primary-color)'; this.style.color='var(--primary-color)';" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='#475569';">
-                        <i class="fas fa-compass"></i> Discover More on Marketplace
-                    </a>
                 </div>
             </div>
         </div>
@@ -830,47 +851,46 @@
     <!-- ============================================== -->
     <!-- Page Header -->
     <div class="dash-header">
-        <div><h1 style="font-size:1.5rem;margin:0 0 .25rem;">Welcome back, {{ user.first_name or 'there' }}!</h1>
+        <div><h1 style="font-size:1.45rem;margin:0 0 .25rem;">Welcome back, {{ user.first_name or 'there' }}!</h1>
         <p style="font-size:.85rem;margin:0;color:#64748b;">Your events and the next actions are here.</p></div>
     </div>
 
     <div class="customer-next-step">
         <div><span class="customer-next-step-label">{{ 'Next step' if dashboard_booking else 'Keep planning' }}</span><strong class="customer-next-step-title">{{ 'Review your active event' if dashboard_booking and dashboard_booking.status in ['confirmed','preparing','processing','out_for_delivery'] else ('Check your booking request' if dashboard_booking else 'Ready to plan an event?') }}</strong><p class="customer-next-step-copy">{{ 'Check the status, messages, and payment details for your current booking.' if dashboard_booking else 'Browse caterers and compare available packages.' }}</p></div>
-        <a class="customer-next-step-link" href="{{ '/customer/bookings/manage/' ~ dashboard_booking.id if dashboard_booking else '/customer/marketplace' }}">{{ 'Open Event' if dashboard_booking else 'Find Caterers' }} <i class="fas fa-arrow-right"></i></a>
+        <a class="customer-next-step-link" href="{{ ('/customer/bookings?open_detail=' ~ dashboard_booking.id) if dashboard_booking else '/customer/marketplace' }}">{{ 'Open Event' if dashboard_booking else 'Find Caterers' }} <i class="fas fa-arrow-right"></i></a>
     </div>
 
     <!-- Stat Cards -->
     <div class="premium-stats-grid">
-        <div class="premium-stat-card">
+        <a href="/customer/bookings?view=upcoming" class="premium-stat-card" aria-label="View upcoming events">
             <div class="premium-stat-title">UPCOMING</div>
             <div class="premium-stat-value" style="color: #f97316;">{{ upcoming_count }}</div>
-            <div class="premium-stat-subtitle">Scheduled events</div>
-        </div>
+            <div class="premium-stat-subtitle">Events with a future date</div>
+        </a>
 
-        <div class="premium-stat-card">
+        <a href="/customer/bookings" class="premium-stat-card" aria-label="View all bookings">
             <div class="premium-stat-title">BOOKINGS</div>
             <div class="premium-stat-value" style="color: #3b82f6;">{{ total_bookings }}</div>
-            <div class="premium-stat-subtitle">Total engagements</div>
-        </div>
+            <div class="premium-stat-subtitle">All event requests</div>
+        </a>
 
-        <div class="premium-stat-card">
+        <a href="/customer/reviews" class="premium-stat-card" aria-label="View your reviews">
             <div class="premium-stat-title">REVIEWS</div>
             <div class="premium-stat-value" style="color: #10b981;">{{ reviews_count }}</div>
-            <div class="premium-stat-subtitle">Feedback given</div>
-        </div>
+            <div class="premium-stat-subtitle">Reviews you have shared</div>
+        </a>
 
-        <div class="premium-stat-card">
+        <a href="/customer/payments" class="premium-stat-card" aria-label="View your payment history">
             <div class="premium-stat-title">AMOUNT SPENT</div>
-            <div class="premium-stat-value" style="color: #8b5cf6;">₱{{ "{:,.0f}".format(total_spent) }}</div>
-            <div class="premium-stat-subtitle">Total expenses</div>
-        </div>
+            <div class="premium-stat-value" style="color: #8b5cf6;">₱{{ "{:,.2f}".format(total_spent) }}</div>
+            <div class="premium-stat-subtitle">Includes proof awaiting review</div>
+        </a>
     </div>
 
     <!-- Event Spotlight -->
     {% if latest_booking %}
     {% set lb = latest_booking %}
     {% set is_fast_track = lb.transaction_type == 'fast_track' %}
-    {% set is_food_order = lb.document_type == 'invoice' %}
     {% set food_items = lb.selected_items | rejectattr('menu_item_id', 'none') | list if lb.selected_items else [] %}
     {% set equipment_items = lb.selected_items | rejectattr('equipment_id', 'none') | list if lb.selected_items else [] %}
     {% set service_items = lb.selected_items | rejectattr('service_id', 'none') | list if lb.selected_items else [] %}
@@ -884,8 +904,6 @@
         {% set display_title = service_items[0].service.name %}
     {% elif is_rental_only %}
         {% set display_title = equipment_items[0].equipment.name ~ (' (and more)' if equipment_items|length > 1 else '') %}
-    {% elif is_food_order %}
-        {% set display_title = 'Food Order' %}
     {% elif lb.event_name %}
         {% set display_title = lb.event_name %}
     {% endif %}
@@ -905,7 +923,7 @@
                         TBD' }}</span></div>
             </div>
             <div style="margin-top: 1.25rem;">
-                <a href="/customer/bookings/manage/{{ latest_booking.id }}" class="btn-action-primary spotlight-manage-btn"
+                <a href="/customer/bookings?open_detail={{ latest_booking.id }}" class="btn-action-primary spotlight-manage-btn"
                     style="text-decoration: none;">Manage Booking</a>
             </div>
         </div>
@@ -956,7 +974,6 @@
                 <tbody>
                     {% for b in recent_bookings %}
                     {% set is_fast_track = b.transaction_type == 'fast_track' %}
-                    {% set is_food_order = b.document_type == 'invoice' %}
                     {% set food_items = b.selected_items | rejectattr('menu_item_id', 'none') | list if b.selected_items else [] %}
                     {% set equipment_items = b.selected_items | rejectattr('equipment_id', 'none') | list if b.selected_items else [] %}
                     {% set service_items = b.selected_items | rejectattr('service_id', 'none') | list if b.selected_items else [] %}
@@ -970,8 +987,6 @@
                         {% set display_title = service_items[0].service.name %}
                     {% elif is_rental_only %}
                         {% set display_title = equipment_items[0].equipment.name ~ (' (and more)' if equipment_items|length > 1 else '') %}
-                    {% elif is_food_order %}
-                        {% set display_title = 'Food Order' %}
                     {% elif b.event_name %}
                         {% set display_title = b.event_name %}
                     {% endif %}
@@ -979,10 +994,9 @@
                     {% set booking_type_label = 'Package' %}
                     {% if is_rental_only %} {% set booking_type_label = 'Rental' %}
                     {% elif is_service_only %} {% set booking_type_label = 'Service' %}
-                    {% elif is_food_order %} {% set booking_type_label = 'Food Order' %}
                     {% elif is_fast_track %} {% set booking_type_label = 'Custom' %} {% endif %}
 
-                    <tr style="cursor:pointer" onclick="location.href='/customer/bookings/manage/{{ b.id }}'">
+                    <tr style="cursor:pointer" onclick="location.href='/customer/bookings?open_detail={{ b.id }}'">
                         <td>
                             <div class="booking-name">{{ display_title or 'Booking' }}</div>
                             <div class="booking-sub"><span class="type-chip" style="font-size: 0.65rem; padding: 1px 6px; margin-right: 4px;">{{ booking_type_label }}</span> {{ b.caterer.business_name if b.caterer else 'Unknown' }}</div>

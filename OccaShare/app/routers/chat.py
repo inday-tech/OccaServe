@@ -378,38 +378,47 @@ async def get_chat_context(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    """Retrieve the most recent active booking context for this peer."""
-    # Find the peer user to check role
+    """Retrieve the latest active booking context for a customer-caterer chat."""
     peer = db.query(models.User).get(peer_id)
     if not peer:
         return {"has_context": False}
 
-    # If chatting with a caterer, look for active bookings
     if peer.role == 'caterer':
         caterer_profile = peer.caterer_profile
         if not caterer_profile:
             return {"has_context": False}
-            
-        booking = db.query(models.Booking).filter(
+
+        bookings = db.query(models.Booking).filter(
             models.Booking.user_id == current_user.id,
             models.Booking.caterer_id == caterer_profile.id,
-            models.Booking.status != 'cancelled'
-        ).order_by(models.Booking.created_at.desc()).first()
+            models.Booking.status.notin_(["cancelled", "draft"]),
+            models.Booking.customer_archived.is_not(True),
+            models.Booking.customer_deleted.is_not(True),
+        ).order_by(func.coalesce(models.Booking.updated_at, models.Booking.created_at).desc()).all()
 
-        if booking:
+        for booking in bookings:
+            selected_items = booking.selected_items or []
+            has_menu_item = any(item.menu_item_id for item in selected_items)
+            has_non_food_item = any(item.equipment_id or item.service_id for item in selected_items)
+            if booking.document_type == "invoice" and not has_non_food_item:
+                event_label = f"{booking.event_type or ''} {booking.event_name or ''}".casefold()
+                if has_menu_item or not any(term in event_label for term in ("service", "rental", "equipment")):
+                    continue
+
             try:
                 from app.constants.booking_constants import entry_method_from_source
                 entry_method = entry_method_from_source(booking.booking_source)
             except Exception:
-                entry_method = 'online'
+                entry_method = "online"
 
             return {
                 "has_context": True,
                 "booking_id": booking.id,
+                "booking_ref": booking.booking_ref or booking.display_booking_ref or f"BK-{booking.id:03d}",
                 "status": booking.status,
-                "event_name": booking.event_name or "Event",
-                "type": "package" if booking.package_id else "alacarte",
-                "entry_method": entry_method
+                "event_name": booking.event_name or booking.event_type or "Event",
+                "type": "package" if booking.package_id else "custom",
+                "entry_method": entry_method,
             }
 
     return {"has_context": False}

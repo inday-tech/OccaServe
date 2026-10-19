@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from ..core.templates import templates
+from ..core.templates import is_local_development_host, templates
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import Optional
@@ -30,6 +30,39 @@ except ImportError:
 
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
+
+
+def _cart_item_types(cart_data: Optional[str], items: str = "") -> tuple[bool, bool, bool]:
+    has_food = has_equipment = has_service = False
+    if cart_data:
+        try:
+            cart_items = json.loads(cart_data)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="Invalid cart data.") from exc
+        if not isinstance(cart_items, list):
+            raise HTTPException(status_code=400, detail="Invalid cart data.")
+        for item in cart_items:
+            if not isinstance(item, dict):
+                raise HTTPException(status_code=400, detail="Invalid cart item.")
+            item_type = item.get("type", "Menu")
+            if not isinstance(item_type, str):
+                raise HTTPException(status_code=400, detail="Invalid cart item type.")
+            item_type = item_type.casefold()
+            if item_type not in {"menu", "equipment", "service"}:
+                raise HTTPException(status_code=400, detail="Invalid cart item type.")
+            has_equipment |= item_type == "equipment"
+            has_service |= item_type == "service"
+            has_food |= item_type == "menu"
+    elif items:
+        for part in items.split(","):
+            item_id = part.strip().split(":", 1)[0]
+            if item_id.startswith("e_"):
+                has_equipment = True
+            elif item_id.startswith("s_"):
+                has_service = True
+            elif item_id:
+                has_food = True
+    return has_food, has_equipment, has_service
 
 UPLOAD_DIR = "app/static/uploads/verification"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -79,7 +112,7 @@ def cancel_expired_draft_if_due(db: Session, booking: models.Booking) -> bool:
         title="Draft booking cancelled",
         message="Your unfinished booking was automatically cancelled after 24 hours. You can start a new booking anytime.",
         type="warning",
-        link="/customer/orders",
+        link="/customer/bookings",
     ))
     db.commit()
     return True
@@ -284,6 +317,17 @@ async def alacarte_checkout_page(
             elif b_item.service_id:
                 s_ids.append(b_item.service_id)
                 item_quantities[f"s_{b_item.service_id}"] = b_qty
+
+    if booking and booking.document_type == "invoice":
+        return RedirectResponse(
+            url="/customer/bookings?notice=Standalone+food+orders+are+no+longer+available.",
+            status_code=303
+        )
+    if m_ids:
+        return RedirectResponse(
+            url="/customer/marketplace?notice=Standalone+food+orders+are+no+longer+available.",
+            status_code=303
+        )
             
     menu_items = db.query(models.MenuItem).filter(
         models.MenuItem.id.in_(m_ids),
@@ -409,6 +453,13 @@ async def alacarte_checkout_draft(
         is_complete, _, missing = is_customer_profile_complete(user)
         if not is_complete:
             return {"success": False, "message": f"Please complete your profile before booking. Required: {', '.join(missing)}"}
+
+    has_food, has_equipment, has_services = _cart_item_types(cart_data, items)
+    if has_food or not has_equipment and not has_services:
+        return JSONResponse(
+            {"success": False, "message": "Standalone food orders are no longer available. Food remains available through catering packages."},
+            status_code=410
+        )
     
     try:
         event_date_obj = date.fromisoformat(delivery_date)
@@ -427,24 +478,7 @@ async def alacarte_checkout_draft(
             return {"success": False, "message": avail_check["message"]}
 
         # Determine Booking Type for Draft
-        is_rental = False
-        has_services = False
-        has_food = False
-        if cart_data:
-            cart_items = json.loads(cart_data)
-            for item in cart_items:
-                i_type = item.get('type', 'Menu')
-                if i_type == 'Equipment': is_rental = True
-                elif i_type == 'Service': has_services = True
-                else: has_food = True
-        elif items:
-            for id_str in items.split(","):
-                id_str = id_str.strip()
-                if not id_str: continue
-                if id_str.startswith('e_'): is_rental = True
-                elif id_str.startswith('s_'): has_services = True
-                else: has_food = True
-                
+        is_rental = has_equipment
         is_mixed = ((has_food and is_rental) or (has_food and has_services) or (is_rental and has_services))
         
         if is_mixed:
@@ -685,25 +719,12 @@ async def alacarte_checkout_submit(
     if user.role != "customer":
         raise HTTPException(status_code=403, detail="Only customers can create online bookings.")
 
-    # Check if transaction contains equipment or services
-    has_equipment = False
-    has_service = False
-    if cart_data:
-        try:
-            cart_items_check = json.loads(cart_data)
-            for itm in cart_items_check:
-                t = itm.get('type', 'Menu')
-                if t == 'Equipment': has_equipment = True
-                elif t == 'Service': has_service = True
-        except Exception:
-            pass
-    elif items:
-        for item_part in items.split(","):
-            item_part = item_part.strip()
-            if not item_part: continue
-            id_str = item_part.split(":", 1)[0]
-            if id_str.startswith('e_'): has_equipment = True
-            elif id_str.startswith('s_'): has_service = True
+    has_food, has_equipment, has_service = _cart_item_types(cart_data, items)
+    if has_food or not has_equipment and not has_service:
+        return JSONResponse(
+            {"success": False, "message": "Standalone food orders are no longer available. Food remains available through catering packages."},
+            status_code=410
+        )
 
     # STRICT GATE: Verification Matrix Rule
     # Menu only -> No verification required
@@ -1246,6 +1267,7 @@ async def customize_package_page(
     request: Request,
     caterer_id: int,
     package_id: Optional[int] = None,
+    guest_count: Optional[int] = None,
     db: Session = Depends(database.get_db)
 ):
     caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
@@ -1339,7 +1361,7 @@ async def customize_package_page(
     grouped_inclusions = get_package_grouped_inclusions(package)
 
     # Initial guest count from session or package min_guests or caterer min_pax
-    raw_guest_count = sess_data.get("guest_count") or package.min_guests or caterer.min_pax or 50
+    raw_guest_count = guest_count or sess_data.get("guest_count") or package.min_guests or caterer.min_pax or 50
     try:
         initial_guest_count = min(max(int(raw_guest_count), int(package.min_guests or caterer.min_pax or 10)), 999999)
     except (ValueError, TypeError):
@@ -1583,7 +1605,7 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
         return RedirectResponse(url="/customer/dashboard?error_msg=Booking+not+found", status_code=303)
 
     if cancel_expired_draft_if_due(db, booking):
-        return RedirectResponse(url="/customer/orders?error_msg=Draft+expired", status_code=303)
+        return RedirectResponse(url="/customer/bookings?error_msg=Draft+expired", status_code=303)
         
     # Valid in-progress statuses before payment is completed
     valid_statuses = [
@@ -1801,8 +1823,8 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     # Preserve the guest count entered on the customization step when the
     # user continues to event details. A new draft has no Booking row yet.
     initial_guest_count = (
-        (booking.guest_count if booking else None)
-        or data.get("guest_count")
+        data.get("guest_count")
+        or (booking.guest_count if booking else None)
         or (package.min_guests if package else None)
         or caterer.min_pax
         or 50
@@ -1867,6 +1889,7 @@ async def step_details_submit(
     other_event_type: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    is_local_development = is_local_development_host(request.url.hostname or "")
     theme_motif = (theme_motif or "").strip()
     celebrant_name = (celebrant_name or "").strip()
 
@@ -1985,7 +2008,7 @@ async def step_details_submit(
         ):
             raise HTTPException(status_code=404, detail="Booking not found")
         if cancel_expired_draft_if_due(db, existing_booking):
-            return RedirectResponse(url="/customer/orders?error_msg=Draft+expired", status_code=303)
+            return RedirectResponse(url="/customer/bookings?error_msg=Draft+expired", status_code=303)
         if existing_booking and existing_booking.status not in ["draft", "pending", "pending_quotation", "awaiting_caterer"]:
             print("[StepDetails REJECT] Booking is locked")
             return RedirectResponse(url=f"{redirect_base}?booking_error=Booking+is+already+locked+and+cannot+be+modified.", status_code=303)
@@ -2008,9 +2031,19 @@ async def step_details_submit(
     # Construct venue address if missing from hidden field
     if not venue_address and province and city and barangay:
         venue_address = f"{barangay}, {city}, {province}"
-    if (not venue_address or venue_latitude is None or venue_longitude is None
-            or not -90 <= venue_latitude <= 90 or not -180 <= venue_longitude <= 180):
+    venue_location_valid = bool(
+        venue_address
+        and venue_latitude is not None
+        and venue_longitude is not None
+        and -90 <= venue_latitude <= 90
+        and -180 <= venue_longitude <= 180
+    )
+    if not venue_location_valid and not is_local_development:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Please+pin+the+exact+venue+location+on+the+map.", status_code=303)
+    if not venue_location_valid:
+        venue_address = ""
+        venue_latitude = None
+        venue_longitude = None
 
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
@@ -2468,7 +2501,7 @@ async def step_kyc_page(booking_id: int, request: Request, return_to: Optional[s
         raise HTTPException(status_code=404, detail="Booking not found")
 
     if cancel_expired_draft_if_due(db, booking):
-        return RedirectResponse(url="/customer/orders?error_msg=Draft+expired", status_code=303)
+        return RedirectResponse(url="/customer/bookings?error_msg=Draft+expired", status_code=303)
 
     # Dynamic Routing for Fast-Track (only when not explicitly directed to KYC)
     if booking.transaction_type == 'fast_track' and not return_to:
@@ -2518,7 +2551,7 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
         raise HTTPException(status_code=404, detail="Booking not found")
 
     if cancel_expired_draft_if_due(db, booking):
-        return RedirectResponse(url="/customer/orders?error_msg=Draft+expired", status_code=303)
+        return RedirectResponse(url="/customer/bookings?error_msg=Draft+expired", status_code=303)
     
     # Dynamic Routing for Fast-Track
     if booking.transaction_type == 'fast_track' and booking.document_type == 'invoice':
@@ -3640,7 +3673,7 @@ async def send_booking_message(
     notif_msg   = f"{sender_name} sent you a message about {booking_ref}."
     notif_link  = (
         f"/caterer/bookings" if is_sender_customer
-        else f"/customer/bookings/manage/{booking_id}"
+        else f"/customer/bookings?open_detail={booking_id}&open_chat=1"
     )
     db.add(models.Notification(
         user_id=receiver_id,

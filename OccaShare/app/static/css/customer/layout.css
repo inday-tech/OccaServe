@@ -176,6 +176,7 @@ html, body {
     border-left: 3px solid var(--primary-color);
 }
 .nav-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.nav-item[href="/customer/archives"] .nav-icon { color: #dc2626; }
 .nav-label { flex: 1; }
 .nav-badge { font-size: 0.6rem; font-weight: 900; background: #f59e0b; color: #fff; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
 
@@ -662,6 +663,5 @@ html, body {
 
 
 @media (max-width: 480px) { .premium-dropdown { position: fixed !important; top: 62px !important; left: 2% !important; right: 2% !important; width: 96% !important; max-height: 70vh !important; overflow-y: auto !important; z-index: 9999 !important; } }
-
 
 

@@ -642,7 +642,7 @@
             <div class="sidebar-card">
                 
                 <div class="sidebar-title">
-                    Order Details
+                    {{ 'Menu information' if catalog_type == 'menu' else 'Booking details' }}
                 </div>
 
                 <div>
@@ -670,6 +670,10 @@
                     {% endif %}
                 </div>
 
+                {% if catalog_type == 'menu' %}
+                <p style="color:#64748b;font-size:.86rem;line-height:1.5;">This menu item is available through a catering package. Browse the caterer’s packages to include it in your event.</p>
+                <a class="btn-primary" href="/customer/marketplace/{{ caterer.id }}#packages" style="display:block;text-align:center;text-decoration:none;">View catering packages</a>
+                {% else %}
                 <!-- Unified Choose Size -->
                 {% if catalog_type == 'menu' and (item.pricing_type == 'weight_based' or item.pricing_type == 'size_based') %}
                 <div style="margin-top: 0.5rem;">
@@ -705,11 +709,12 @@
 
                 <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
                     <button id="side-add-btn" class="btn-primary" onclick="toggleCartItem()">
-                        <i class="fas fa-shopping-cart"></i> Add to Order
+                        <i class="fas fa-calendar-check"></i> Add to Booking
                     </button>
                     <button class="btn-secondary" onclick="buyNow()">Buy Now</button>
                     <div class="secure-text"><i class="fas fa-shield-alt"></i> Secure checkout and safe payments.</div>
                 </div>
+                {% endif %}
             </div>
 
             <div class="sidebar-card" style="padding: 1.25rem;">
@@ -807,7 +812,7 @@
                 btn.innerHTML = '<i class="fas fa-check"></i> Added to Order';
             } else {
                 btn.style.background = 'var(--hub-brand)';
-                btn.innerHTML = '<i class="fas fa-shopping-cart"></i> Add to Order';
+                btn.innerHTML = '<i class="fas fa-calendar-check"></i> Add to Booking';
             }
         }
     }
@@ -860,7 +865,7 @@
         
         const inCart = cart.some(i => i.id === ITEM_ID && (i.type ? i.type === TYPE : true));
         if (!inCart) toggleCartItem();
-        alert("Added to order! Please proceed to checkout in your cart.");
+        alert("Added to your booking request. Continue from your cart.");
     }
 
     document.addEventListener('DOMContentLoaded', () => {

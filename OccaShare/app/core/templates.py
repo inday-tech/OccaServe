@@ -104,9 +104,34 @@ templates.env.globals["static_asset_version"] = static_asset_version
 templates.env.filters["hex_to_rgb"] = hex_to_rgb
 
 # Google Maps API Key global function
-def google_maps_api_key():
-    return os.getenv("GOOGLE_MAPS_API_KEY", "AIzaSyBpFEUgMDrteQk_BIYKSRRID1mhuCEEykY")
+def is_local_development_host(host: str) -> bool:
+    host = (host or "").lower()
+    return host in {"localhost", "127.0.0.1", "::1"} or host.endswith(".localhost")
+
+
+def _google_maps_api_key_for_host(host: str) -> str:
+    if is_local_development_host(host):
+        local_key = os.getenv("GOOGLE_MAPS_LOCAL_API_KEY", "").strip()
+        if local_key:
+            return local_key
+    return os.getenv("GOOGLE_MAPS_API_KEY", "").strip()
+
+
+@pass_context
+def local_development(context):
+    request = context.get("request")
+    host = getattr(getattr(request, "url", None), "hostname", "") or ""
+    return is_local_development_host(host)
+
+
+@pass_context
+def google_maps_api_key(context):
+    request = context.get("request")
+    host = getattr(getattr(request, "url", None), "hostname", "") or ""
+    return _google_maps_api_key_for_host(host)
+
 
 templates.env.globals["google_maps_api_key"] = google_maps_api_key
+templates.env.globals["local_development"] = local_development
 
 # Trigger template reload and verify changes

@@ -356,7 +356,7 @@
         const type = card?.dataset.type?.toLowerCase() || '';
         const fallback = title.includes('message') || type === 'message' ? '/customer/messages'
             : title.includes('review') || type === 'review' ? '/customer/reviews'
-            : title.includes('order') ? '/customer/orders'
+            : title.includes('order') ? '/customer/bookings'
             : ['booking', 'payment'].includes(type) || /booking|quotation|payment|event|contract/.test(title) ? '/customer/bookings'
             : title.includes('profile') || type === 'verification' ? '/customer/profile'
             : '/customer/dashboard';

@@ -3059,45 +3059,23 @@ window.toggleInventoryItem = function(id, name, price, type, pricingUnit, qtyId,
     window.updateCartUI();
 };
 
-// ---- Toggle item from the ORIGINAL dish grid (legacy) ----
-window.toggleMenuItem = function(id, name, price) {
-    const idx = window.selectedItems.findIndex(i => String(i.id) === String(id));
-    const btn = document.getElementById('btn-add-' + id);
-    const qty = document.getElementById('qty-' + id);
-    const qtyVal = qty ? (parseInt(qty.value) || 1) : 1;
-
-    if (idx === -1) {
-        window.selectedItems.push({ id: String(id), name, price: parseFloat(price), qty: qtyVal });
-        if (btn) {
-            btn.classList.add('selected');
-            btn.innerHTML = '<i class="fas fa-check"></i> <span class="btn-text">Added</span>';
-        }
-        if (qty) qty.disabled = true;
-    } else {
-        window.selectedItems.splice(idx, 1);
-        if (btn) {
-            btn.classList.remove('selected');
-            btn.innerHTML = '<i class="fas fa-plus"></i> <span class="btn-text">Add to Order</span>';
-        }
-        if (qty) qty.disabled = false;
-    }
-    window.updateCartUI();
-};
-
 // ---- Checkout: redirect to alacarte checkout ----
 window.checkoutOrder = function() {
-    if (window.selectedItems.length === 0) return;
+    const allowedTypes = ['Equipment', 'Service'];
+    if (
+        window.selectedItems.length === 0
+        || window.selectedItems.some(item => !allowedTypes.includes(item.type))
+    ) return;
     const catererId = {{ caterer.id }};
 
-    const menuIds = window.selectedItems.map(i => {
+    const bookingItems = window.selectedItems.map(i => {
         const qty = parseInt(i.qty) || 1;
         if (i.type === 'Equipment') return 'e_' + i.id + ':' + qty;
         if (i.type === 'Service') return 's_' + i.id + ':' + qty;
-        return 'm_' + i.id + ':' + qty;
     }).join(',');
     sessionStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
     localStorage.setItem('alacarte_cart_' + catererId, JSON.stringify(window.selectedItems));
-    window.location.href = `/bookings/alacarte/checkout/${catererId}?items=${menuIds}`;
+    window.location.href = `/bookings/alacarte/checkout/${catererId}?items=${bookingItems}`;
 };
 
 // ---- Init on load ----
@@ -3106,7 +3084,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const catererId = {{ caterer.id }};
         const stored = sessionStorage.getItem('alacarte_cart_' + catererId) || localStorage.getItem('alacarte_cart_' + catererId);
         if (stored) {
-            window.selectedItems = JSON.parse(stored);
+            window.selectedItems = JSON.parse(stored).filter(item => ['Equipment', 'Service'].includes(item.type));
         }
     } catch(e) {}
     window.updateCartUI();
@@ -3471,14 +3449,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${priceDisplay}
                     </div>
 
-                    <div style="display:flex; align-items:center; gap:12px; margin-top: 4px;">
-                        ${item.price > 0 || (item.variants && item.variants.length > 0) || (item.weight_prices && item.weight_prices.length > 0) || (item.size_prices && item.size_prices.length > 0) ? `
-                            ${qtyHtml}
-                            <button class="btn-hub-main ${isSelected ? 'selected' : ''}" style="flex:1; padding: 12px; font-size: 0.9rem; font-weight:800; border-radius:10px;" id="mbtn-${item.id}" onclick="window.toggleModalItem(${item.id})">
-                                ${isSelected ? '<i class="fas fa-check"></i> Added' : '<i class="fas fa-cart-plus"></i> Add to Order'}
-                            </button>
-                        ` : '<span style="font-size:0.85rem; font-weight:800; color:var(--hub-slate-400); width:100%; text-align:center; padding:12px; background:var(--hub-slate-50); border-radius:10px;">Price Upon Request</span>'}
-                    </div>
+                    <p style="margin:0;color:var(--hub-slate-500);font-size:.8rem;font-weight:650;">Menu items are available through catering packages.</p>
                 </div>
             `;
             modal.classList.add('active');
@@ -3866,16 +3837,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${descHtml}
                         ${tagsHtml}
                     </div>
-                    <div class="dish-row-action">
-                        ${optionsHtml}
-                        ${qtyHtml}
-                        <button type="button"
-                            class="dish-row-btn ${isSelected ? 'selected' : ''}"
-                            id="mbtn-${item.id}"
-                            onclick="window.toggleModalItem(${item.id})">
-                            ${isSelected ? (cat === 'Rentals' ? 'Rented ✓' : 'Added ✓') : (cat === 'Rentals' ? 'Rent' : 'Add')}
-                        </button>
-                    </div>
+                    <div class="dish-row-action"><span style="font-size:.72rem;color:var(--hub-slate-500);font-weight:700;">Included through catering packages</span></div>
                 </div>`;
             }).join('');
 
@@ -3964,67 +3926,5 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
 
-        // ── toggleModalItem ──────────────────────────────────────────────
-        // SAFE: only passes numeric ID, looks up name/price from hubMenuItems
-        window.toggleModalItem = function(id) {
-            const sid = String(id);
-            // Look up the full item object
-            const menuItem = window.hubMenuItems
-                ? window.hubMenuItems.find(i => String(i.id) === sid)
-                : null;
-
-            const idx = window.selectedItems.findIndex(i => String(i.id) === sid);
-            const btn = document.getElementById('mbtn-' + sid);
-            const qty = document.getElementById('mq-' + sid);
-            const opt = document.getElementById('opt-' + sid);
-            const qtyVal = qty ? (Math.max(1, parseInt(qty.value) || 1)) : 1;
-
-            if (idx === -1) {
-                // Validate: max qty
-                if (qtyVal < 1 || qtyVal > 999) {
-                    alert('Please enter a valid quantity (1–999).');
-                    return;
-                }
-                
-                let finalPrice = menuItem ? (parseFloat(menuItem.price) || 0) : 0;
-                let finalName = menuItem ? menuItem.name : 'Item #' + sid;
-                
-                if (opt && opt.value) {
-                    const [optName, optPrice] = opt.value.split('|');
-                    finalPrice = parseFloat(optPrice) || finalPrice;
-                    finalName = finalName + ' (' + optName + ')';
-                }
-                
-                window.selectedItems.push({
-                    id: sid,
-                    type: 'Menu',
-                    name: finalName,
-                    price: finalPrice,
-                    qty: qtyVal,
-                    pricing_unit: menuItem ? menuItem.pricing_unit : ''
-                });
-                if (btn) { btn.classList.add('selected'); btn.innerHTML = (menuItem && menuItem.category === 'Rentals') ? '<i class="fas fa-check"></i> Rented' : ((menuItem && menuItem.category === 'Services') ? '<i class="fas fa-check"></i> Booked' : '<i class="fas fa-check"></i> Added'); }
-                if (qty) qty.disabled = true;
-                if (opt) opt.disabled = true;
-            } else {
-                // Toggle off
-                window.selectedItems.splice(idx, 1);
-                if (btn) { btn.classList.remove('selected'); btn.innerHTML = (menuItem && menuItem.category === 'Rentals') ? '<i class="fas fa-plus"></i> Rent Item' : ((menuItem && menuItem.category === 'Services') ? '<i class="fas fa-plus"></i> Book Service' : '<i class="fas fa-cart-plus"></i> Add to Order'); }
-                if (qty) { qty.disabled = false; qty.value = 1; }
-                const opt = document.getElementById('opt-' + sid);
-                if (opt) opt.disabled = false;
-            }
-
-            // Force drawer visible with !important
-            const drawer = document.querySelector('.order-drawer');
-            if (drawer) {
-                drawer.style.setProperty(
-                    'display',
-                    window.selectedItems.length > 0 ? 'block' : 'none',
-                    'important'
-                );
-            }
-            window.updateCartUI();
-        };
     </script>
 {% endblock %}

@@ -268,7 +268,7 @@
         </div>
 
         <div class="action-group">
-            <a href="{% if booking.document_type == 'invoice' %}/customer/orders{% else %}/customer/bookings{% endif %}" class="btn-primary-elite">
+            <a href="/customer/bookings" class="btn-primary-elite">
                 Go to My Bookings <i class="fas fa-arrow-right"></i>
             </a>
             <a href="/" class="btn-secondary-soft">Return to Marketplace</a>
@@ -278,7 +278,7 @@
 
 <script>
     let timeLeft = 10;
-    const successRedirectUrl = "{% if booking.document_type == 'invoice' %}/customer/orders{% else %}/customer/bookings{% endif %}";
+    const successRedirectUrl = "/customer/bookings";
     const timerText = document.getElementById('timer-text');
     const timerBar = document.getElementById('countdown-bar');
 

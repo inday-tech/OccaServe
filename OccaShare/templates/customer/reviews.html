@@ -191,24 +191,24 @@
 
     <!-- Stat Cards (Matches Bookings UI) -->
     <div class="premium-stats-grid">
-        <div class="premium-stat-card">
+        <a class="premium-stat-card" href="#reviewTimeline" aria-label="View your review timeline">
             <div class="premium-stat-title">Average Rating Given</div>
             <div class="premium-stat-value" style="color: #f59e0b;"><i class="fas fa-star" style="font-size: 1.1rem;"></i> {{ "{:.1f}".format(avg_rating.value) }}</div>
             <div class="premium-stat-subtitle">Out of 5.0</div>
-        </div>
-        <div class="premium-stat-card">
+        </a>
+        <a class="premium-stat-card" href="#reviewTimeline" aria-label="View your published reviews">
             <div class="premium-stat-title">Total Shared</div>
             <div class="premium-stat-value" style="color: #3b82f6;">{{ total_reviews }}</div>
             <div class="premium-stat-subtitle">Reviews Published</div>
-        </div>
-        <div class="premium-stat-card">
+        </a>
+        <a class="premium-stat-card" href="#reviewTimeline" aria-label="View your feedback">
             <div class="premium-stat-title">Feedback Impact</div>
             <div class="premium-stat-value" style="color: #10b981;"><i class="fas fa-check-circle" style="font-size: 1.1rem;"></i> Verified</div>
             <div class="premium-stat-subtitle">Trusted by Community</div>
-        </div>
+        </a>
     </div>
 
-    <div class="review-panel">
+    <div class="review-panel" id="reviewTimeline">
         <div class="review-panel-header">
             <h3>Feedback Timeline</h3>
         </div>

@@ -1023,7 +1023,7 @@ Carte Checkout') }}{% endblock %}
                         <div class="ocr-loader"
                             style="width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top-color: var(--kyc-accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem;">
                         </div>
-                        <p style="font-weight: 700; font-size: 0.85rem; color: #64748b;">Broadcasting order to
+                        <p style="font-weight: 700; font-size: 0.85rem; color: #64748b;">Sending booking request to
                             caterer...</p>
                     </div>
 
@@ -1047,23 +1047,22 @@ Carte Checkout') }}{% endblock %}
                             style="width: 80px; height: 80px; background: #10b981; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 2rem; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);">
                             <i class="fas fa-check"></i>
                         </div>
-                        <h1 class="wizard-title" style="font-size: 2rem;">Order Received!</h1>
+                        <h1 class="wizard-title" style="font-size: 2rem;">Request Received!</h1>
                         <p class="wizard-subtitle" style="margin-bottom: 3rem;" id="subtitle_step3">Your {% if
                             has_services and not has_food %}service booking{% elif is_rental and not has_food
-                            %}equipment request{% elif is_mixed %}event order{% else %}food order{% endif %} has been
+                            %}equipment request{% elif is_mixed %}event booking{% else %}booking request{% endif %} has been
                             sent to {{ caterer.business_name }}.</p>
 
                         <div
                             style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 1.25rem; padding: 1.5rem; text-align: left; margin-bottom: 3rem;">
                             <p style="color: #166534; font-weight: 700; margin-bottom: 0.5rem;"><i
-                                    class="fas fa-clipboard-check" style="margin-right: 0.5rem;"></i> Track Order</p>
-                            <p style="color: #4b6351; font-size: 0.9rem;">You can monitor the status of your order in
-                                the "My Bookings" section of your dashboard.</p>
+                                    class="fas fa-clipboard-check" style="margin-right: 0.5rem;"></i> Track Booking</p>
+                            <p style="color: #4b6351; font-size: 0.9rem;">You can monitor your booking in the Events section of your dashboard.</p>
                         </div>
 
-                        <a href="/customer/orders" class="btn-wizard-next"
+                        <a href="/customer/bookings" class="btn-wizard-next"
                             style="display: flex; justify-content: center; align-items: center; max-width: 320px; margin: 0 auto 1rem;">
-                            VIEW MY ORDERS <i class="fas fa-arrow-right" style="margin-left: 0.75rem;"></i>
+                            VIEW MY EVENTS <i class="fas fa-arrow-right" style="margin-left: 0.75rem;"></i>
                         </a>
 
                         <a href="#" target="_blank" id="download-invoice-btn"

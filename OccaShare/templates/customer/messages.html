@@ -533,15 +533,18 @@
 
             <!-- Context Bar (Active Booking) -->
             <div class="context-bar" id="contextBar" style="display: none;">
+                <span style="color:#64748b;font-size:.62rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;">Latest event</span>
                 <div class="context-pill">
                     <i class="fas fa-calendar-check" style="color: var(--up-orange);"></i>
-                    <span id="contextBookingRef">Booking #BK-001</span>
+                    <span id="contextEventName">Event</span>
                 </div>
-                <div class="context-pill" style="border: none; background: transparent; opacity: 0.6;">
+                <div class="context-pill context-booking-meta">
+                    <span id="contextBookingRef">BK-001</span>
+                    <span aria-hidden="true">·</span>
                     <span id="contextBookingStatus">Confirmed</span>
                 </div>
-                <button id="contextBookingLink" style="margin-left: auto; font-size: 0.7rem; font-weight: 850; text-transform: uppercase; color: var(--up-orange); background: transparent; border: none; cursor: pointer;">
-                    View Booking <i class="fas fa-arrow-right"></i>
+                <button id="contextBookingLink" type="button" style="margin-left: auto; font-size: 0.7rem; font-weight: 850; text-transform: uppercase; color: var(--up-orange); background: transparent; border: none; cursor: pointer;">
+                    Open event chat <i class="fas fa-arrow-right"></i>
                 </button>
             </div>
 
@@ -819,9 +822,17 @@
             const bar = document.getElementById('contextBar');
             if (ctx.has_context) {
                 bar.style.display = 'flex';
-                document.getElementById('contextBookingRef').innerText = `Booking #BK-${ctx.booking_id.toString().padStart(3, '0')}`;
-                document.getElementById('contextBookingStatus').innerText = ctx.status.toUpperCase();
-                document.getElementById('contextBookingLink').onclick = () => window.open(`/customer/bookings/manage/${ctx.booking_id}`, '_blank');
+                document.getElementById('contextEventName').innerText = ctx.event_name || 'Event';
+                document.getElementById('contextBookingRef').innerText = ctx.booking_ref || `BK-${ctx.booking_id.toString().padStart(3, '0')}`;
+                document.getElementById('contextBookingStatus').innerText = (ctx.status || 'active').replaceAll('_', ' ').toUpperCase();
+                document.getElementById('contextBookingLink').onclick = () => {
+                    const bookingUrl = `/customer/bookings?open_detail=${encodeURIComponent(ctx.booking_id)}&open_chat=1`;
+                    if (window.parent !== window) {
+                        window.parent.postMessage({ type: 'open_booking_chat', booking_id: ctx.booking_id }, window.location.origin);
+                    } else {
+                        window.location.assign(bookingUrl);
+                    }
+                };
             } else {
                 bar.style.display = 'none';
             }

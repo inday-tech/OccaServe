@@ -6,7 +6,20 @@
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/wizard_navigation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/wizard_navigation.css') }}">
 <link rel="stylesheet"
     href="{{ url_for('static', path='/css/customer/booking_wizard/step_details.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_details.css') }}">
-<script defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places"></script>
+<script>
+    window.googleMapsAuthorizationFailed = false;
+    window.googleMapsLoadFailed = function () {
+        window.googleMapsAuthorizationFailed = true;
+        const status = document.getElementById('venue-pin-status');
+        if (status) {
+            status.textContent = 'Map unavailable. Check the Google Maps error in the browser console and ensure its API key allows this localhost origin.';
+        }
+    };
+    window.gm_authFailure = window.googleMapsLoadFailed;
+</script>
+<script defer
+    src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key() }}&libraries=places"
+    onerror="window.googleMapsLoadFailed()"></script>
 <style>
     /* --- Dynamic Caterer Branding --- */
     :root {
@@ -41,6 +54,106 @@
 
     .field-error.show {
         display: block;
+    }
+
+    .custom-choice-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .custom-choice-title {
+        margin: 0;
+        color: #0f172a;
+        font-size: .98rem;
+        font-weight: 800;
+    }
+    .custom-choice-caption {
+        margin: .2rem 0 0;
+        color: #64748b;
+        font-size: .78rem;
+        line-height: 1.4;
+    }
+    .custom-choice-edit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: .45rem;
+        min-height: 38px;
+        padding: .5rem .8rem;
+        border: 1px solid #fed7aa;
+        border-radius: 9px;
+        background: #fff7ed;
+        color: #c2410c;
+        font-size: .78rem;
+        font-weight: 750;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .custom-choice-edit:hover { background: #ffedd5; }
+    .custom-choice-edit[aria-busy="true"] { opacity: .65; pointer-events: none; }
+    .custom-choice-groups { margin-top: 1rem; }
+    .custom-choice-group { padding: .8rem 0; border-top: 1px solid #e9eef4; }
+    .custom-choice-group:first-child { border-top: 0; padding-top: 0; }
+    .custom-choice-group-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: .75rem;
+        margin-bottom: .3rem;
+    }
+    .custom-choice-group-title {
+        color: #334155;
+        font-size: .77rem;
+        font-weight: 800;
+        letter-spacing: .035em;
+        text-transform: uppercase;
+    }
+    .custom-choice-group-total { color: #475569; font-size: .76rem; font-weight: 750; white-space: nowrap; }
+    .custom-choice-items { margin: 0; padding: 0; list-style: none; }
+    .custom-choice-item {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: .75rem;
+        padding: .32rem 0;
+        color: #334155;
+        font-size: .83rem;
+        line-height: 1.4;
+    }
+    .custom-choice-item-name { min-width: 0; overflow-wrap: anywhere; }
+    .custom-choice-item-detail { flex: 0 0 auto; color: #64748b; font-size: .74rem; text-align: right; }
+    .custom-choice-total {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        margin-top: .45rem;
+        padding-top: .85rem;
+        border-top: 1px solid #e2e8f0;
+        color: #0f172a;
+        font-size: .84rem;
+        font-weight: 800;
+    }
+    .custom-choice-total strong { color: #c2410c; font-size: .98rem; white-space: nowrap; }
+    .custom-choice-credit { margin: .3rem 0 0; color: #15803d; font-size: .74rem; text-align: right; }
+    .custom-choice-empty {
+        margin: .9rem 0 0;
+        padding: .75rem;
+        border-radius: 9px;
+        background: #f8fafc;
+        color: #64748b;
+        font-size: .8rem;
+        line-height: 1.45;
+    }
+    #customize-save-status { flex-basis: 100%; color: #b91c1c; font-size: .76rem; }
+    #customize-save-status:empty { display: none; }
+    @media (max-width: 540px) {
+        .custom-choice-header { align-items: flex-start; }
+        .custom-choice-edit { width: 100%; }
+        .custom-choice-item { align-items: flex-start; }
+        .custom-choice-item-detail { max-width: 45%; }
     }
 </style>
 {% endblock %}
@@ -116,7 +229,7 @@
                 <div class="form-group">
                     <label class="form-label">Event Name</label>
                     <input type="text" name="event_name" id="event_name" class="form-input"
-                        value="{{ booking.event_name if booking else '' }}" required>
+                        value="{{ booking_data.get('event_name', booking.event_name if booking else '') }}" required>
                     <span class="field-error" id="err-name">Please enter a memorable name for your event (e.g., Ana's 18th Birthday).</span>
                 </div>
 
@@ -126,7 +239,7 @@
                     {% if package and package.pricing_mode == 'customizable' %}
                         <label class="form-label"><span>Event Type</span><small style="color: #64748b; font-weight: normal;">(Choose for your event)</small></label>
                         <select name="event_type" id="event_type_select" class="filter-select-pro form-input" required>
-                            {% set selected_event_type = booking.event_type if booking and booking.event_type else '' %}
+                            {% set selected_event_type = booking_data.get('event_type', booking.event_type if booking and booking.event_type else '') %}
                             {% for event_option in ['Wedding', 'Birthday', 'Corporate', 'Debut', 'Baptism', 'Anniversary', 'Other'] %}
                             <option value="{{ event_option }}" {% if selected_event_type == event_option %}selected{% endif %}>{{ event_option }}</option>
                             {% endfor %}
@@ -145,7 +258,7 @@
                                 <i class="fas fa-lock" style="font-size: 0.65rem;"></i> Locked
                             </span>
                         </div>
-                        <input type="hidden" name="event_type" id="event_type_hidden" value="{{ package.service_type if package and package.service_type else (booking.event_type if booking else 'General Catering') }}">
+                        <input type="hidden" name="event_type" id="event_type_hidden" value="{{ booking_data.get('event_type', package.service_type if package and package.service_type else (booking.event_type if booking else 'General Catering')) }}">
                     {% endif %}
                         <span class="field-error" id="err-type">Please select a valid package.</span>
                     </div>
@@ -162,30 +275,30 @@
                 
                 <div class="form-group" style="margin-top: 1rem;">
                     <label class="form-label">Celebrant / Guest of Honor <small>(Optional)</small></label>
-                    <input type="text" name="celebrant_name" class="form-input" value="{{ booking.custom_requirements.get('celebrant_name', '') if booking and booking.custom_requirements else '' }}">
+                    <input type="text" name="celebrant_name" class="form-input" value="{{ booking_data.get('celebrant_name', booking.custom_requirements.get('celebrant_name', '') if booking and booking.custom_requirements else '') }}">
                 </div>
 
                 <div class="form-group" style="margin-top: 1rem;">
                     <label class="form-label">Theme / Motif <small>(Optional)</small></label>
-                    <input type="text" name="theme_motif" class="form-input" value="{{ (booking.custom_requirements.get('theme_motif') or booking.custom_requirements.get('motif_theme', '')) if booking and booking.custom_requirements else '' }}">
+                    <input type="text" name="theme_motif" class="form-input" value="{{ booking_data.get('theme_motif', ((booking.custom_requirements.get('theme_motif') or booking.custom_requirements.get('motif_theme', '')) if booking and booking.custom_requirements else '')) }}">
                 </div>
 
                 <div class="grid-2-col">
                     <div class="form-group">
                         <label class="form-label" for="event_date">Event Date</label>
                         <input type="date" name="event_date" id="event_date" class="form-input"
-                            value="{{ booking.event_date.isoformat() if booking and booking.event_date else '' }}"
+                            value="{{ booking_data.get('event_date', booking.event_date.isoformat() if booking and booking.event_date else '') }}"
                             required onchange="checkAvailability()">
                         <span class="field-error" id="err-date">Please select a valid event date.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="event_time">Ingress <small>(Setup / caterer arrival)</small></label>
-                        <input type="time" name="event_time" id="event_time" class="form-input" value="{{ booking.event_time.strftime('%H:%M') if booking and booking.event_time else '' }}" required>
+                        <input type="time" name="event_time" id="event_time" class="form-input" value="{{ booking_data.get('event_time', booking.event_time.strftime('%H:%M') if booking and booking.event_time else '') }}" required>
                         <span class="field-error" id="err-time">Choose a setup / arrival time within available operating hours.</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="event_end_time">Egress <small>(Event ends / cleanup complete)</small></label>
-                        <input type="time" name="event_end_time" id="event_end_time" class="form-input" value="{{ booking.event_end_time.strftime('%H:%M') if booking and booking.event_end_time else '' }}" required>
+                        <input type="time" name="event_end_time" id="event_end_time" class="form-input" value="{{ booking_data.get('event_end_time', booking.event_end_time.strftime('%H:%M') if booking and booking.event_end_time else '') }}" required>
                         <span class="field-error" id="err-end-time">Egress must be after ingress.</span>
                     </div>
                 </div>
@@ -194,160 +307,111 @@
 
             {% if package and package.pricing_mode == 'customizable' %}
             <!-- CUSTOMIZABLE PACKAGE CHOICES -->
-            <div class="c-card-premium" id="customizable-package-choices-card" data-initial-package-id="{{ package.id }}" style="margin-bottom: 1.5rem; border-color: #fdba74; background: #fffcf9;">
-                <div class="section-header-wrap" style="margin-bottom: 0.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                    <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;">
-                        <span class="custom-package-label" style="display:inline-flex;align-items:center;padding:4px 9px;border-radius:20px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:.72rem;font-weight:750;">Customizable package</span>
-                        <h3 class="form-section-title" style="font-size:.9rem;font-weight:700;color:#334155;margin:0;">Your selected choices</h3>
-                        </div>
+            <div class="c-card-premium" id="customizable-package-choices-card" data-initial-package-id="{{ package.id }}" style="margin-bottom: 1.5rem;">
+                <div class="custom-choice-header">
+                    <div>
+                        <h3 class="custom-choice-title">Package choices</h3>
+                        <p class="custom-choice-caption">Review your selected menu, services, and equipment.</p>
                     </div>
-                    <a id="customize-package-link" data-customize-base="/bookings/customize/{{ caterer.id }}" href="/bookings/customize/{{ caterer.id }}?package_id={{ package.id }}"
-                       style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 8px; font-size: 0.82rem; font-weight: 800; color: #c2410c; text-decoration: none; transition: all 0.2s ease;">
-                        <i class="fas fa-pen" style="font-size: 0.75rem;"></i> Modify Choices
+                    <a id="customize-package-link" class="custom-choice-edit" data-customize-base="/bookings/customize/{{ caterer.id }}" href="/bookings/customize/{{ caterer.id }}?package_id={{ package.id }}">
+                        <i class="fas fa-pen" aria-hidden="true"></i> Modify choices
                     </a>
+                    <span id="customize-save-status" role="status" aria-live="polite"></span>
                 </div>
 
                 <div id="customizable-package-content">
-                {% if customization and (customization.selected_food or customization.selected_services or customization.selected_equipment) %}
-                <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
-                    <!-- Selected Food / Menu -->
-                    {% if customization.selected_food and customization.selected_food|length > 0 %}
-                    <div style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
-                        <div style="font-size: 0.82rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fas fa-utensils" style="color: #ea580c; margin-right: 6px;"></i> Menu / Food ({{ customization.selected_food|length }})</span>
-                            {% if customization.food_total is defined %}
-                            <span style="font-size: 0.8rem; color: #c2410c; font-weight: 800;">₱{{ "{:,.2f}".format(customization.food_total) }}</span>
-                            {% endif %}
-                            {% if customization.food_removal_credit is defined and customization.food_removal_credit|float > 0 %}
-                            <span style="font-size: 0.78rem; color: #15803d; font-weight: 700;">−₱{{ "{:,.2f}".format(customization.food_removal_credit|float) }} menu credit</span>
-                            {% endif %}
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            {% for dish in customization.selected_food %}
-                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; border: 1px solid #ffedd5; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #1e293b;">
-                                <i class="fas fa-check" style="color: #ea580c; font-size: 0.75rem;"></i>
-                                <span>{{ dish.name }}</span>
-                                {% if dish.price and dish.price > 0 %}
-                                <span style="font-size: 0.72rem; color: #c2410c; background: #ffedd5; padding: 1px 6px; border-radius: 4px;">
-                                    ₱{{ "{:,.2f}".format(dish.price) }}/{{ dish.unit or 'pax' }}
-                                    {% if dish.subtotal %} (₱{{ "{:,.2f}".format(dish.subtotal) }}){% endif %}
-                                </span>
-                                {% endif %}
+                    {% if customization and (customization.selected_food or customization.selected_services or customization.selected_equipment) %}
+                    <div class="custom-choice-groups">
+                        {% if customization.selected_food %}
+                        <section class="custom-choice-group" aria-label="Selected menu items">
+                            <div class="custom-choice-group-head">
+                                <span class="custom-choice-group-title">Menu / Food · {{ customization.selected_food|length }}</span>
+                                <span class="custom-choice-group-total" id="custom-food-group-total">Upgrades ₱{{ "{:,.2f}".format(customization.food_upgrade_total|default(customization.food_total, true)|default(0, true)|float) }}</span>
                             </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
+                            <ul class="custom-choice-items">
+                                {% for dish in customization.selected_food %}
+                                {% set dish_fee = dish.upgrade_fee|default(dish.price, true)|default(0, true)|float %}
+                                <li class="custom-choice-item">
+                                    <span class="custom-choice-item-name">{{ dish.name }}</span>
+                                    <span class="custom-choice-item-detail">
+                                        {% if dish_fee > 0 %}+₱{{ "{:,.2f}".format(dish_fee) }}/pax{% else %}Included{% endif %}
+                                    </span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </section>
+                        {% endif %}
 
-                    <!-- Selected Services -->
-                    {% if customization.selected_services and customization.selected_services|length > 0 %}
-                    <div style="background: #ffffff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 0.85rem 1rem;">
-                        <div style="font-size: 0.82rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fas fa-concierge-bell" style="color: #2563eb; margin-right: 6px;"></i> Services ({{ customization.selected_services|length }})</span>
-                            {% if customization.services_total is defined %}
-                            <span style="font-size: 0.8rem; color: #1e40af; font-weight: 800;">₱{{ "{:,.2f}".format(customization.services_total) }}</span>
-                            {% endif %}
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            {% for svc in customization.selected_services %}
-                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; border: 1px solid #dbeafe; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #1e3a8a;">
-                                <i class="fas fa-check" style="color: #2563eb; font-size: 0.75rem;"></i>
-                                <span>{{ svc.name }}</span>
-                                {% if svc.price and svc.price > 0 %}
-                                <span style="font-size: 0.72rem; color: #1e40af; background: #dbeafe; padding: 1px 6px; border-radius: 4px;">
-                                    ₱{{ "{:,.2f}".format(svc.price) }}{% if svc.unit and svc.unit != 'fixed' %}/{{ svc.unit }}{% endif %}
-                                </span>
-                                {% endif %}
+                        {% if customization.selected_services %}
+                        <section class="custom-choice-group" aria-label="Selected services">
+                            <div class="custom-choice-group-head">
+                                <span class="custom-choice-group-title">Services · {{ customization.selected_services|length }}</span>
+                                <span class="custom-choice-group-total" id="custom-services-group-total">₱{{ "{:,.2f}".format(customization.services_total|default(0, true)|float) }}</span>
                             </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
+                            <ul class="custom-choice-items">
+                                {% for svc in customization.selected_services %}
+                                {% set svc_price = svc.price|default(0, true)|float %}
+                                <li class="custom-choice-item">
+                                    <span class="custom-choice-item-name">{{ svc.name }}</span>
+                                    <span class="custom-choice-item-detail">₱{{ "{:,.2f}".format(svc_price) }}{% if svc.unit and svc.unit not in ['service', 'fixed'] %}/{{ svc.unit }}{% endif %}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </section>
+                        {% endif %}
 
-                    <!-- Selected Equipment -->
-                    {% if customization.selected_equipment and customization.selected_equipment|length > 0 %}
-                    <div style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
-                        <div style="font-size: 0.82rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: space-between;">
-                            <span><i class="fas fa-chair" style="color: #ea580c; margin-right: 6px;"></i> Equipment &amp; Rentals ({{ customization.selected_equipment|length }})</span>
-                            {% if customization.equipment_total is defined %}
-                            <span style="font-size: 0.8rem; color: #c2410c; font-weight: 800;">₱{{ "{:,.2f}".format(customization.equipment_total) }}</span>
-                            {% endif %}
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            {% for eq in customization.selected_equipment %}
-                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; border: 1px solid #fed7aa; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #9a3412;">
-                                <i class="fas fa-check" style="color: #ea580c; font-size: 0.75rem;"></i>
-                                <span>{{ eq.name }}</span>
-                                <span style="font-size: 0.72rem; color: #c2410c; background: #ffedd5; padding: 1px 6px; border-radius: 4px;">
-                                    Qty: {{ eq.qty or 1 }} &times; ₱{{ "{:,.2f}".format(eq.price or 0) }} = ₱{{ "{:,.2f}".format(eq.subtotal or ((eq.qty or 1) * (eq.price or 0))) }}
-                                </span>
+                        {% if customization.selected_equipment %}
+                        <section class="custom-choice-group" aria-label="Selected equipment and rentals">
+                            <div class="custom-choice-group-head">
+                                <span class="custom-choice-group-title">Equipment &amp; rentals · {{ customization.selected_equipment|length }}</span>
+                                <span class="custom-choice-group-total" id="custom-equipment-group-total">₱{{ "{:,.2f}".format(customization.equipment_total|default(0, true)|float) }}</span>
                             </div>
-                            {% endfor %}
-                        </div>
+                            <ul class="custom-choice-items">
+                                {% for eq in customization.selected_equipment %}
+                                {% set eq_qty = eq.qty|default(1, true)|int %}
+                                {% set eq_price = eq.price|default(0, true)|float %}
+                                <li class="custom-choice-item">
+                                    <span class="custom-choice-item-name">{{ eq.name }}</span>
+                                    <span class="custom-choice-item-detail">{{ eq_qty }} × ₱{{ "{:,.2f}".format(eq_price) }} = ₱{{ "{:,.2f}".format(eq.subtotal|default(eq_qty * eq_price, true)|float) }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </section>
+                        {% endif %}
                     </div>
-                    {% endif %}
-
-                    {% if customization.estimated_total is defined and customization.estimated_total > 0 %}
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; margin-top: 0.25rem;">
-                        <span style="font-size: 0.88rem; font-weight: 800; color: #0f172a;">Customization Estimated Total:</span>
-                        <span style="font-size: 1.1rem; font-weight: 900; color: #ea580c;">₱{{ "{:,.2f}".format(customization.estimated_total) }}</span>
+                    <div class="custom-choice-total">
+                        <span>Estimated package total</span>
+                        <strong id="custom-choice-estimated-total">₱{{ "{:,.2f}".format(customization.estimated_total|default(0, true)|float) }}</strong>
                     </div>
+                    {% if customization.food_removal_credit|default(0, true)|float > 0 %}
+                    <p class="custom-choice-credit" id="custom-choice-credit">Includes ₱{{ "{:,.2f}".format(customization.food_removal_credit|float) }} menu credit.</p>
                     {% endif %}
-                </div>
-                {% elif customization and customization.menu_groups and customization.menu_groups|length > 0 %}
-                <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.85rem;">
-                    {% for group in customization.menu_groups %}
-                    <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
-                        <div style="font-size: 0.82rem; font-weight: 800; color: #9a3412; text-transform: uppercase; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-utensils" style="font-size: 0.75rem; color: #ea580c;"></i>
-                            <span>{{ group.group_name }}</span>
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            {% for dish in group.selected_dishes %}
-                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #fff7ed; border: 1px solid #ffedd5; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #1e293b;">
-                                <i class="fas fa-check" style="color: #ea580c; font-size: 0.75rem;"></i>
-                                <span>{{ dish.name }}</span>
-                                {% if dish.pricing_type == 'per_pax' and dish.price > 0 %}
-                                <span style="font-size: 0.72rem; color: #c2410c; background: #ffedd5; padding: 1px 6px; border-radius: 4px;">+₱{{ "{:,.2f}".format(dish.price) }}/pax</span>
-                                {% elif dish.pricing_type == 'fixed' and dish.price > 0 %}
-                                <span style="font-size: 0.72rem; color: #c2410c; background: #ffedd5; padding: 1px 6px; border-radius: 4px;">+₱{{ "{:,.2f}".format(dish.price) }}</span>
-                                {% endif %}
+                    {% elif customization and customization.menu_groups and customization.menu_groups|length > 0 %}
+                    <div class="custom-choice-groups">
+                        {% for group in customization.menu_groups %}
+                        <section class="custom-choice-group">
+                            <div class="custom-choice-group-head">
+                                <span class="custom-choice-group-title">{{ group.group_name }}</span>
                             </div>
-                            {% endfor %}
-                        </div>
+                            <ul class="custom-choice-items">
+                                {% for dish in group.selected_dishes %}
+                                <li class="custom-choice-item"><span class="custom-choice-item-name">{{ dish.name }}</span><span class="custom-choice-item-detail">Selected</span></li>
+                                {% endfor %}
+                            </ul>
+                        </section>
+                        {% endfor %}
+                        {% for svc in customization.optional_services or [] %}
+                        <section class="custom-choice-group">
+                            <div class="custom-choice-group-head"><span class="custom-choice-group-title">Service</span></div>
+                            <ul class="custom-choice-items">
+                                <li class="custom-choice-item"><span class="custom-choice-item-name">{{ svc.name }}</span><span class="custom-choice-item-detail">₱{{ "{:,.2f}".format(svc.price|default(0, true)|float) }}</span></li>
+                            </ul>
+                        </section>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
-
-                    {% if customization.optional_services and customization.optional_services|length > 0 %}
-                    <div style="background: #ffffff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 0.85rem 1rem;">
-                        <div style="font-size: 0.82rem; font-weight: 800; color: #1e40af; text-transform: uppercase; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-concierge-bell" style="font-size: 0.75rem; color: #2563eb;"></i>
-                            <span>Optional Services Selected</span>
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            {% for svc in customization.optional_services %}
-                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #eff6ff; border: 1px solid #dbeafe; padding: 4px 10px; border-radius: 6px; font-size: 0.84rem; font-weight: 700; color: #1e3a8a;">
-                                <i class="fas fa-plus-circle" style="color: #2563eb; font-size: 0.75rem;"></i>
-                                <span>{{ svc.name }}</span>
-                                {% if svc.price and svc.price > 0 %}
-                                <span style="font-size: 0.72rem; color: #1e40af; background: #dbeafe; padding: 1px 6px; border-radius: 4px;">
-                                    {% if svc.pricing_type == 'per_pax' %}+₱{{ "{:,.2f}".format(svc.price) }}/pax{% elif svc.pricing_type == 'starting' %}Starting ₱{{ "{:,.2f}".format(svc.price) }}{% else %}₱{{ "{:,.2f}".format(svc.price) }}{% endif %}
-                                </span>
-                                {% endif %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
+                    {% else %}
+                    <p class="custom-choice-empty">You have not selected any choices yet. Select your menu, services, or equipment to continue.</p>
                     {% endif %}
-                </div>
-                {% else %}
-                <div style="margin-top: 1rem; padding: 1.25rem; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 10px; text-align: center;">
-                    <p style="font-size: 0.88rem; color: #9a3412; font-weight: 700; margin-bottom: 0.5rem;">You haven't customized this package yet. Choose your food, services, and equipment now.</p>
-                    <a href="/bookings/customize/{{ caterer.id }}?package_id={{ package.id }}" class="btn btn-sm" style="background: #ea580c; color: white; font-weight: 800; border-radius: 8px; padding: 6px 16px; text-decoration: none;">
-                        <i class="fas fa-sliders-h mr-1"></i> Customize Package Now
-                    </a>
-                </div>
-                {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -453,28 +517,31 @@
 
                 <div class="form-group">
                     <label class="form-label" for="venue-search">Search venue or pin the exact location</label>
-                    <input type="text" id="venue-search" class="form-input" autocomplete="off" value="{{ booking.venue_address if booking else '' }}">
+                    <input type="text" id="venue-search" class="form-input" autocomplete="off" value="{{ booking_data.get('venue_address', booking.venue_address if booking else '') }}">
                     <div id="venue-map" role="application" aria-label="Pin the exact event venue on the map" style="width:100%;height:260px;border:1px solid #e2e8f0;border-radius:12px;margin-top:.65rem;background:#f1f5f9;"></div>
                     <small style="display:block;color:#64748b;margin-top:.45rem;">Search for a venue or move the map pin to the exact spot, then save the location.</small>
+                    {% if local_development() %}
+                    <small style="display:block;margin-top:.35rem;color:#047857;font-weight:700;">Local testing: venue location is optional. Delivery estimates will be unavailable until you add a location.</small>
+                    {% endif %}
                     <button type="button" id="save-venue-location" class="btn-wizard-next" disabled style="margin-top:.7rem;min-height:40px;padding:.55rem 1rem;font-size:.82rem;">Save pinned location</button>
                     <small id="venue-pin-status" aria-live="polite" style="display:block;color:#64748b;margin-top:.35rem;"></small>
-                    <div id="saved-venue-address" aria-live="polite" style="display:{% if booking and booking.venue_address and booking.venue_latitude is not none and booking.venue_longitude is not none %}block{% else %}none{% endif %};margin-top:.65rem;padding:.7rem .8rem;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4;color:#166534;font-size:.82rem;line-height:1.45;overflow-wrap:anywhere;">
+                    <div id="saved-venue-address" aria-live="polite" style="display:{% if booking_data.get('venue_address', booking.venue_address if booking else '') and booking_data.get('venue_latitude', booking.venue_latitude if booking and booking.venue_latitude is not none else '') and booking_data.get('venue_longitude', booking.venue_longitude if booking and booking.venue_longitude is not none else '') %}block{% else %}none{% endif %};margin-top:.65rem;padding:.7rem .8rem;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4;color:#166534;font-size:.82rem;line-height:1.45;overflow-wrap:anywhere;">
                         <strong style="display:block;font-size:.72rem;margin-bottom:.2rem;">Saved venue address</strong>
-                        <span id="saved-venue-address-text">{{ booking.venue_address if booking and booking.venue_address else '' }}</span>
+                        <span id="saved-venue-address-text">{{ booking_data.get('venue_address', booking.venue_address if booking else '') }}</span>
                     </div>
                     <span class="field-error" id="err-venue">Search for or pin the exact venue location.</span>
                 </div>
 
-                <input type="hidden" name="venue_address" id="venue_address_hidden" value="{{ booking.venue_address if booking else '' }}">
-                <input type="hidden" name="venue_latitude" id="venue_latitude" value="{{ booking.venue_latitude if booking and booking.venue_latitude is not none else '' }}">
-                <input type="hidden" name="venue_longitude" id="venue_longitude" value="{{ booking.venue_longitude if booking and booking.venue_longitude is not none else '' }}">
-                <input type="hidden" name="province" id="province_select" value="">
-                <input type="hidden" name="city" id="city_select" value="">
-                <input type="hidden" name="barangay" id="barangay_select" value="">
+                <input type="hidden" name="venue_address" id="venue_address_hidden" value="{{ booking_data.get('venue_address', booking.venue_address if booking else '') }}">
+                <input type="hidden" name="venue_latitude" id="venue_latitude" value="{{ booking_data.get('venue_latitude', booking.venue_latitude if booking and booking.venue_latitude is not none else '') }}">
+                <input type="hidden" name="venue_longitude" id="venue_longitude" value="{{ booking_data.get('venue_longitude', booking.venue_longitude if booking and booking.venue_longitude is not none else '') }}">
+                <input type="hidden" name="province" id="province_select" value="{{ booking_data.get('province', '') }}">
+                <input type="hidden" name="city" id="city_select" value="{{ booking_data.get('city', '') }}">
+                <input type="hidden" name="barangay" id="barangay_select" value="{{ booking_data.get('barangay', '') }}">
 
                 <div class="form-group">
                     <label class="form-label">Special Requests &amp; Notes <small>(e.g. Dietary needs, dish upgrades)</small></label>
-                    <textarea name="special_requests" class="form-input" rows="3">{{ booking.special_requests if booking else '' }}</textarea>
+                    <textarea name="special_requests" class="form-input" rows="3">{{ booking_data.get('special_requests', booking.special_requests if booking else '') }}</textarea>
                 </div>
             </div>
         </div>
@@ -602,6 +669,7 @@
     window.maxGuests = 999999;
     {% endif %}
     window.catererId = "{{ caterer.id }}";
+    window.localDevelopment = {{ local_development() | tojson }};
     window.bookingLeadTime = parseInt("{{ (package.booking_lead_time if package and package.booking_lead_time else caterer.booking_lead_time) or 3 }}") || 3;
     window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
     window.customization = {{ (customization or {}) | tojson | safe }};

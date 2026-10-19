@@ -39,12 +39,17 @@ body, .customer-page-content { background: #f1f5f9 !important; }
     .premium-stats-grid { grid-template-columns: repeat(4, 1fr); }
 }
 .premium-stat-card {
+    width:100%; text-align:left; font:inherit; cursor:pointer;
     background: #fff; border-radius: 12px;
     padding: 1.1rem 1.25rem;
     border: 1px solid #e9eef4;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     display: flex; flex-direction: column; justify-content: center;
+    transition: border-color .16s, box-shadow .16s, transform .16s;
 }
+.premium-stat-card:hover,.premium-stat-card.is-selected { border-color:#fdba74; box-shadow:0 4px 14px rgba(234,88,12,.1); }
+.premium-stat-card:hover { transform:translateY(-1px); }
+.premium-stat-card:focus-visible { outline:3px solid rgba(255,123,84,.3); outline-offset:2px; }
 .premium-stat-title {
     font-size: 0.68rem; font-weight: 700; color: #94a3b8;
     text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.25rem;
@@ -75,7 +80,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 
 /* ── TABLE ── */
 .bk-table-wrapper { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
-.bk-table { width:100%; border-collapse:collapse; min-width: 860px; }
+.bk-mobile-hint { display:none; }
+.bk-table { width:100%; border-collapse:collapse; min-width: 760px; }
 .bk-table th {
     text-align:left; padding:0.8rem 1.25rem;
     font-size:0.68rem; font-weight:700; color:#94a3b8;
@@ -86,6 +92,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .bk-table td { padding:0.95rem 1.25rem; border-bottom:1px solid #f4f6f9; vertical-align:middle; }
 .bk-table tr:hover td { background:#fafbfd; }
 .bk-table tr:last-child td { border-bottom:none; }
+.bk-table td:last-child { min-width:128px; }
+.bk-table td:last-child > div { display:inline-flex; align-items:center; gap:8px !important; flex-wrap:nowrap; }
 
 .cell-name   { font-size:0.9rem; font-weight:700; color:var(--bk-text); line-height:1.2; margin-bottom:2px; }
 .cell-sub    { font-size:.75rem; color:var(--bk-sub); font-weight:500; display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap; margin-top:3px; }
@@ -120,6 +128,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
     border-radius:7px; text-decoration:none; cursor:pointer;
     border:1px solid transparent; transition:all .15s; white-space:nowrap;
 }
+.bk-btn-icon { flex:0 0 36px; width:36px; height:36px; padding:0; font-size:.82rem; }
+.bk-btn-icon i { pointer-events:none; }
 .btn-manage  { background:#fff; color:#475569; border-color:#e2e8f0; }
 .btn-manage:hover  { background:#f8fafc; border-color:#cbd5e1; color:#0f172a; }
 .btn-pay     { background:#0f172a; color:#fff !important; border-color:#0f172a; }
@@ -130,6 +140,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .btn-resume:hover  { opacity:0.88; }
 .btn-del     { background:#fff; color:#ef4444; border-color:#fecaca; }
 .btn-del:hover     { background:#fef2f2; }
+.btn-archive { background:#fff; color:#dc2626; border-color:#fecaca; }
+.btn-archive:hover { background:#fef2f2; border-color:#fca5a5; }
 
 /* ── EMPTY STATE ── */
 .bk-empty { padding:3.5rem 2rem; text-align:center; }
@@ -163,11 +175,88 @@ body, .customer-page-content { background: #f1f5f9 !important; }
     padding:.85rem 1.25rem; font-size:.82rem; font-weight:700; color:#1d4ed8;
 }
 
-@media(max-width:620px){
-    .bk-header { flex-direction:column; align-items:flex-start; }
-    .bk-pagination { flex-direction: column; justify-content: center; gap: 1rem; text-align: center; }
-    .bk-page-btns { justify-content: center; flex-wrap: wrap; }
+@media(max-width:767px){
+    .bk-header { flex-direction:row; align-items:center; gap:.75rem; }
+    .bk-header h1 { font-size:1.2rem; }
+    .bk-header p { max-width:34ch; font-size:.76rem; }
+    .btn-new-booking { padding:.55rem .7rem; gap:.4rem; font-size:.74rem; white-space:nowrap; }
+    .premium-stats-grid { gap:.55rem; margin-bottom:.85rem; }
+    .premium-stat-card { padding:.75rem .8rem; border-radius:10px; }
+    .premium-stat-title { font-size:.59rem; letter-spacing:.04em; }
+    .premium-stat-value { font-size:1.13rem; }
+    .premium-stat-subtitle { font-size:.65rem; line-height:1.25; }
+    .bk-panel-head { align-items:flex-start; flex-direction:column; padding:.85rem; }
+    .bk-filter { width:100%; min-height:40px; }
+    .bk-mobile-hint { display:block; padding:0 .8rem .45rem; color:var(--bk-sub); font-size:.66rem; }
+    .bk-table-wrapper { overflow-x:auto; padding:0 .55rem .55rem; scrollbar-width:thin; scrollbar-color:#cbd5e1 #f8fafc; }
+    .bk-table { min-width:820px !important; table-layout:fixed; }
+    .bk-table th,.bk-table td { padding:.55rem .6rem; }
+    .bk-table th { font-size:.6rem; }
+    .bk-table td { white-space:nowrap; font-size:.73rem; }
+    .bk-table th:first-child,.bk-table td:first-child { width:255px; }
+    .bk-table th:nth-child(2),.bk-table td:nth-child(2) { width:115px; }
+    .bk-table th:nth-child(3),.bk-table td:nth-child(3) { width:110px; }
+    .bk-table th:nth-child(4),.bk-table td:nth-child(4) { width:130px; }
+    .bk-table th:last-child,.bk-table td:last-child { width:170px; min-width:170px; }
+    .bk-table td:first-child .cell-sub { flex-wrap:nowrap; overflow:hidden; }
+    .bk-table td:first-child .cell-sub > span:last-child { overflow:hidden; text-overflow:ellipsis; }
+    .cell-name { font-size:.78rem; }
+    .cell-sub { font-size:.63rem; }
+    .bk-badge { font-size:.62rem; padding:3px 6px; }
+    .bk-btn { min-height:32px; padding:4px 8px; font-size:.68rem; }
+    .bk-btn-icon { flex-basis:36px; width:36px; height:36px; padding:0; }
+    .bk-pagination { flex-direction:column; justify-content:center; gap:.7rem; padding:.8rem; text-align:center; }
+    .bk-page-btns { justify-content:center; flex-wrap:wrap; }
 }
+
+/* Booking detail quick view */
+.bk-modal-overlay { position:fixed; inset:0; z-index:1500; display:none; align-items:center; justify-content:center; padding:1rem; background:rgba(15,23,42,.55); backdrop-filter:blur(3px); }
+.bk-modal-overlay.is-open { display:flex; }
+.bk-modal { display:flex; flex-direction:column; width:min(100%,700px); max-height:min(88vh,760px); overflow:hidden; background:#fff; border:1px solid rgba(255,255,255,.8); border-radius:18px; box-shadow:0 24px 60px rgba(15,23,42,.25); }
+.bk-modal-head { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:.8rem 1.1rem; border-bottom:1px solid var(--bk-border); background:linear-gradient(115deg,#fff7ed 0%,#fff 58%); }
+.bk-modal-heading { min-width:0; }
+.bk-modal-title { margin:0; color:var(--bk-text); font-size:1.05rem; line-height:1.3; font-weight:800; overflow-wrap:anywhere; }
+.bk-modal-meta { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem .7rem; margin-top:.35rem; }
+.bk-modal-subtitle { margin:0; color:#475569; font-size:.76rem; font-weight:650; }
+.bk-modal-caterer { display:inline-flex; align-items:center; gap:.35rem; min-width:0; }
+.bk-modal-caterer i { color:var(--bk-primary); }
+.bk-modal-reference { display:inline-flex; align-items:center; padding:.18rem .48rem; border:1px solid #fed7aa; border-radius:999px; background:#fff; color:#9a3412; font:700 .66rem ui-monospace,monospace; }
+.bk-modal-close { flex:0 0 36px; width:36px; height:36px; border:1px solid var(--bk-border); border-radius:9px; background:#fff; color:#475569; cursor:pointer; }
+.bk-modal-tabs { display:flex; gap:.35rem; padding:0 1.25rem; border-bottom:1px solid var(--bk-border); overflow-x:auto; }
+.bk-modal-tab { flex:0 0 auto; border:0; border-bottom:2px solid transparent; padding:.7rem .65rem; background:transparent; color:#64748b; font-family:inherit; font-size:.76rem; font-weight:650; cursor:pointer; }
+.bk-modal-tab.is-active { color:#c2410c; border-bottom-color:var(--bk-primary); }
+.bk-modal-body { display:none; grid-template-columns:1fr 1fr; gap:.75rem; padding:1.1rem 1.25rem; }
+.bk-modal-body.is-active { display:grid; flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; align-content:start; }
+.bk-detail-item { min-width:0; padding:.65rem .15rem; border:0; border-bottom:1px solid #edf1f5; border-radius:0; background:transparent; }
+.bk-detail-item.wide { grid-column:1 / -1; }
+.bk-detail-label { display:block; color:#94a3b8; font-size:.65rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-bottom:.25rem; }
+.bk-detail-value { display:block; color:var(--bk-text); font-size:.82rem; font-weight:650; overflow-wrap:anywhere; }
+.bk-detail-section-title { grid-column:1/-1; margin:.15rem 0 -.2rem; color:#334155; font-size:.75rem; font-weight:800; }
+.bk-detail-list { grid-column:1/-1; display:grid; gap:0; }
+.bk-detail-list-item { display:flex; justify-content:space-between; gap:.75rem; padding:.65rem .15rem; border:0; border-bottom:1px solid #edf1f5; border-radius:0; background:transparent; font-size:.77rem; }
+.bk-detail-list-item span:first-child { min-width:0; overflow-wrap:anywhere; color:#334155; font-weight:650; }
+.bk-detail-list-item span:last-child { flex:0 1 45%; min-width:0; color:#64748b; font-size:.7rem; text-align:right; overflow-wrap:anywhere; }
+.bk-detail-empty { grid-column:1/-1; padding:.8rem .15rem; border:0; color:#64748b; font-size:.78rem; }
+.bk-modal-foot { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.55rem; padding:0 1.25rem 1.1rem; }
+.bk-modal-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:.55rem; }
+.bk-modal-foot .bk-btn { min-height:40px; padding:.6rem .9rem; }
+.bk-booking-chat { grid-column:1/-1; min-height:300px; display:flex; flex-direction:column; }
+.bk-chat-messages { min-height:170px; max-height:38vh; overflow-y:auto; display:flex; flex-direction:column; gap:.55rem; padding:.25rem; }
+.bk-chat-message { max-width:min(88%, 460px); align-self:flex-start; padding:.6rem .75rem; border-radius:10px; background:#f1f5f9; color:#334155; overflow-wrap:anywhere; }
+.bk-chat-message.is-mine { align-self:flex-end; background:#fff1e8; color:#7c2d12; }
+.bk-chat-message strong,.bk-chat-meta { display:block; font-size:.68rem; }
+.bk-chat-message strong { margin-bottom:.2rem; }
+.bk-chat-meta { margin-top:.25rem; color:#64748b; text-align:right; }
+.bk-chat-form { display:flex; flex-direction:column; gap:.55rem; margin-top:auto; padding-top:.75rem; border-top:1px solid #edf1f5; }
+.bk-chat-form textarea { box-sizing:border-box; width:100%; min-height:72px; resize:vertical; padding:.7rem .75rem; border:1px solid var(--bk-border); border-radius:11px; background:#fbfdff; font:inherit; font-size:.82rem; }
+.bk-chat-tools { display:flex; align-items:center; gap:.55rem; min-width:0; }
+.bk-chat-attach { display:inline-grid; place-items:center; flex:0 0 40px; width:40px; height:40px; border:1px solid var(--bk-border); border-radius:10px; background:#fff; color:#64748b; cursor:pointer; }
+.bk-chat-attach:hover,.bk-chat-attach:focus-visible { border-color:#fdba74; background:#fff7ed; color:#c2410c; outline:none; }
+.bk-chat-file-input { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; clip-path:inset(50%); border:0; }
+.bk-chat-file-name { flex:1 1 auto; min-width:0; overflow:hidden; color:#64748b; font-size:.72rem; text-overflow:ellipsis; white-space:nowrap; }
+.bk-chat-tools .bk-btn { flex:0 0 auto; min-height:40px; }
+.bk-chat-error { color:#b91c1c; font-size:.75rem; }
+@media(max-width:480px){ .bk-modal-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:0 .75rem;overflow:visible}.bk-modal-tab{min-width:0;padding:.65rem .35rem;font-size:.68rem;white-space:normal}.bk-modal-body,.bk-modal-body.is-active{grid-template-columns:1fr;gap:.35rem;padding:.85rem}.bk-detail-item.wide,.bk-detail-section-title,.bk-detail-list,.bk-detail-empty{grid-column:auto}.bk-modal-head{padding:.7rem .8rem}.bk-modal-title{font-size:.95rem}.bk-modal-meta{gap:.3rem .5rem}.bk-modal-subtitle{font-size:.7rem}.bk-modal-foot{align-items:stretch;padding:0 .9rem .9rem}.bk-modal-actions{flex:1;justify-content:flex-end}.bk-modal-foot .bk-btn{font-size:.7rem;padding:.55rem .65rem}.bk-modal{border-radius:14px} }
 </style>
 {% endblock %}
 
@@ -193,31 +282,34 @@ body, .customer-page-content { background: #f1f5f9 !important; }
     <!-- Stat Cards -->
     {% set action_count = namespace(value=0) %}
     {% for b in bookings %}
-        {% if b.payment_status in ['reupload_requested','balance_reupload_requested'] or b.status in ['pending_payment','awaiting_payment','draft'] %}
+        {% set payment_status = b.payment_status or '' %}
+        {% set waiting_for_review = payment_status in ['proof_submitted','balance_proof_submitted','cash_payment_requested','cash_balance_requested','pending_verification'] %}
+        {% set payment_already_submitted = payment_status in ['deposit_paid','partially_paid','paid','fully_paid','verified','confirmed'] %}
+        {% if payment_status in ['reupload_requested','balance_reupload_requested'] or (b.status in ['pending_payment','awaiting_payment'] and not waiting_for_review and not payment_already_submitted) %}
             {% set action_count.value = action_count.value + 1 %}
         {% endif %}
     {% endfor %}
 
-    <div class="premium-stats-grid">
-        <div class="premium-stat-card">
+    <div class="premium-stats-grid" data-initial-filter="{{ initial_stat_filter }}">
+        <div class="premium-stat-card{{ ' is-selected' if initial_stat_filter == 'all' else '' }}" role="button" tabindex="0" data-stat-filter="all" aria-pressed="{{ 'true' if initial_stat_filter == 'all' else 'false' }}" onclick="applyStatFilter('all', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();applyStatFilter('all',this)}">
             <div class="premium-stat-title">TOTAL BOOKINGS</div>
             <div class="premium-stat-value" style="color: #3b82f6;">{{ stats.total_reservations }}</div>
             <div class="premium-stat-subtitle">All reservations</div>
         </div>
         
-        <div class="premium-stat-card">
-            <div class="premium-stat-title">AMOUNT PAID</div>
-            <div class="premium-stat-value" style="color: #10b981;">₱{{ "{:,.0f}".format(stats.total_spent) }}</div>
-            <div class="premium-stat-subtitle">Confirmed payments</div>
+        <div class="premium-stat-card{{ ' is-selected' if initial_stat_filter == 'paid' else '' }}" role="button" tabindex="0" data-stat-filter="paid" aria-pressed="{{ 'true' if initial_stat_filter == 'paid' else 'false' }}" onclick="applyStatFilter('paid', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();applyStatFilter('paid',this)}">
+            <div class="premium-stat-title">PAYMENTS SUBMITTED</div>
+            <div class="premium-stat-value" style="color: #10b981;">₱{{ "{:,.2f}".format(stats.total_spent) }}</div>
+            <div class="premium-stat-subtitle">Verified + under review</div>
         </div>
         
-        <div class="premium-stat-card">
+        <div class="premium-stat-card{{ ' is-selected' if initial_stat_filter == 'balance' else '' }}" role="button" tabindex="0" data-stat-filter="balance" aria-pressed="{{ 'true' if initial_stat_filter == 'balance' else 'false' }}" onclick="applyStatFilter('balance', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();applyStatFilter('balance',this)}">
             <div class="premium-stat-title">BALANCE DUE</div>
-            <div class="premium-stat-value" style="color: #f59e0b;">₱{{ "{:,.0f}".format(stats.pending_obligations) }}</div>
-            <div class="premium-stat-subtitle">Pending obligations</div>
+            <div class="premium-stat-value" style="color: #f59e0b;">₱{{ "{:,.2f}".format(stats.pending_obligations) }}</div>
+            <div class="premium-stat-subtitle">After payment review</div>
         </div>
         
-        <div class="premium-stat-card">
+        <div class="premium-stat-card{{ ' is-selected' if initial_stat_filter == 'action' else '' }}" role="button" tabindex="0" data-stat-filter="action" aria-pressed="{{ 'true' if initial_stat_filter == 'action' else 'false' }}" onclick="applyStatFilter('action', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();applyStatFilter('action',this)}">
             <div class="premium-stat-title">ACTION NEEDED</div>
             <div class="premium-stat-value" style="color: #ef4444;">{{ action_count.value }}</div>
             <div class="premium-stat-subtitle">Requires attention</div>
@@ -227,9 +319,10 @@ body, .customer-page-content { background: #f1f5f9 !important; }
     <!-- Main Panel -->
     <div class="bk-panel">
         <div class="bk-panel-head">
-            <h3>All Bookings</h3>
+            <h3>Bookings</h3>
             <select class="bk-filter" id="statusFilter" onchange="applyFilter()">
                 <option value="">All Status</option>
+                <option value="upcoming">Upcoming events</option>
                 <option value="action">⚡ Action Needed</option>
                 <option value="pending">Pending Review</option>
                 <option value="confirmed">Confirmed</option>
@@ -244,13 +337,14 @@ body, .customer-page-content { background: #f1f5f9 !important; }
         </div>
 
         {% if bookings %}
-        <div class="bk-table-wrapper">
+        <div class="bk-mobile-hint">Swipe the table sideways to see all booking columns.</div>
+        <div class="bk-table-wrapper" role="region" aria-label="Customer events">
         <table class="bk-table" id="bkTable">
             <thead>
                 <tr>
                     <th>Booking</th>
                     <th>Event Date</th>
-                    <th>Amount</th>
+                    <th>Total</th>
                     <th>Status</th>
                     <th style="text-align:right;">Actions</th>
                 </tr>
@@ -258,7 +352,6 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             <tbody id="bkTbody">
             {% for b in bookings %}
             {% set is_fast_track = b.transaction_type == 'fast_track' %}
-            {% set is_food_order = b.document_type == 'invoice' %}
             {% set food_items = b.selected_items | rejectattr('menu_item_id', 'none') | list if b.selected_items else [] %}
             {% set equipment_items = b.selected_items | rejectattr('equipment_id', 'none') | list if b.selected_items else [] %}
             {% set service_items = b.selected_items | rejectattr('service_id', 'none') | list if b.selected_items else [] %}
@@ -272,8 +365,6 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                 {% set display_title = service_items[0].service.name %}
             {% elif is_rental_only %}
                 {% set display_title = equipment_items[0].equipment.name ~ (' (and more)' if equipment_items|length > 1 else '') %}
-            {% elif is_food_order %}
-                {% set display_title = 'Food Order' %}
             {% elif b.event_name %}
                 {% set display_title = b.event_name %}
             {% endif %}
@@ -281,7 +372,6 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             {% set booking_type_label = 'Package' %}
             {% if is_rental_only %} {% set booking_type_label = 'Rental' %}
             {% elif is_service_only %} {% set booking_type_label = 'Service' %}
-            {% elif is_food_order %} {% set booking_type_label = 'Food Order' %}
             {% elif is_fast_track %} {% set booking_type_label = 'Custom' %} {% endif %}
 
             {% set raw_source = (b.booking_source or '')|lower %}
@@ -292,12 +382,81 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 
             {% set ps = b.payment_status or '' %}
             {% set bs = b.status or '' %}
-            {% set needs_action = ps in ['reupload_requested','balance_reupload_requested'] or bs in ['pending_payment','awaiting_payment'] %}
+            {% set waiting_for_review = ps in ['proof_submitted','balance_proof_submitted','cash_payment_requested','cash_balance_requested','pending_verification'] %}
+            {% set payment_already_submitted = ps in ['deposit_paid','partially_paid','paid','fully_paid','verified','confirmed'] %}
+            {% set needs_action = ps in ['reupload_requested','balance_reupload_requested'] or (bs in ['pending_payment','awaiting_payment'] and not waiting_for_review and not payment_already_submitted) %}
+            {% set modal_payment_summary = payment_summaries.get(b.id, {}) %}
+            {% set modal_paid = modal_payment_summary.get('verified_paid', b.amount_paid or 0)|float %}
+            {% if modal_paid <= 0 and ps in ['paid', 'fully_paid'] %}{% set modal_paid = b.total_amount or 0 %}{% elif modal_paid <= 0 and ps == 'deposit_paid' %}{% set modal_paid = b.reservation_fee or 0 %}{% endif %}
+            {% set has_balance_due = bs not in ['cancelled', 'expired'] and modal_payment_summary.get('remaining_after_verification', 0)|float > 0 %}
+            {% set modal_items = namespace(items=[]) %}
+            {% for selected in b.selected_items or [] %}
+                {% set selected_name = selected.custom_name or (selected.menu_item.name if selected.menu_item else (selected.equipment.name if selected.equipment else (selected.service.name if selected.service else 'Selected item'))) %}
+                {% set selected_type = 'Food' if selected.menu_item_id else ('Equipment' if selected.equipment_id else ('Service' if selected.service_id else 'Item')) %}
+                {% set modal_items.items = modal_items.items + [{'name': selected_name, 'type': selected_type, 'quantity': selected.quantity or 1, 'price': selected.price or 0}] %}
+            {% endfor %}
+            {% set modal_package_items = namespace(items=[]) %}
+            {% if b.package %}
+                {% for package_menu in b.package.menu_items or [] %}
+                    {% set modal_package_items.items = modal_package_items.items + [{'name': package_menu.name, 'type': 'Food', 'quantity': 1}] %}
+                {% endfor %}
+                {% for package_service in b.package.service_links or [] %}
+                    {% if package_service.service %}{% set modal_package_items.items = modal_package_items.items + [{'name': package_service.service.name, 'type': 'Service', 'quantity': package_service.quantity or 1}] %}{% endif %}
+                {% endfor %}
+                {% for package_equipment in b.package.equipment_links or [] %}
+                    {% if package_equipment.equipment %}{% set modal_package_items.items = modal_package_items.items + [{'name': package_equipment.equipment.name, 'type': 'Equipment', 'quantity': package_equipment.quantity or 1}] %}{% endif %}
+                {% endfor %}
+            {% endif %}
+            {% set modal_history = namespace(items=[]) %}
+            {% for history_entry in (b.history|sort(attribute='created_at', reverse=true))[:8] %}
+                {% set modal_history.items = modal_history.items + [{'status': (history_entry.status or 'Updated')|replace('_',' ')|title, 'notes': history_entry.notes or '', 'date': history_entry.created_at.strftime('%b %d, %Y · %I:%M %p') if history_entry.created_at else ''}] %}
+            {% endfor %}
+            {% set modal_payments = namespace(items=[]) %}
+            {% for payment_record in b.payment_records|sort(attribute='payment_date', reverse=true) %}
+                {% set modal_payments.items = modal_payments.items + [{'reference': payment_record.display_payment_ref, 'amount': payment_record.amount or 0, 'method': payment_record.payment_method or 'Payment', 'type': payment_record.payment_type or '', 'recorded_by': payment_record.recorded_by or '', 'date': payment_record.payment_date.strftime('%b %d, %Y · %I:%M %p') if payment_record.payment_date else ''}] %}
+            {% endfor %}
             <tr class="bk-row"
                 data-status="{{ bs }}"
                 data-action="{{ 'true' if needs_action else 'false' }}"
+                data-paid="{{ 'true' if bs != 'cancelled' and (modal_paid + modal_payment_summary.get('pending_review', 0)|float) > 0 else 'false' }}"
+                data-balance="{{ 'true' if has_balance_due else 'false' }}"
+                data-upcoming="{{ 'true' if b.id in upcoming_booking_ids else 'false' }}"
+                data-payment-status="{{ ps|e }}"
+                data-has-review="{{ 'true' if b.review else 'false' }}"
+                data-booking-id="{{ b.id }}"
+                data-title="{{ (display_title or 'Booking')|e }}"
+                data-caterer="{{ (b.caterer.business_name or 'Caterer')|e }}"
+                data-event-type="{{ (b.event_type or 'Event')|e }}"
+                data-event-name="{{ (b.event_name or '')|e }}"
+                data-celebrant="{{ (b.celebrant_name or '')|e }}"
+                data-theme="{{ (b.motif_theme or '')|e }}"
+                data-event-date="{{ b.event_date.strftime('%B %d, %Y') if b.event_date else 'Not set' }}"
+                data-event-time="{{ b.event_time.strftime('%I:%M %p') if b.event_time else 'To be confirmed' }}"
+                data-event-end-time="{{ b.event_end_time.strftime('%I:%M %p') if b.event_end_time else 'Not set' }}"
+                data-guests="{{ b.guest_count or 0 }}"
+                data-venue="{{ (b.venue_address or 'Venue not set')|e }}"
+                data-amount="{{ '{:,.2f}'.format(modal_payment_summary.get('total_amount', b.total_amount or 0)|float) }}"
+                data-paid-amount="{{ '{:,.2f}'.format(modal_paid) }}"
+                data-review-amount="{{ '{:,.2f}'.format(modal_payment_summary.get('pending_review', 0)|float) }}"
+                data-balance-amount="{{ '{:,.2f}'.format(modal_payment_summary.get('remaining_after_verification', [((b.total_amount or 0) - modal_paid), 0]|max)|float) }}"
+                data-reservation-fee="{{ '{:,.2f}'.format(b.reservation_fee or 0) }}"
+                data-travel-fee="{{ '{:,.2f}'.format(b.travel_fee or 0) }}"
+                data-payment-method="{{ (b.payment_method or '')|e }}"
+                data-payment-status-label="{{ ps|replace('_',' ')|title|e }}"
+                data-payment-records="{{ modal_payments.items|tojson|forceescape }}"
+                data-special-requests="{{ (b.special_requests or '')|e }}"
+                data-package-name="{{ (b.package.name if b.package else display_title or 'Custom booking')|e }}"
+                data-package-description="{{ (b.package.description if b.package and b.package.description else '')|e }}"
+                data-package-inclusions="{{ (b.package.inclusions if b.package and b.package.inclusions else [])|tojson|forceescape }}"
+                data-package-items="{{ modal_package_items.items|tojson|forceescape }}"
+                data-selected-items="{{ modal_items.items|tojson|forceescape }}"
+                data-contract-status="{{ (b.contract.status if b.contract else (b.quotation.status if b.quotation else ''))|e }}"
+                data-contract-url="{{ (b.quotation.contract_url if b.quotation and b.quotation.contract_url else '')|e }}"
+                data-contract-customer-signed="{{ 'true' if (b.contract and b.contract.customer_signed_at) or (b.quotation and b.quotation.customer_signed_at) else 'false' }}"
+                data-contract-caterer-signed="{{ 'true' if (b.contract and b.contract.caterer_signed_at) or (b.quotation and b.quotation.caterer_signed_at) else 'false' }}"
+                data-booking-history="{{ modal_history.items|tojson|forceescape }}"
                 data-search="{{ (display_title or '')|lower }} {{ (b.caterer.business_name or '')|lower }} bk-{{ '%03d'|format(b.id) }} {{ booking_type_label|lower }}">
-                <td>
+                <td data-label="Booking">
                     <div class="cell-name">{{ display_title or 'Booking' }}</div>
                     <div class="cell-sub">
                         <span class="type-chip">{{ booking_type_label }}</span>
@@ -305,8 +464,6 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                             <span class="bk-id-chip">{{ b.booking_ref }}</span>
                         {% elif b.display_booking_ref %}
                             <span class="bk-id-chip">{{ b.display_booking_ref }}</span>
-                        {% elif b.document_type == 'invoice' %}
-                            <span class="bk-id-chip">ORD-{{ "%03d"|format(b.id) }}</span>
                         {% elif b.document_type == 'rental_agreement' or b.event_type == 'Equipment Rental' %}
                             <span class="bk-id-chip">RT-{{ "%03d"|format(b.id) }}</span>
                         {% else %}
@@ -316,27 +473,29 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <span style="font-weight:700;"><i class="fas fa-store" style="color:var(--bk-primary); margin-right:4px;"></i>{{ b.caterer.business_name }}</span>
                     </div>
                 </td>
-                <td>
+                <td data-label="Event date">
                     <div style="font-weight:800;color:var(--bk-text);">{{ b.event_date.strftime('%b %d, %Y') }}</div>
                     <div class="cell-sub">{{ b.event_time.strftime('%I:%M %p') if b.event_time else 'TBD' }}</div>
                 </td>
-                <td>
-                    <div style="font-weight:800;color:var(--bk-text); font-size: 1rem;">₱{{ "{:,.2f}".format(b.total_amount or 0) }}</div>
+                <td data-label="Booking total">
+                    <div style="font-weight:800;color:var(--bk-text); font-size: 1rem;">₱{{ "{:,.2f}".format(modal_payment_summary.get('total_amount', b.total_amount or 0)|float) }}</div>
                     <div class="cell-sub">{{ b.guest_count }} guests</div>
                 </td>
-                <td>
+                <td data-label="Status">
                     {% if ps in ['reupload_requested','balance_reupload_requested'] %}
                         <span class="bk-badge badge-reupload badge-pulse">⚠ Re-upload Proof</span>
                     {% elif ps in ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'] %}
-                        <span class="bk-badge badge-pending">Under Review</span>
+                        <span class="bk-badge badge-pending">Payment review</span>
+                    {% elif bs in ['pending_payment','awaiting_payment'] and payment_already_submitted %}
+                        <span class="bk-badge badge-confirmed">Payment received</span>
                     {% elif bs in ['pending_payment','awaiting_payment'] %}
                         <span class="bk-badge badge-pay-now badge-pulse">Pay Now</span>
                     {% elif bs == 'confirmed' %}
                         <span class="bk-badge badge-confirmed">Confirmed</span>
                     {% elif bs == 'completed' %}
                         <span class="bk-badge badge-completed">Completed</span>
-                    {% elif bs == 'pending' and ps in ['deposit_paid', 'paid', 'fully_paid'] %}
-                        <span class="bk-badge badge-confirmed">Confirmed</span>
+                    {% elif bs == 'pending' and payment_already_submitted %}
+                        <span class="bk-badge badge-confirmed">Payment received</span>
                     {% elif bs == 'pending' %}
                         <span class="bk-badge badge-pay-now">Awaiting Payment</span>
                     {% elif bs in ['cancelled', 'expired'] %}
@@ -345,7 +504,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <span class="bk-badge badge-draft">Draft</span>
                     {% elif bs == 'preparing' %}
                         <span class="bk-badge badge-preparing">Preparing</span>
-                    {% elif bs == 'ready_for_delivery' and b.document_type != 'invoice' %}
+                    {% elif bs == 'ready_for_delivery' %}
                         <span class="bk-badge badge-active">Preparation Complete</span>
                     {% elif bs in ['on_the_way','ready_for_delivery','arrived'] %}
                         <span class="bk-badge badge-active">On the Way</span>
@@ -355,31 +514,22 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <span class="bk-badge badge-draft">{{ bs|replace('_',' ')|title }}</span>
                     {% endif %}
                 </td>
-                <td style="text-align:right;">
-                    <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                <td data-label="Actions" style="text-align:right;">
+            <div style="display:inline-flex;gap:8px;flex-wrap:nowrap;justify-content:flex-end;">
+                    <button type="button" class="bk-btn btn-manage bk-btn-icon" title="View booking details" aria-label="View booking details for {{ display_title|e }}" onclick="openBookingDetails(this)"><i class="fas fa-eye" aria-hidden="true"></i></button>
                     {% if ps in ['reupload_requested','balance_reupload_requested'] %}
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-settle">Upload Proof</a>
+                        <a href="/customer/bookings?open_detail={{ b.id }}&amp;open_reupload=1" class="bk-btn btn-settle">Upload Proof</a>
                     {% elif bs in ['pending_payment','awaiting_payment'] %}
-                        {% if b.document_type == 'invoice' %}
-                            <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-pay">Manage Order</a>
-                        {% else %}
-                            <a href="/bookings/step/payment/{{ b.id }}" class="bk-btn btn-pay">Pay</a>
-                            <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
-                        {% endif %}
+                        <a href="/bookings/step/payment/{{ b.id }}" class="bk-btn btn-pay">Pay</a>
                     {% elif bs in ['pending_quotation', 'awaiting_customer'] %}
                         <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-resume">Sign Contract</a>
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
                     {% elif bs == 'awaiting_caterer' %}
                         <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-manage">View Contract</a>
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
                     {% elif bs == 'draft' %}
                         <a href="/bookings/continue/{{ b.id }}" class="bk-btn btn-resume">Continue</a>
-                        <button onclick="removeBooking({{ b.id }})" class="bk-btn btn-del" title="Delete Draft">Delete</button>
+                        <button type="button" onclick="removeBooking({{ b.id }})" class="bk-btn btn-del bk-btn-icon" title="Delete draft" aria-label="Delete draft booking {{ display_title|e }}"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
                     {% elif bs in ['completed', 'cancelled'] %}
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">View Details</a>
-                        <button onclick="archiveBooking({{ b.id }})" class="bk-btn btn-manage" title="Archive Booking"><i class="fas fa-archive"></i> Archive</button>
-                    {% else %}
-                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">View Details</a>
+                        <button type="button" onclick="archiveBooking({{ b.id }})" class="bk-btn btn-archive bk-btn-icon" title="Archive booking" aria-label="Archive booking {{ display_title|e }}"><i class="fas fa-box-archive" aria-hidden="true"></i></button>
                     {% endif %}
                     </div>
                 </td>
@@ -413,6 +563,108 @@ body, .customer-page-content { background: #f1f5f9 !important; }
         {% endif %}
     </div>
 </div>
+<div class="bk-modal-overlay" id="bookingDetailsModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="bkModalTitle" onclick="if(event.target===this)closeBookingDetails()">
+    <section class="bk-modal">
+        <div class="bk-modal-head">
+            <div class="bk-modal-heading">
+                <h2 class="bk-modal-title" id="bkModalTitle">Booking details</h2>
+                <div class="bk-modal-meta">
+                    <span class="bk-modal-subtitle bk-modal-caterer"><i class="fas fa-store" aria-hidden="true"></i><span id="bkModalCaterer"></span></span>
+                    <span class="bk-modal-reference" id="bkModalReference"></span>
+                </div>
+            </div>
+            <button type="button" class="bk-modal-close" aria-label="Close booking details" onclick="closeBookingDetails()"><i class="fas fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <nav class="bk-modal-tabs" role="tablist" aria-label="Booking detail sections">
+            <button type="button" role="tab" aria-selected="true" class="bk-modal-tab is-active" data-booking-pane="overview" onclick="switchBookingDetailTab('overview',this)">Overview</button>
+            <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="items" onclick="switchBookingDetailTab('items',this)">Package &amp; Items</button>
+            <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="payment" onclick="switchBookingDetailTab('payment',this)">Payment</button>
+            <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="updates" onclick="switchBookingDetailTab('updates',this)">Contract &amp; Updates</button>
+            <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="chat" onclick="switchBookingDetailTab('chat',this)">Chat</button>
+        </nav>
+        <div class="bk-modal-body is-active" id="bkPaneOverview" data-booking-pane-content="overview">
+            <div class="bk-detail-item"><span class="bk-detail-label">Status</span><span class="bk-detail-value" id="bkModalStatus"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Event type</span><span class="bk-detail-value" id="bkModalType"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Event name</span><span class="bk-detail-value" id="bkModalEventName"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Celebrant</span><span class="bk-detail-value" id="bkModalCelebrant"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Event date</span><span class="bk-detail-value" id="bkModalDate"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Guests</span><span class="bk-detail-value" id="bkModalGuests"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Ingress</span><span class="bk-detail-value" id="bkModalTime"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Egress</span><span class="bk-detail-value" id="bkModalEndTime"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Theme / motif</span><span class="bk-detail-value" id="bkModalTheme"></span></div>
+            <div class="bk-detail-item wide"><span class="bk-detail-label">Venue address</span><span class="bk-detail-value" id="bkModalVenue"></span></div>
+            <div class="bk-detail-item wide" id="bkModalNotesItem"><span class="bk-detail-label">Special requests</span><span class="bk-detail-value" id="bkModalNotes"></span></div>
+            <div class="bk-detail-item wide"><span class="bk-detail-label">What happens next</span><span class="bk-detail-value" id="bkModalGuidance"></span></div>
+        </div>
+        <div class="bk-modal-body" id="bkPaneItems" data-booking-pane-content="items">
+            <div class="bk-detail-item wide"><span class="bk-detail-label">Selected package / service</span><span class="bk-detail-value" id="bkModalPackage"></span></div>
+            <div class="bk-detail-item wide" id="bkModalPackageDescriptionItem"><span class="bk-detail-label">Package description</span><span class="bk-detail-value" id="bkModalPackageDescription"></span></div>
+            <h3 class="bk-detail-section-title">Package inclusions</h3>
+            <div class="bk-detail-list" id="bkModalInclusions"></div>
+            <h3 class="bk-detail-section-title">Selected items and add-ons</h3>
+            <div class="bk-detail-list" id="bkModalSelectedItems"></div>
+        </div>
+        <div class="bk-modal-body" id="bkPanePayment" data-booking-pane-content="payment">
+            <div class="bk-detail-item"><span class="bk-detail-label">Payment status</span><span class="bk-detail-value" id="bkModalPaymentStatus"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Payment method</span><span class="bk-detail-value" id="bkModalPaymentMethod"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Booking total</span><span class="bk-detail-value" id="bkModalAmount"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Verified paid</span><span class="bk-detail-value" id="bkModalPaid"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Under review</span><span class="bk-detail-value" id="bkModalUnderReview"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Balance after review</span><span class="bk-detail-value" id="bkModalBalance"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Reservation fee</span><span class="bk-detail-value" id="bkModalReservationFee"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Transportation fee</span><span class="bk-detail-value" id="bkModalTravelFee"></span></div>
+            <h3 class="bk-detail-section-title">Payment entries</h3>
+            <div class="bk-detail-list" id="bkModalPaymentRecords"></div>
+            <div class="bk-detail-item wide" id="bkModalReupload" hidden>
+                <span class="bk-detail-label">Payment proof was rejected</span>
+                <form id="bkReuploadForm" method="post" enctype="multipart/form-data">
+                    <label class="bk-detail-value" for="bkReuploadMethod">Payment method</label>
+                    <select id="bkReuploadMethod" name="payment_method" required>
+                        <option value="Paymongo">Online payment</option>
+                        <option value="GCash">GCash</option>
+                        <option value="Bank Transfer">Bank transfer</option>
+                    </select>
+                    <label class="bk-detail-value" for="bkReuploadFile">New proof (JPG, PNG, or WEBP)</label>
+                    <input id="bkReuploadFile" type="file" name="payment_proof" accept="image/jpeg,image/png,image/webp" required>
+                    <button class="bk-btn btn-settle" type="submit">Submit new proof</button>
+                </form>
+            </div>
+        </div>
+        <div class="bk-modal-body" id="bkPaneUpdates" data-booking-pane-content="updates">
+            <div class="bk-detail-item"><span class="bk-detail-label">Contract status</span><span class="bk-detail-value" id="bkModalContractStatus"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Your signature</span><span class="bk-detail-value" id="bkModalCustomerSigned"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Caterer signature</span><span class="bk-detail-value" id="bkModalCatererSigned"></span></div>
+            <div class="bk-detail-item"><span class="bk-detail-label">Agreement</span><a class="bk-detail-value" id="bkModalContractLink" href="#" target="_blank" rel="noopener" style="display:none;color:#c2410c;">View contract</a><span class="bk-detail-value" id="bkModalContractUnavailable">No contract has been issued.</span></div>
+            <h3 class="bk-detail-section-title">Recent booking updates</h3>
+            <div class="bk-detail-list" id="bkModalHistory"></div>
+        </div>
+        <div class="bk-modal-body" id="bkPaneChat" data-booking-pane-content="chat">
+            <div class="bk-booking-chat">
+                <p class="bk-modal-subtitle" id="bkChatContext">Chat about this booking</p>
+                <div class="bk-chat-error" id="bkChatError" role="status" aria-live="polite"></div>
+                <div class="bk-chat-messages" id="bkModalChatMessages" aria-live="polite"></div>
+                <form class="bk-chat-form" id="bkModalChatForm" onsubmit="sendBookingDetailMessage(event)">
+                    <textarea name="message" id="bkChatInput" maxlength="5000" placeholder="Write a message about this booking…" aria-label="Message about this booking"></textarea>
+                    <div class="bk-chat-tools">
+                        <label class="bk-chat-attach" for="bkChatAttachment" title="Attach a file" aria-label="Attach a file">
+                            <i class="fas fa-paperclip" aria-hidden="true"></i>
+                        </label>
+                        <input class="bk-chat-file-input" type="file" name="attachment" id="bkChatAttachment" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx" aria-label="Attach a file">
+                        <span class="bk-chat-file-name" id="bkChatFileName">Attach a file</span>
+                        <button type="submit" class="bk-btn btn-resume" id="bkChatSend"><i class="fas fa-paper-plane" aria-hidden="true"></i> Send</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="bk-modal-foot">
+            <button type="button" class="bk-btn btn-manage" onclick="closeBookingDetails()">Close</button>
+            <div class="bk-modal-actions">
+                <button type="button" class="bk-btn btn-manage" id="bkModalChat" onclick="switchBookingDetailTab('chat',document.querySelector('.bk-modal-tab[data-booking-pane=chat]'))"><i class="fas fa-comments" aria-hidden="true"></i> Discuss booking</button>
+                <a class="bk-btn btn-resume" id="bkModalNextAction" href="#" style="display:none;"></a>
+            </div>
+        </div>
+    </section>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -421,41 +673,61 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 const ROWS_PER_PAGE = 8;
 let currentPage  = 1;
 let visibleRows  = [];
+const initialStatFilter = document.querySelector('.premium-stats-grid')?.dataset.initialFilter || 'all';
+let selectedStatFilter = ['paid', 'balance', 'action'].includes(initialStatFilter) ? initialStatFilter : 'all';
+let activeSearchTerm = '';
 
 function getAllRows() {
     return Array.from(document.querySelectorAll('.bk-row'));
 }
 
 function applyFilter() {
-    const filterVal = document.getElementById('statusFilter')?.value || '';
-    const allRows   = getAllRows();
-
-    visibleRows = allRows.filter(row => {
-        const status  = row.dataset.status || '';
-        const action  = row.dataset.action === 'true';
-        if (!filterVal) return true;
-        if (filterVal === 'action') return action;
-        if (filterVal === 'on_the_way') return ['on_the_way','ready_for_delivery','arrived'].includes(status);
-        if (filterVal === 'in_progress') return ['in_progress','setup_ongoing'].includes(status);
-        return status === filterVal;
+    selectedStatFilter = '';
+    document.querySelectorAll('.premium-stat-card').forEach(card => {
+        card.classList.remove('is-selected');
+        card.setAttribute('aria-pressed', 'false');
     });
+    updateVisibleRows();
+}
 
+function applyStatFilter(filter, card) {
+    selectedStatFilter = filter;
+    const statusFilter = document.getElementById('statusFilter');
+    if (statusFilter) statusFilter.value = '';
+    document.querySelectorAll('.premium-stat-card').forEach(item => {
+        const selected = item === card;
+        item.classList.toggle('is-selected', selected);
+        item.setAttribute('aria-pressed', String(selected));
+    });
+    updateVisibleRows();
+}
+
+function updateVisibleRows() {
+    const filterVal = document.getElementById('statusFilter')?.value || '';
+    visibleRows = getAllRows().filter(row => {
+        const status = row.dataset.status || '';
+        const action = row.dataset.action === 'true';
+        let statusMatch = true;
+        if (filterVal === 'upcoming') statusMatch = row.dataset.upcoming === 'true';
+        else if (filterVal === 'action') statusMatch = action;
+        else if (filterVal === 'on_the_way') statusMatch = ['on_the_way','ready_for_delivery','arrived'].includes(status);
+        else if (filterVal === 'in_progress') statusMatch = ['in_progress','setup_ongoing'].includes(status);
+        else if (filterVal) statusMatch = status === filterVal;
+        if (!statusMatch) return false;
+        if (selectedStatFilter === 'action' && !action) return false;
+        if (selectedStatFilter === 'paid' && row.dataset.paid !== 'true') return false;
+        if (selectedStatFilter === 'balance' && row.dataset.balance !== 'true') return false;
+        if (activeSearchTerm && !(row.dataset.search || '').includes(activeSearchTerm)) return false;
+        return true;
+    });
     currentPage = 1;
     renderPage();
 }
 
 // Hook into header global search
 function onGlobalSearch(q) {
-    const allRows = getAllRows();
-    const term    = q.trim().toLowerCase();
-    if (!term) { visibleRows = allRows; }
-    else {
-        visibleRows = allRows.filter(r =>
-            (r.dataset.search || '').includes(term)
-        );
-    }
-    currentPage = 1;
-    renderPage();
+    activeSearchTerm = q.trim().toLowerCase();
+    updateVisibleRows();
 }
 
 // Patch the customer layout search to also filter this page
@@ -465,18 +737,50 @@ document.addEventListener('DOMContentLoaded', () => {
         inp.addEventListener('input', () => {
             const q = inp.value.toLowerCase();
             if (q.length >= 1) onGlobalSearch(q);
-            else applyFilter(); // reset to filter-only view
+            else { activeSearchTerm = ''; applyFilter(); } // reset to current status filter
         });
     }
     window.addEventListener('globalSearch', (e) => {
         const q = (e.detail?.value || '').toLowerCase();
         if (q.length >= 1) onGlobalSearch(q);
-        else applyFilter();
+        else { activeSearchTerm = ''; applyFilter(); }
     });
 
     // Initial render
-    visibleRows = getAllRows();
-    renderPage();
+    if (initialStatFilter === 'upcoming') {
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) statusFilter.value = 'upcoming';
+    }
+    updateVisibleRows();
+    const params = new URLSearchParams(window.location.search);
+    const detailId = params.get('open_detail');
+    if (detailId) {
+        const row = Array.from(document.querySelectorAll('.bk-row')).find(item => item.dataset.bookingId === detailId);
+        const trigger = row?.querySelector('.bk-btn[aria-label^="View booking details"]');
+        if (trigger) openBookingDetails(trigger, params.has('open_chat') ? 'chat' : (params.has('open_reupload') ? 'payment' : 'overview'));
+    }
+    const notice = params.get('notice') || params.get('error_msg') || params.get('success_msg');
+    if (notice) {
+        if (window.showToast) window.showToast(notice, params.has('error_msg') ? 'error' : 'info');
+        else if (window.Swal) Swal.fire({ text: notice, icon: params.has('error_msg') ? 'error' : 'info' });
+        else alert(notice);
+    }
+    if (params.get('validation_error')) {
+        const message = params.get('validation_error');
+        const chatError = document.getElementById('bkChatError');
+        if (params.has('open_reupload')) {
+            const modal = document.getElementById('bookingDetailsModal');
+            const reuploadPanel = document.getElementById('bkModalReupload');
+            if (reuploadPanel) reuploadPanel.insertAdjacentText('beforeend', ` ${message}`);
+            if (modal && !modal.classList.contains('is-open')) {
+                const row = Array.from(document.querySelectorAll('.bk-row')).find(item => item.dataset.bookingId === detailId);
+                const trigger = row?.querySelector('.bk-btn[aria-label^="View booking details"]');
+                if (trigger) openBookingDetails(trigger, 'payment');
+            }
+        } else if (chatError) {
+            chatError.textContent = message;
+        }
+    }
 });
 
 function renderPage() {
@@ -537,6 +841,327 @@ function goPage(p) {
     renderPage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+let bookingModalTrigger = null;
+function switchBookingDetailTab(tab, button) {
+    document.querySelectorAll('.bk-modal-tab').forEach(item => {
+        const active = item === button;
+        item.classList.toggle('is-active', active);
+        item.setAttribute('aria-selected', String(active));
+    });
+    document.querySelectorAll('[data-booking-pane-content]').forEach(pane => {
+        pane.classList.toggle('is-active', pane.dataset.bookingPaneContent === tab);
+    });
+    if (tab === 'chat' && currentModalBookingId) loadBookingDetailMessages();
+}
+
+function parseDetailJson(value, fallback) {
+    try { return value ? JSON.parse(value) : fallback; }
+    catch { return fallback; }
+}
+
+let currentModalBookingId = null;
+async function loadBookingDetailMessages() {
+    const list = document.getElementById('bkModalChatMessages');
+    const error = document.getElementById('bkChatError');
+    if (!list || !currentModalBookingId) return;
+    list.replaceChildren();
+    if (error) error.textContent = '';
+    try {
+        const response = await fetch(`/bookings/${currentModalBookingId}/messages`, { headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        if (!response.ok || data.status !== 'success') throw new Error(data.message || 'Could not load this booking’s messages.');
+        if (!data.messages.length) {
+            const empty = document.createElement('p');
+            empty.className = 'bk-detail-empty';
+            empty.textContent = 'No messages yet. Send a message to start a conversation about this booking.';
+            list.appendChild(empty);
+            return;
+        }
+        data.messages.forEach(message => {
+            const bubble = document.createElement('div');
+            bubble.className = `bk-chat-message${message.is_me ? ' is-mine' : ''}`;
+            if (!message.is_me) {
+                const sender = document.createElement('strong');
+                sender.textContent = message.sender_name || 'Caterer';
+                bubble.appendChild(sender);
+            }
+            const text = document.createElement('div');
+            text.textContent = message.message || '';
+            bubble.appendChild(text);
+            if (message.attachment_url) {
+                const attachment = document.createElement('a');
+                attachment.href = message.attachment_url;
+                attachment.target = '_blank';
+                attachment.rel = 'noopener';
+                attachment.textContent = 'View attachment';
+                bubble.appendChild(attachment);
+            }
+            const meta = document.createElement('span');
+            meta.className = 'bk-chat-meta';
+            meta.textContent = message.created_at || '';
+            bubble.appendChild(meta);
+            list.appendChild(bubble);
+        });
+        list.scrollTop = list.scrollHeight;
+    } catch (errorValue) {
+        if (error) error.textContent = errorValue instanceof Error ? errorValue.message : 'Could not load this booking’s messages.';
+    }
+}
+
+document.getElementById('bkChatAttachment')?.addEventListener('change', event => {
+    const input = event.currentTarget;
+    const fileName = document.getElementById('bkChatFileName');
+    if (fileName) fileName.textContent = input.files?.[0]?.name || 'Attach a file';
+});
+
+async function sendBookingDetailMessage(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const input = document.getElementById('bkChatInput');
+    const file = document.getElementById('bkChatAttachment');
+    const button = document.getElementById('bkChatSend');
+    const error = document.getElementById('bkChatError');
+    if (!form || !input || !file || !button || !currentModalBookingId) return;
+    if (!input.value.trim() && !file.files?.length) return;
+    button.disabled = true;
+    if (error) error.textContent = '';
+    try {
+        const response = await fetch(`/bookings/${currentModalBookingId}/messages`, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
+        const data = await response.json();
+        if (!response.ok || !(data.success || data.status === 'success')) throw new Error(data.message || 'Message could not be sent.');
+        input.value = '';
+        file.value = '';
+        const fileName = document.getElementById('bkChatFileName');
+        if (fileName) fileName.textContent = 'Attach a file';
+        await loadBookingDetailMessages();
+    } catch (errorValue) {
+        if (error) error.textContent = errorValue instanceof Error ? errorValue.message : 'Message could not be sent.';
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function renderDetailList(containerId, values, emptyMessage, formatter) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.replaceChildren();
+    const rows = formatter(values);
+    if (!rows.length) {
+        const empty = document.createElement('div');
+        empty.className = 'bk-detail-empty';
+        empty.textContent = emptyMessage;
+        container.appendChild(empty);
+        return;
+    }
+    rows.forEach(([title, detail]) => {
+        const line = document.createElement('div');
+        line.className = 'bk-detail-list-item';
+        const name = document.createElement('span');
+        const meta = document.createElement('span');
+        name.textContent = title;
+        meta.textContent = detail;
+        line.append(name, meta);
+        container.appendChild(line);
+    });
+}
+
+function openBookingDetails(button, openPane = 'overview') {
+    const row = button?.closest('.bk-row');
+    const modal = document.getElementById('bookingDetailsModal');
+    if (!row || !modal) return;
+    if (modal.parentElement !== document.body) document.body.appendChild(modal);
+    const id = row.dataset.bookingId;
+    currentModalBookingId = id;
+    const status = row.dataset.status || '';
+    const paymentStatus = row.dataset.paymentStatus || '';
+    const setText = (elementId, value) => {
+        const element = document.getElementById(elementId);
+        if (element) element.textContent = value || '—';
+    };
+    setText('bkModalTitle', row.dataset.title);
+    setText('bkModalCaterer', row.dataset.caterer);
+    setText('bkChatContext', `Chat about ${row.dataset.title || 'this booking'} with ${row.dataset.caterer || 'your caterer'}.`);
+    setText('bkModalStatus', row.querySelector('td:nth-child(4) .bk-badge')?.textContent.trim() || status.replaceAll('_', ' '));
+    setText('bkModalReference', row.querySelector('.bk-id-chip')?.textContent.trim() || `BK-${id}`);
+    setText('bkModalDate', row.dataset.eventDate);
+    setText('bkModalTime', row.dataset.eventTime);
+    setText('bkModalEndTime', row.dataset.eventEndTime);
+    setText('bkModalType', row.dataset.eventType);
+    setText('bkModalEventName', row.dataset.eventName || 'Not specified');
+    setText('bkModalCelebrant', row.dataset.celebrant || 'Not specified');
+    setText('bkModalTheme', row.dataset.theme || 'Not specified');
+    setText('bkModalGuests', `${row.dataset.guests || '0'} guests`);
+    setText('bkModalAmount', `₱${row.dataset.amount || '0.00'}`);
+    setText('bkModalPaid', `₱${row.dataset.paidAmount || '0.00'}`);
+    setText('bkModalUnderReview', `₱${row.dataset.reviewAmount || '0.00'}`);
+    setText('bkModalBalance', `₱${row.dataset.balanceAmount || '0.00'}`);
+    setText('bkModalReservationFee', `₱${row.dataset.reservationFee || '0.00'}`);
+    setText('bkModalTravelFee', `₱${row.dataset.travelFee || '0.00'}`);
+    setText('bkModalPaymentStatus', row.dataset.paymentStatusLabel || 'Pending');
+    setText('bkModalPaymentMethod', row.dataset.paymentMethod || 'Not selected');
+    setText('bkModalVenue', row.dataset.venue);
+    setText('bkModalPackage', row.dataset.packageName);
+    const packageDescription = document.getElementById('bkModalPackageDescriptionItem');
+    if (packageDescription) packageDescription.hidden = !row.dataset.packageDescription;
+    setText('bkModalPackageDescription', row.dataset.packageDescription || '');
+    const notesItem = document.getElementById('bkModalNotesItem');
+    if (notesItem) notesItem.hidden = !row.dataset.specialRequests;
+    setText('bkModalNotes', row.dataset.specialRequests || '');
+
+    const packageInclusions = parseDetailJson(row.dataset.packageInclusions, []);
+    const packageItems = parseDetailJson(row.dataset.packageItems, []);
+    let normalizedInclusions = [];
+    if (Array.isArray(packageInclusions)) {
+        normalizedInclusions = packageInclusions.map(item => {
+            if (typeof item === 'string') return { name: item, detail: 'Included' };
+            return {
+                name: item?.name || item?.item_name || item?.title || 'Package inclusion',
+                detail: item?.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}` : (item?.category || item?.item_type || 'Included')
+            };
+        });
+    } else if (packageInclusions && typeof packageInclusions === 'object') {
+        normalizedInclusions = Object.entries(packageInclusions)
+            .filter(([, included]) => !!included)
+            .map(([name, detail]) => ({ name, detail: typeof detail === 'string' ? detail : 'Included' }));
+    } else if (typeof packageInclusions === 'string' && packageInclusions.trim()) {
+        normalizedInclusions = [{ name: packageInclusions, detail: 'Included' }];
+    }
+    const allPackageItems = normalizedInclusions.concat((Array.isArray(packageItems) ? packageItems : []).map(item => ({
+        name: item.name || 'Package item',
+        detail: `${item.type || 'Item'} · Qty ${item.quantity || 1}`
+    })));
+    renderDetailList('bkModalInclusions', allPackageItems, 'No package inclusions were recorded.', values =>
+        values.map(item => [item.name, item.detail])
+    );
+
+    const selectedItems = parseDetailJson(row.dataset.selectedItems, []);
+    renderDetailList('bkModalSelectedItems', selectedItems, 'No separately selected items or add-ons.', values =>
+        (Array.isArray(values) ? values : []).map(item => {
+            const quantity = Number(item.quantity || 1);
+            const price = Number(item.price || 0);
+            const meta = `${item.type || 'Item'} · Qty ${quantity}${price > 0 ? ` · ₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : ' · Included'}`;
+            return [item.name || 'Selected item', meta];
+        })
+    );
+
+    const contractStatus = row.dataset.contractStatus || '';
+    setText('bkModalContractStatus', contractStatus ? contractStatus.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase()) : 'Not issued');
+    setText('bkModalCustomerSigned', row.dataset.contractCustomerSigned === 'true' ? 'Signed' : 'Not signed');
+    setText('bkModalCatererSigned', row.dataset.contractCatererSigned === 'true' ? 'Signed' : 'Not signed');
+    const contractLink = document.getElementById('bkModalContractLink');
+    const contractUnavailable = document.getElementById('bkModalContractUnavailable');
+    if (contractLink && contractUnavailable) {
+        const hasContract = !!contractStatus;
+        contractLink.href = row.dataset.contractUrl || `/customer/bookings/${id}/contract`;
+        contractLink.style.display = hasContract ? 'block' : 'none';
+        contractUnavailable.style.display = hasContract ? 'none' : 'block';
+    }
+    const bookingHistory = parseDetailJson(row.dataset.bookingHistory, []);
+    renderDetailList('bkModalHistory', bookingHistory, 'No booking updates recorded yet.', values =>
+        (Array.isArray(values) ? values : []).map(item => [item.status || 'Booking updated', [item.date, item.notes].filter(Boolean).join(' · ')])
+    );
+    const paymentRecords = parseDetailJson(row.dataset.paymentRecords, []);
+    renderDetailList('bkModalPaymentRecords', paymentRecords, 'No payment entries recorded yet.', values =>
+        (Array.isArray(values) ? values : []).map(item => {
+            const amount = Number(item.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 });
+            const label = [item.type, item.method, item.reference].filter(Boolean).join(' · ');
+            const detail = [item.date, item.recorded_by ? `Recorded by ${item.recorded_by}` : ''].filter(Boolean).join(' · ');
+            return [`₱${amount} — ${label || 'Payment entry'}`, detail];
+        })
+    );
+    const reuploadPanel = document.getElementById('bkModalReupload');
+    const reuploadForm = document.getElementById('bkReuploadForm');
+    if (reuploadPanel && reuploadForm) {
+        const canReupload = ['reupload_requested', 'balance_reupload_requested'].includes(paymentStatus);
+        reuploadPanel.hidden = !canReupload;
+        reuploadPanel.querySelectorAll('.bk-reupload-error').forEach(element => element.remove());
+        reuploadForm.action = `/bookings/reupload-proof/${id}`;
+    }
+
+    const paymentUnderReview = ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(paymentStatus);
+    const guidance = document.getElementById('bkModalGuidance');
+    const guidanceText = {
+        draft: 'Continue the booking to finish your event details and submit the request.',
+        pending: 'Your request is waiting for the caterer to review.',
+        pending_quotation: 'Review the quotation and sign the contract to continue.',
+        awaiting_customer: 'Review and sign the contract to continue.',
+        pending_payment: 'Submit the required payment to move the booking forward.',
+        awaiting_payment: 'Submit the required payment to move the booking forward.',
+        confirmed: 'Your booking is confirmed. Check the schedule, package, and payment details in this modal.',
+        preparing: 'The caterer is preparing for your event. Check this page for status updates.',
+        completed: 'Your event is complete. You can review the booking and payment details here.',
+        cancelled: 'This booking was cancelled. Its details remain available here for reference.',
+        expired: 'This booking has expired. Its details remain available here for reference.'
+    };
+    if (guidance) {
+        guidance.textContent = paymentUnderReview
+            ? 'Your payment proof is waiting for the caterer to review. It is shown separately from verified payments.'
+            : guidanceText[status] || 'Review your event details here. The caterer will update the booking status as it progresses.';
+    }
+
+    const nextAction = document.getElementById('bkModalNextAction');
+    if (nextAction) {
+        nextAction.onclick = null;
+        let href = `/customer/bookings/manage/${id}`;
+        let label = '';
+        let showAction = false;
+        if (status === 'draft') {
+            href = `/bookings/continue/${id}`;
+            label = 'Continue booking';
+            showAction = true;
+        } else if (['reupload_requested', 'balance_reupload_requested'].includes(paymentStatus)) {
+            label = 'Upload payment proof';
+            showAction = true;
+            href = '#bkPanePayment';
+            nextAction.onclick = () => switchBookingDetailTab('payment', document.querySelector('.bk-modal-tab[data-booking-pane="payment"]'));
+        } else if (paymentUnderReview) {
+            label = '';
+            showAction = false;
+        } else if (['pending_payment', 'awaiting_payment'].includes(status)) {
+            href = `/bookings/step/payment/${id}`;
+            label = 'Make payment';
+            showAction = true;
+        } else if (['pending_quotation', 'awaiting_customer', 'awaiting_caterer'].includes(status)) {
+            href = `/bookings/step/quotation/${id}`;
+            label = status === 'awaiting_caterer' ? 'View contract' : 'Review contract';
+            showAction = true;
+        } else if (['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'].includes(status) && Number(row.dataset.balanceAmount) > 0) {
+            href = `/bookings/step/payment/${id}?balance=true`;
+            label = 'Review payment options';
+            showAction = true;
+        } else if (status === 'completed' && row.dataset.hasReview !== 'true') {
+            href = `/customer/feedback/${id}`;
+            label = 'Rate your caterer';
+            showAction = true;
+        }
+        nextAction.href = href;
+        nextAction.textContent = label;
+        nextAction.style.display = showAction ? 'inline-flex' : 'none';
+    }
+
+    switchBookingDetailTab(openPane, document.querySelector(`.bk-modal-tab[data-booking-pane="${openPane}"]`));
+    bookingModalTrigger = button;
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    modal.querySelector('.bk-modal-close')?.focus();
+}
+
+function closeBookingDetails() {
+    const modal = document.getElementById('bookingDetailsModal');
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    bookingModalTrigger?.focus();
+}
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && document.getElementById('bookingDetailsModal')?.classList.contains('is-open')) {
+        closeBookingDetails();
+    }
+});
 
 /* ── Remove Draft Booking ── */
 async function removeBooking(id) {

@@ -37,7 +37,7 @@ def cancel_expired_booking_drafts(db: Session) -> int:
                 title="Draft booking cancelled",
                 message="Your unfinished booking was automatically cancelled after 24 hours. You can start a new booking anytime.",
                 type="warning",
-                link="/customer/orders",
+                link="/customer/bookings",
             ))
 
     if drafts:
