@@ -1,3 +1,4 @@
+import os
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..db import database, models, crud
 
 # Configuration
-SECRET_KEY = "your-secret-key-change-this-in-production"
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440 # 24 hours. Frontend inactivity JS handles the 15-minute idle timeout.
 REFRESH_TOKEN_EXPIRE_DAYS = 7
