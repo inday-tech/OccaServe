@@ -14,7 +14,7 @@ import os
 import re
 import shutil
 import uuid
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from ..services.realtime import manager
 from ..services.payment_verification import payment_verification_service
 from ..services.notification import NotificationService, caterer_notification_destination
@@ -1609,11 +1609,33 @@ async def upload_dispatch_proof(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    if (booking.status or "").lower() in ["completed", "delivered"]:
-        raise HTTPException(status_code=400, detail="Completed bookings are locked and their status cannot be changed.")
+    current_status = (booking.status or "").lower()
+    if booking.is_archived or current_status in ["completed", "delivered", "cancelled", "expired"]:
+        raise HTTPException(status_code=400, detail="This booking is closed and cannot be dispatched.")
 
     if not proof_image.filename:
         raise HTTPException(status_code=400, detail="No file selected")
+
+    allowed_dispatch_from = {
+        "ready_for_delivery": {"preparing"},
+        "ready_for_pickup": {"preparing"},
+        "on_the_way": {"ready_for_delivery", "ready_for_pickup"},
+    }
+    if stage not in allowed_dispatch_from:
+        raise HTTPException(status_code=400, detail="Invalid dispatch stage.")
+    if current_status not in allowed_dispatch_from[stage]:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot mark this booking as {stage.replace('_', ' ')} while it is {current_status.replace('_', ' ')}.",
+        )
+
+    from app.services.payment_service import PaymentService
+    payment_summary = PaymentService.get_payment_summary(booking)
+    if not payment_summary.get("can_start_preparation"):
+        raise HTTPException(
+            status_code=409,
+            detail="Verify the required downpayment before dispatching this booking.",
+        )
 
     from app.services.storage import upload_file_to_cloudinary
     content_bytes = await proof_image.read()
@@ -1623,17 +1645,18 @@ async def upload_dispatch_proof(
     booking.dispatch_proof_url = c_url
 
     
-    # Update status simultaneously
-    allowed_statuses = ["ready_for_delivery", "ready_for_pickup", "on_the_way"]
-    if stage in allowed_statuses:
-        booking.status = stage
-        history = models.BookingHistory(
-            booking_id=booking.id,
-            status=stage,
-            notes=f"Order marked as {stage}. Dispatch proof uploaded."
-        )
-        db.add(history)
+    booking.status = stage
+    if stage in {"ready_for_delivery", "ready_for_pickup"}:
+        booking.preparation_status = "ready_for_delivery"
+        booking.preparation_updated_at = datetime.now(timezone.utc)
+    history = models.BookingHistory(
+        booking_id=booking.id,
+        status=stage,
+        notes=f"Order marked as {stage.replace('_', ' ')}. Dispatch proof uploaded."
+    )
+    db.add(history)
 
+    if booking.user_id:
         import asyncio
         asyncio.create_task(manager.broadcast_to_user(booking.user_id, {
             "type": "booking_update",
@@ -1744,6 +1767,22 @@ async def update_booking_status(
     
     if new_status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
+
+    if new_status == "preparing":
+        raise HTTPException(
+            status_code=409,
+            detail="Open the Preparation tab and complete its checklist before starting preparation.",
+        )
+    if new_status == "ready_for_delivery":
+        raise HTTPException(
+            status_code=409,
+            detail="Upload dispatch proof before marking the booking ready for delivery.",
+        )
+    if new_status == "setup_ongoing":
+        raise HTTPException(
+            status_code=409,
+            detail="Open the Preparation tab and complete the event setup checklist before updating this status.",
+        )
 
     if new_status == "cancelled":
         ensure_booking_cancellation_has_no_verified_payment(booking)
@@ -2270,8 +2309,20 @@ async def caterer_dashboard(
     today = date.today()
     
     # 1. Operational Dashboard Metrics
-    today_events_count = len([b for b in all_bookings if b.event_date == today and _booking_status_key(b) not in ['cancelled', 'draft']])
-    upcoming_events_count = len([b for b in all_bookings if b.event_date and today < b.event_date <= today + timedelta(days=30) and _booking_status_key(b) not in ['cancelled', 'draft']])
+    operational_statuses = {
+        'confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup',
+        'on_the_way', 'arrived', 'setup_ongoing', 'in_progress',
+    }
+    today_events_count = len([
+        b for b in all_bookings
+        if b.event_date == today and _booking_status_key(b) in operational_statuses
+    ])
+    upcoming_events_count = len([
+        b for b in all_bookings
+        if b.event_date
+        and today < b.event_date <= today + timedelta(days=30)
+        and _booking_status_key(b) in operational_statuses
+    ])
     
     outstanding_balance = 0
     outstanding_count = 0
@@ -2280,7 +2331,7 @@ async def caterer_dashboard(
     
     for b in all_bookings:
         status_key = _booking_status_key(b)
-        if status_key in ['cancelled', 'draft', 'completed']:
+        if status_key not in operational_statuses:
             continue
             
         payment_summary = PaymentService.get_payment_summary(b)
@@ -2389,7 +2440,7 @@ async def caterer_dashboard(
     total_bookings = len([b for b in all_bookings if _booking_status_key(b) not in ['draft', 'pending_quotation', 'pending_review', 'inquiry', 'negotiating', 'quoted', 'cancelled']])
     
     import datetime as dt_module
-    today_schedule = [b for b in all_bookings if b.event_date == today and _booking_status_key(b) not in ['cancelled', 'draft']]
+    today_schedule = [b for b in all_bookings if b.event_date == today and _booking_status_key(b) in operational_statuses]
     today_schedule.sort(key=lambda b: (b.event_time or dt_module.time.min))
 
     upcoming_events_list = [b for b in all_bookings if b.event_date and b.event_date > today and _booking_status_key(b) not in ['cancelled', 'draft']]
@@ -2414,7 +2465,7 @@ async def caterer_dashboard(
     accurate_active_bookings = len([
         b for b in all_bookings 
         if _booking_status_key(b) in [
-            'confirmed', 'preparing', 'ready_for_delivery', 'on_the_way', 
+            'confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way',
             'arrived', 'setup_ongoing', 'in_progress'
         ]
     ])
@@ -2752,7 +2803,9 @@ async def dashboard_overview_api(
 ):
     try:
         from app.services.reminders import generate_caterer_reminders
-        generate_caterer_reminders(user.id, db)
+        new_notifications = generate_caterer_reminders(user.id, db)
+        for notification in new_notifications:
+            await NotificationService.broadcast_notification(user, notification)
     except Exception as e:
         print(f'Reminder generation error: {e}')
     from fastapi.responses import JSONResponse
@@ -2921,7 +2974,8 @@ def build_booking_list_projection(booking, today):
         payment_label = f"₱{total:,.2f} • Unpaid"
 
     status_labels = {
-        "inquiry": "Inquiry", "pending_quotation": "Quotation Sent", "awaiting_customer": "Awaiting Customer",
+        "inquiry": "Accepted - Quote Needed", "pending_review": "New Booking Request",
+        "pending_quotation": "Quotation Sent", "awaiting_customer": "Awaiting Customer",
         "awaiting_caterer": "For Caterer Action", "pending": "Payment Pending", "confirmed": "Confirmed",
         "preparing": "Preparing", "ready_for_delivery": "Ready for Delivery", "ready_for_pickup": "Ready for Pickup",
         "on_the_way": "Out for Delivery", "arrived": "Arrived", "setup_ongoing": "Setup", "in_progress": "Ongoing",
@@ -2931,7 +2985,9 @@ def build_booking_list_projection(booking, today):
     attention = ""
     next_action = "No operational action"
     needs_action = False
-    if booking.status == "inquiry" and not has_quote:
+    if booking.status in {"pending_review", "under_review"}:
+        attention, next_action, needs_action = "Booking review needed", "Review Booking", True
+    elif booking.status == "inquiry" and not has_quote:
         attention, next_action, needs_action = "Quotation needed", "Prepare Quotation", True
     elif booking.status in ["pending_quotation", "awaiting_customer"]:
         attention, next_action, needs_action = "Waiting for customer", "Wait for Customer", False
@@ -3148,7 +3204,7 @@ async def view_contract_caterer(
         "booking": booking,
         "quotation": quotation,
         "active_page": "bookings",
-        "is_modal": request.query_params.get("modal") == "true"
+        "is_modal": request.query_params.get("modal") == "true",
     })
 
 @router.get("/bookings/{booking_id}/sign", response_class=HTMLResponse)
@@ -3173,7 +3229,8 @@ async def sign_contract_caterer(
         "booking": booking,
         "quotation": quotation,
         "active_page": "bookings",
-        "is_modal": request.query_params.get("modal") == "true"
+        "is_modal": request.query_params.get("modal") == "true",
+        "saved_signature": user.caterer_profile.saved_signature,
     })
 
 @router.get("/archives", response_class=HTMLResponse)
@@ -3362,7 +3419,9 @@ async def caterer_payments(
     commission_invoice_rows = build_commission_invoice_rows(invoices)
 
     from app.services.reminders import generate_caterer_reminders
-    generate_caterer_reminders(user.id, db)
+    new_notifications = generate_caterer_reminders(user.id, db)
+    for notification in new_notifications:
+        await NotificationService.broadcast_notification(user, notification)
 
     # ── Post-Paid Commission & Financial Calculations ──────────────────
     from datetime import datetime, timezone, timedelta, date
@@ -3867,6 +3926,55 @@ async def accept_booking_manual(
         
     result = await _confirm_booking_logic(db, booking, user, is_manual_accept=True)
     return result
+
+
+@router.post("/bookings/{booking_id}/accept-request")
+async def accept_booking_request(
+    booking_id: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only),
+):
+    """Accept a verified customer request so the caterer can prepare its quotation."""
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.is_archived:
+        raise HTTPException(status_code=400, detail="Cannot accept an archived booking request.")
+    if booking.status != "pending_review":
+        raise HTTPException(status_code=400, detail="This booking is not waiting for caterer review.")
+    if not booking.user or not (booking.user.is_verified and booking.user.is_kyc_complete):
+        raise HTTPException(status_code=409, detail="Customer identity verification must be complete before accepting this request.")
+
+    booking.status = "inquiry"
+    booking.expires_at = None
+    db.add(models.BookingHistory(
+        booking_id=booking.id,
+        status="inquiry",
+        notes="Caterer accepted the booking request; quotation is now required.",
+    ))
+    db.commit()
+
+    from ..services.notification import NotificationService
+    await NotificationService.notify_status_update(
+        db,
+        booking.user_id,
+        "Booking Request Accepted",
+        f"The caterer accepted your request for '{booking.event_name}' and is preparing a quotation.",
+        f"/customer/bookings/manage/{booking.id}",
+    )
+    await manager.broadcast_to_user(user.id, {
+        "type": "booking_update",
+        "booking_id": booking.id,
+        "new_status": "inquiry",
+        "message": "Booking request accepted. Prepare a quotation for the customer.",
+    })
+    return {
+        "status": "success",
+        "message": "Booking request accepted. Prepare a quotation for the customer.",
+        "new_status": "inquiry",
+    }
+
 
 @router.post("/payments/{booking_id}/confirm")
 async def confirm_caterer_payment(
@@ -4583,6 +4691,8 @@ async def get_booking_details_api(
         "venue": clean_display_value(booking.event_address)
             or clean_display_value(booking.venue_address)
             or event_location,
+        "venue_latitude": booking.venue_latitude,
+        "venue_longitude": booking.venue_longitude,
         "special_requests": booking.special_requests,
         "motif_theme": motif_theme,
         "booking_source": "Manual Booking" if is_manual else (booking.booking_source or "Online Booking"),
@@ -4905,7 +5015,10 @@ async def view_booking_quotation(
             return templates.TemplateResponse("caterer/proposal_maker.html", {
                 "request": request,
                 "booking": booking,
-                "user": user
+                "user": user,
+                "package_inclusions": _normalize_inclusions_for_api(
+                    booking.package.inclusions if booking.package else None
+                ),
             })
             
         # Fallback if no quotation record exists
@@ -4920,16 +5033,19 @@ async def view_booking_quotation(
         "request": request,
         "booking": booking,
         "quotation": quotation,
-        "user": user
+        "user": user,
+        "package_inclusions": _normalize_inclusions_for_api(
+            booking.package.inclusions if booking.package else None
+        ),
     })
 
 @router.post("/bookings/{booking_id}/proposal_maker")
 async def submit_proposal_maker(
     booking_id: str,
-    base_price: float = Form(...),
-    total_amount: float = Form(...),
+    request: Request,
+    base_price: Decimal = Form(...),
     addon_names: List[str] = Form([]),
-    addon_prices: List[float] = Form([]),
+    addon_prices: List[Decimal] = Form([]),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -4938,41 +5054,59 @@ async def submit_proposal_maker(
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.status != "inquiry":
+        raise HTTPException(status_code=400, detail="Accept the booking request before preparing a quotation.")
         
-    if booking.quotation:
+    if booking.quotation and booking.quotation.status != "draft":
         raise HTTPException(status_code=400, detail="Quotation already exists")
         
+    if not base_price.is_finite() or base_price < 0 or any(
+        not amount.is_finite() or amount < 0 for amount in addon_prices
+    ):
+        raise HTTPException(status_code=400, detail="Quotation amounts must be valid non-negative values.")
+    base_price = base_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
     # Financial Constraint Enforcement
     # 1. Baseline Fees (₱150/head equipment fee)
-    min_equipment_fee = booking.guest_count * 150.0
+    guest_count = int(booking.guest_count or 0)
+    min_equipment_fee = Decimal(guest_count) * Decimal("150.00")
     
     # 2. Staffing Ratios (1 waiter per 20 guests, assuming ₱800 per waiter)
-    waiters_needed = max(1, booking.guest_count // 20)
-    min_staffing_fee = waiters_needed * 800.0
+    waiters_needed = max(1, math.ceil(guest_count / 20))
+    min_staffing_fee = Decimal(waiters_needed) * Decimal("800.00")
     
     absolute_minimum = min_equipment_fee + min_staffing_fee
-    
-    if total_amount < absolute_minimum:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Total proposal amount (₱{total_amount}) is below the required absolute minimum (₱{absolute_minimum}) to cover baseline equipment and staffing costs."
-        )
-        
+
     # Build addons list
     addons = []
+    total_amount = base_price
     for i in range(len(addon_names)):
         if addon_names[i].strip():
+            addon_price = (
+                addon_prices[i].quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                if i < len(addon_prices) else Decimal("0.00")
+            )
             addons.append({
                 "name": addon_names[i].strip(),
-                "price": addon_prices[i] if i < len(addon_prices) else 0.0
+                "price": float(addon_price)
             })
+            total_amount += addon_price
+
+    if total_amount < absolute_minimum:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Total proposal amount (₱{total_amount:,.2f}) is below the required minimum (₱{absolute_minimum:,.2f}) for equipment and staffing.",
+        )
             
     package_details = {
         "name": f"Custom Request: {booking.event_name or booking.event_type}",
-        "unit_price": base_price / (booking.guest_count or 1),
-        "base_amount": base_price,
+        "unit_price": float(base_price / Decimal(booking.guest_count or 1)),
+        "base_amount": float(base_price),
         "guest_count": booking.guest_count,
-        "description": booking.custom_requirements.get("theme_description", "") if booking.custom_requirements else ""
+        "description": booking.custom_requirements.get("theme_description", "") if booking.custom_requirements else "",
+        "inclusions": _normalize_inclusions_for_api(
+            booking.package.inclusions if booking.package else None
+        ),
     }
     
     # Dynamic downpayment percent from caterer profile
@@ -4980,33 +5114,78 @@ async def submit_proposal_maker(
     if user.caterer_profile.accepted_payment_terms:
         downpayment_percent = float(min(float(x) for x in user.caterer_profile.accepted_payment_terms))
         
-    quotation = models.Quotation(
-        booking_id=booking.id,
-        package_details=package_details,
-        addons=addons,
-        total_amount=total_amount,
-        downpayment_percent=int(downpayment_percent),
-        status="awaiting_customer" # The customer needs to accept it
-    )
-    db.add(quotation)
+    quotation = booking.quotation
+    if quotation:
+        quotation.package_details = package_details
+        quotation.addons = addons
+        quotation.total_amount = total_amount
+        quotation.downpayment_percent = int(downpayment_percent)
+        quotation.status = "draft"
+    else:
+        quotation = models.Quotation(
+            booking_id=booking.id,
+            package_details=package_details,
+            addons=addons,
+            total_amount=total_amount,
+            downpayment_percent=int(downpayment_percent),
+            status="draft",
+        )
+        db.add(quotation)
     
-    booking.total_amount = total_amount
-    booking.total_price = total_amount
-    booking.reservation_fee = total_amount * (float(downpayment_percent) / 100.0)
-    booking.status = "awaiting_customer"
+    booking.total_amount = float(total_amount)
+    booking.total_price = float(total_amount)
+    booking.reservation_fee = float(total_amount) * (float(downpayment_percent) / 100.0)
     
     db.commit()
     
-    # Notify customer
-    await NotificationService.notify_status_update(
-        db, 
-        booking.user_id, 
-        "Proposal Received", 
-        f"Caterer {user.caterer_profile.business_name} has submitted a proposal for your event.", 
-        f"/bookings/step/quotation/{booking.id}"
+    redirect_url = f"/caterer/bookings/{booking.id}/quotation"
+    if request.query_params.get("modal") == "true":
+        redirect_url += "?modal=true"
+    return RedirectResponse(url=redirect_url, status_code=303)
+
+
+@router.post("/bookings/{booking_id}/send-quotation")
+async def send_standard_quotation(
+    booking_id: str,
+    request: Request,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only),
+):
+    """Generate a draft standard quotation for caterer review and signature."""
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).get(numeric_id)
+    if not booking or booking.caterer_id != user.caterer_profile.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.status != "inquiry":
+        raise HTTPException(status_code=400, detail="Accept the booking request before sending a quotation.")
+    if booking.is_custom_event or booking.travel_fee_status == "manual_quote" or (booking.package and booking.package.pricing_mode == "customizable"):
+        raise HTTPException(status_code=400, detail="Custom quotations must be prepared in the quotation workspace.")
+    if booking.quotation and booking.quotation.status != "draft":
+        raise HTTPException(status_code=400, detail="Quotation already exists")
+
+    from ..services.quotation import quotation_service
+    terms = user.caterer_profile.accepted_payment_terms or []
+    downpayment_percent = int(float(min(float(term) for term in terms))) if terms else 30
+    quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
+    if not quotation or not quotation.total_amount or quotation.total_amount <= 0:
+        if quotation and quotation.status == "draft":
+            db.delete(quotation)
+            db.commit()
+        raise HTTPException(status_code=400, detail="A valid quotation could not be generated for this booking.")
+
+    quotation.status = "draft"
+    booking.total_amount = quotation.total_amount
+    booking.total_price = quotation.total_amount
+    booking.reservation_fee = float(
+        Decimal(str(quotation.total_amount))
+        * Decimal(str(quotation.downpayment_percent or downpayment_percent))
+        / Decimal("100")
     )
-    
-    return RedirectResponse(url=f"/caterer/bookings/{booking.id}/quotation", status_code=303)
+    db.commit()
+    redirect_url = f"/caterer/bookings/{booking.id}/quotation"
+    if request.query_params.get("modal") == "true":
+        redirect_url += "?modal=true"
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.post("/bookings/{booking_id}/complete")
@@ -6537,15 +6716,25 @@ def _normalize_inclusions_for_api(inclusions) -> list:
         return normalized
     if isinstance(inclusions, dict):
         # Legacy format: { 'item name': True }
-        return [{
-            "item_type": "Equipment" if any(k in str(k).lower() for k in ["table", "chair"]) else "Menu",
-            "category": "Equipment" if any(k in str(k).lower() for k in ["table", "chair"]) else "Menu / Food",
-            "item_id": None,
-            "name": k,
-            "quantity": "",
-            "description": "",
-            "notes": ""
-        } for k, v in inclusions.items() if v]
+        normalized = []
+        for name, included in inclusions.items():
+            if not included:
+                continue
+            normalized_name = str(name)
+            is_equipment = any(
+                term in normalized_name.casefold()
+                for term in ("table", "chair", "equipment", "utensil", "glass", "plate")
+            )
+            normalized.append({
+                "item_type": "Equipment" if is_equipment else "Menu",
+                "category": "Equipment" if is_equipment else "Menu / Food",
+                "item_id": None,
+                "name": normalized_name,
+                "quantity": "",
+                "description": "",
+                "notes": ""
+            })
+        return normalized
     return []
 
 
@@ -9560,20 +9749,20 @@ async def set_booking_reminder(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    # 1. Create a notification for the caterer in DB
+    # 1. Record a notification for the caterer.
     new_notif = models.Notification(
         user_id=user.id,
-        title=f"Reminder Set: {booking.event_name or 'Event'}",
-        message=f"You will be reminded about this event scheduled on {booking.event_date}.",
+        title=f"Event Reminder Saved: {booking.event_name or 'Event'}",
+        message=f"Reminder request saved for {booking.event_name or booking.event_type} on {booking.event_date or 'TBD'}.",
         type="reminder",
         link=f"/caterer/bookings?open_booking={booking.id}",
     )
     db.add(new_notif)
     db.commit()
+    await NotificationService.broadcast_notification(user, new_notif, booking.id)
 
     # 2. Send Automated Email Reminder to the Caterer
     from app.services.email import send_event_reminder_email
-    import asyncio
     
     customer_name = f"{booking.user.first_name} {booking.user.last_name}" if booking.user else booking.customer_name
     try:
@@ -9589,16 +9778,7 @@ async def set_booking_reminder(
         print(f"[REMINDER EMAIL ERROR] Failed to send booking reminder: {exc}")
         raise HTTPException(status_code=502, detail="The reminder was saved, but its email could not be sent.")
 
-    # 3. Real-time WebSocket Alert to Caterer (triggers Web Push API on frontend)
-    asyncio.create_task(manager.broadcast_to_user(user.id, {
-        "type": "push_reminder",
-        "title": f"Upcoming Event: {booking.event_name}",
-        "message": f"Setup at {booking.venue_address} by {booking.event_time or 'TBD'}",
-        "booking_id": booking.id,
-        "count": db.query(models.Notification).filter(models.Notification.user_id == user.id, models.Notification.is_read == False).count()
-    }))
-
-    return {"status": "success", "email_sent": bool(email_sent), "message": "Reminder email sent and notification scheduled."}
+    return {"status": "success", "email_sent": bool(email_sent), "message": "Reminder email sent and notification saved."}
 
 
 @router.get("/api/bookings/{booking_id}/preparation")
@@ -9626,9 +9806,9 @@ async def update_booking_preparation_status(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    """Update overall preparation status (simple tracker — no checklist)."""
+    """Update the preparation tracker after its required checklist is confirmed."""
     from app.services.preparation_service import (
-        PREP_STATUS_KEYS, get_prep_meta, build_prep_summary, normalize_prep_status
+        PREP_STATUSES, PREP_STATUS_KEYS, get_prep_meta, build_prep_summary, normalize_prep_status
     )
 
     numeric_id = sanitize_booking_id(booking_id)
@@ -9641,37 +9821,81 @@ async def update_booking_preparation_status(
     if booking.is_archived or booking.status in ["cancelled", "expired", "completed", "delivered"]:
         raise HTTPException(status_code=400, detail="Cannot update preparation on this booking.")
 
+    accepted_statuses = {
+        "confirmed", "preparing", "ready_for_delivery", "ready_for_pickup",
+        "on_the_way", "arrived", "setup_ongoing", "in_progress", "ready_for_event",
+    }
+    current_booking_status = (booking.status or "").lower()
+    if current_booking_status not in accepted_statuses:
+        raise HTTPException(
+            status_code=409,
+            detail="Accept the booking before updating its preparation status.",
+        )
+
     new_key = str(data.get("status") or data.get("preparation_status") or "").strip().lower()
     if new_key not in PREP_STATUS_KEYS:
         raise HTTPException(
             status_code=400,
             detail="Invalid preparation status. Choose one of the available options."
         )
+    if new_key == "ready_for_delivery":
+        raise HTTPException(
+            status_code=409,
+            detail="Upload dispatch proof from the preparation checklist before marking the booking ready for delivery.",
+        )
     if new_key == "completed":
-        confirmed_statuses = {
-            "confirmed", "preparing", "ready_for_delivery", "on_the_way",
-            "arrived", "setup_ongoing", "in_progress", "ready_for_event",
-        }
-        total_due = float(booking.total_price or booking.total_amount or 0)
-        paid_so_far = float(booking.amount_paid or 0)
-        if booking.status not in confirmed_statuses or total_due <= 0 or paid_so_far + 0.009 < total_due:
-            raise HTTPException(
-                status_code=400,
-                detail="Confirm the booking and settle the full balance before marking the event completed.",
-            )
+        raise HTTPException(
+            status_code=409,
+            detail="Use the booking completion action after the event ends and full payment is verified.",
+        )
 
     old_key = normalize_prep_status(booking.preparation_status, booking.status)
     old_meta = get_prep_meta(old_key)
     new_meta = get_prep_meta(new_key)
+    if old_key != new_key and data.get("checklist_confirmed") is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete and confirm the preparation checklist before updating the status.",
+        )
     if old_key == "completed" and new_key != "completed":
         raise HTTPException(
             status_code=400,
             detail="Event preparation is already completed and cannot be changed.",
         )
-    if new_meta["progress"] < old_meta["progress"]:
+    status_order = [status["key"] for status in PREP_STATUSES]
+    old_index = status_order.index(old_key)
+    new_index = status_order.index(new_key)
+    if new_index < old_index:
         raise HTTPException(
             status_code=400,
             detail="Preparation status cannot move backward. Choose the current or next stage.",
+        )
+    if new_index > old_index + 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Complete the current preparation stage before moving to the next one.",
+        )
+
+    from app.services.payment_service import PaymentService
+    payment_summary = PaymentService.get_payment_summary(booking)
+    if new_key == "preparing" and not payment_summary.get("can_start_preparation"):
+        raise HTTPException(
+            status_code=409,
+            detail="Verify the required downpayment before starting preparation.",
+        )
+    if new_key == "setup_in_progress" and (
+        old_key != "ready_for_delivery" or current_booking_status != "arrived"
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Mark the booking as arrived at the venue before starting setup.",
+        )
+    if new_key == "ready_for_event" and (
+        old_key != "setup_in_progress" or current_booking_status != "setup_ongoing"
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Start and complete venue setup before marking the event ready.",
         )
 
     if old_key != new_key:
@@ -9684,11 +9908,10 @@ async def update_booking_preparation_status(
     if mapped_booking_status and mapped_booking_status != booking.status:
         # Allow forward-ish operational updates without forcing completed
         allowed_from = {
-            "preparing": ["confirmed", "preparing", "awaiting_payment", "pending"],
-            "ready_for_delivery": ["preparing", "confirmed", "ready_for_delivery", "ready_for_pickup"],
+            "preparing": ["confirmed", "preparing"],
+            "ready_for_delivery": ["preparing", "ready_for_delivery"],
             "setup_ongoing": [
-                "ready_for_delivery", "ready_for_pickup", "on_the_way",
-                "arrived", "setup_ongoing", "preparing"
+                "arrived", "setup_ongoing"
             ],
         }
         sources = allowed_from.get(mapped_booking_status, [])
@@ -10059,9 +10282,12 @@ async def reject_booking(
 ):
     try:
         data = await request.json()
-        reason = data.get("reason", "No reason provided.")
-    except:
-        reason = "Booking rejected by caterer."
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="A rejection reason is required.") from exc
+    reason = data.get("reason") if isinstance(data, dict) else None
+    if not isinstance(reason, str) or not reason.strip():
+        raise HTTPException(status_code=400, detail="A rejection reason is required.")
+    reason = reason.strip()
 
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).get(numeric_id)
@@ -12370,13 +12596,14 @@ async def set_schedule_reminder(schedule_id: int, db: Session = Depends(database
     
     new_notif = models.Notification(
         user_id=user.id,
-        title=f'Reminder Set: {schedule.title}',
-        message=f'You will be reminded about your internal schedule on {schedule.date}.',
+        title=f'Reminder Saved: {schedule.title}',
+        message=f'Reminder request saved for your internal schedule on {schedule.date}.',
         type='reminder',
         link=f"/caterer/calendar?focus_schedule={schedule.id}",
     )
     db.add(new_notif)
     db.commit()
+    await NotificationService.broadcast_notification(user, new_notif)
 
     from app.services.email import send_event_reminder_email
     try:
@@ -12392,14 +12619,7 @@ async def set_schedule_reminder(schedule_id: int, db: Session = Depends(database
         print(f"[REMINDER EMAIL ERROR] Failed to send schedule reminder: {exc}")
         raise HTTPException(status_code=502, detail="The reminder was saved, but its email could not be sent.")
     
-    await manager.broadcast_to_user(user.id, {
-        'type': 'push_reminder',
-        'title': f'Reminder Set: {schedule.title}',
-        'message': f'Your reminder for {schedule.date} has been scheduled.',
-        'booking_id': schedule.id,
-        'count': db.query(models.Notification).filter(models.Notification.user_id == user.id, models.Notification.is_read == False).count()
-    })
-    return {'status': 'success', 'email_sent': bool(email_sent), 'message': 'Reminder email sent and notification scheduled.'}
+    return {'status': 'success', 'email_sent': bool(email_sent), 'message': 'Reminder email sent and notification saved.'}
 
 
 # ---------------------------------------------------------

@@ -514,7 +514,7 @@
                                     else 'today' }}</span>
                             </div>
                         </div>
-                        {% else %}
+                        {% elif quotation.caterer_signature %}
                         <div class="signature-input-box">
                             <div class="signature-instructions">
                                 <i class="fas fa-info-circle" aria-hidden="true"></i>
@@ -567,6 +567,16 @@
                                 </button>
                             </div>
                         </div>
+                        {% else %}
+                        <div class="signature-input-box">
+                            <div class="signature-instructions">
+                                <i class="fas fa-clock" aria-hidden="true"></i>
+                                <div>
+                                    <h4>Waiting for the caterer</h4>
+                                    <p>The caterer must review and sign this quotation-agreement first. You can sign it once the signed agreement is sent to you.</p>
+                                </div>
+                            </div>
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -578,13 +588,17 @@
                     <i class="fas fa-chevron-left"></i> Back: Edit Identity
                 </a>
 
-                {% if not quotation.customer_signature %}
+                {% if not quotation.customer_signature and quotation.caterer_signature %}
                 <button type="button" id="btn-sign" class="btn-wizard-next js-loading" style="display: none;"
                     onclick="submitSignature()">
-                    <i class="fas fa-check-circle"></i> Sign &amp; Continue to Payment
+                    <i class="fas fa-check-circle"></i> Sign Agreement
                 </button>
                 <div id="apply-prompt" class="status-waiting-pill" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; border-radius: 999px; font-weight: 700;">
                     <i class="fas fa-info-circle mr-1"></i> Please sign in the box above
+                </div>
+                {% elif not quotation.customer_signature and not quotation.caterer_signature %}
+                <div class="status-waiting-pill" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; border-radius: 999px; font-weight: 700;">
+                    <i class="fas fa-clock mr-1"></i> Waiting for caterer signature
                 </div>
                 {% elif not quotation.caterer_signature %}
                 <div class="status-waiting-pill" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; border-radius: 999px; font-weight: 700;">

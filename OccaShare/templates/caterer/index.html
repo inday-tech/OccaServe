@@ -76,40 +76,39 @@
     <div>
         <div class="snapshot-grid-5">
             <!-- 1. Active Bookings -->
-            <div class="snapshot-card">
+            <a class="snapshot-card snapshot-card-link" href="/caterer/bookings" aria-label="Open active bookings">
                 <span class="snapshot-label">Active Bookings</span>
                 <span class="snapshot-value">{{ accurate_active_bookings }}</span>
-                <span class="snapshot-subtext">Confirmed &amp; in prep</span>
-            </div>
+                <span class="snapshot-subtext">Confirmed and in progress</span>
+            </a>
 
             <!-- 2. Pending Bookings -->
-            <div class="snapshot-card">
+            <a class="snapshot-card snapshot-card-link" href="/caterer/bookings" aria-label="Open pending bookings">
                 <span class="snapshot-label">Pending Bookings</span>
                 <span class="snapshot-value">{{ accurate_pending_bookings }}</span>
-                <span class="snapshot-subtext">Inquiries &amp; awaiting pay</span>
-            </div>
+                <span class="snapshot-subtext">Awaiting review, quotation, signature, or payment</span>
+            </a>
 
             <!-- 3. Action Required -->
-            <div class="snapshot-card">
+            <a class="snapshot-card snapshot-card-link" href="/caterer/bookings" aria-label="Open bookings requiring action">
                 <span class="snapshot-label">Action Required</span>
                 <span class="snapshot-value">{{ action_required_count }}</span>
-                <span class="snapshot-subtext">Items needing attention</span>
-            </div>
+                <span class="snapshot-subtext">Open follow-up items</span>
+            </a>
 
             <!-- 4. Upcoming Events -->
-            <div class="snapshot-card">
+            <a class="snapshot-card snapshot-card-link" href="/caterer/calendar" aria-label="Open upcoming events in calendar">
                 <span class="snapshot-label">Upcoming Events</span>
                 <span class="snapshot-value">{{ upcoming_events_count }}</span>
-                <span class="snapshot-subtext">Next 30 days scheduled</span>
-            </div>
+                <span class="snapshot-subtext">Scheduled in the next 30 days</span>
+            </a>
 
             <!-- 5. Outstanding Balance (Same Height & Style) -->
-            <div class="snapshot-card snapshot-card-balance">
+            <a class="snapshot-card snapshot-card-balance snapshot-card-link" href="/caterer/payments" aria-label="Open payments for outstanding balances">
                 <span class="snapshot-label">Outstanding Balance</span>
-                <span class="snapshot-value">â‚±{{ "{:,.2f}".format(outstanding_balance) }}</span>
-                <span class="snapshot-subtext">{{ outstanding_count }} booking(s) with
-                    balance</span>
-            </div>
+                <span class="snapshot-value">&#8369;{{ "{:,.2f}".format(outstanding_balance) }}</span>
+                <span class="snapshot-subtext">{{ outstanding_count }} booking{% if outstanding_count != 1 %}s{% endif %} with balance</span>
+            </a>
         </div>
     </div>
     <!-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
@@ -129,7 +128,7 @@
                     <h4>{{ item.title }}</h4>
                     <p>{{ item.desc }}</p>
                 </div>
-                <a href="{% if item.booking_id %}/caterer/bookings?booking_id={{ item.booking_id }}{% else %}/caterer/bookings{% endif %}" class="action-center-link">View details</a>
+                <a href="{% if item.booking_id %}/caterer/bookings?open_booking={{ item.booking_id }}{% else %}/caterer/bookings{% endif %}" class="action-center-link">View details</a>
             </div>
             {% endfor %}
             {% else %}
@@ -166,10 +165,10 @@
                     <time class="today-event-time">{{ event.event_time.strftime('%I:%M %p') if event.event_time else 'All day' }}</time>
                     <div class="today-event-copy">
                         <h4>{{ ev_title_today }}</h4>
-                        <p><strong>{{ customer_today }}</strong><span> Â· {{ b_ref_today }} Â· {{ event.guest_count or 0 }} guests</span></p>
+                        <p><strong>{{ customer_today }}</strong><span> &middot; {{ b_ref_today }} &middot; {{ event.guest_count or 0 }} guests</span></p>
                         {% if ven_today %}<p class="today-event-venue">{{ ven_today|truncate(48) }}</p>{% endif %}
                     </div>
-                    <a href="/caterer/bookings?booking_id={{ event.id }}" class="today-event-link">Details</a>
+                    <a href="/caterer/bookings?open_booking={{ event.id }}" class="today-event-link">Details</a>
                 </article>
                 {% endfor %}
                 {% else %}
@@ -248,11 +247,11 @@
                 <time class="upcoming-date-box"><span>{{ b.event_date.strftime('%b') }}</span><strong>{{ b.event_date.strftime('%d') }}</strong><small>{{ b.event_date.strftime('%Y') }}</small></time>
                 <div class="upcoming-booking-copy">
                     <div class="upcoming-booking-heading"><h4>{{ event_display }}</h4><span class="booking-status">{{ b.status|replace('_',' ')|title }}</span></div>
-                    <p class="upcoming-booking-customer">{{ customer_display }} <span>Â· {{ b_ref }} Â· {{ b.guest_count or 0 }} guests</span></p>
-                    <p class="upcoming-booking-meta">{{ pkg_display }}{% if b.event_time %} Â· {{ b.event_time.strftime('%I:%M %p') }}{% endif %}{% if venue_display %} Â· {{ venue_display|truncate(48) }}{% endif %}</p>
-                    {% if rem_bal > 0 %}<span class="booking-balance">Balance: â‚±{{ "{:,.2f}".format(rem_bal) }}</span>{% endif %}
+                    <p class="upcoming-booking-customer">{{ customer_display }} <span>&#183; {{ b_ref }} &#183; {{ b.guest_count or 0 }} guests</span></p>
+                    <p class="upcoming-booking-meta">{{ pkg_display }}{% if b.event_time %} &#183; {{ b.event_time.strftime('%I:%M %p') }}{% endif %}{% if venue_display %} &#183; {{ venue_display|truncate(48) }}{% endif %}</p>
+                    {% if rem_bal > 0 %}<span class="booking-balance">Balance: &#8369;{{ "{:,.2f}".format(rem_bal) }}</span>{% endif %}
                 </div>
-                <a href="/caterer/bookings?booking_id={{ b.id }}" class="upcoming-booking-link">Details</a>
+                <a href="/caterer/bookings?open_booking={{ b.id }}" class="upcoming-booking-link">Details</a>
             </article>
             {% endfor %}
             {% else %}

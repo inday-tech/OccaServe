@@ -63,7 +63,7 @@
 }
 
 .pay-title-group h1 {
-    font-size: 1.35rem;
+    font-size: 1.55rem;
     font-weight: 800;
     color: var(--pay-text-main);
     margin: 0;
@@ -1537,7 +1537,7 @@
 
 @media (max-width: 360px) {
     .pay-title-group h1 {
-        font-size: 1.2rem;
+        font-size: 1.35rem;
     }
 
     .pay-stat-number {
@@ -1688,7 +1688,7 @@
     }
 
     .pay-title-group h1 {
-        font-size: 1.2rem;
+        font-size: 1.35rem;
     }
 
     .pay-pagination {

@@ -43,7 +43,7 @@ class BookingValidator:
 
         now = datetime.now()
         current_date = now.date()
-        pre_acceptance_statuses = ["draft", "pending", "pending_quotation", "awaiting_caterer"]
+        pre_acceptance_statuses = ["draft", "pending", "pending_quotation", "awaiting_caterer", "inquiry"]
         payment_activity_statuses = {
             "cash_payment_requested",
             "cash_balance_requested",

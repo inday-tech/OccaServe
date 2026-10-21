@@ -490,6 +490,12 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <span class="bk-badge badge-confirmed">Payment received</span>
                     {% elif bs in ['pending_payment','awaiting_payment'] %}
                         <span class="bk-badge badge-pay-now badge-pulse">Pay Now</span>
+                    {% elif bs == 'pending_review' %}
+                        <span class="bk-badge badge-pending">Waiting for Caterer Review</span>
+                    {% elif bs == 'inquiry' %}
+                        <span class="bk-badge badge-pending">Preparing Quotation</span>
+                    {% elif bs == 'awaiting_customer' %}
+                        <span class="bk-badge badge-pending">Quotation Ready</span>
                     {% elif bs == 'confirmed' %}
                         <span class="bk-badge badge-confirmed">Confirmed</span>
                     {% elif bs == 'completed' %}
@@ -1084,6 +1090,8 @@ function openBookingDetails(button, openPane = 'overview') {
     const guidanceText = {
         draft: 'Continue the booking to finish your event details and submit the request.',
         pending: 'Your request is waiting for the caterer to review.',
+        pending_review: 'Your identity is verified. The booking is waiting for the caterer to review your request.',
+        inquiry: 'The caterer accepted your request and is preparing a quotation.',
         pending_quotation: 'Review the quotation and sign the contract to continue.',
         awaiting_customer: 'Review and sign the contract to continue.',
         pending_payment: 'Submit the required payment to move the booking forward.',

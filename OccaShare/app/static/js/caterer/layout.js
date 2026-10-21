@@ -295,19 +295,25 @@
             console.log("Real-time update received:", data);
 
             if (data.type === 'push_reminder') {
-                updateNotificationBadge(data.count);
-                
-                showNativeNotification(data.title || "OccaServe Reminder", data.message, data.booking_id ? `/caterer/bookings?focus_id=${data.booking_id}` : null);
+                if (Number.isFinite(Number(data.count))) updateNotificationBadge(Number(data.count));
+                const reminderUrl = typeof data.url === 'string' && data.url.startsWith('/') && !data.url.startsWith('//')
+                    ? data.url
+                    : (data.booking_id ? `/caterer/bookings?open_booking=${data.booking_id}` : '/caterer/notifications');
+                showNativeNotification(data.title || "OccaServe Reminder", data.message, reminderUrl);
                 
                 if (window.showToast) {
                     window.showToast("🔔 " + (data.title || "Reminder") + ": " + data.message, "info");
                 }
                 
                 if (window.fetchGlobalNotifications) window.fetchGlobalNotifications(true);
-            } else if (data.type === 'new_notification') {
-                updateNotificationBadge(data.count);
-                
-                showNativeNotification(data.title || "New Notification", data.message || "You have a new update.", "/caterer/bookings");
+            } else if (data.type === 'new_notification' || data.notification_id) {
+                if (Number.isFinite(Number(data.count))) updateNotificationBadge(Number(data.count));
+                const notificationUrl = typeof data.url === 'string' && data.url.startsWith('/') && !data.url.startsWith('//')
+                    ? data.url
+                    : (data.booking_id
+                        ? `/caterer/bookings?open_booking=${data.booking_id}${data.notification_type === 'Payment' ? '&open_tab=payment' : ''}`
+                        : '/caterer/notifications');
+                showNativeNotification(data.title || "New Notification", data.message || "You have a new update.", notificationUrl);
                 
                 if (window.showToast) {
                     window.showToast(data.message || "New notification received", "info");
@@ -322,7 +328,10 @@
                 
                 const senderName = data.sender_name || 'Customer';
                 const bookingRef = data.booking_id ? `Booking #${data.booking_id}` : 'your booking';
-                showNativeNotification(`New Message from ${senderName}`, data.message || `Message about ${bookingRef}`, `/caterer/bookings`);
+                const messageUrl = typeof data.link === 'string' && data.link.startsWith('/') && !data.link.startsWith('//')
+                    ? data.link
+                    : (data.booking_id ? `/caterer/bookings?open_booking=${data.booking_id}&open_tab=chat` : '/caterer/bookings');
+                showNativeNotification(`New Message from ${senderName}`, data.message || `Message about ${bookingRef}`, messageUrl);
                 
                 if (window.showToast) {
                     window.showToast(`💬 ${senderName}: ${data.message || 'Sent an attachment'}`, "info");
@@ -331,8 +340,6 @@
                     window.fetchGlobalNotifications(true);
                 }
             } else if (data.type === 'booking_update') {
-                showNativeNotification("Booking Update", data.message || "A booking has been updated.", "/caterer/bookings");
-
                 if (data.booking_id && typeof window.refreshOpenBookingWorkspace === 'function') {
                     window.refreshOpenBookingWorkspace(data.booking_id);
                 }

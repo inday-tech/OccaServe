@@ -111,6 +111,7 @@ class CatererProfile(Base):
     payout_account_name = Column(String, nullable=True) # General field (legacy/fallback)
     payout_account_number = Column(String, nullable=True) # General field (legacy/fallback)
     custom_payment_details = Column(JSONB, nullable=True)
+    saved_signature = Column(Text, nullable=True)
 
     # Expanded Payout Fields
     gcash_number = Column(String, nullable=True)
@@ -1294,7 +1295,7 @@ class Quotation(Base):
     total_amount = Column(DECIMAL)
     downpayment_percent = Column(Integer) # Validated against supported deposit tiers in the quotation routes.
     contract_url = Column(String, nullable=True) # signed PDF
-    status = Column(String(20), default='draft') # draft, sent, signed, rejected
+    status = Column(String(20), default='draft') # draft, awaiting_customer, awaiting_caterer, signed, rejected
     
     # Digital Signatures (Base64 or URL to image)
     caterer_signature = Column(Text, nullable=True)
@@ -1806,4 +1807,3 @@ def auto_generate_invoice_ref(mapper, connection, target):
                 target.invoice_ref = f"{code}-INV-{next_seq:03d}"
     except Exception:
         pass
-

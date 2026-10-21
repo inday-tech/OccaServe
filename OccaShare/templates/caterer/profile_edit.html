@@ -62,7 +62,7 @@
 {% block extra_js %}
 <script>
 window.gm_authFailure = function() {
-    console.warn("Google Maps failed to load/authenticate. The address picker will use its manual address fallback.");
+    console.warn("Google Maps failed to load/authenticate. The business location pin picker is unavailable.");
     const pickerMapEl = document.getElementById('pickerMap');
     if (pickerMapEl) {
         pickerMapEl.style.height = 'auto';
@@ -73,7 +73,7 @@ window.gm_authFailure = function() {
                     <i class="fas fa-map-marker-alt text-xl"></i>
                 </div>
                 <h4 class="text-xs font-bold text-slate-800">Location Picker Offline</h4>
-                <p class="text-[11px] text-slate-500 max-w-xs">The interactive location pin picker is currently offline. You can still manually input your address in the form below.</p>
+                <p class="text-[11px] text-slate-500 max-w-xs">The location pin picker is unavailable. Check the Maps API configuration or contact support before changing your business location.</p>
             </div>`;
     }
 };
@@ -352,35 +352,25 @@ window.gm_authFailure = function() {
                         <input type="hidden" name="longitude" id="lonInput" value="{{ profile.longitude or '' }}">
                     </div>
 
-                    <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label><i class="fas fa-flag"></i> Province</label>
-                            <select id="locationProvince" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);">
-                                <option value="" disabled selected>Select Province</option>
-                            </select>
-                            <input type="hidden" name="province_code" id="provinceCodeHidden" value="{{ profile.province_code or '' }}">
-                            <input type="hidden" name="province" id="provinceNameHidden" value="">
-                            <span class="field-hint">Your registered province from KYC</span>
-                        </div>
-                        <div class="form-group">
-                            <label><i class="fas fa-city"></i> Municipality / City</label>
-                            <select id="locationMunicipality" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);" disabled>
-                                <option value="" disabled selected>Select Municipality</option>
-                            </select>
-                            <input type="hidden" name="city_code" id="cityCodeHidden" value="{{ profile.city_code or '' }}">
-                            <input type="hidden" name="municipality" id="cityNameHidden" value="{{ profile.city or '' }}">
-                        </div>
+                    <div hidden aria-hidden="true">
+                        <select id="locationProvince">
+                            <option value="" disabled selected>Select Province</option>
+                        </select>
+                        <select id="locationMunicipality" disabled>
+                            <option value="" disabled selected>Select Municipality</option>
+                        </select>
+                        <select id="locationBarangay" disabled>
+                            <option value="" disabled selected>Select Barangay</option>
+                        </select>
+                        <input type="hidden" name="province_code" id="provinceCodeHidden" value="{{ profile.province_code or '' }}">
+                        <input type="hidden" name="province" id="provinceNameHidden" value="">
+                        <input type="hidden" name="city_code" id="cityCodeHidden" value="{{ profile.city_code or '' }}">
+                        <input type="hidden" name="municipality" id="cityNameHidden" value="{{ profile.city or '' }}">
+                        <input type="hidden" name="brgy_code" id="brgyCodeHidden" value="{{ profile.brgy_code or '' }}">
+                        <input type="hidden" name="barangay" id="brgyNameHidden" value="">
                     </div>
 
                     <div class="form-row-two-col">
-                        <div class="form-group">
-                            <label><i class="fas fa-map-pin"></i> Barangay</label>
-                            <select id="locationBarangay" class="form-control" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius: var(--border-radius, 8px);" disabled>
-                                <option value="" disabled selected>Select Barangay</option>
-                            </select>
-                            <input type="hidden" name="brgy_code" id="brgyCodeHidden" value="{{ profile.brgy_code or '' }}">
-                            <input type="hidden" name="barangay" id="brgyNameHidden" value="">
-                        </div>
                         <div class="form-group">
                             <label><i class="fas fa-phone"></i> Contact Number</label>
                             <div class="phone-input-control contact-number-control">

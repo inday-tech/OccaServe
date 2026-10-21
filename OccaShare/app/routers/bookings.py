@@ -747,7 +747,7 @@ async def alacarte_checkout_submit(
         # Spam Limit Validation (Flow B Rule 1)
         unpaid_spam_count = db.query(models.Booking).filter(
             models.Booking.user_id == user.id,
-            models.Booking.status.in_(['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']),
+            models.Booking.status.in_(['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']),
             models.Booking.id != (booking_id or 0)
         ).count()
         if unpaid_spam_count >= 2:
@@ -1553,7 +1553,8 @@ async def custom_booking_submit(
             "theme_description": theme_description,
             "reference_images": image_urls
         },
-        status="pending_review", # Updated to PENDING REVIEW as per the workflow plan
+        status="pending_review" if user.is_verified and user.is_kyc_complete else "draft",
+        expires_at=None if user.is_verified and user.is_kyc_complete else datetime.now(timezone.utc) + timedelta(hours=24),
         total_amount=0.0,
         reservation_fee=0.0,
         document_type="booking_agreement"
@@ -1562,37 +1563,36 @@ async def custom_booking_submit(
     db.commit()
     db.refresh(new_booking)
     
-    # Send Notification to Caterer
-    from ..services.notification import NotificationService
-    import asyncio
-    from ..services.realtime import manager
+    if user.is_verified and user.is_kyc_complete:
+        # Send the request to the caterer only after identity verification.
+        import asyncio
+        from ..services.realtime import manager
 
-    caterer_msg = f"New Custom Event Request from {user.first_name or user.email}."
-    notif = models.Notification(
-        user_id=caterer.user_id,
-        title="Custom Request Received",
-        message=caterer_msg,
-        type="Booking",
-        link=f"/caterer/bookings?open_booking={new_booking.id}"
-    )
-    db.add(notif)
-    db.commit()
+        customer_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or user.email
+        booking_ref = new_booking.booking_ref or new_booking.display_booking_ref or f"BK-{new_booking.id:03d}"
+        caterer_msg = (
+            f"Review custom booking {booking_ref} for '{new_booking.event_name or new_booking.event_type}' "
+            f"from {customer_name}."
+        )
+        notif = models.Notification(
+            user_id=caterer.user_id,
+            title="New Custom Booking Request",
+            message=caterer_msg,
+            type="Booking",
+            link=f"/caterer/bookings?open_booking={new_booking.id}"
+        )
+        db.add(notif)
+        db.commit()
 
-    asyncio.create_task(manager.broadcast_to_user(caterer.user_id, {
-        "type": "new_notification",
-        "title": notif.title,
-        "message": notif.message,
-        "url": notif.link
-    }))
-    
-    # Broadcast Dashboard Update
-    asyncio.create_task(manager.broadcast_to_user(caterer.user_id, {
-        "type": "dashboard_update",
-        "message": "New custom request received."
-    }))
-    
-    # Redirect straight to the management dashboard to show the pending review status
-    return RedirectResponse(url=f"/customer/bookings/manage/{new_booking.id}", status_code=303)
+        await NotificationService.broadcast_notification(caterer.user, notif, new_booking.id)
+        asyncio.create_task(manager.broadcast_to_user(caterer.user_id, {
+            "type": "dashboard_update",
+            "message": "New custom request received."
+        }))
+        return RedirectResponse(url=f"/customer/bookings/manage/{new_booking.id}", status_code=303)
+
+    # Unverified customers must complete KYC before the caterer receives this request.
+    return RedirectResponse(url=f"/bookings/step/kyc/{new_booking.id}", status_code=303)
 
 @router.get("/continue/{booking_id}")
 async def continue_draft_booking(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
@@ -1610,7 +1610,8 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
     # Valid in-progress statuses before payment is completed
     valid_statuses = [
         'draft', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment',
-        'pending_review', 'additional_info_required', 'under_review', 'revision_requested'
+        'pending_review', 'inquiry', 'awaiting_customer',
+        'additional_info_required', 'under_review', 'revision_requested'
     ]
     if booking.status not in valid_statuses:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
@@ -1624,6 +1625,8 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
     }
     
     # Step logic routing
+    if booking.status in {"pending_review", "inquiry"}:
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
     
     # 0. Ala Carte / Fast-Track Logic
     if booking.event_type in ["Ala Carte Order", "Equipment Rental", "Service Booking", "Mixed Order"] or not booking.package_id:
@@ -1659,7 +1662,7 @@ async def continue_draft_booking(booking_id: int, request: Request, db: Session 
         return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
         
     # If custom event and waiting for caterer, redirect to dashboard/manage
-    if booking.is_custom_event and booking.status in ["pending_quotation", "pending_review", "additional_info_required", "under_review", "revision_requested"]:
+    if booking.is_custom_event and booking.status in ["pending_quotation", "additional_info_required", "under_review", "revision_requested"]:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
         
     # 2. Is there a Quotation yet?
@@ -2071,7 +2074,7 @@ async def step_details_submit(
     # 🚨 VALIDATION 1.8: Unpaid Booking Spam Limit (Flow B Rule 1)
     unpaid_spam_count = db.query(models.Booking).filter(
         models.Booking.user_id == user.id,
-        models.Booking.status.in_(['draft', 'pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']),
+        models.Booking.status.in_(['pending', 'pending_quotation', 'awaiting_caterer', 'awaiting_payment', 'pending_payment']),
         models.Booking.id != (booking_id_int or 0)
     ).count()
 
@@ -2464,6 +2467,17 @@ async def step_details_submit(
                 )
                 db.add(booking_item)
     
+    if user.is_verified and user.is_kyc_complete:
+        booking.status = "pending_review"
+        booking.expires_at = None
+        booking.ocr_verified = True
+        booking.liveness_verified = True
+        db.add(models.BookingHistory(
+            booking_id=booking.id,
+            status="pending_review",
+            notes="Customer submitted the booking after identity verification; waiting for caterer review.",
+        ))
+
     db.commit()
 
     # Update session
@@ -2478,12 +2492,8 @@ async def step_details_submit(
 
     # Requirement #14 & #15: Transaction History != Verified. Only successful KYC makes customer verified.
     if user.is_verified and user.is_kyc_complete:
-        # Mark as verified immediately if they are already verified
-        booking.ocr_verified = True
-        booking.liveness_verified = True
-        db.commit()
-        print(f"[StepDetails SUCCESS] Booking #{booking.id} created/updated for verified user! Redirecting to Quotation Review.")
-        return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
+        print(f"[StepDetails SUCCESS] Booking #{booking.id} submitted for caterer review.")
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
         
     print(f"[StepDetails SUCCESS] Booking #{booking.id} created/updated! Redirecting to KYC Verification.")
     return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
@@ -2510,11 +2520,20 @@ async def step_kyc_page(booking_id: int, request: Request, return_to: Optional[s
         elif booking.document_type == 'service_agreement':
             return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
 
-    # A completed verification should always advance this booking to quotation.
-    # Admin approval sets the account-level KYC flags, while automatic approval
-    # may also be tied to this booking's verification record.
+    # A completed verification should submit this booking for caterer review.
     if user.is_verified and user.is_kyc_complete:
-        return RedirectResponse(url=f"/bookings/step/quotation/{booking.id}", status_code=303)
+        if booking.status == "draft":
+            booking.status = "pending_review"
+            booking.expires_at = None
+            booking.ocr_verified = True
+            booking.liveness_verified = True
+            db.add(models.BookingHistory(
+                booking_id=booking.id,
+                status="pending_review",
+                notes="Customer submitted the booking after identity verification; waiting for caterer review.",
+            ))
+            db.commit()
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
 
     # KYC is booking-bound. Do not let a verification from another booking
     # drive this page's step visibility or trigger a premature liveness init.
@@ -2556,6 +2575,9 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
     # Dynamic Routing for Fast-Track
     if booking.transaction_type == 'fast_track' and booking.document_type == 'invoice':
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
+
+    if booking.status in {"draft", "pending_review", "inquiry"}:
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
     
     # STRICT GATE: Ensure user is verified before seeing quotation/contract
     has_equipment = any(item.equipment_id is not None for item in booking.selected_items)
@@ -2564,19 +2586,9 @@ async def step_quotation_page(booking_id: int, request: Request, db: Session = D
         if not (user.is_verified and user.is_kyc_complete):
             return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}?auth_needed=1", status_code=303)
 
-    # NEW: Transition status from draft to pending_quotation so it's visible to caterer
-    if booking.status == 'draft':
-        booking.status = 'pending_quotation'
-        booking.expires_at = None
-        db.commit()
-    
-    # Ensure quotation exists or create/refresh one (default 30% downpayment)
-    from ..services.quotation import quotation_service
-    quotation = quotation_service.get_quotation_by_booking(db, booking_id)
-    if not quotation or quotation.status == 'draft':
-        if not (booking.is_custom_event or booking.travel_fee_status == "manual_quote"):
-            dp_percent = quotation.downpayment_percent if quotation and quotation.downpayment_percent else 30
-            quotation = quotation_service.create_quotation(db, booking, dp_percent)
+    quotation = booking.quotation
+    if not quotation or quotation.status == "draft":
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
     
     return templates.TemplateResponse("customer/booking_wizard/step_quotation.html", {
         "request": request,
@@ -3672,17 +3684,18 @@ async def send_booking_message(
     notif_title = "New Consultation Message"
     notif_msg   = f"{sender_name} sent you a message about {booking_ref}."
     notif_link  = (
-        f"/caterer/bookings" if is_sender_customer
+        f"/caterer/bookings?open_booking={booking.id}&open_tab=chat" if is_sender_customer
         else f"/customer/bookings?open_detail={booking_id}&open_chat=1"
     )
-    db.add(models.Notification(
+    notif = models.Notification(
         user_id=receiver_id,
         title=notif_title,
         message=notif_msg,
         type="info",
         link=notif_link,
         is_read=False,
-    ))
+    )
+    db.add(notif)
     db.commit()
 
     # ── Real-time WebSocket push to receiver ──────────────────────────────────

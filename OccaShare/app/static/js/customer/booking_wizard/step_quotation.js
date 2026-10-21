@@ -258,7 +258,10 @@ window.submitSignature = async function () {
         const response = await fetch(`/api/bookings/${window.bookingId}/contract/sign?role=customer`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ signature_data: signatureData })
+            body: JSON.stringify({
+                signature_data: signatureData,
+                confirm_agreement: document.getElementById('agree_terms')?.checked === true
+            })
         });
         const responseText = await response.text();
         let result;

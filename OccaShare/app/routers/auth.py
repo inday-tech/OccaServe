@@ -331,6 +331,11 @@ async def register(
             if not value or not value.strip():
                 errors[field] = f"{label} is required"
 
+        if latitude is None or longitude is None:
+            errors["location"] = "Choose your business location on the map."
+        elif not (-90 <= latitude <= 90 and -180 <= longitude <= 180) or (latitude == 0 and longitude == 0):
+            errors["location"] = "Choose a valid business location on the map."
+
         if not coverage_area or not coverage_area.strip():
             errors["coverage_area"] = "Service areas are required"
 

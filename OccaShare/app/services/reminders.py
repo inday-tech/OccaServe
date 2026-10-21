@@ -23,7 +23,7 @@ def generate_caterer_reminders(user_id: int, db: Session):
     
     profile = db.query(CatererProfile).filter(CatererProfile.user_id == user_id).first()
     if not profile:
-        return
+        return []
         
     active_bookings = db.query(Booking).filter(
         Booking.caterer_id == profile.id,
@@ -46,6 +46,8 @@ def generate_caterer_reminders(user_id: int, db: Session):
         if not booking.event_date: continue
         
         days_until = (booking.event_date - today).days
+        booking_ref = booking.booking_ref or booking.display_booking_ref or f"BK-{booking.id:03d}"
+        event_name = booking.event_name or booking.event_type or f"Booking {booking_ref}"
         
         # Determine Reminder Type
         title = None
@@ -54,31 +56,39 @@ def generate_caterer_reminders(user_id: int, db: Session):
         link = f"/caterer/bookings?focus={booking.id}"
         
         if days_until == 7:
-            title = "Upcoming Event Next Week"
-            message = f"You have a {booking.event_type} in 7 days. Suggested: Review menu, check inventory, confirm venue."
+            title = f"Upcoming Event Next Week: {event_name}"
+            message = f"'{event_name}' ({booking_ref}) is scheduled for {booking.event_date}. Review its details and preparation plan."
             n_type = "reminder"
         elif days_until == 3:
-            title = "Prepare Event Logistics"
-            message = f"Your {booking.event_type} is in 3 days. Prepare equipment, assign staff."
+            title = f"Event Logistics Due Soon: {event_name}"
+            message = f"'{event_name}' ({booking_ref}) is scheduled for {booking.event_date}. Review venue, equipment, and staffing."
             n_type = "warning"
         elif days_until == 1:
-            title = "Tomorrow's Event!"
-            message = f"Review checklist and delivery schedule for {booking.event_type} tomorrow."
+            title = f"Event Tomorrow: {event_name}"
+            message = f"'{event_name}' ({booking_ref}) is scheduled for tomorrow. Review its checklist and delivery schedule."
             n_type = "warning"
         elif days_until == 0:
-            title = "Event Day: " + str(booking.event_type)
-            message = "Today is the event! Start kitchen prep and equipment loading."
+            title = f"Event Today: {event_name}"
+            message = f"'{event_name}' ({booking_ref}) is scheduled for today. Review the booking and its preparation status."
             n_type = "alert"
         elif days_until < 0 and booking.status != 'completed':
-            title = "Overdue Booking Action"
-            message = f"The {booking.event_type} has passed. Please mark it as completed or archived."
+            title = f"Booking Needs Follow-up: {event_name}"
+            message = f"The scheduled date for '{event_name}' ({booking_ref}) was {booking.event_date}. Review the booking and update its status if appropriate."
             n_type = "alert"
             
         # Payment Reminders
         if booking.payment_status == 'pending' and booking.status == 'confirmed':
             if days_until == 3:
-                title = "Payment Reminder"
-                message = f"Customer has an outstanding balance for {booking.event_type} in 3 days."
+                from app.services.payment_service import PaymentService
+                payment_summary = PaymentService.get_payment_summary(booking)
+                outstanding = float(payment_summary.get("remaining_balance") or 0)
+                title = f"Payment Follow-up: {event_name}"
+                message = (
+                    f"'{event_name}' ({booking_ref}) has PHP {outstanding:,.2f} remaining "
+                    f"for the event on {booking.event_date}. Review its payment details."
+                    if outstanding > 0.009
+                    else f"Review the payment status for '{event_name}' ({booking_ref}) before the event on {booking.event_date}."
+                )
                 n_type = "warning"
         
         # Only create if not already created today
@@ -144,3 +154,4 @@ def generate_caterer_reminders(user_id: int, db: Session):
         db.add_all(new_notifications)
     if invoice_changes or new_notifications:
         db.commit()
+    return new_notifications

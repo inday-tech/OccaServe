@@ -1,6 +1,7 @@
 import os
+import re
 import httpx
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 from sqlalchemy.orm import Session
 from ..db import models
 from ..core.config import settings
@@ -14,6 +15,8 @@ def caterer_notification_destination(link, notif_type, title=""):
         "payment": "/caterer/payments",
         "verification": "/caterer/profile#verification",
         "review": "/caterer/reviews",
+        "customer": "/caterer/customers",
+        "message": "/caterer/messages",
         "reminder": "/caterer/calendar",
     }
     title_key = str(title or "").lower()
@@ -23,6 +26,10 @@ def caterer_notification_destination(link, notif_type, title=""):
         fallback = fallback_by_type["payment"]
     elif any(word in title_key for word in ("booking", "order", "event", "request")):
         fallback = fallback_by_type["booking"]
+    elif any(word in title_key for word in ("message", "chat", "consultation")):
+        fallback = fallback_by_type["message"]
+    elif any(word in title_key for word in ("review", "rating", "feedback")):
+        fallback = fallback_by_type["review"]
     else:
         fallback = fallback_by_type.get(str(notif_type or "").lower(), "/caterer/notifications")
     if (
@@ -35,6 +42,59 @@ def caterer_notification_destination(link, notif_type, title=""):
         return fallback
 
     parsed = urlsplit(link)
+    title_key = str(title or "").lower()
+    is_payment_notification = (
+        str(notif_type or "").lower() == "payment"
+        or any(word in title_key for word in ("payment", "invoice", "commission", "deposit", "balance"))
+    )
+
+    customer_booking_match = re.fullmatch(
+        r"/(?:bookings/step/(?:payment|quotation)|customer/(?:bookings/manage|orders/manage))/(\d+)",
+        parsed.path,
+    )
+    if customer_booking_match:
+        booking_id = customer_booking_match.group(1)
+        if parsed.path.endswith("/quotation"):
+            return f"/caterer/bookings/{booking_id}/quotation"
+        query = {"open_booking": booking_id}
+        if is_payment_notification or parsed.path.endswith("/payment"):
+            query["open_tab"] = "payment"
+        return f"/caterer/bookings?{urlencode(query)}"
+
+    booking_route_match = re.fullmatch(r"/caterer/bookings/(\d+)(?:/(sign))?", parsed.path)
+    if booking_route_match:
+        booking_id, action = booking_route_match.groups()
+        query = {"open_booking": booking_id}
+        if action == "sign":
+            query["open_tab"] = "contract"
+        elif is_payment_notification:
+            query["open_tab"] = "payment"
+        return f"/caterer/bookings?{urlencode(query)}"
+
+    if parsed.path == "/caterer/bookings":
+        query = parse_qs(parsed.query, keep_blank_values=True)
+        booking_id = next(
+            (
+                values[0]
+                for key in ("open_booking", "focus", "focus_id", "booking_id")
+                for values in [query.get(key, [])]
+                if values and re.fullmatch(r"\d+", values[0])
+            ),
+            None,
+        )
+        if booking_id:
+            query["open_booking"] = [booking_id]
+            for key in ("focus", "focus_id", "booking_id"):
+                query.pop(key, None)
+            if is_payment_notification:
+                query["open_tab"] = ["payment"]
+            elif "open_tab" in query and query["open_tab"][0] not in {
+                "overview", "customer", "services", "chat", "contract", "payment",
+                "preparation", "activity",
+            }:
+                query.pop("open_tab", None)
+            return urlunsplit(("", "", parsed.path, urlencode(query, doseq=True), parsed.fragment))
+
     if parsed.path in {"/caterer/verification", "/caterer/settings"}:
         return "/caterer/profile#verification"
     if parsed.path == "/caterer/profile" and parsed.fragment == "section-verification":
@@ -45,6 +105,22 @@ def caterer_notification_destination(link, notif_type, title=""):
 
 
 class NotificationService:
+    @staticmethod
+    async def broadcast_notification(user, notification, booking_id=None):
+        """Push the persisted notification with the same destination used by its click-through."""
+        link = notification.link
+        if (user.role or "").lower() == "caterer":
+            link = caterer_notification_destination(link, notification.type, notification.title)
+        await manager.broadcast_to_user(user.id, {
+            "type": "new_notification",
+            "notification_id": notification.id,
+            "notification_type": notification.type,
+            "title": notification.title,
+            "message": notification.message,
+            "url": link,
+            "booking_id": booking_id,
+        })
+
     @staticmethod
     async def _send_sms(to_number: str, message: str):
         """Helper to send SMS via configured provider."""
@@ -91,20 +167,27 @@ class NotificationService:
 
         is_food_order = (booking.document_type == 'invoice')
         prefix = "ORD" if is_food_order else "BK"
-        ref_id = f"{prefix}-{booking.id:03d}"
+        ref_id = (
+            getattr(booking, "booking_ref", None)
+            or getattr(booking, "display_booking_ref", None)
+            or f"{prefix}-{booking.id:03d}"
+        )
         subject_prefix = "Order" if is_food_order else "Booking"
+        event_name = booking.event_name or booking.event_type or f"{subject_prefix} {ref_id}"
         event_date_str = booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD'
+        customer_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or customer.email or "Customer"
 
         # 1. In-App Notification to Caterer
         notif = models.Notification(
             user_id=user.id,
             title=f"New {subject_prefix} Received!",
-            message=f"New {subject_prefix.lower()} {ref_id} for '{booking.event_name}' on {event_date_str} from {customer.first_name} {customer.last_name or ''}.",
+            message=f"Review {subject_prefix.lower()} {ref_id} for '{event_name}' on {event_date_str} from {customer_name}.",
             type="Booking",
             link=f"/caterer/bookings?open_booking={booking.id}"
         )
         db.add(notif)
         db.commit()
+        await NotificationService.broadcast_notification(user, notif, booking.id)
 
         # 2. Email Notification to Customer — with full details
         venue = booking.event_address or booking.venue_address or None
@@ -112,7 +195,7 @@ class NotificationService:
             customer.email, 
             booking.id, 
             booking.document_type,
-            event_name=booking.event_name,
+            event_name=event_name,
             caterer_name=caterer.business_name,
             event_date=event_date_str,
             total_amount=float(booking.total_amount) if booking.total_amount else None,
@@ -121,13 +204,12 @@ class NotificationService:
         )
         
         # Email to Caterer
-        customer_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or customer.email
         caterer_email_body = (
             f"Hello {caterer.business_name},\n\n"
             f"You have received a new {subject_prefix.lower()} request on OccaServe.\n\n"
             f"Reference: {ref_id}\n"
             f"Customer: {customer_name}\n"
-            f"Event: {booking.event_name}\n"
+            f"Event: {event_name}\n"
             f"Date: {event_date_str}\n"
             f"Guests: {booking.guest_count or 'TBD'}\n\n"
             f"Please log in to your dashboard to review and respond to this request.\n\n"
@@ -142,7 +224,7 @@ class NotificationService:
         # 3. SMS Notification to Caterer
         phone = caterer.contact_phone or user.phone_number
         if phone:
-            sms_msg = f"OccaServe: New {subject_prefix.lower()} {ref_id} for '{booking.event_name}' on {event_date_str}. Log in to review!"
+            sms_msg = f"OccaServe: New {subject_prefix.lower()} {ref_id} for '{event_name}' on {event_date_str}. Log in to review!"
             await NotificationService._send_sms(phone, sms_msg)
 
         # 4. Real-time WebSocket
@@ -150,23 +232,32 @@ class NotificationService:
 
     @staticmethod
     async def notify_quotation_ready(db: Session, booking: models.Booking):
-        """Notifies customer that a quotation is ready for review."""
+        """Notifies customer that the caterer-signed quotation-agreement is ready for signature."""
         # 1. In-App
         notif = models.Notification(
             user_id=booking.user_id,
-            title="Quotation Ready",
-            message=f"The caterer has generated a new quotation for your event '{booking.event_name}'.",
-            type="info",
+            title="Agreement Ready to Sign",
+            message=f"The caterer has signed the quotation-agreement for '{booking.event_name}'. Review and sign it to continue.",
+            type="Booking",
             link=f"/bookings/step/quotation/{booking.id}"
         )
         db.add(notif)
         db.commit()
+        await manager.broadcast_to_user(booking.user_id, {
+            "type": "new_notification",
+            "title": notif.title,
+            "message": notif.message,
+            "status": "info",
+            "notification_id": notif.id,
+            "notification_type": notif.type,
+            "url": notif.link,
+        })
 
         # 2. Email to Customer
         EmailService._send_email(
             booking.user.email,
-            "Quotation Ready - OccaServe",
-            f"Hello,\n\nA new quotation is ready for '{booking.event_name}'. Log in to review and sign the contract."
+            "Agreement Ready to Sign - OccaServe",
+            f"Hello,\n\nThe caterer has signed the quotation-agreement for '{booking.event_name}'. Log in to review and sign it."
         )
 
     @staticmethod
@@ -249,9 +340,16 @@ class NotificationService:
         # 3. Real-time (Always try to broadcast)
         await manager.broadcast_to_user(user_id, {
             "type": notif_type if notif_type != "info" else "new_notification", 
-            "message": f"{title}: {message}",
+            "message": message,
             "title": title,
-            "status": "approved" if "Approved" in title else "rejected" if "Rejected" in title or "Action Required" in title else "info"
+            "status": "approved" if "Approved" in title else "rejected" if "Rejected" in title or "Action Required" in title else "info",
+            "notification_id": notif.id,
+            "notification_type": notif_type,
+            "url": (
+                caterer_notification_destination(link, notif_type, title)
+                if (user.role or "").lower() == "caterer"
+                else link
+            ),
         })
 
         # 4. Optimized SMS (Only if user is OFFLINE)
@@ -277,16 +375,18 @@ class NotificationService:
         
         if not user: return
 
+        event_name = booking.event_name or booking.event_type or f"Booking #{booking.id}"
         # 1. In-App
         notif = models.Notification(
             user_id=user.id,
             title=f"{payment_type} Received!",
-            message=f"Payment of ₱{amount:,.2f} received for '{booking.event_name}'.",
+            message=f"Payment of ₱{amount:,.2f} received for '{event_name}'.",
             type="Payment",
             link=f"/caterer/bookings?open_booking={booking.id}"
         )
         db.add(notif)
         db.commit()
+        await NotificationService.broadcast_notification(user, notif, booking.id)
 
         # 2. Email Receipt to Customer
         EmailService.send_payment_receipt(
@@ -301,7 +401,7 @@ class NotificationService:
         # 3. SMS to Caterer
         phone = caterer.contact_phone or user.phone_number
         if phone:
-            sms_msg = f"OccaServe: {payment_type} of PhP{amount:,.2f} received for '{booking.event_name}'. Please verify proof in your dashboard."
+            sms_msg = f"OccaServe: {payment_type} of PhP{amount:,.2f} received for '{event_name}'. Review the payment in your booking."
             await NotificationService._send_sms(phone, sms_msg)
 
         # 4. Real-time
@@ -340,13 +440,16 @@ class NotificationService:
         if not caterer_user or not customer:
             return
 
-        db.add(models.Notification(
+        event_name = booking.event_name or booking.event_type or f"Booking #{booking.id}"
+        booking_ref = booking.booking_ref or booking.display_booking_ref or f"BK-{booking.id:03d}"
+        caterer_notification = models.Notification(
             user_id=caterer_user.id,
             title="Payment Proof Submitted",
-            message=f"The customer submitted {payment_type.lower()} proof for PHP {amount:,.2f} for '{booking.event_name}'. Please review and verify it.",
+            message=f"The customer submitted {payment_type.lower()} proof for PHP {amount:,.2f} for '{event_name}' ({booking_ref}). Please review and verify it.",
             type="Payment",
             link=f"/caterer/bookings?open_booking={booking.id}",
-        ))
+        )
+        db.add(caterer_notification)
         db.add(models.Notification(
             user_id=customer.id,
             title="Payment Proof Submitted",
@@ -355,12 +458,13 @@ class NotificationService:
             link=f"/customer/bookings/manage/{booking.id}",
         ))
         db.commit()
+        await NotificationService.broadcast_notification(caterer_user, caterer_notification, booking.id)
 
         phone = booking.caterer.contact_phone or caterer_user.phone_number
         if phone:
             await NotificationService._send_sms(
                 phone,
-                f"OccaServe: Payment proof for PHP {amount:,.2f} was submitted for '{booking.event_name}'. Please verify it in your dashboard."
+                f"OccaServe: Payment proof for PHP {amount:,.2f} was submitted for '{event_name}' ({booking_ref}). Please review it in your dashboard."
             )
         await manager.broadcast_to_user(caterer_user.id, {
             "type": "payment_update",
@@ -381,13 +485,16 @@ class NotificationService:
         if not caterer_user or not customer:
             return
 
-        db.add(models.Notification(
+        event_name = booking.event_name or booking.event_type or f"Booking #{booking.id}"
+        booking_ref = booking.booking_ref or booking.display_booking_ref or f"BK-{booking.id:03d}"
+        caterer_notification = models.Notification(
             user_id=caterer_user.id,
             title="Cash Payment Requested",
-            message=f"The customer requested to pay {payment_type.lower()} of PHP {amount:,.2f} in cash for '{booking.event_name}'. Confirm only after receiving the money.",
+            message=f"The customer requested to pay {payment_type.lower()} of PHP {amount:,.2f} in cash for '{event_name}' ({booking_ref}). Confirm only after receiving the money.",
             type="Payment",
             link=f"/caterer/bookings?open_booking={booking.id}",
-        ))
+        )
+        db.add(caterer_notification)
         db.add(models.Notification(
             user_id=customer.id,
             title="Cash Payment Requested",
@@ -396,12 +503,13 @@ class NotificationService:
             link=f"/customer/bookings/manage/{booking.id}",
         ))
         db.commit()
+        await NotificationService.broadcast_notification(caterer_user, caterer_notification, booking.id)
 
         phone = booking.caterer.contact_phone or caterer_user.phone_number
         if phone:
             await NotificationService._send_sms(
                 phone,
-                f"OccaServe: Cash payment request for PHP {amount:,.2f} for '{booking.event_name}'. Confirm after receiving the cash."
+                f"OccaServe: Cash payment request for PHP {amount:,.2f} for '{event_name}' ({booking_ref}). Confirm after receiving the cash."
             )
         await manager.broadcast_to_user(caterer_user.id, {
             "type": "payment_update",

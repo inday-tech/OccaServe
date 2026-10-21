@@ -134,6 +134,8 @@ async def calculate_quotation(
     
     package = booking.package
     is_customizable = (package and getattr(package, 'pricing_mode', '') == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') or (booking.quotation and booking.quotation.package_details and booking.quotation.package_details.get('package_type') == 'customizable')
+    if is_customizable and (not is_caterer or booking.status != "inquiry"):
+        raise HTTPException(status_code=409, detail="A caterer must accept the booking request before preparing a quotation.")
     
     if is_customizable:
         # CUSTOMIZABLE PACKAGE: Compute customized total directly from selections
@@ -202,13 +204,18 @@ async def generate_quotation(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    is_owner = booking.user_id == current_user.id
     is_assigned_caterer = bool(
         current_user.caterer_profile
         and booking.caterer_id == current_user.caterer_profile.id
     )
-    if not is_owner and not is_assigned_caterer and current_user.role != "admin":
+    if not is_assigned_caterer:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.status != "inquiry":
+        raise HTTPException(status_code=409, detail="Accept the booking request before generating a quotation.")
+    if booking.is_custom_event or booking.travel_fee_status == "manual_quote":
+        raise HTTPException(status_code=400, detail="Prepare custom quotations in the caterer quotation workspace.")
+    if booking.quotation and booking.quotation.status != "draft":
+        raise HTTPException(status_code=409, detail="A quotation has already been sent for this booking.")
     
     try:
         # Dynamic downpayment percent from caterer profile
@@ -216,9 +223,15 @@ async def generate_quotation(
             downpayment_percent = min(get_caterer_payment_terms(booking.caterer))
             
         quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
-        
-        # --- Trigger Notification (In-App, Email) ---
-        await NotificationService.notify_quotation_ready(db, booking)
+        if not quotation or not quotation.total_amount or quotation.total_amount <= 0:
+            if quotation and quotation.status == "draft":
+                db.delete(quotation)
+                db.commit()
+            raise ValueError("A valid quotation could not be generated for this booking.")
+        quotation.status = "draft"
+        effective_downpayment_percent = int(quotation.downpayment_percent or downpayment_percent)
+        booking.reservation_fee = float(quotation.total_amount or 0) * effective_downpayment_percent / 100
+        db.commit()
         
         return quotation
     except Exception as e:
@@ -232,10 +245,6 @@ async def sign_contract(
     data: dict = Body(...),
     db: Session = Depends(database.get_db)
 ):
-    signature_data = data.get("signature_data")
-    if not signature_data:
-        raise HTTPException(status_code=422, detail="Missing signature_data")
-
     current_user = get_session_user(request, db)
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -258,6 +267,25 @@ async def sign_contract(
             status_code=403,
             detail="Unauthorized: you are not an authorized party to this booking contract.",
         )
+
+    use_saved_signature = bool(data.get("use_saved_signature"))
+    save_signature = bool(data.get("save_signature"))
+    if is_caterer and use_saved_signature:
+        signature_data = booking.caterer.saved_signature if booking.caterer else None
+        if not signature_data:
+            raise HTTPException(status_code=409, detail="No saved caterer signature is available.")
+    else:
+        signature_data = data.get("signature_data")
+    if not signature_data:
+        raise HTTPException(status_code=422, detail="Please provide a signature before signing.")
+    if data.get("confirm_agreement") is not True:
+        raise HTTPException(status_code=400, detail="Confirm that you agree to the agreement before signing.")
+    if is_customer and not quotation.caterer_signature:
+        raise HTTPException(status_code=409, detail="The caterer must sign and send the agreement before you can sign it.")
+    if is_customer and quotation.customer_signature:
+        raise HTTPException(status_code=409, detail="You have already signed this agreement.")
+    if is_caterer and quotation.caterer_signature:
+        raise HTTPException(status_code=409, detail="The caterer has already signed this agreement.")
 
     package_details = quotation.package_details or {}
     is_customizable = (
@@ -349,6 +377,8 @@ async def sign_contract(
     elif is_caterer:
         quotation.caterer_signature = signature_data
         quotation.caterer_signed_at = datetime.now()
+        if save_signature and booking.caterer:
+            booking.caterer.saved_signature = signature_data
     else:
         raise HTTPException(
             status_code=403, 
@@ -374,8 +404,14 @@ async def sign_contract(
     elif has_cat:
         quotation.status = "awaiting_customer"
         booking.status = "awaiting_customer"
+        booking.expires_at = None
+        db.add(models.BookingHistory(
+            booking_id=booking.id,
+            status="awaiting_customer",
+            notes="Caterer signed and sent the quotation-agreement to the customer.",
+        ))
         
-        background_tasks.add_task(NotificationService.notify_status_update, db, booking.user_id, "Action Required: Sign Contract", f"Caterer {booking.caterer.business_name} has signed the contract.", f"/bookings/step/quotation/{booking.id}")
+        background_tasks.add_task(NotificationService.notify_quotation_ready, db, booking)
 
     # Real-time Broadcasts
     if is_customer:

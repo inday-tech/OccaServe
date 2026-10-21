@@ -35,24 +35,26 @@
     }
 
     html, body {
-        height: 100%;
+        height: auto;
+        min-height: 100%;
         margin: 0;
         padding: 0;
         background: #f8fafc;
         color: var(--text-slate-900);
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        overflow: hidden; /* App-like modal layout with internal scrolls */
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 
-    /* Modal Wrapper */
+    /* Keep the full agreement page scrollable inside the parent modal iframe. */
     .sig-modal-wrapper {
         display: flex;
         flex-direction: column;
-        height: 100vh;
-        max-height: 100vh;
+        height: auto;
+        min-height: 100vh;
         width: 100%;
         background: #f8fafc;
-        overflow: hidden;
+        overflow: visible;
     }
 
     /* 1. Modal Header */
@@ -254,9 +256,9 @@
     .sig-main-layout {
         display: grid;
         grid-template-columns: minmax(0, 1.25fr) minmax(380px, 440px);
-        flex: 1;
-        height: calc(100vh - 125px);
-        overflow: hidden;
+        min-height: calc(100vh - 125px);
+        height: auto;
+        overflow: visible;
         background: #f8fafc;
     }
 
@@ -264,10 +266,11 @@
     .sig-viewer-section {
         display: flex;
         flex-direction: column;
-        height: 100%;
+        min-height: 600px;
+        height: auto;
         border-right: 1px solid var(--border-slate-200);
         background: #cbd5e1;
-        overflow: hidden;
+        overflow: visible;
     }
 
     .sig-viewer-toolbar {
@@ -368,7 +371,9 @@
 
     /* Single Scrollable Viewport - Eliminates Nested Double Scrollbars */
     .sig-document-viewport {
-        flex: 1;
+        flex: 0 1 auto;
+        max-height: 78vh;
+        min-height: 500px;
         overflow-y: auto;
         overflow-x: auto;
         padding: 1.5rem 1rem;
@@ -408,15 +413,16 @@
     .sig-panel-section {
         display: flex;
         flex-direction: column;
-        height: 100%;
+        height: auto;
+        min-height: 600px;
         background: #ffffff;
         position: relative;
-        overflow: hidden;
+        overflow: visible;
     }
 
     .sig-panel-content {
-        flex: 1;
-        overflow-y: auto;
+        flex: 0 0 auto;
+        overflow: visible;
         padding: 1.5rem;
         display: flex;
         flex-direction: column;
@@ -856,23 +862,28 @@
     /* Responsive adjustments */
     @media (max-width: 900px) {
         html, body {
-            overflow: auto;
+            height: auto;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .sig-modal-wrapper {
             height: auto;
             min-height: 100vh;
+            overflow: visible;
         }
 
         .sig-main-layout {
             grid-template-columns: 1fr;
             height: auto;
+            min-height: 0;
             overflow: visible;
         }
 
         .sig-viewer-section {
             order: 2;
             height: 500px;
+            min-height: 500px;
             border-right: none;
             border-top: 1px solid var(--border-slate-200);
         }
@@ -880,7 +891,17 @@
         .sig-panel-section {
             order: 1;
             height: auto;
+            min-height: 0;
             border-bottom: 1px solid var(--border-slate-200);
+        }
+
+        .sig-document-viewport {
+            max-height: 70vh;
+            min-height: 420px;
+        }
+
+        .sig-panel-content {
+            padding: 1rem;
         }
 
         .sig-document-scaler .contract-paper {
@@ -911,44 +932,44 @@
                 </div>
             </div>
         </div>
-        <button type="button" class="sig-close-btn" onclick="handleModalClose()" title="Close Agreement Viewer" aria-label="Close">
-            <i class="fas fa-times"></i>
+        <button type="button" class="sig-close-btn" onclick="handleModalClose()" title="Back to quotation" aria-label="Back to quotation">
+            <i class="fas fa-arrow-left"></i>
         </button>
     </header>
 
     <!-- 2. Progress Indicator -->
     <div class="sig-progress-bar-container">
         <div class="sig-progress-track">
-            <!-- Step 1: Customer Signed -->
-            <div class="sig-step is-complete" id="step-customer">
+            <!-- Step 1: Caterer signs and sends the agreement -->
+            <div class="sig-step {% if quotation.caterer_signature %}is-complete{% else %}is-active{% endif %}" id="step-caterer">
                 <div class="sig-step-badge">
-                    <i class="fas fa-check"></i>
+                    {% if quotation.caterer_signature %}<i class="fas fa-check"></i>{% else %}1{% endif %}
                 </div>
                 <div class="sig-step-label">
                     <span class="step-num">Step 1</span>
-                    <span class="step-name">Customer Signed</span>
+                    <span class="step-name">Caterer signs &amp; sends</span>
                 </div>
             </div>
 
-            <div class="sig-step-divider is-complete"></div>
+            <div class="sig-step-divider {% if quotation.caterer_signature %}is-complete{% endif %}" id="divider-customer"></div>
 
-            <!-- Step 2: Caterer Signature -->
-            <div class="sig-step {% if quotation.caterer_signature %}is-complete{% else %}is-active{% endif %}" id="step-caterer">
+            <!-- Step 2: Customer signs -->
+            <div class="sig-step {% if quotation.customer_signature %}is-complete{% elif quotation.caterer_signature %}is-active{% else %}is-pending{% endif %}" id="step-customer">
                 <div class="sig-step-badge">
-                    {% if quotation.caterer_signature %}<i class="fas fa-check"></i>{% else %}2{% endif %}
+                    {% if quotation.customer_signature %}<i class="fas fa-check"></i>{% else %}2{% endif %}
                 </div>
                 <div class="sig-step-label">
                     <span class="step-num">Step 2</span>
-                    <span class="step-name">Caterer Signature</span>
+                    <span class="step-name">Customer signature</span>
                 </div>
             </div>
 
-            <div class="sig-step-divider {% if quotation.caterer_signature %}is-complete{% endif %}" id="divider-final"></div>
+            <div class="sig-step-divider {% if quotation.customer_signature %}is-complete{% endif %}" id="divider-final"></div>
 
             <!-- Step 3: Agreement Completed -->
-            <div class="sig-step {% if quotation.caterer_signature %}is-complete{% else %}is-pending{% endif %}" id="step-complete">
+            <div class="sig-step {% if quotation.customer_signature and quotation.caterer_signature %}is-complete{% else %}is-pending{% endif %}" id="step-complete">
                 <div class="sig-step-badge">
-                    {% if quotation.caterer_signature %}<i class="fas fa-check"></i>{% else %}3{% endif %}
+                    {% if quotation.customer_signature and quotation.caterer_signature %}<i class="fas fa-check"></i>{% else %}3{% endif %}
                 </div>
                 <div class="sig-step-label">
                     <span class="step-num">Step 3</span>
@@ -1046,11 +1067,13 @@
                                 <i class="fas fa-shield-alt"></i>
                                 <span>Agreement State</span>
                             </div>
-                            <span id="agreementStatusBadge" class="sig-badge-pill {% if quotation.caterer_signature %}success{% else %}warning{% endif %}">
-                                {% if quotation.caterer_signature %}
+                            <span id="agreementStatusBadge" class="sig-badge-pill {% if quotation.customer_signature and quotation.caterer_signature %}success{% else %}warning{% endif %}">
+                                {% if quotation.customer_signature and quotation.caterer_signature %}
                                 <i class="fas fa-check-double"></i> Fully Executed
+                                {% elif quotation.caterer_signature %}
+                                <i class="fas fa-hourglass-half"></i> Awaiting Customer
                                 {% else %}
-                                <i class="fas fa-hourglass-half"></i> Pending Countersign
+                                <i class="fas fa-hourglass-half"></i> Awaiting Caterer
                                 {% endif %}
                             </span>
                         </div>
@@ -1067,12 +1090,17 @@
                 </div>
 
                 <!-- Missing Customer Signature Banner (if not signed) -->
-                {% if not quotation.customer_signature %}
+                {% if quotation.caterer_signature and not quotation.customer_signature %}
                 <div class="sig-notice-banner warning">
                     <i class="fas fa-exclamation-triangle" style="font-size: 1.1rem; margin-top: 2px;"></i>
                     <div>
-                        <strong>Customer Signature Required:</strong> The customer has not yet signed this agreement. Countersigning is locked until the customer signs their portion first.
+                        <strong>Customer signature pending:</strong> You have signed and sent this agreement. The customer must review and sign before payment can begin.
                     </div>
+                </div>
+                {% elif not quotation.caterer_signature %}
+                <div class="sig-notice-banner info">
+                    <i class="fas fa-info-circle" style="font-size: 1.1rem; margin-top: 2px;"></i>
+                    <div><strong>Next step:</strong> Review the quotation-agreement and sign below. This sends the signed document to the customer for their signature.</div>
                 </div>
                 {% endif %}
 
@@ -1084,18 +1112,23 @@
                         <div class="sig-completed-icon">
                             <i class="fas fa-check"></i>
                         </div>
-                        <h3 class="sig-completed-title">Contract Fully Executed</h3>
+                        <h3 class="sig-completed-title">{% if quotation.customer_signature %}Agreement fully signed{% else %}Agreement sent to customer{% endif %}</h3>
                         <p class="sig-completed-desc">
-                            You countersigned this Service Agreement on 
-                            <strong>{{ quotation.caterer_signed_at.strftime('%B %d, %Y at %I:%M %p') if quotation.caterer_signed_at else 'File' }}</strong>. Both parties have completed execution.
+                            {% if quotation.customer_signature %}
+                            Both parties signed this agreement. Your signature was recorded on <strong>{{ quotation.caterer_signed_at.strftime('%B %d, %Y at %I:%M %p') if quotation.caterer_signed_at else 'the signing date' }}</strong>.
+                            {% else %}
+                            You signed this agreement on <strong>{{ quotation.caterer_signed_at.strftime('%B %d, %Y at %I:%M %p') if quotation.caterer_signed_at else 'the signing date' }}</strong>. The customer has been notified to review and sign.
+                            {% endif %}
                         </p>
                         <div class="sig-preview-img-box">
                             <img src="{{ quotation.caterer_signature }}" alt="Caterer Signature">
                         </div>
                         <div class="sig-completed-actions">
+                            {% if quotation.customer_signature %}
                             <button type="button" class="btn-countersign" style="background: var(--caterer-success);" onclick="downloadContractPDF()">
                                 <i class="fas fa-file-pdf"></i> Download Official PDF
                             </button>
+                            {% endif %}
                         </div>
                     </div>
                     {% else %}
@@ -1103,7 +1136,7 @@
                     <div class="sig-notice-banner info">
                         <i class="fas fa-info-circle" style="font-size: 1.1rem; margin-top: 2px;"></i>
                         <div>
-                            The customer has signed their portion of this agreement. Please review the terms on the left and draw your signature below to countersign.
+                            Review the complete quotation-agreement on the left, then sign it. Your signature will send the agreement to the customer for their review and signature.
                         </div>
                     </div>
 
@@ -1127,6 +1160,12 @@
                             <div class="sig-draw-line"></div>
                         </div>
                     </div>
+                    {% if saved_signature %}
+                    <label class="sig-confirm-box" for="useSavedSignature" style="margin-top: .75rem;">
+                        <input type="checkbox" id="useSavedSignature" onchange="toggleSavedSignature()">
+                        <span class="sig-confirm-text">Use my saved signature for this agreement. This applies it only after I confirm and submit below.</span>
+                    </label>
+                    {% endif %}
 
                     <!-- Signer Details -->
                     <div class="sig-signer-card" style="margin-top: 1rem;">
@@ -1143,8 +1182,12 @@
                     <label class="sig-confirm-box" for="agreeCheckbox" style="margin-top: 1rem;">
                         <input type="checkbox" id="agreeCheckbox" onchange="validateSigningState()">
                         <span class="sig-confirm-text">
-                            I confirm that I have reviewed this Service Agreement and agree to legally countersign this document on behalf of <strong>{{ booking.caterer.business_name if booking.caterer else 'our catering service' }}</strong>.
+                            I confirm that I have reviewed this quotation-agreement and agree to sign it on behalf of <strong>{{ booking.caterer.business_name if booking.caterer else 'our catering service' }}</strong>.
                         </span>
+                    </label>
+                    <label class="sig-confirm-box" for="saveSignatureCheckbox" style="margin-top: .65rem;">
+                        <input type="checkbox" id="saveSignatureCheckbox" checked onchange="validateSigningState()">
+                        <span class="sig-confirm-text">Save this signature to my profile for future agreements. I will still choose whether to use it for each booking.</span>
                     </label>
                     {% endif %}
                 </div>
@@ -1154,9 +1197,9 @@
                     <div class="sig-completed-icon">
                         <i class="fas fa-check"></i>
                     </div>
-                    <h3 class="sig-completed-title">Contract Successfully Signed!</h3>
+                    <h3 class="sig-completed-title">Agreement signed and sent</h3>
                     <p class="sig-completed-desc">
-                        Your countersignature has been saved for Booking #BK-{{ booking.id }}. Select Done to return to the refreshed booking details and continue with customer payment.
+                        Your signature is saved for Booking #BK-{{ booking.id }}. The customer has been notified to review and sign; payment becomes available after both parties sign.
                     </p>
                     <div class="sig-preview-img-box" id="successSigPreviewBox">
                         <!-- Rendered dynamically -->
@@ -1165,9 +1208,11 @@
                         <button type="button" class="btn-cancel" onclick="viewSignedDocument()" style="flex: 1; justify-content: center;">
                             <i class="fas fa-eye"></i> View Contract
                         </button>
+                        {% if quotation.customer_signature %}
                         <button type="button" class="btn-countersign" onclick="downloadContractPDF()" style="background: var(--caterer-success); flex: 1;">
                             <i class="fas fa-file-pdf"></i> Download PDF
                         </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -1175,11 +1220,11 @@
             <!-- Sticky Bottom Footer Actions -->
             <footer class="sig-panel-footer">
                 <button type="button" class="btn-cancel" onclick="handleModalClose()">
-                    <i class="fas fa-times"></i> Close
+                    <i class="fas fa-arrow-left"></i> Back to Quotation
                 </button>
                 {% if not quotation.caterer_signature %}
                 <button type="button" class="btn-countersign" id="btnCountersign" onclick="submitCountersignature()" disabled>
-                    <i class="fas fa-file-signature"></i> Countersign Contract
+                    <i class="fas fa-file-signature"></i> Sign &amp; Send to Customer
                 </button>
                 {% else %}
                 <button type="button" class="btn-countersign" style="background: #1e293b;" onclick="handleModalClose()">
@@ -1200,11 +1245,13 @@
     // Configuration & State
     const bookingId = "{{ booking.id }}";
     const userId = "{{ user.id }}";
-    const hasCustomerSigned = {% if quotation.customer_signature %}true{% else %}false{% endif %};
     const isAlreadySigned = {% if quotation.caterer_signature %}true{% else %}false{% endif %};
     const bookingEventDateStr = "{{ event_date_val }}";
+    const savedSignatureData = {{ saved_signature|tojson }};
 
     let signaturePad = null;
+    let savedSignatureImage = null;
+    let useSavedSignature = false;
     let currentZoom = 1.0;
     let isSubmitting = false;
     let isEventPast = false;
@@ -1230,28 +1277,13 @@
         return false;
     }
 
-    // Modal Close Helper (handles iframe or standalone redirect)
+    // Return from agreement signing to the quotation without closing the parent modal.
     function handleModalClose() {
-        if (window.parent && typeof window.parent.closeIframeModal === 'function') {
-            if (typeof window.parent.refreshOpenBookingWorkspace === 'function') {
-                window.parent.refreshOpenBookingWorkspace(bookingId);
-            }
-            window.parent.closeIframeModal();
+        if (window.parent && typeof window.parent.openQuotationWorkspace === 'function') {
+            window.parent.openQuotationWorkspace(bookingId);
             return;
         }
-        if (window.top && window.top !== window) {
-            const modal = window.top.document.getElementById('iframeModal');
-            if (modal) {
-                if (typeof window.top.refreshOpenBookingWorkspace === 'function') {
-                    window.top.refreshOpenBookingWorkspace(bookingId);
-                }
-                modal.classList.remove('active');
-                modal.style.display = 'none';
-                return;
-            }
-        }
-        // Fallback for standalone window
-        window.location.href = `/caterer/bookings?open_booking=${bookingId}`;
+        window.location.href = `/caterer/bookings/${bookingId}/quotation`;
     }
 
     // Zoom Controls for Document Viewer
@@ -1295,18 +1327,26 @@
             const rect = canvas.getBoundingClientRect();
             if (rect.width === 0 || rect.height === 0) return;
 
-            // Preserve existing drawn strokes across resize
-            const data = signaturePad.isEmpty() ? null : signaturePad.toData();
+            let signatureSnapshot = null;
+            if (!signaturePad.isEmpty()) {
+                signatureSnapshot = document.createElement('canvas');
+                signatureSnapshot.width = canvas.width;
+                signatureSnapshot.height = canvas.height;
+                signatureSnapshot.getContext('2d').drawImage(canvas, 0, 0);
+            }
 
             canvas.width = rect.width * ratio;
             canvas.height = rect.height * ratio;
             canvas.getContext("2d").scale(ratio, ratio);
 
             signaturePad.clear();
-            if (data) {
-                signaturePad.fromData(data);
+            if (useSavedSignature) {
+                drawSavedSignature();
+            } else if (signatureSnapshot) {
+                canvas.getContext('2d').drawImage(signatureSnapshot, 0, 0, rect.width, rect.height);
                 document.getElementById('sigCanvasGuide')?.classList.add('hidden');
                 document.getElementById('sigCanvasContainer')?.classList.add('has-signature');
+                validateSigningState();
             }
         }
 
@@ -1327,13 +1367,53 @@
     // Clear Signature Pad
     function clearSignaturePad() {
         if (!signaturePad) return;
+        useSavedSignature = false;
+        const savedToggle = document.getElementById('useSavedSignature');
+        if (savedToggle) savedToggle.checked = false;
+        const canvas = document.getElementById('signaturePad');
+        if (canvas) canvas.style.pointerEvents = '';
         signaturePad.clear();
         document.getElementById('sigCanvasGuide')?.classList.remove('hidden');
         document.getElementById('sigCanvasContainer')?.classList.remove('has-signature');
         validateSigningState();
     }
 
-    // Validate if user can submit countersignature
+    function toggleSavedSignature() {
+        const toggle = document.getElementById('useSavedSignature');
+        useSavedSignature = Boolean(toggle && toggle.checked);
+        const canvas = document.getElementById('signaturePad');
+        if (canvas) canvas.style.pointerEvents = useSavedSignature ? 'none' : '';
+        if (!useSavedSignature) {
+            clearSignaturePad();
+            return;
+        }
+        if (!savedSignatureImage) {
+            savedSignatureImage = new Image();
+            savedSignatureImage.onload = drawSavedSignature;
+            savedSignatureImage.onerror = () => {
+                useSavedSignature = false;
+                if (toggle) toggle.checked = false;
+                if (canvas) canvas.style.pointerEvents = '';
+                alert('The saved signature could not be loaded. Please draw your signature instead.');
+            };
+            savedSignatureImage.src = savedSignatureData;
+        } else {
+            drawSavedSignature();
+        }
+    }
+
+    function drawSavedSignature() {
+        const canvas = document.getElementById('signaturePad');
+        if (!signaturePad || !canvas || !savedSignatureImage || !useSavedSignature) return;
+        signaturePad.clear();
+        const rect = canvas.getBoundingClientRect();
+        canvas.getContext('2d').drawImage(savedSignatureImage, 0, 0, rect.width, rect.height);
+        document.getElementById('sigCanvasGuide')?.classList.add('hidden');
+        document.getElementById('sigCanvasContainer')?.classList.add('has-signature');
+        validateSigningState();
+    }
+
+    // Validate whether the caterer can sign and send the agreement.
     function validateSigningState() {
         const btn = document.getElementById('btnCountersign');
         if (!btn || isAlreadySigned) return;
@@ -1342,11 +1422,11 @@
         const isAgreed = agreeCheckbox ? agreeCheckbox.checked : false;
         const hasSignature = signaturePad && !signaturePad.isEmpty();
 
-        const canSign = hasSignature && isAgreed && hasCustomerSigned && !isEventPast && !isSubmitting;
+        const canSign = hasSignature && isAgreed && !isEventPast && !isSubmitting;
         btn.disabled = !canSign;
     }
 
-    // Submit Countersignature
+    // Submit the caterer's signature and send the agreement to the customer.
     async function submitCountersignature() {
         if (isSubmitting || !signaturePad || signaturePad.isEmpty()) return;
 
@@ -1367,7 +1447,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
         try {
-            const signatureData = signaturePad.toDataURL('image/png');
+            const signatureData = useSavedSignature ? null : signaturePad.toDataURL('image/png');
 
             const response = await fetch(`/api/bookings/${bookingId}/contract/sign`, {
                 method: 'POST',
@@ -1375,24 +1455,29 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ signature_data: signatureData })
+                body: JSON.stringify({
+                    signature_data: signatureData,
+                    use_saved_signature: useSavedSignature,
+                    save_signature: document.getElementById('saveSignatureCheckbox')?.checked === true,
+                    confirm_agreement: true
+                })
             });
 
             const result = await response.json();
 
             if (!response.ok || !result.success) {
-                throw new Error(result.detail || result.message || 'Failed to countersign agreement.');
+                throw new Error(result.detail || result.message || 'Failed to sign and send the agreement.');
             }
 
             // Successfully signed!
-            handleSignSuccess(signatureData);
+            handleSignSuccess(useSavedSignature ? savedSignatureData : signatureData);
 
         } catch (err) {
             console.error('Signing error:', err);
             alert('Signing failed: ' + (err.message || 'An unexpected error occurred.'));
             isSubmitting = false;
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-file-signature"></i> Countersign Contract';
+            btn.innerHTML = '<i class="fas fa-file-signature"></i> Sign &amp; Send to Customer';
         }
     }
 
@@ -1404,14 +1489,13 @@
             stepCaterer.className = 'sig-step is-complete';
             stepCaterer.querySelector('.sig-step-badge').innerHTML = '<i class="fas fa-check"></i>';
         }
-        const dividerFinal = document.getElementById('divider-final');
-        if (dividerFinal) dividerFinal.classList.add('is-complete');
+        const dividerCustomer = document.getElementById('divider-customer');
+        if (dividerCustomer) dividerCustomer.classList.add('is-complete');
+        const stepCustomer = document.getElementById('step-customer');
+        if (stepCustomer) stepCustomer.className = 'sig-step is-active';
 
         const stepComplete = document.getElementById('step-complete');
-        if (stepComplete) {
-            stepComplete.className = 'sig-step is-complete';
-            stepComplete.querySelector('.sig-step-badge').innerHTML = '<i class="fas fa-check"></i>';
-        }
+        if (stepComplete) stepComplete.className = 'sig-step is-pending';
 
         // 2. Update Status Badges
         const catererBadge = document.getElementById('catererStatusBadge');
@@ -1421,8 +1505,8 @@
         }
         const agreementBadge = document.getElementById('agreementStatusBadge');
         if (agreementBadge) {
-            agreementBadge.className = 'sig-badge-pill success';
-            agreementBadge.innerHTML = '<i class="fas fa-check-double"></i> Fully Executed';
+            agreementBadge.className = 'sig-badge-pill warning';
+            agreementBadge.innerHTML = '<i class="fas fa-hourglass-half"></i> Awaiting Customer';
         }
 
         // 3. Update Contract Viewer Placeholder
@@ -1460,7 +1544,7 @@
         }
 
         // 6. Show success toast notification
-        showSignToast('✅ Contract signed successfully! The customer has been notified.');
+        showSignToast('Agreement signed and sent. The customer has been notified to review and sign.');
 
     }
 

@@ -1,6 +1,6 @@
 {% extends "caterer/layout.html" %}
 
-{% block title %}Invoice #{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }} - OccaServe{% endblock %}
+{% block title %}{% if booking.document_type == 'invoice' %}Invoice{% else %}Quotation{% endif %} #{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }} - OccaServe{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -13,6 +13,21 @@
         box-shadow: var(--shadow-card);
         border: 1px solid var(--color-neutral-100);
     }
+
+    {% if request.query_params.get('modal') == 'true' %}
+    html, body { width:100%; height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto; background:#f8fafc !important; }
+    .sidebar, .dashboard-header, .sidebar-overlay, .caterer-page-history,
+    #toast-container, .dashboard-wrapper > .sidebar-overlay { display:none !important; }
+    .dashboard-wrapper, .content-wrapper { display:block !important; width:100% !important; height:auto !important; min-height:100% !important; margin:0 !important; padding:0 !important; }
+    .main-content { display:flex !important; align-items:flex-start !important; justify-content:center !important; width:100% !important; height:auto !important; max-height:none !important; min-height:100% !important; overflow:visible !important; box-sizing:border-box !important; margin:0 !important; margin-top:0 !important; padding:.5rem .75rem !important; }
+    .invoice-container { width:min(100%, 680px); max-width:680px; margin:0 auto; padding:1.1rem; box-shadow:none; }
+    .quotation-send-action { margin:0 0 .85rem; padding:.7rem .85rem; display:flex; align-items:center; justify-content:space-between; gap:.75rem; border:1px solid #bfdbfe; border-radius:9px; background:#eff6ff; }
+    .quotation-send-action p { margin:0; color:#1e3a8a; font-size:.82rem; line-height:1.4; }
+    .quotation-send-button { display:inline-flex; align-items:center; gap:.4rem; flex:0 0 auto; border:0; border-radius:8px; padding:.65rem .95rem; background:var(--primary-color,#1d4ed8); color:#fff; font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; text-decoration:none; }
+    .quotation-send-button:disabled { opacity:.65; cursor:wait; }
+    .quotation-sent-status { color:#166534; font-size:.8rem; font-weight:700; }
+    .print-btn { display:none !important; }
+    {% endif %}
 
     .invoice-header {
         display: flex;
@@ -189,11 +204,34 @@
             <p>Official Transaction Record</p>
         </div>
         <div class="invoice-meta">
-            <h2>INVOICE</h2>
+            <h2>{% if booking.document_type == 'invoice' %}INVOICE{% else %}QUOTATION{% endif %}</h2>
             <p>Ref: #{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}</p>
             <p>Date: {{ booking.created_at.strftime('%B %d, %Y') }}</p>
         </div>
     </div>
+
+    {% if booking.document_type != 'invoice' and booking.status == 'inquiry' and not booking.quotation %}
+    <div class="quotation-send-action">
+        <p>Create the quotation first. You will review and sign the complete agreement before it is sent to the customer.</p>
+        <form method="post" action="/caterer/bookings/{{ booking.id }}/send-quotation{% if request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" onsubmit="const button=this.querySelector('button');button.disabled=true;button.innerHTML='<i class=&quot;fas fa-spinner fa-spin&quot;></i> Preparing…';">
+            <button type="submit" class="quotation-send-button">
+                <i class="fas fa-file-invoice"></i> Prepare Agreement
+            </button>
+        </form>
+    </div>
+    {% elif booking.document_type != 'invoice' and booking.status in ['inquiry', 'awaiting_customer', 'awaiting_caterer'] and booking.quotation and not booking.quotation.caterer_signature and booking.quotation.status not in ['signed', 'rejected'] %}
+    <div class="quotation-send-action">
+        <p>{% if booking.quotation.customer_signature %}The customer has already signed this agreement. Review and sign it to complete the agreement.{% else %}Review the complete agreement, then sign it to send it to the customer for their signature.{% endif %}</p>
+        <a class="quotation-send-button" href="/caterer/bookings/{{ booking.id }}/sign{% if request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" {% if request.query_params.get('modal') == 'true' %}onclick="if (window.parent &amp;&amp; window.parent.openQuotationAgreement) { window.parent.openQuotationAgreement({{ booking.id }}); return false; }"{% endif %}>
+            <i class="fas fa-file-signature"></i> {% if booking.quotation.customer_signature %}Review &amp; Sign Agreement{% else %}Review, Sign &amp; Send{% endif %}
+        </a>
+    </div>
+    {% elif booking.document_type != 'invoice' and booking.quotation and booking.quotation.status != 'draft' %}
+    <div class="quotation-send-action">
+        <p>{% if booking.quotation.customer_signature and booking.quotation.caterer_signature %}Both parties have signed the quotation-agreement.{% elif booking.quotation.customer_signature %}The customer has signed. Your signature is still required to complete this agreement.{% elif booking.quotation.caterer_signature %}The signed agreement is with the customer for review and signature.{% else %}This quotation was sent previously and is awaiting agreement signatures.{% endif %}</p>
+        <span class="quotation-sent-status"><i class="fas fa-check-circle"></i> {% if booking.quotation.customer_signature and booking.quotation.caterer_signature %}Fully signed{% elif booking.quotation.customer_signature %}Awaiting caterer signature{% elif booking.quotation.caterer_signature %}Awaiting customer signature{% else %}Previously sent{% endif %}</span>
+    </div>
+    {% endif %}
 
     <div class="info-grid">
         <div class="info-box">
@@ -209,6 +247,43 @@
             <p>Verified Caterer</p>
         </div>
     </div>
+
+    {% set displayed_inclusions = package_inclusions %}
+    <section style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
+            <h3 style="margin: 0 0 .35rem; color: #0f172a; font-size: 1rem;">Package and inclusions</h3>
+            <p style="margin: 0; color: #0f172a; font-weight: 700;">
+                {{ (quotation.package_details.get('name') if quotation and quotation.package_details else None) or (booking.package.name if booking.package else (booking.event_name or booking.event_type or 'Custom Catering Service')) }}
+            </p>
+            {% if booking.package and booking.package.description %}
+            <p style="margin: .35rem 0 0; color: #475569; font-size: .88rem;">{{ booking.package.description }}</p>
+            {% endif %}
+            {% if displayed_inclusions %}
+            <div style="overflow-x:auto;">
+            <table style="width:100%; min-width:520px; border-collapse:collapse; margin-top:.7rem; color:#334155; font-size:.86rem;">
+                <thead>
+                    <tr style="background:#f1f5f9; color:#475569; font-size:.72rem; text-transform:uppercase;">
+                        <th style="padding:.65rem .7rem; border:1px solid #e2e8f0; text-align:left;">Type</th>
+                        <th style="padding:.65rem .7rem; border:1px solid #e2e8f0; text-align:left;">Included item</th>
+                        <th style="padding:.65rem .7rem; border:1px solid #e2e8f0; text-align:left;">Quantity</th>
+                        <th style="padding:.65rem .7rem; border:1px solid #e2e8f0; text-align:left;">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for inclusion in displayed_inclusions %}
+                <tr>
+                    <td style="padding:.65rem .7rem; border:1px solid #e2e8f0;">{{ inclusion.category or inclusion.item_type or 'Included' }}</td>
+                    <td style="padding:.65rem .7rem; border:1px solid #e2e8f0;"><strong>{{ inclusion.name or 'Included item' }}</strong></td>
+                    <td style="padding:.65rem .7rem; border:1px solid #e2e8f0;">{{ inclusion.quantity or '—' }}{% if inclusion.unit %} {{ inclusion.unit }}{% endif %}</td>
+                    <td style="padding:.65rem .7rem; border:1px solid #e2e8f0;">{{ inclusion.description or inclusion.notes or '—' }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% elif booking.package %}
+            <p style="margin: .65rem 0 0; color: #64748b; font-size: .85rem;">No package inclusions are listed for this booking.</p>
+            {% endif %}
+    </section>
 
     <table class="item-table">
         <thead>
@@ -287,19 +362,19 @@
                 {% endif %}
             {% else %}
                 <!-- FIXED PACKAGE INVOICE ITEMS (UNTOUCHED) -->
-                {% if quotation and quotation.package_details and quotation.package_details.base_amount > 0 %}
+                {% if quotation and quotation.package_details and quotation.package_details.get('base_amount', 0)|float > 0 %}
                 <tr>
                     <td>
-                        <div class="item-name">{{ quotation.package_details.name }}</div>
-                        <div class="item-desc">{{ quotation.package_details.description or 'Core service package.' }}</div>
+                        <div class="item-name">{{ quotation.package_details.get('name', 'Catering Package') }}</div>
+                        <div class="item-desc">{{ quotation.package_details.get('description') or 'Core service package.' }}</div>
                     </td>
                     <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
-                        {{ quotation.package_details.guest_count or 1 }}
+                        {{ quotation.package_details.get('guest_count') or 1 }}
                     </td>
                     <td style="text-align: right; color: var(--color-neutral-600);">
-                        ₱{{ "{:,.2f}".format(quotation.package_details.unit_price) }}
+                        ₱{{ "{:,.2f}".format(quotation.package_details.get('unit_price', 0)|float) }}
                     </td>
-                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(quotation.package_details.base_amount) }}</td>
+                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(quotation.package_details.get('base_amount', 0)|float) }}</td>
                 </tr>
                 {% endif %}
                 
@@ -309,7 +384,7 @@
                         <td>
                             <div class="item-name">{{ addon.name }}</div>
                             <div class="item-desc">
-                                {% if addon.category == 'food' %}Ala Carte / Add-on Food
+                                {% if addon.category == 'food' %}Food Add-on
                                 {% elif addon.category == 'equipment' %}Equipment Rental
                                 {% elif addon.category == 'service' %}Service Assignment
                                 {% elif addon.category == 'fee' %}Surcharge / Fee
@@ -346,6 +421,16 @@
             <span>Subtotal</span>
             <span>₱{{ "{:,.2f}".format(quotation.total_amount if quotation else booking.total_amount) }}</span>
         </div>
+        {% if quotation and quotation.downpayment_percent is defined and booking.reservation_fee %}
+        <div class="total-row" style="color: var(--color-neutral-600);">
+            <span>Required downpayment ({{ quotation.downpayment_percent }}%)</span>
+            <span>₱{{ "{:,.2f}".format(booking.reservation_fee|float) }}</span>
+        </div>
+        <div class="total-row" style="color: var(--color-neutral-600);">
+            <span>Remaining balance after downpayment</span>
+            <span>₱{{ "{:,.2f}".format([((quotation.total_amount|float) - (booking.reservation_fee|float)), 0]|max) }}</span>
+        </div>
+        {% endif %}
         {% if booking.security_deposit_amount and booking.security_deposit_amount > 0 %}
         <div class="total-row" style="color: var(--color-neutral-500);">
             <span>Security Deposit (Refundable)</span>
@@ -364,7 +449,9 @@
     </div>
 </div>
 
+{% if booking.document_type == 'invoice' %}
 <button class="print-btn" onclick="window.print()">
     <i class="fas fa-print"></i> Print Invoice
 </button>
+{% endif %}
 {% endblock %}

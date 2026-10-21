@@ -17,32 +17,6 @@
         --font-body: 'Poppins', sans-serif;
     }
 
-    /* Shield Icon Header */
-    .kyc-header-icon {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 2rem;
-    }
-
-    .shield-icon-container {
-        width: 80px;
-        height: 80px;
-        background: var(--kyc-accent);
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.5rem;
-        color: white;
-        box-shadow: 0 10px 25px rgba(249, 115, 22, 0.25);
-        transform: rotate(-10deg);
-        transition: all 0.3s ease;
-    }
-
-    .shield-icon-container:hover {
-        transform: rotate(0deg) scale(1.1);
-    }
-
     #kyc-form-container {
         background: #ffffff !important;
         border-radius: 1.75rem !important;
@@ -364,12 +338,6 @@
 
         .node-label {
             font-size: 0.55rem !important;
-        }
-
-        .shield-icon-container {
-            width: 60px;
-            height: 60px;
-            font-size: 2rem;
         }
 
         .modern-input {
@@ -1311,15 +1279,8 @@
 
 {% block wizard_content %}
 <div class="kyc-step fade-in">
-    <!-- Shield Icon Header -->
-    <div class="kyc-header-icon">
-        <div class="shield-icon-container">
-            <i class="fas fa-shield-alt"></i>
-        </div>
-    </div>
-
     <div class="wizard-header-content">
-        <h1 class="wizard-title">Identity Verification</h1>
+        <h2 class="wizard-title">Step 2: Identity Verification</h2>
         <p class="wizard-subtitle">Verify your identity to help protect your account and bookings.</p>
 
         {% if request.query_params.get('auth_needed') %}

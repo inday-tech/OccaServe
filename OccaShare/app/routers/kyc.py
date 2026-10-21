@@ -808,20 +808,36 @@ async def process_kyc_background(user_id, booking_id, kyc_record_id, session_id,
                 
                 kyc_record.verification_valid_until = valid_until
                 
-            db.query(models.Booking).filter(
-                models.Booking.id == booking_id,
-                models.Booking.user_id == user_id
-            ).update({"ocr_verified": True, "liveness_verified": True})
+            booking.ocr_verified = True
+            booking.liveness_verified = True
+            if booking.status == "draft":
+                booking.status = "pending_review"
+                booking.expires_at = None
+                db.add(models.BookingHistory(
+                    booking_id=booking.id,
+                    status="pending_review",
+                    notes="Customer passed identity verification and submitted the booking for caterer review.",
+                ))
+            booking_ref = booking.booking_ref or booking.display_booking_ref or f"BK-{booking.id:03d}"
+            event_name = booking.event_name or booking.event_type or f"booking {booking_ref}"
             
             # Send Notification
             await NotificationService.notify_status_update(
                 db, user_id, 
-                "Identity Approved!", 
-                f"Your identity has been verified. You may now proceed with your booking.",
-                f"/bookings/step/quotation/{booking.id}",
+                "Identity Verified",
+                "Your identity passed verification. Your booking request is now waiting for the caterer to review.",
+                f"/customer/bookings/manage/{booking.id}",
                 "kyc_update"
             )
-            
+
+            await NotificationService.notify_status_update(
+                db,
+                booking.caterer.user_id,
+                "New Booking Request",
+                f"A customer passed identity verification. Review '{event_name}' ({booking_ref}) and decide whether to accept or reject the request.",
+                f"/caterer/bookings?open_booking={booking.id}",
+            )
+
         elif status == "pending_manual_review":
             if kyc_record:
                 kyc_record.verification_status = "pending_manual_review"

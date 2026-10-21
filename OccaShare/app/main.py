@@ -456,6 +456,7 @@ async def lifespan(app: FastAPI):
         # booking_contracts
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE",
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS contract_history JSONB",
+        "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS saved_signature TEXT",
 
         # billing_invoices
         "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS booking_id INTEGER REFERENCES bookings(id)",

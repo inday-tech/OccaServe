@@ -714,26 +714,24 @@ async def upload_public_proof_of_payment(
     db.commit()
     
     # Send notification to caterer
-    from ..services.realtime import manager
-    caterer_msg = f"New payment proof submitted for booking #{booking.id}"
+    booking_ref = booking.booking_ref or booking.display_booking_ref or f"BK-{booking.id:03d}"
+    payment_label = payment_type.lower()
+    caterer_msg = (
+        f"Review the customer's {payment_label} payment proof of PHP {expected_fee:,.2f} "
+        f"for '{booking.event_name or booking.event_type}' ({booking_ref})."
+    )
     
     notif = models.Notification(
         user_id=booking.caterer.user_id,
-        title="Payment Submitted",
+        title=f"{payment_label.title()} Payment Proof Submitted",
         message=caterer_msg,
         type="Payment",
-        link=f"/caterer/bookings?open_booking={booking.id}"
+        link=f"/caterer/bookings?open_booking={booking.id}&open_tab=payment"
     )
     db.add(notif)
     db.commit()
-    
-    import asyncio
-    asyncio.create_task(manager.broadcast_to_user(booking.caterer.user_id, {
-        "type": "new_notification",
-        "title": notif.title,
-        "message": notif.message,
-        "url": notif.link
-    }))
+    from ..services.notification import NotificationService
+    await NotificationService.broadcast_notification(booking.caterer.user, notif, booking.id)
     
     # Redirect back to the secure document
     return RedirectResponse(url=f"/customer/document/{booking_id}?success=1", status_code=303)

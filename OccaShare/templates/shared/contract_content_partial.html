@@ -17,7 +17,7 @@
 
     <div id="printable-contract" class="contract-paper-container">
         <div class="contract-paper">
-            {% set doc_title = "MASTER CATERING SERVICE AGREEMENT" %}
+            {% set doc_title = "QUOTATION & CATERING SERVICE AGREEMENT" %}
             {% if booking.document_type == "service_agreement" or booking.event_type == "Service Only" %}
             {% set doc_title = "EVENT SERVICE AGREEMENT & STAFFING TERMS" %}
             {% elif booking.document_type == "rental_agreement" or booking.event_type == "Equipment Rental" %}
@@ -51,8 +51,7 @@
                 <div class="party-card-pro">
                     <div class="party-label-tag">SERVICE PROVIDER</div>
                     <div class="party-content-main">
-                        <h3 class="party-name">{{ booking.caterer.user.first_name }} {{ booking.caterer.user.last_name
-                            }}</h3>
+                        <h3 class="party-name">{{ ((booking.caterer.user.first_name or '') ~ ' ' ~ (booking.caterer.user.last_name or ''))|trim or 'Name not provided' }}</h3>
                         <p class="party-detail-text">
                             {{ booking.caterer.business_name }}<br>
                             {{ booking.caterer.contact_address or booking.caterer.user.address or booking.caterer.city
@@ -68,7 +67,7 @@
                 <div class="party-card-pro">
                     <div class="party-label-tag">THE CLIENT</div>
                     <div class="party-content-main">
-                        <h3 class="party-name">{{ booking.user.first_name }} {{ booking.user.last_name }}</h3>
+                        <h3 class="party-name">{{ ((booking.user.first_name or '') ~ ' ' ~ (booking.user.last_name or ''))|trim or 'Name not provided' }}</h3>
                         <p class="party-detail-text">
                             {{ booking.user.address or 'Address on File' }}<br>
                             {{ booking.user.phone_number or 'Contact Number on File' }}<br>
@@ -89,7 +88,11 @@
                     </tr>
                     <tr>
                         <td class="spec-label-col">Type of Event:</td>
-                        <td>{{ booking.event_type }}</td>
+                        <td>{{ booking.event_type or 'Not provided' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-label-col">Event Name:</td>
+                        <td>{{ booking.event_name or 'Not provided' }}</td>
                     </tr>
                     <tr>
                         <td class="spec-label-col">Time:</td>
@@ -97,17 +100,88 @@
                     </tr>
                     <tr>
                         <td class="spec-label-col">Venue:</td>
-                        <td>{{ booking.venue_address }}</td>
+                        <td>{{ booking.venue_address or 'Not provided' }}</td>
                     </tr>
+                    {% if booking.venue_latitude is not none and booking.venue_longitude is not none %}
+                    <tr>
+                        <td class="spec-label-col">Pinned location:</td>
+                        <td>{{ booking.venue_latitude }}, {{ booking.venue_longitude }}</td>
+                    </tr>
+                    {% endif %}
                     <tr>
                         <td class="spec-label-col">Expected Guests:</td>
-                        <td>{{ quotation.package_details.guest_count }} persons</td>
+                        <td>{{ (quotation.package_details.get('guest_count') if quotation.package_details else None) or booking.guest_count or 'Not provided' }} persons</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-label-col">Theme / Motif:</td>
+                        <td>{{ booking.motif_theme or (booking.custom_requirements.get('theme_motif') if booking.custom_requirements is mapping else None) or (booking.custom_requirements.get('motif_theme') if booking.custom_requirements is mapping else None) or 'Not provided' }}</td>
                     </tr>
                 </table>
             </div>
 
-            <!-- Section 2 -->
-            <h2 class="contract-section-title">2. Financial Terms & Compensation</h2>
+            <h2 class="contract-section-title">2. Package and Included Services</h2>
+            <div class="contract-details-table-wrapper">
+                <table class="contract-spec-table">
+                    <tr>
+                        <td class="spec-label-col">Package:</td>
+                        <td>{{ (quotation.package_details.get('name') if quotation.package_details else None) or (booking.package.name if booking.package else 'Custom catering service') }}</td>
+                    </tr>
+                </table>
+            </div>
+            {% set agreement_inclusions = quotation.package_details.get('inclusions') if quotation.package_details else None %}
+            {% if not agreement_inclusions and booking.package %}
+                {% set agreement_inclusions = booking.package.inclusions %}
+            {% endif %}
+            {% if agreement_inclusions %}
+            <p class="financial-terms-para">
+                The package and included items below are part of the services agreed to by both parties.
+            </p>
+            <div class="contract-details-table-wrapper">
+                <table class="contract-spec-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Included item</th>
+                            <th>Quantity</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if agreement_inclusions is mapping %}
+                            {% for inclusion_name, is_included in agreement_inclusions.items() if is_included %}
+                            <tr>
+                                <td>Included</td>
+                                <td>{{ inclusion_name }}</td>
+                                <td>—</td>
+                                <td>Included in {{ quotation.package_details.get('name') or (booking.package.name if booking.package else 'the agreed service package') }}.</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            {% for inclusion in agreement_inclusions %}
+                            <tr>
+                                {% if inclusion is mapping %}
+                                <td>{{ inclusion.get('category') or inclusion.get('item_type') or 'Included' }}</td>
+                                <td>{{ inclusion.get('name') or inclusion.get('label') or 'Included item' }}</td>
+                                <td>{{ inclusion.get('quantity') or '—' }}{% if inclusion.get('unit') %} {{ inclusion.get('unit') }}{% endif %}</td>
+                                <td>{{ inclusion.get('description') or inclusion.get('notes') or '—' }}</td>
+                                {% else %}
+                                <td>Included</td>
+                                <td>{{ inclusion }}</td>
+                                <td>—</td>
+                                <td>Included in the agreed service package.</td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="financial-terms-para">No package inclusions were listed for this booking.</p>
+            {% endif %}
+
+            <!-- Section 3 -->
+            <h2 class="contract-section-title">3. Financial Terms & Compensation</h2>
             <p class="financial-terms-para">
                 In consideration of the catering services provided, the Client agrees to pay the Service Provider the
                 Total
@@ -255,7 +329,7 @@
             </table>
 
             <!-- Section 3: Standard Clauses -->
-            <h2 class="contract-section-title">3. Standard Terms & Conditions</h2>
+            <h2 class="contract-section-title">{% if agreement_inclusions %}4{% else %}3{% endif %}. Standard Terms & Conditions</h2>
             <div class="contract-clauses-list">
                 <p class="clause-text" style="white-space: pre-line; margin-top: 0;">{% if booking.document_type == "rental_agreement" and booking.caterer.rental_policies %}
 {{ booking.caterer.rental_policies }}
@@ -269,7 +343,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
             </div>
 
             <!-- Section 4 -->
-            <h2 class="contract-section-title">4. Agreement Terms & Legal Validity</h2>
+            <h2 class="contract-section-title">{% if agreement_inclusions %}5{% else %}4{% endif %}. Agreement Terms & Legal Validity</h2>
             <p class="agreement-status-para">
                 By signing this document, both the Customer and the Caterer agree that this is the final and complete
                 agreement for the event. This contract replaces any previous chats, messages, or verbal promises made
@@ -292,8 +366,8 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
                             {% endif %}
                         </div>
                         <div class="sig-details-formal">
-                            <span class="sig-name-formal">{{ (booking.caterer.user.first_name + ' ' +
-                                booking.caterer.user.last_name)|upper }}</span>
+                            <span class="sig-name-formal">{{ (((booking.caterer.user.first_name or '') ~ ' ' ~
+                                (booking.caterer.user.last_name or ''))|trim or 'NAME NOT PROVIDED')|upper }}</span>
                             <span class="sig-label-formal">SERVICE PROVIDER / AUTHORIZED SIGNATORY</span>
                             <span class="sig-date-formal">
                                 {{ quotation.caterer_signed_at.strftime('%Y-%m-%d %H:%M') if quotation.caterer_signed_at
@@ -319,8 +393,8 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
                             {% endif %}
                         </div>
                         <div class="sig-details-formal">
-                            <span class="sig-name-formal">{{ (booking.user.first_name + ' ' +
-                                booking.user.last_name)|upper }}</span>
+                            <span class="sig-name-formal">{{ (((booking.user.first_name or '') ~ ' ' ~
+                                (booking.user.last_name or ''))|trim or 'NAME NOT PROVIDED')|upper }}</span>
                             <span class="sig-label-formal">CLIENT / EVENT REPRESENTATIVE</span>
                             <span class="sig-date-formal">
                                 {{ quotation.customer_signed_at.strftime('%Y-%m-%d %H:%M') if

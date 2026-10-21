@@ -33,6 +33,60 @@
         margin-bottom: 2rem;
         border: 1px solid #e2e8f0;
     }
+
+    .quote-package-summary {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: var(--border-radius, 12px);
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .quote-inclusions {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: .75rem;
+        font-size: .85rem;
+    }
+
+    .quote-inclusions th, .quote-inclusions td {
+        padding: .65rem .7rem;
+        border: 1px solid #e2e8f0;
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .quote-inclusions th {
+        background: #f1f5f9;
+        color: #475569;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+
+    .quote-math-note {
+        padding: .75rem .9rem;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: .82rem;
+        line-height: 1.5;
+    }
+
+    @media (max-width: 640px) {
+        .proposal-container { margin: .75rem auto !important; padding: 1rem; }
+        .customer-reqs { padding: 1rem; }
+        .line-items-header, .line-item-row { grid-template-columns: minmax(0, 1fr) minmax(90px, .6fr) 36px; gap: .5rem; }
+    }
+
+    {% if request.query_params.get('modal') == 'true' %}
+    html, body { width:100%; height:100%; min-height:0; overflow:hidden; background:#f8fafc !important; }
+    .sidebar, .dashboard-header, .sidebar-overlay, .caterer-page-history,
+    #toast-container, .dashboard-wrapper > .sidebar-overlay { display:none !important; }
+    .dashboard-wrapper, .content-wrapper { display:block !important; width:100% !important; height:100% !important; min-height:0 !important; margin:0 !important; padding:0 !important; }
+    .main-content { display:flex !important; align-items:flex-start !important; justify-content:center !important; width:100% !important; height:100% !important; max-height:100% !important; min-height:0 !important; overflow-y:auto !important; box-sizing:border-box !important; margin:0 !important; padding:.75rem !important; }
+    .proposal-container { width:min(100%, 680px); max-width:680px; margin:0 auto !important; padding:1.25rem; box-shadow:none; }
+    {% endif %}
     
     .form-group {
         margin-bottom: 1.5rem;
@@ -188,8 +242,38 @@
             </p>
         </div>
     </div>
+
+    <section class="quote-package-summary" aria-labelledby="quotePackageTitle">
+        <h3 id="quotePackageTitle" style="font-weight: 800; margin: 0 0 .5rem; color: #0f172a;">Package and inclusions</h3>
+        {% if booking.package %}
+        <p style="margin: 0; color: #0f172a; font-weight: 700;">{{ booking.package.name }}</p>
+        {% if booking.package.description %}<p style="margin: .35rem 0 0; color: #475569;">{{ booking.package.description }}</p>{% endif %}
+        {% else %}
+        <p style="margin: 0; color: #475569;">Custom event request — no catalog package was selected.</p>
+        {% endif %}
+        {% if package_inclusions %}
+        <div style="overflow-x:auto;">
+        <table class="quote-inclusions">
+            <thead><tr><th>Type</th><th>Included item</th><th>Quantity</th><th>Details</th></tr></thead>
+            <tbody>
+            {% for inclusion in package_inclusions %}
+            <tr>
+                <td>{{ inclusion.category or inclusion.item_type or 'Included' }}</td>
+                <td><strong>{{ inclusion.name or 'Included item' }}</strong></td>
+                <td>{{ inclusion.quantity or '—' }}{% if inclusion.unit %} {{ inclusion.unit }}{% endif %}</td>
+                <td>{{ inclusion.description or inclusion.notes or '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% elif booking.package %}
+        <p style="margin: .65rem 0 0; color: #64748b; font-size: .85rem;">No package inclusions are listed for this booking.</p>
+        {% endif %}
+        <p style="margin: .75rem 0 0; color: #64748b; font-size: .82rem;">Review the inclusions before pricing. The quotation total below is calculated as the base amount plus all named add-ons.</p>
+    </section>
     
-    <form action="/caterer/bookings/{{ booking.id }}/proposal_maker" method="POST" id="proposalForm">
+    <form action="/caterer/bookings/{{ booking.id }}/proposal_maker{% if request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" method="POST" id="proposalForm">
         <div style="background: #f8fafc; border-left: 4px solid #0f172a; padding: 1.25rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem; display: flex; gap: 1rem; align-items: flex-start;">
             <i class="fas fa-info-circle" style="color: #0f172a; font-size: 1.25rem; margin-top: 2px;"></i>
             <div>
@@ -202,18 +286,18 @@
         </div>
         
         <div class="form-group">
-            <label class="form-label">Base Package / Food Cost (Total for {{ booking.guest_count }} pax)</label>
+            <label class="form-label">Base Package / Food Cost (total for {{ booking.guest_count }} guests)</label>
             <div style="position: relative;">
                 <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700;">₱</span>
                 <input type="text" inputmode="numeric" name="base_price" id="basePrice" class="form-input js-format-comma" style="padding-left: 2rem;" required oninput="calculateTotal()">
             </div>
-            <small style="color: #64748b; margin-top: 4px; display: block;">This covers the core food and inclusions.</small>
+            <small style="color: #64748b; margin-top: 4px; display: block;">Enter the base total once for the full guest count. Do not multiply this amount by the number of guests again.</small>
         </div>
         
         <div class="line-items-wrapper">
             <div class="line-items-header">
-                <div>Custom Line Item Description</div>
-                <div>Amount (₱)</div>
+                <div>Add-on description</div>
+                <div>Total amount (₱)</div>
                 <div></div>
             </div>
             <div id="lineItemsContainer">
@@ -226,23 +310,28 @@
         
         <div class="totals-section">
             <div class="total-row">
-                <span>Base Amount:</span>
+                <span>Base package total:</span>
                 <span id="displayBase">₱0.00</span>
             </div>
             <div class="total-row">
-                <span>Add-ons Total:</span>
+                <span>Add-ons total:</span>
                 <span id="displayAddons">₱0.00</span>
             </div>
             <div class="total-row grand">
-                <span>Grand Total:</span>
+                <span>Quotation total:</span>
                 <span id="displayGrandTotal">₱0.00</span>
             </div>
             
             <input type="hidden" name="total_amount" id="hiddenTotalAmount">
         </div>
         
+        <p class="quote-math-note">
+            <strong>Computation:</strong> base package total + each add-on total = quotation total.
+            The server recalculates and validates the total when you save it. You will review and sign the agreement before sending it to the customer.
+        </p>
+
         <button type="submit" class="btn-submit">
-            <i class="fas fa-paper-plane"></i> Send Proposal to Customer
+            <i class="fas fa-file-invoice"></i> Save Quotation &amp; Review Agreement
         </button>
     </form>
 </div>
@@ -250,9 +339,9 @@
 
 {% block extra_js %}
 <script>
-    const GUEST_COUNT = {{ booking.guest_count }};
+    const GUEST_COUNT = {{ booking.guest_count or 0 }};
     const MIN_EQUIP_FEE = GUEST_COUNT * 150.0;
-    const WAITERS_NEEDED = Math.max(1, Math.floor(GUEST_COUNT / 20));
+    const WAITERS_NEEDED = Math.max(1, Math.ceil(GUEST_COUNT / 20));
     const MIN_STAFF_FEE = WAITERS_NEEDED * 800.0;
     const ABSOLUTE_MIN = MIN_EQUIP_FEE + MIN_STAFF_FEE;
     
@@ -289,13 +378,13 @@
             addonsTotal += parseFloat(addonStr) || 0;
         });
         
-        const grandTotal = basePrice + addonsTotal;
+        const grandTotal = Math.round((basePrice + addonsTotal + Number.EPSILON) * 100) / 100;
         
         document.getElementById('displayBase').textContent = '₱' + basePrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('displayAddons').textContent = '₱' + addonsTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('displayGrandTotal').textContent = '₱' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
-        document.getElementById('hiddenTotalAmount').value = grandTotal;
+        document.getElementById('hiddenTotalAmount').value = grandTotal.toFixed(2);
         
         const submitBtn = document.querySelector('.btn-submit');
         if (grandTotal > 0 && grandTotal < ABSOLUTE_MIN) {
@@ -308,12 +397,20 @@
             submitBtn.disabled = false;
             submitBtn.style.background = '#0f172a';
             submitBtn.style.color = 'white';
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Proposal to Customer';
+            submitBtn.innerHTML = '<i class="fas fa-file-invoice"></i> Save Quotation &amp; Review Agreement';
             submitBtn.style.boxShadow = '0 4px 12px rgba(15,23,42,0.2)';
         }
     }
+
+    document.getElementById('proposalForm').addEventListener('submit', function() {
+        const baseInput = document.getElementById('basePrice');
+        baseInput.value = baseInput.value.replace(/,/g, '');
+        document.querySelectorAll('.addon-price').forEach(input => {
+            input.value = input.value.replace(/,/g, '');
+        });
+        calculateTotal();
+    });
     
-    // Add one empty row initially
-    addLineItem();
+    calculateTotal();
 </script>
 {% endblock %}
