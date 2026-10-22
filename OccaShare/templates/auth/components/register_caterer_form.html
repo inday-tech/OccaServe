@@ -137,15 +137,20 @@
                 <div class="form-group full-width" style="margin-top: 1.5rem;">
                     <label for="catererLocationSearch">Business Location <span style="color:#ef4444;">*</span></label>
                     <p class="field-hint">Search for your business, choose a result, drag the pin, or click the map to set its exact location.</p>
-                    <div class="input-wrapper" id="catererLocationWrapper">
-                        <div style="display:flex;gap:0.5rem;align-items:center;">
-                            <input type="search" id="catererLocationSearch" class="minimal-input" placeholder="Search a business, address, or landmark..." autocomplete="off" style="flex:1;">
-                            <button type="button" id="catererUseMyLocation" class="minimal-input" style="width:auto;white-space:nowrap;">
+                    <div class="input-wrapper" id="catererLocationWrapper" style="padding:1rem;border:1px solid #dbe3ee;border-radius:16px;background:#f8fafc;">
+                        <div class="caterer-location-controls" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.65rem;align-items:center;">
+                            <input type="search" id="catererLocationSearch" class="minimal-input" placeholder="Search business name, address, or landmark" autocomplete="off" style="min-width:0;height:48px;padding:0 1rem;border:1px solid #cbd5e1;border-radius:12px;background:white;">
+                            <button type="button" id="catererUseMyLocation" class="minimal-input" style="width:auto;min-height:48px;padding:0 1rem;white-space:nowrap;border:1px solid #fecaca;border-radius:12px;background:#fff7f7;color:#9f1239;font-weight:700;">
                                 <i class="fas fa-crosshairs" aria-hidden="true"></i> Use My Location
                             </button>
                         </div>
-                        <div id="catererRegistrationMap" data-maps-api-key="{{ google_maps_api_key() }}" style="height:320px;border:1px solid #e2e8f0;border-radius:12px;margin-top:0.75rem;"></div>
-                        <p id="catererLocationStatus" class="field-hint" role="status" aria-live="polite">Set your business pin on the map.</p>
+                        <div id="catererRegistrationMap" data-maps-api-key="{{ google_maps_api_key() }}" style="height:360px;border:1px solid #cbd5e1;border-radius:14px;margin-top:.75rem;overflow:hidden;"></div>
+                        <div class="caterer-location-actions" style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:.75rem;">
+                            <p id="catererLocationStatus" class="field-hint" role="status" aria-live="polite" style="margin:0;">Search, use your location, or place the pin on the map.</p>
+                            <button type="button" id="catererSaveLocation" class="minimal-input" style="width:auto;min-height:44px;padding:0 1.2rem;border:1px solid #14532d;border-radius:10px;background:#166534;color:white;font-weight:800;box-shadow:0 2px 5px rgba(22,101,52,.18);" disabled>
+                                <i class="fas fa-check" aria-hidden="true"></i> Save Business Location
+                            </button>
+                        </div>
                         <div id="catererLocationError" class="error-drawer">Choose your business location on the map.</div>
                     </div>
                     <input type="hidden" name="latitude" id="catererLocationLatitude">
@@ -154,9 +159,9 @@
                     <input type="hidden" name="city_municipality" id="city_cat">
                     <input type="hidden" name="barangay" id="barangay_cat">
                 </div>
-                <div class="form-group">
+                <div class="form-group full-width">
                     <label for="street_cat">Business Address / Landmark <span class="optional-label">(Optional)</span></label>
-                    <div class="input-wrapper" id="streetCatWrapper">
+                    <div class="input-wrapper" id="streetCatWrapper" style="width:100%;">
                         <input type="text" id="street_cat" name="street_address" class="minimal-input" placeholder="Add a landmark or specific directions (optional)">
                     </div>
                 </div>

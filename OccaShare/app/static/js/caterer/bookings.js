@@ -3577,13 +3577,21 @@ function updateBookingStepper(status, isPackage, isFoodOrder) {
 var currentBookingIdForContract = null;
 function openContractModal(bookingId) {
     const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
+    if (!cleanId) {
+        if (window.showError) window.showError('Open a booking before viewing its contract.');
+        return;
+    }
     currentBookingIdForContract = cleanId;
     var body = document.getElementById('contractModalBody');
     if (!body) return;
     body.innerHTML = '<div style="text-align:center;padding:4rem;"><i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary-color);"></i></div>';
     bk_openModal('contractModal');
-    fetch('/caterer/api/bookings/' + cleanId + '/contract/content')
-        .then(function(r) { return r.text(); })
+    fetch('/caterer/api/bookings/' + cleanId + '/contract/content', { headers: { Accept: 'text/html' } })
+        .then(async function(r) {
+            const html = await r.text();
+            if (!r.ok) throw new Error(html || 'Could not load this booking contract.');
+            return html;
+        })
         .then(function(html) { body.innerHTML = html; })
         .catch(function() { body.innerHTML = '<p style="color:#ef4444;text-align:center;">Failed to load contract.</p>'; });
 }

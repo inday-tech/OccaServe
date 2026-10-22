@@ -2868,13 +2868,6 @@ async def step_payment_submit(
     if terms_agreement not in {"on", "true", "1"}:
         raise HTTPException(status_code=400, detail="Please agree to the payment terms before submitting.")
 
-    # Online receipts must always include a reference that can be matched to the receipt image.
-    if payment_method != "Cash" and not str(reference_no or "").strip():
-        return RedirectResponse(
-            url=f"/bookings/step/payment/{booking.id}?error=missing_reference&method={payment_method}",
-            status_code=303,
-        )
-
     plan_key = str(payment_plan or "").strip().lower()
     if plan_key not in {"balance", "full", "100", "downpayment"}:
         signed_downpayment = int(booking.quotation.downpayment_percent or 0) if booking.quotation else 0
@@ -3027,7 +3020,7 @@ async def step_payment_submit(
             error_code = "payment_method_mismatch"
         elif not amount_matches:
             error_code = "amount_mismatch"
-        elif not normalized_extracted or normalized_extracted != normalized_submitted:
+        elif submitted_reference and (not normalized_extracted or normalized_extracted != normalized_submitted):
             error_code = "reference_mismatch"
         else:
             error_code = ""
@@ -3039,7 +3032,7 @@ async def step_payment_submit(
             )
 
         # Keep the normalized receipt reference as the booking's canonical reference.
-        booking.payment_reference = submitted_reference
+        booking.payment_reference = submitted_reference or extracted_reference
         
         if payment_plan == 'balance':
             booking.balance_proof_url = proof_url
@@ -3399,8 +3392,9 @@ async def pay_balance_submit(
     if outstanding_balance <= 0:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?info=balance_zero", status_code=303)
 
-    if payment_method != "Cash" and not str(reference_no or "").strip():
-        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Reference+number+is+required", status_code=303)
+    submitted_ref_check = str(reference_no or "").strip()
+    if submitted_ref_check and (not re.fullmatch(r"[A-Za-z0-9]{6,30}", submitted_ref_check) or re.search(r"(.)\1{5,}", submitted_ref_check)):
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Invalid+reference+number", status_code=303)
 
     # Handle Payment Proof Upload (Prioritized for Direct Payout Flow)
     proof_url = None
@@ -3441,8 +3435,9 @@ async def pay_balance_submit(
         submitted_ref = str(reference_no or "").strip()
         extracted_ref = str(extracted.get("reference_no") or "").strip()
         normalize_ref = lambda value: re.sub(r"[^A-Za-z0-9]", "", value).upper()
-        if not extracted_ref or normalize_ref(extracted_ref) != normalize_ref(submitted_ref):
+        if submitted_ref and (not extracted_ref or normalize_ref(extracted_ref) != normalize_ref(submitted_ref)):
             return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Reference+number+does+not+match+the+receipt", status_code=303)
+        submitted_ref = submitted_ref or extracted_ref
 
         booking.balance_proof_url = proof_url
         booking.payment_reference = submitted_ref

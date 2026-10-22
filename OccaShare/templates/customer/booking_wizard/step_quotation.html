@@ -3,7 +3,7 @@
 {% block wizard_title %}
     {% if booking.document_type == 'service_agreement' %}Service Agreement
     {% elif booking.document_type == 'rental_agreement' %}Rental Agreement
-    {% else %}Quotation &amp; Contract{% endif %}
+    {% else %}Booking Agreement{% endif %}
 {% endblock %}
 
 {% block wizard_content %}
@@ -18,486 +18,50 @@
             <h1 class="q-title">Rental Agreement</h1>
             <p class="q-subtitle">Review and sign the agreement to secure your equipment rental.</p>
             {% else %}
-            <h1 class="q-title">Quotation &amp; Agreement</h1>
-            <p class="q-subtitle">Select your deposit option and sign the agreement below to confirm your booking.</p>
+            <h1 class="q-title">Booking Agreement</h1>
+            <p class="q-subtitle">Review the price and deposit, then sign to confirm your booking.</p>
             {% endif %}
         </div>
         <div class="header-badges">
-            <span class="q-badge">Ref: #BK-{{ quotation.booking_id }}</span>
+            <span class="q-badge">Ref: #{% if booking.document_type == 'invoice' %}ORD-{% elif booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% else %}BK-{% endif %}{{ booking.id }}</span>
         </div>
     </header>
-
-    <!-- Quick Info Banner -->
-    <div class="quote-alert">
-        <i class="fas fa-exclamation-circle"></i>
-        After choosing your deposit, please read the agreement and sign below.
-    </div>
-
-    <!-- ── BOOKING ROADMAP ── -->
-    <div class="booking-roadmap-container">
-        <div class="roadmap-stepper"
-            style="--roadmap-progress: {% if quotation.customer_signature and quotation.caterer_signature %}100%{% elif quotation.customer_signature %}66%{% else %}33%{% endif %};">
-            <div class="roadmap-step completed">
-                <div class="step-icon"><i class="fas fa-check"></i></div>
-                <div class="step-label">Selection</div>
-            </div>
-            <div class="roadmap-step completed">
-                <div class="step-icon"><i class="fas fa-file-invoice"></i></div>
-                <div class="step-label">Quotation</div>
-            </div>
-            <div class="roadmap-step {% if quotation.customer_signature %}completed{% else %}active{% endif %}">
-                <div class="step-icon">{% if quotation.customer_signature %}<i class="fas fa-check"></i>{% else %}<i
-                        class="fas fa-pen-nib"></i>{% endif %}</div>
-                <div class="step-label">Your Signature</div>
-            </div>
-            <div
-                class="roadmap-step {% if quotation.caterer_signature %}completed{% elif quotation.customer_signature %}active{% endif %}">
-                <div class="step-icon">{% if quotation.caterer_signature %}<i class="fas fa-check"></i>{% else %}<i
-                        class="fas fa-stamp"></i>{% endif %}</div>
-                <div class="step-label">Caterer Sign</div>
-            </div>
-            <div class="roadmap-step">
-                <div class="step-icon"><i class="fas fa-credit-card"></i></div>
-                <div class="step-label">Payment</div>
-            </div>
-        </div>
-    </div>
 
     <div class="quote-main-content-centered">
         <!-- Main Document Flow -->
         <div class="q-document-flow">
-            <!-- SECTION 1: OFFICIAL QUOTATION -->
-            <div class="section-divider">
-                <span class="divider-text">Your Order Details</span>
-            </div>
-            <div class="q-top-grid-clean">
-                <!-- COLUMN 1: PACKAGE & ORDER SUMMARY -->
-                {% set is_customizable = (quotation.package_details and quotation.package_details.get('package_type') == 'customizable') or (package and package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
-                {% set p_mode = quotation.package_details.pricing_mode if quotation.package_details and 'pricing_mode' in quotation.package_details else (package.pricing_mode if package else 'per_pax') %}
-                {% set p_unit = quotation.package_details.price_unit if quotation.package_details and 'price_unit' in quotation.package_details else (package.price_unit if package else 'per_guest') %}
-                {% set is_fixed = (p_mode == 'fixed' or p_unit != 'per_guest') %}
-
-                {% if is_customizable %}
-                <!-- ══════════════════════════════════════════════════════════ -->
-                <!-- CUSTOMIZABLE PACKAGE QUOTATION (SEPARATED FLOW)           -->
-                <!-- ══════════════════════════════════════════════════════════ -->
-                <section class="card-clean col-summary animate-up">
-                    <div class="card-clean-header">
-                        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                            <div>
-                                <h3 class="card-clean-title">Customized Catering Order</h3>
-                                <span class="card-clean-subtitle">Review your chosen dishes, services, and pricing breakdown</span>
-                            </div>
-                            <span class="q-badge" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; font-size: 0.72rem; padding: 4px 10px; border-radius: 9999px; font-weight: 700;">
-                                <i class="fas fa-sliders-h mr-1"></i> Pay Per Selection
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- 1. CUSTOM HERO CARD -->
-                    <div class="pkg-hero-distinct mb-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 4px solid #4338ca;">
-                        <div class="pkg-title-row-minimal">
-                            <h4 class="pkg-name-minimal">{{ quotation.package_details.name or (package.name if package else 'Customizable Package') }}</h4>
-                            <span class="guest-pill-minimal" style="background: #e0e7ff; color: #3730a3; font-weight: 800;">
-                                <i class="fas fa-users mr-1"></i> {{ quotation.package_details.guest_count or booking.guest_count }} Guests
-                            </span>
-                        </div>
-                        <p class="pkg-rate-subtitle" style="color: #64748b; font-size: 0.8rem; margin-top: 4px;">
-                            Price computed directly from your customized food and event service selections.
-                        </p>
-                    </div>
-
-                    <!-- 2. CUSTOMER CHOSEN FOOD ITEMS -->
-                    {% set cust_food = quotation.package_details.selected_food if quotation.package_details and quotation.package_details.selected_food else [] %}
-                    {% if not cust_food and booking.selected_items %}
-                        {% set cust_food = booking.selected_items | rejectattr('menu_item_id', 'none') | list %}
-                    {% endif %}
-                    {% if cust_food %}
-                    <div class="summary-box-distinct mb-4">
-                        <div class="box-header-distinct" style="display: flex; justify-content: space-between; align-items: center; background: #fafaf9; border-bottom: 1.5px solid #f5f5f4;">
-                            <span class="box-title-distinct"><i class="fas fa-utensils text-amber-600 mr-2"></i>Selected Dishes &amp; Beverages</span>
-                            <span class="box-badge-distinct" style="background: #fef3c7; color: #92400e;">{{ cust_food|length }} Selected</span>
-                        </div>
-                        <div class="box-content-distinct" style="padding: 0.85rem 1rem;">
-                            <div class="clean-2col-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
-                                {% for f in cust_food %}
-                                <div class="list-item-minimal" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
-                                    <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                        <span class="dot-minimal" style="background: #d97706; margin-top: 6px;"></span>
-                                        <div class="item-text-wrapper">
-                                            <span class="item-name-minimal" style="font-weight: 700; color: #0f172a;">{{ f.name if f.name is defined else f.menu_item.name }}</span>
-                                            <small style="display: block; color: #64748b; font-size: 0.73rem;">
-                                                {{ f.category if f.category is defined else (f.menu_item.category if f.menu_item else 'Menu') }} • ₱{{ "{:,.2f}".format((f.unit_price if f.unit_price is defined else (f.price if f.price is defined else 0))|float) }} / pax
-                                            </small>
-                                        </div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <span style="font-weight: 700; font-size: 0.85rem; color: #0f172a;">
-                                            ₱{{ "{:,.2f}".format((f.subtotal if f.subtotal is defined else ((f.price|float) * (quotation.package_details.guest_count or booking.guest_count|float)))|float) }}
-                                        </span>
-                                        <small style="display: block; color: #94a3b8; font-size: 0.7rem;">({{ f.qty or f.quantity or quotation.package_details.guest_count or booking.guest_count }} pax)</small>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- 3. CUSTOMER CHOSEN SERVICES -->
-                    {% set cust_services = quotation.package_details.selected_services if quotation.package_details and quotation.package_details.selected_services else [] %}
-                    {% if not cust_services and booking.selected_items %}
-                        {% set cust_services = booking.selected_items | rejectattr('service_id', 'none') | list %}
-                    {% endif %}
-                    {% if cust_services %}
-                    <div class="summary-box-distinct mb-4">
-                        <div class="box-header-distinct" style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border-bottom: 1.5px solid #dcfce7;">
-                            <span class="box-title-distinct"><i class="fas fa-concierge-bell text-emerald-600 mr-2"></i>Selected Event Services</span>
-                            <span class="box-badge-distinct" style="background: #dcfce7; color: #166534;">{{ cust_services|length }} Selected</span>
-                        </div>
-                        <div class="box-content-distinct" style="padding: 0.85rem 1rem;">
-                            <div class="clean-2col-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
-                                {% for s in cust_services %}
-                                <div class="list-item-minimal" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
-                                    <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                        <span class="dot-minimal" style="background: #16a34a; margin-top: 6px;"></span>
-                                        <div class="item-text-wrapper">
-                                            <span class="item-name-minimal" style="font-weight: 700; color: #0f172a;">{{ s.name if s.name is defined else s.service.name }}</span>
-                                            <small style="display: block; color: #64748b; font-size: 0.73rem;">
-                                                Service • {{ s.unit if s.unit is defined else 'Per Event' }}
-                                            </small>
-                                        </div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <span style="font-weight: 700; font-size: 0.85rem; color: #0f172a;">
-                                            ₱{{ "{:,.2f}".format((s.subtotal if s.subtotal is defined else (s.price if s.price is defined else 0))|float) }}
-                                        </span>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- 4. CUSTOMER CHOSEN EQUIPMENT (IF ANY) -->
-                    {% set cust_equip = quotation.package_details.selected_equipment if quotation.package_details and quotation.package_details.selected_equipment else [] %}
-                    {% if not cust_equip and booking.selected_items %}
-                        {% set cust_equip = booking.selected_items | rejectattr('equipment_id', 'none') | list %}
-                    {% endif %}
-                    {% if cust_equip %}
-                    <div class="summary-box-distinct mb-4">
-                        <div class="box-header-distinct" style="display: flex; justify-content: space-between; align-items: center; background: #fff7ed; border-bottom: 1.5px solid #fed7aa;">
-                            <span class="box-title-distinct"><i class="fas fa-chair text-orange-600 mr-2"></i>Selected Equipment &amp; Rentals</span>
-                            <span class="box-badge-distinct" style="background: #ffedd5; color: #9a3412;">{{ cust_equip|length }} Selected</span>
-                        </div>
-                        <div class="box-content-distinct" style="padding: 0.85rem 1rem;">
-                            <div class="clean-2col-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
-                                {% for eq in cust_equip %}
-                                <div class="list-item-minimal" style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0;">
-                                    <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                        <span class="dot-minimal" style="background: #ea580c; margin-top: 6px;"></span>
-                                        <div class="item-text-wrapper">
-                                            <span class="item-name-minimal" style="font-weight: 700; color: #0f172a;">{{ eq.name if eq.name is defined else eq.equipment.name }}</span>
-                                            <small style="display: block; color: #64748b; font-size: 0.73rem;">
-                                                Qty: {{ eq.qty or eq.quantity or 1 }} • ₱{{ "{:,.2f}".format((eq.unit_price if eq.unit_price is defined else (eq.price if eq.price is defined else 0))|float) }}
-                                            </small>
-                                        </div>
-                                    </div>
-                                    <div style="text-align: right;">
-                                        <span style="font-weight: 700; font-size: 0.85rem; color: #0f172a;">
-                                            ₱{{ "{:,.2f}".format((eq.subtotal if eq.subtotal is defined else (eq.price if eq.price is defined else 0))|float) }}
-                                        </span>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- ITEMIZED FINANCIAL LINES FOR CUSTOMIZABLE -->
-                    <div class="order-lines-clean">
-                        {% if quotation.package_details.base_package_total is defined and quotation.package_details.base_package_total|float > 0 %}
-                        <div class="order-line">
-                            <span class="order-label">Menu Package <small>(₱{{ "{:,.2f}".format(quotation.package_details.base_price|float) }} × {{ quotation.package_details.guest_count }} pax; selected menu included)</small></span>
-                            <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.base_package_total|float) }}</span>
-                        </div>
-                        {% endif %}
-                        {% if quotation.package_details.food_total is defined and quotation.package_details.food_total|float > 0 %}
-                        <div class="order-line">
-                            <span class="order-label">Food Upgrade Subtotal</span>
-                            <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.food_total|float) }}</span>
-                        </div>
-                        {% endif %}
-                        {% if quotation.package_details.food_removal_credit is defined and quotation.package_details.food_removal_credit|float > 0 %}
-                        <div class="order-line">
-                            <span class="order-label">Removed menu credit</span>
-                            <span class="order-val">−₱{{ "{:,.2f}".format(quotation.package_details.food_removal_credit|float) }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if quotation.package_details.services_total is defined and quotation.package_details.services_total|float > 0 %}
-                        <div class="order-line">
-                            <span class="order-label">Event Services Subtotal</span>
-                            <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.services_total|float) }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if quotation.package_details.equipment_total is defined and quotation.package_details.equipment_total|float > 0 %}
-                        <div class="order-line">
-                            <span class="order-label">Equipment Subtotal</span>
-                            <span class="order-val">₱{{ "{:,.2f}".format(quotation.package_details.equipment_total|float) }}</span>
-                        </div>
-                        {% endif %}
-
-                        {% if booking.travel_fee and booking.travel_fee|float > 0 %}
-                        <div class="order-line">
-                            <span class="order-label">Delivery &amp; Travel Fee</span>
-                            <span class="order-val">+₱{{ "{:,.2f}".format(booking.travel_fee|float) }}</span>
-                        </div>
-                        {% endif %}
-
-                        <div class="order-total-clean">
-                            <span class="total-label-clean">Total Customized Amount</span>
-                            <span class="total-val-clean">₱{{ "{:,.2f}".format(quotation.total_amount) }}</span>
-                        </div>
-                    </div>
-                </section>
+            {% set saved_dp_options = quotation.package_details.get('accepted_payment_terms') if quotation.package_details else None %}
+            {% set dp_options = (saved_dp_options or booking.caterer.accepted_payment_terms or [30])|map('int')|list %}
+            {% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent in dp_options else dp_options[0] %}
+            <section class="payment-choice-compact" aria-label="Deposit option" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:0.85rem 1rem;margin-bottom:1rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                <div>
+                    <label for="dp-percent-select" style="display:block;margin-bottom:.2rem;color:#0f172a;font-size:.85rem;font-weight:750;">Deposit option</label>
+                    <small style="color:#64748b;font-size:.76rem;">The agreement below shows the total and selected amount.</small>
+                </div>
+                {% if quotation.status == 'quoted' and not quotation.customer_signature and not quotation.caterer_signature %}
+                <select id="dp-percent-select" class="control-pro dp-percent-select" onchange="setDPTier(parseInt(this.value, 10))" style="width:min(100%,300px);min-height:42px;">
+                    {% for term in dp_options %}
+                    <option value="{{ term }}" {% if initial_term|int == term %}selected{% endif %}>{% if term == 100 %}100% - Full payment{% else %}{{ term }}% downpayment{% endif %}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" id="submit-deposit-choice" class="btn-wizard-next" onclick="submitDepositChoice(this)" style="min-height:42px;padding:.65rem 1rem;">Confirm &amp; send to caterer</button>
                 {% else %}
-                <!-- ══════════════════════════════════════════════════════════ -->
-                <!-- FIXED PACKAGE QUOTATION FLOW (EXISTING UNTOUCHED FLOW)     -->
-                <!-- ══════════════════════════════════════════════════════════ -->
-                <section class="card-clean col-summary animate-up">
-                    <div class="card-clean-header">
-                        <h3 class="card-clean-title">Selected Package &amp; Items</h3>
-                        <span class="card-clean-subtitle">Check your chosen catering package and dishes</span>
-                    </div>
-
-                    <!-- 1. PACKAGE HERO CARD -->
-                    <div class="pkg-hero-distinct mb-4">
-                        <div class="pkg-title-row-minimal">
-                            <h4 class="pkg-name-minimal">{{ quotation.package_details.name }}</h4>
-                            <span class="guest-pill-minimal">{{ quotation.package_details.guest_count }} Guests</span>
-                        </div>
-                        <p class="pkg-rate-subtitle">
-                            {% if is_fixed %}
-                            Fixed Package Rate (Valid up to {{ quotation.package_details.guest_count }} guests)
-                            {% else %}
-                            Per Guest Rate — ₱{{ "{:,.2f}".format(quotation.package_details.unit_price|float) }} / head
-                            {% endif %}
-                        </p>
-                    </div>
-
-                    {% set food_items = booking.selected_items | rejectattr('menu_item_id', 'none') | list if booking.selected_items else [] %}
-                    {% set equipment_items = booking.selected_items | rejectattr('equipment_id', 'none') | list if booking.selected_items else [] %}
-                    {% set service_items = booking.selected_items | rejectattr('service_id', 'none') | list if booking.selected_items else [] %}
-                    
-                    <!-- 2. SELECTED DISHES BOX (SEPARATE CONTAINER) -->
-                    {% if food_items %}
-                    <div class="summary-box-distinct mb-4">
-                        <div class="box-header-distinct">
-                            <span class="box-title-distinct"><i class="fas fa-utensils text-slate-500 mr-2"></i>Chosen Dishes &amp; Drinks</span>
-                            <span class="box-badge-distinct">{{ food_items|length }} Items</span>
-                        </div>
-                        <div class="box-content-distinct">
-                            <div class="clean-2col-list">
-                                {% for b_item in food_items %}
-                                <div class="list-item-minimal">
-                                    <span class="dot-minimal"></span>
-                                    <div class="item-text-wrapper">
-                                        <span class="item-name-minimal">{{ b_item.menu_item.name }} {% if b_item.quantity and b_item.quantity > 1 and b_item.is_add_on %}<small>(x{{ b_item.quantity }})</small>{% endif %}</span>
-                                        {% if b_item.choices %}
-                                        <span class="item-choices-minimal">{{ b_item.choices|join(', ') }}</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- 3. PACKAGE INCLUSIONS BOX (SEPARATE CONTAINER) -->
-                    {% set package_inventory = package.menu_items|selectattr("category", "in", ["Rentals", "Services"])|list if package and package.menu_items else [] %}
-                    {% set legacy_inclusions = [] %}
-                    {% if package and package.inclusions is mapping %}
-                        {% for k, v in package.inclusions.items() if v %}
-                            {% set _ = legacy_inclusions.append(k) %}
-                        {% endfor %}
-                    {% elif package and package.inclusions is iterable and package.inclusions is not string %}
-                        {% set legacy_inclusions = package.inclusions %}
-                    {% elif package and package.inclusions is string and package.inclusions %}
-                        {% set legacy_inclusions = [package.inclusions] %}
-                    {% endif %}
-                    {% set all_inclusions = legacy_inclusions + package_inventory|map(attribute='name')|list %}
-                    {% if not all_inclusions %}
-                        {% set all_inclusions = ['Full Catering Setup', 'Personalized Dining Service', 'Professional Waitstaff & Team'] %}
-                    {% endif %}
-
-                    <div class="summary-box-distinct mb-4">
-                        <div class="box-header-distinct inclusions-header">
-                            <div>
-                                <span class="box-title-distinct"><i class="fas fa-check-circle text-emerald-600 mr-2"></i>What's Included in Your Package</span>
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-top: 3px;">These inclusions are fixed and cannot be changed by customers.</div>
-                            </div>
-                            <span class="box-badge-distinct inclusions-badge">Included Free</span>
-                        </div>
-                        <div class="box-content-distinct">
-                            <div class="clean-2col-list">
-                                {% for inc in all_inclusions %}
-                                <div class="list-item-minimal">
-                                    <span class="dot-minimal inc-dot"></span>
-                                    <span class="item-name-minimal">{{ inc.name if inc is mapping else inc }}{% if inc is mapping and inc.quantity %} ({{ inc.quantity }}){% endif %}</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. EQUIPMENT RENTALS & SERVICES BOX (SEPARATE CONTAINER) -->
-                    {% if equipment_items or service_items %}
-                    <div class="summary-box-distinct mb-4">
-                        <div class="box-header-distinct">
-                            <span class="box-title-distinct"><i class="fas fa-concierge-bell text-blue-600 mr-2"></i>Rentals &amp; Extra Services</span>
-                            <span class="box-badge-distinct">Add-ons</span>
-                        </div>
-                        <div class="box-content-distinct">
-                            <div class="clean-2col-list">
-                                {% for eq in equipment_items %}
-                                <div class="list-item-minimal">
-                                    <span class="dot-minimal"></span>
-                                    <span class="item-name-minimal">{{ eq.equipment.name }} {% if eq.quantity and eq.quantity > 1 %}<small>(x{{ eq.quantity }})</small>{% endif %}</span>
-                                </div>
-                                {% endfor %}
-                                {% for srv in service_items %}
-                                <div class="list-item-minimal">
-                                    <span class="dot-minimal"></span>
-                                    <span class="item-name-minimal">{{ srv.service.name }}</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <div class="order-lines-clean">
-                        <div class="order-line">
-                            <span class="order-label">
-                                {% if is_fixed %}
-                                Base Package Price <small>(Fixed Rate)</small>
-                                {% else %}
-                                Base Package Price <small>(₱{{ "{:,.2f}".format(quotation.package_details.unit_price|float) }} × {{ quotation.package_details.guest_count }} pax)</small>
-                                {% endif %}
-                            </span>
-                            <span class="order-val">₱{{ "{:,.2f}".format((quotation.package_details.base_amount or (quotation.package_details.unit_price|float * quotation.package_details.guest_count|float))|float) }}</span>
-                        </div>
-                        {% if quotation.addons %}
-                        {% for addon in quotation.addons %}
-                        <div class="order-line">
-                            <span class="order-label">{{ addon.name }} {% if addon.quantity and addon.quantity > 1 %}<small>(x{{ addon.quantity }})</small>{% endif %}</span>
-                            <span class="order-val">+₱{{ "{:,.2f}".format(addon.price) }}</span>
-                        </div>
-                        {% endfor %}
-                        {% endif %}
-
-                        <div class="order-total-clean">
-                            <span class="total-label-clean">Total Booking Price</span>
-                            <span class="total-val-clean">₱{{ "{:,.2f}".format(quotation.total_amount) }}</span>
-                        </div>
-                    </div>
-                </section>
+                <strong style="color:#0f172a;">{{ initial_term }}%{% if quotation.status == 'awaiting_caterer' %} selected{% else %} deposit{% endif %}</strong>
+                {% if quotation.status == 'awaiting_caterer' %}<small style="flex-basis:100%;color:#64748b;">Your choice was sent. The caterer will review and sign the agreement.</small>{% endif %}
                 {% endif %}
-
-                <!-- COLUMN 2: DOWNPAYMENT SELECTION & PAYMENT TERMS -->
-                <section class="card-clean col-config animate-up" style="animation-delay: 0.1s;">
-                    <div class="card-clean-header">
-                        <h3 class="card-clean-title">Choose How Much to Pay</h3>
-                        <span class="card-clean-subtitle">Select your deposit option below to reserve your event date</span>
-                    </div>
-
-                    <div class="dp-selector-clean">
-                        {% set dp_options = (booking.caterer.accepted_payment_terms or [30])|map('int')|list %}
-                        {% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent in dp_options else dp_options[0] %}
-                        <label for="dp-percent-select" class="fin-label-bold" style="display:block; margin-bottom:.5rem;">Deposit percentage</label>
-                        <select id="dp-percent-select" class="control-pro dp-percent-select" onchange="setDPTier(parseInt(this.value, 10))" {% if quotation.customer_signature or quotation.caterer_signature %}disabled{% endif %}>
-                            {% for term in dp_options %}
-                            <option value="{{ term }}" {% if initial_term|int == term %}selected{% endif %}>
-                                {% if term == 100 %}100% - Full payment{% else %}{{ term }}% - Deposit, balance due by event date{% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- CLEAN FINANCIAL BREAKDOWN TABLE -->
-                    {% set initial_dp = (quotation.total_amount|float) * (initial_term|float / 100.0) %}
-                    {% set initial_bal = (quotation.total_amount|float) - initial_dp %}
-
-                    <div class="financial-summary-clean">
-                        <div class="fin-row">
-                            <span class="fin-label">Total Booking Price</span>
-                            <span class="fin-val">₱{{ "{:,.2f}".format(quotation.total_amount) }}</span>
-                        </div>
-                        <div class="fin-row">
-                            <span class="fin-label">Selected Deposit</span>
-                            <span class="fin-val" id="selected-tier-label">{{ initial_term }}% Deposit</span>
-                        </div>
-                        
-                        <div class="fin-divider"></div>
-
-                        <div class="fin-row fin-due-today">
-                            <div class="due-today-label-box">
-                                <span class="fin-label-bold">Amount to Pay Today</span>
-                                <small class="due-subtitle">Required now to save your event date</small>
-                            </div>
-                            <span class="fin-val-highlight" id="deposit-val">₱{{ "{:,.2f}".format(initial_dp) }}</span>
-                        </div>
-
-                        <div class="fin-row fin-balance" id="balance-box" style="{% if initial_term|int == 100 %}display: none;{% endif %}">
-                            <div class="bal-label-box">
-                                <span class="fin-label">Balance to Pay Later</span>
-                                <small class="bal-subtitle">Payable on or before your event date</small>
-                            </div>
-                            <span class="fin-val" id="remaining-balance-val">₱{{ "{:,.2f}".format(initial_bal) }}</span>
-                        </div>
-                    </div>
-
-                    {% if not quotation.customer_signature %}
-                    <button type="button" class="btn-primary-clean" onclick="scrollToContract()">
-                        <span>Read &amp; Sign Agreement Below</span>
-                        <i class="fas fa-arrow-down ml-2"></i>
-                    </button>
-                    {% else %}
-                    <div class="alert-signed-clean">
-                        <i class="fas fa-check-circle text-emerald-600"></i> Deposit option saved &amp; agreement signed.
-                    </div>
-                    {% endif %}
-
-                    <!-- Hidden inputs for JS -->
-                    <input type="hidden" id="dp-percent-input" value="{{ initial_term }}">
-                    <input type="hidden" id="signed-input" value="{{ 'true' if quotation.customer_signature or quotation.caterer_signature else 'false' }}">
-                    <input type="hidden" id="total-amount-input" value="{{ quotation.total_amount }}">
-                </section>
-            </div>
-
-            <!-- SECTION 2: DIGITAL SERVICE AGREEMENT -->
-            <div id="contract-section" class="section-divider" style="margin-top: 2rem;">
-                <span class="divider-text">Sign Your Agreement</span>
-            </div>
-
-            <p class="step-guide-text animate-up" style="margin-bottom: 1rem;">
-                <i class="fas fa-info-circle"></i> After choosing your deposit, please read the agreement and sign below.
-            </p>
+                <input type="hidden" id="dp-percent-input" value="{{ initial_term }}">
+                <input type="hidden" id="signed-input" value="{{ 'true' if quotation.customer_signature or quotation.caterer_signature else 'false' }}">
+                <input type="hidden" id="total-amount-input" value="{{ quotation.total_amount }}">
+            </section>
 
             <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s; padding: 0; overflow: hidden; border: none; box-shadow: none; background: transparent;">
-                <div class="contract-doc-content" style="margin-bottom: 2rem;">
+                <div class="contract-doc-content" style="margin-bottom: .85rem;">
                     {% include "shared/contract_content_partial.html" %}
                 </div>
 
                 <div class="sig-section-up">
                     <div class="card-glass-header">
                         <h3 class="inv-section-title">Your Signature</h3>
-                        <div class="sig-progress-track" aria-label="Signature progress"><span></span></div>
                     </div>
 
                     <div class="sig-container-modern">
@@ -514,30 +78,25 @@
                                     else 'today' }}</span>
                             </div>
                         </div>
+                        {% elif quotation.status == 'quoted' %}
+                        <div class="signature-input-box">
+                            <div class="signature-instructions"><p>Choose a deposit option above and send it to the caterer. You can sign after the caterer reviews and signs the agreement.</p></div>
+                        </div>
+                        {% elif quotation.status == 'awaiting_caterer' %}
+                        <div class="signature-input-box">
+                            <div class="signature-instructions"><p>Your deposit choice was sent. The caterer will review and sign the agreement before it returns to you.</p></div>
+                        </div>
                         {% elif quotation.caterer_signature %}
                         <div class="signature-input-box">
                             <div class="signature-instructions">
-                                <i class="fas fa-info-circle" aria-hidden="true"></i>
-                                <div>
-                                    <h4>Please confirm the following</h4>
-                                    <p>By checking each box, you acknowledge and agree to the terms of this catering agreement.</p>
-                                </div>
+                                <p>Review the agreement, confirm below, then sign.</p>
                             </div>
 
-                            <!-- Policy Checkpoints -->
                             <div class="policy-checkpoints-pro">
                                 <div class="check-list-pro">
                                     <label class="check-box-pro">
-                                        <input type="checkbox" class="policy-check" id="check_payment" onchange="toggleApplyButton()">
-                                        <span>I understand the payment rules and due dates</span>
-                                    </label>
-                                    <label class="check-box-pro">
-                                        <input type="checkbox" class="policy-check" id="check_cancel" onchange="toggleApplyButton()">
-                                        <span>I understand the cancellation and refund rules</span>
-                                    </label>
-                                    <label class="check-box-pro">
                                         <input type="checkbox" class="policy-check" id="agree_terms" onchange="toggleApplyButton()">
-                                        <span style="font-weight: 800; color: var(--up-slate-900);">I agree to this catering agreement</span>
+                                        <span style="font-weight: 700; color: var(--up-slate-900);">I agree to the terms shown above</span>
                                     </label>
                                 </div>
                             </div>
@@ -545,35 +104,27 @@
                             <div class="signature-pad-premium">
                                 <canvas id="signature-pad"></canvas>
                                 <div id="sig-placeholder">
-                                    <i class="fas fa-pen-nib" aria-hidden="true"></i>
-                                    <strong>Sign above the line</strong>
-                                    <span>Use your mouse, touch, or stylus to sign</span>
+                                    <strong>Sign here</strong>
+                                    <span>Use your mouse, finger, or stylus</span>
                                     <div class="sig-writing-line"></div>
                                 </div>
                             </div>
-                            <div class="sig-name-overlay">
-                                <div class="sig-line"></div>
-                                <span class="sig-name">{{ booking.user.first_name }} {{ booking.user.last_name }}</span>
-                                <span class="sig-label">Customer Signature</span>
-                            </div>
 
-                            <div class="sig-footer-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; width: 100%;">
-                                <button type="button" class="btn-clear" onclick="clearSignature()" style="font-family: 'Poppins', sans-serif; font-weight: 700; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: #fff; color: #475569; width: 100%; transition: all 0.2s; cursor: pointer;">
-                                    <i class="fas fa-eraser"></i> Clear Pad
+                            <div class="sig-footer-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; margin-top: .65rem; width: 100%;">
+                                <button type="button" class="btn-clear" onclick="clearSignature()" style="font-family: 'Poppins', sans-serif; font-weight: 650; padding: .6rem .75rem; border: 1px solid #cbd5e1; border-radius: .5rem; background: #fff; color: #475569; width: 100%; transition: all 0.2s; cursor: pointer; font-size:.84rem;">
+                                    Clear
                                 </button>
                                 <button type="button" id="btn-apply-sig" class="btn-primary-sm" disabled
-                                    onclick="applySignatureLocal()" style="font-family: 'Poppins', sans-serif; font-weight: 800; padding: 0.85rem; border: none; border-radius: 0.5rem; background: var(--wiz-primary, #059669); color: #fff; width: 100%; transition: opacity 0.2s; cursor: pointer;">
-                                    <i class="fas fa-check"></i> Save Signature
+                                    onclick="applySignatureLocal()" style="font-family: 'Poppins', sans-serif; font-weight: 700; padding: .6rem .75rem; border: none; border-radius: 0.5rem; background: var(--wiz-primary, #059669); color: #fff; width: 100%; transition: opacity 0.2s; cursor: pointer; font-size:.84rem;">
+                                    Confirm Signature
                                 </button>
                             </div>
                         </div>
                         {% else %}
                         <div class="signature-input-box">
                             <div class="signature-instructions">
-                                <i class="fas fa-clock" aria-hidden="true"></i>
                                 <div>
-                                    <h4>Waiting for the caterer</h4>
-                                    <p>The caterer must review and sign this quotation-agreement first. You can sign it once the signed agreement is sent to you.</p>
+                                    <p>Waiting for the service provider to sign. You can sign after they do.</p>
                                 </div>
                             </div>
                         </div>
@@ -585,15 +136,19 @@
             <!-- SECTION 3: FINAL ACTIONS -->
             <div class="wizard-actions animate-up" style="animation-delay: 0.5s; border-top: none;">
                 <a href="/bookings/step/kyc/{{ quotation.booking_id }}" class="btn-wizard-back">
-                    <i class="fas fa-chevron-left"></i> Back: Edit Identity
+                    <i class="fas fa-chevron-left"></i> Back: Identity
                 </a>
 
-                {% if not quotation.customer_signature and quotation.caterer_signature %}
+                {% if quotation.status == 'quoted' and not quotation.customer_signature and not quotation.caterer_signature %}
+                <div class="status-waiting-pill" style="flex:1;text-align:center;display:flex;align-items:center;justify-content:center;background:#f8fafc;color:#475569;border:1px solid #cbd5e1;border-radius:999px;font-weight:700;">Choose a deposit option and send it to the caterer</div>
+                {% elif quotation.status == 'awaiting_caterer' and not quotation.caterer_signature %}
+                <div class="status-waiting-pill" style="flex:1;text-align:center;display:flex;align-items:center;justify-content:center;background:#f8fafc;color:#475569;border:1px solid #cbd5e1;border-radius:999px;font-weight:700;">Deposit sent · Waiting for caterer review</div>
+                {% elif not quotation.customer_signature and quotation.caterer_signature %}
                 <button type="button" id="btn-sign" class="btn-wizard-next js-loading" style="display: none;"
                     onclick="submitSignature()">
                     <i class="fas fa-check-circle"></i> Sign Agreement
                 </button>
-                <div id="apply-prompt" class="status-waiting-pill" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; border-radius: 999px; font-weight: 700;">
+                <div id="apply-prompt" class="status-waiting-pill sign-prompt" style="flex: 1; text-align: center; display: flex; align-items: center; justify-content: center; background: #f8fafc; color: #64748b; border: 1px solid #e2e8f0; border-radius: 999px; font-weight: 700;">
                     <i class="fas fa-info-circle mr-1"></i> Please sign in the box above
                 </div>
                 {% elif not quotation.customer_signature and not quotation.caterer_signature %}
@@ -639,6 +194,22 @@
         border-color: #f97316;
     }
     .dp-percent-select:disabled { opacity: .7; cursor: not-allowed; }
+
+    /* Keep the signature card aligned with the agreement paper above it. */
+    .contract-portrait { width: 100%; }
+    .sig-section-up {
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+    }
+    .sign-prompt {
+        box-sizing: border-box;
+        min-height: 52px;
+        padding: .75rem 1rem;
+        border-radius: 12px !important;
+        gap: .55rem;
+        line-height: 1.4;
+    }
 </style>
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/booking_wizard/step_quotation.css') }}?v={{ static_asset_version('css/customer/booking_wizard/step_quotation.css') }}">
@@ -655,6 +226,31 @@
 <script src="{{ url_for('static', path='/js/signature_pad.js') }}?v={{ static_asset_version('js/signature_pad.js') }}"></script>
 <script src="{{ url_for('static', path='/js/customer/booking_wizard/step_quotation.js') }}?v={{ static_asset_version('js/customer/booking_wizard/step_quotation.js') }}"></script>
 <script>
+    async function submitDepositChoice(button) {
+        const select = document.getElementById('dp-percent-select');
+        const percent = Number(select?.value);
+        if (!Number.isInteger(percent)) return;
+        const oldText = button.innerHTML;
+        button.disabled = true;
+        if (select) select.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+        try {
+            const response = await fetch(`/api/bookings/${window.bookingId}/update-dp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ percent, confirm: true })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.detail || 'Could not send your deposit choice. Please try again.');
+            window.location.reload();
+        } catch (error) {
+            if (window.showError) window.showError(error.message, 'Deposit choice not sent');
+            else if (window.Swal) Swal.fire('Deposit choice not sent', error.message, 'error');
+            button.disabled = false;
+            button.innerHTML = oldText;
+            if (select) select.disabled = false;
+        }
+    }
     async function approveQuotation(e) {
         const btn = e.currentTarget;
         const ogText = btn.innerHTML;

@@ -30,6 +30,22 @@ def get_caterer_payment_terms(caterer):
     return sorted(terms) or [30]
 
 
+def get_quotation_payment_terms(quotation, caterer):
+    saved_terms = (quotation.package_details or {}).get("accepted_payment_terms") if quotation else None
+    if saved_terms:
+        terms = set()
+        for raw_term in saved_terms:
+            try:
+                term = int(raw_term)
+            except (TypeError, ValueError):
+                continue
+            if 20 <= term <= 100 and term % 5 == 0:
+                terms.add(term)
+        if terms:
+            return sorted(terms)
+    return get_caterer_payment_terms(caterer)
+
+
 def get_session_user(request: Request, db: Session):
     """Helper for session-based auth in wizard routes"""
     token = request.cookies.get("access_token")
@@ -282,6 +298,8 @@ async def sign_contract(
         raise HTTPException(status_code=400, detail="Confirm that you agree to the agreement before signing.")
     if is_customer and not quotation.caterer_signature:
         raise HTTPException(status_code=409, detail="The caterer must sign and send the agreement before you can sign it.")
+    if is_caterer and quotation.status != "awaiting_caterer":
+        raise HTTPException(status_code=409, detail="The customer must choose and submit a deposit option before you can sign the agreement.")
     if is_customer and quotation.customer_signature:
         raise HTTPException(status_code=409, detail="You have already signed this agreement.")
     if is_caterer and quotation.caterer_signature:
@@ -309,7 +327,7 @@ async def sign_contract(
             raise HTTPException(status_code=400, detail="Invalid downpayment percentage.")
         if downpayment_percent < 20 or downpayment_percent > 100 or downpayment_percent % 5:
             raise HTTPException(status_code=400, detail="Downpayment must be in 5% steps from 20% to 100%.")
-        if downpayment_percent not in get_caterer_payment_terms(booking.caterer):
+        if downpayment_percent not in get_quotation_payment_terms(quotation, booking.caterer):
             raise HTTPException(status_code=400, detail="Choose one of this caterer's accepted deposit options.")
         if has_prior_signature and quotation.downpayment_percent is not None and downpayment_percent != quotation.downpayment_percent:
             raise HTTPException(status_code=409, detail="The downpayment terms cannot change after either party has signed.")
@@ -474,9 +492,8 @@ async def update_dp(
     quotation = booking.quotation
     if not quotation: raise HTTPException(status_code=404)
     
-    # LOCK: Prevent changing DP if already signed
-    if quotation.customer_signature or quotation.caterer_signature:
-        raise HTTPException(status_code=400, detail="Downpayment cannot be changed once the contract is signed.")
+    if quotation.status != "quoted" or booking.status != "pending_quotation":
+        raise HTTPException(status_code=409, detail="Deposit options can only be selected while the quotation is awaiting your choice.")
     
     try:
         raw_percent = payload.get("percent", 30)
@@ -487,18 +504,51 @@ async def update_dp(
         raise HTTPException(status_code=400, detail="Invalid deposit percentage.")
     if percent < 20 or percent > 100 or percent % 5:
         raise HTTPException(status_code=400, detail="Deposit percentage must be in 5% steps from 20% to 100%.")
-    if percent not in get_caterer_payment_terms(booking.caterer):
-        raise HTTPException(status_code=400, detail="Choose one of this caterer's accepted deposit options.")
+    if percent not in get_quotation_payment_terms(quotation, booking.caterer):
+        raise HTTPException(status_code=400, detail="Choose one of the deposit options included with this quotation.")
     quotation.downpayment_percent = percent
     
     from decimal import Decimal
     dp_factor = Decimal(str(percent)) / Decimal("100")
-    new_deposit = (Decimal(str(quotation.total_amount)) * dp_factor).quantize(Decimal("0.01"))
+    total_amount = Decimal(str(quotation.total_amount or 0)).quantize(Decimal("0.01"))
+    new_deposit = (total_amount * dp_factor).quantize(Decimal("0.01"))
     booking.reservation_fee = float(new_deposit)
+
+    submitted = payload.get("confirm") is True
+    if submitted:
+        quotation.status = "awaiting_caterer"
+        booking.status = "awaiting_caterer"
+        booking.expires_at = None
+        db.add(models.BookingHistory(
+            booking_id=booking.id,
+            status="awaiting_caterer",
+            notes=f"Customer submitted a {percent}% downpayment choice for caterer review.",
+        ))
     
     db.commit()
+
+    if submitted and booking.caterer:
+        await NotificationService.notify_status_update(
+            db,
+            booking.caterer.user_id,
+            "Customer selected a deposit option",
+            f"The customer chose a {percent}% downpayment (₱{new_deposit:,.2f}) for '{booking.event_name or booking.event_type}'. Review the quotation and sign the agreement.",
+            f"/caterer/bookings?open_booking={booking.id}",
+        )
+        await manager.broadcast_to_user(
+            booking.user_id,
+            {"type": "status_update", "booking_id": booking.id, "status": booking.status},
+        )
     
-    return {"success": True, "new_deposit": float(new_deposit)}
+    return {
+        "success": True,
+        "total_amount": float(total_amount),
+        "downpayment_percent": percent,
+        "new_deposit": float(new_deposit),
+        "remaining_balance": float(max(total_amount - new_deposit, Decimal("0.00"))),
+        "status": quotation.status,
+        "submitted": submitted,
+    }
 
 @router.get("/{booking_id}/contract/content")
 async def get_contract_content(

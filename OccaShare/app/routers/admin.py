@@ -1941,6 +1941,11 @@ async def add_caterer(
         if not field_value:
             errors[field_name] = "This field is required."
 
+    if latitude is None or longitude is None:
+        errors["location"] = "Save a valid business location pin before creating the caterer."
+    elif not (-90 <= latitude <= 90 and -180 <= longitude <= 180) or (latitude == 0 and longitude == 0):
+        errors["location"] = "The business location coordinates are invalid."
+
     for field_name, field_value in (("first_name", first_name), ("last_name", last_name)):
         if field_value and is_valid_person_name(field_value):
             errors[field_name] = is_valid_person_name(field_value)
@@ -2034,7 +2039,7 @@ async def add_caterer(
             must_change_password=True
         )
         db.add(new_user)
-        db.commit()
+        db.flush()
         db.refresh(new_user)
 
         # 4. Create Caterer Profile

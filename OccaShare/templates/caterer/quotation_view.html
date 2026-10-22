@@ -212,24 +212,31 @@
 
     {% if booking.document_type != 'invoice' and booking.status == 'inquiry' and not booking.quotation %}
     <div class="quotation-send-action">
-        <p>Create the quotation first. You will review and sign the complete agreement before it is sent to the customer.</p>
-        <form method="post" action="/caterer/bookings/{{ booking.id }}/send-quotation{% if request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" onsubmit="const button=this.querySelector('button');button.disabled=true;button.innerHTML='<i class=&quot;fas fa-spinner fa-spin&quot;></i> Preparing…';">
+        <p>Prepare the quotation, review its details, then send it to the customer to choose a deposit.</p>
+        <form method="post" action="/caterer/bookings/{{ booking.id }}/send-quotation?prepare=true{% if request.query_params.get('modal') == 'true' %}&amp;modal=true{% endif %}" onsubmit="const button=this.querySelector('button');button.disabled=true;button.innerHTML='<i class=&quot;fas fa-spinner fa-spin&quot;></i> Preparing…';">
             <button type="submit" class="quotation-send-button">
-                <i class="fas fa-file-invoice"></i> Prepare Agreement
+                <i class="fas fa-file-invoice"></i> Prepare Quotation
             </button>
+        </form>
+    </div>
+    {% elif booking.document_type != 'invoice' and booking.status == 'inquiry' and booking.quotation and booking.quotation.status == 'draft' %}
+    <div class="quotation-send-action">
+        <p>Review the quotation details below. Sending it lets the customer choose a deposit option before you sign.</p>
+        <form method="post" action="/caterer/bookings/{{ booking.id }}/send-quotation{% if request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" onsubmit="const button=this.querySelector('button');button.disabled=true;button.innerHTML='<i class=&quot;fas fa-spinner fa-spin&quot;></i> Sending…';">
+            <button type="submit" class="quotation-send-button"><i class="fas fa-paper-plane"></i> Send Quotation to Customer</button>
         </form>
     </div>
     {% elif booking.document_type != 'invoice' and booking.status in ['inquiry', 'awaiting_customer', 'awaiting_caterer'] and booking.quotation and not booking.quotation.caterer_signature and booking.quotation.status not in ['signed', 'rejected'] %}
     <div class="quotation-send-action">
-        <p>{% if booking.quotation.customer_signature %}The customer has already signed this agreement. Review and sign it to complete the agreement.{% else %}Review the complete agreement, then sign it to send it to the customer for their signature.{% endif %}</p>
+        <p>{% if booking.quotation.customer_signature %}The customer has already signed this agreement. Review and sign it to complete the agreement.{% else %}The customer selected a deposit option. Review the quotation and sign the agreement to send it back for the customer's signature.{% endif %}</p>
         <a class="quotation-send-button" href="/caterer/bookings/{{ booking.id }}/sign{% if request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" {% if request.query_params.get('modal') == 'true' %}onclick="if (window.parent &amp;&amp; window.parent.openQuotationAgreement) { window.parent.openQuotationAgreement({{ booking.id }}); return false; }"{% endif %}>
-            <i class="fas fa-file-signature"></i> {% if booking.quotation.customer_signature %}Review &amp; Sign Agreement{% else %}Review, Sign &amp; Send{% endif %}
+            <i class="fas fa-file-signature"></i> {% if booking.quotation.customer_signature %}Review &amp; Sign Agreement{% else %}Review &amp; Sign{% endif %}
         </a>
     </div>
     {% elif booking.document_type != 'invoice' and booking.quotation and booking.quotation.status != 'draft' %}
     <div class="quotation-send-action">
-        <p>{% if booking.quotation.customer_signature and booking.quotation.caterer_signature %}Both parties have signed the quotation-agreement.{% elif booking.quotation.customer_signature %}The customer has signed. Your signature is still required to complete this agreement.{% elif booking.quotation.caterer_signature %}The signed agreement is with the customer for review and signature.{% else %}This quotation was sent previously and is awaiting agreement signatures.{% endif %}</p>
-        <span class="quotation-sent-status"><i class="fas fa-check-circle"></i> {% if booking.quotation.customer_signature and booking.quotation.caterer_signature %}Fully signed{% elif booking.quotation.customer_signature %}Awaiting caterer signature{% elif booking.quotation.caterer_signature %}Awaiting customer signature{% else %}Previously sent{% endif %}</span>
+        <p>{% if booking.quotation.customer_signature and booking.quotation.caterer_signature %}Both parties have signed the agreement.{% elif booking.quotation.customer_signature %}The customer has signed. Your signature is still required to complete this agreement.{% elif booking.quotation.caterer_signature %}The signed agreement is with the customer for review and signature.{% elif booking.quotation.status == 'quoted' %}Quotation sent. Waiting for the customer to choose a deposit option.{% elif booking.quotation.status == 'awaiting_caterer' %}The customer selected a deposit option. The agreement is ready for your review and signature.{% else %}The quotation is awaiting its next step.{% endif %}</p>
+        <span class="quotation-sent-status"><i class="fas fa-check-circle"></i> {% if booking.quotation.customer_signature and booking.quotation.caterer_signature %}Fully signed{% elif booking.quotation.customer_signature %}Awaiting caterer signature{% elif booking.quotation.caterer_signature %}Awaiting customer signature{% elif booking.quotation.status == 'quoted' %}Awaiting customer deposit choice{% elif booking.quotation.status == 'awaiting_caterer' %}Ready for caterer review{% else %}Quotation sent{% endif %}</span>
     </div>
     {% endif %}
 
@@ -361,18 +368,27 @@
                 </tr>
                 {% endif %}
             {% else %}
-                <!-- FIXED PACKAGE INVOICE ITEMS (UNTOUCHED) -->
+                <!-- FIXED PACKAGE INVOICE ITEMS -->
                 {% if quotation and quotation.package_details and quotation.package_details.get('base_amount', 0)|float > 0 %}
                 <tr>
                     <td>
                         <div class="item-name">{{ quotation.package_details.get('name', 'Catering Package') }}</div>
-                        <div class="item-desc">{{ quotation.package_details.get('description') or 'Core service package.' }}</div>
+                        <div class="item-desc">
+                            {{ quotation.package_details.get('description') or 'Core service package.' }}
+                            {% if quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}
+                            · Fixed rate for {{ quotation.package_details.get('guest_count') or booking.guest_count or 1 }} guests
+                            {% endif %}
+                        </div>
                     </td>
                     <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
-                        {{ quotation.package_details.get('guest_count') or 1 }}
+                        {% if quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}1{% else %}{{ quotation.package_details.get('guest_count') or booking.guest_count or 1 }}{% endif %}
                     </td>
                     <td style="text-align: right; color: var(--color-neutral-600);">
+                        {% if quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}
+                        ₱{{ "{:,.2f}".format(quotation.package_details.get('base_amount', 0)|float) }}
+                        {% else %}
                         ₱{{ "{:,.2f}".format(quotation.package_details.get('unit_price', 0)|float) }}
+                        {% endif %}
                     </td>
                     <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(quotation.package_details.get('base_amount', 0)|float) }}</td>
                 </tr>
@@ -418,7 +434,7 @@
 
     <div class="totals-section">
         <div class="total-row">
-            <span>Subtotal</span>
+            <span>Total Booking Price</span>
             <span>₱{{ "{:,.2f}".format(quotation.total_amount if quotation else booking.total_amount) }}</span>
         </div>
         {% if quotation and quotation.downpayment_percent is defined and booking.reservation_fee %}
@@ -438,7 +454,7 @@
         </div>
         {% endif %}
         <div class="total-row grand-total">
-            <span>Total Payable</span>
+            <span>Total Payable{% if booking.security_deposit_amount and booking.security_deposit_amount > 0 %} (including refundable security deposit){% endif %}</span>
             <span>₱{{ "{:,.2f}".format((quotation.total_amount if quotation else booking.total_amount) + (booking.security_deposit_amount or 0)) }}</span>
         </div>
     </div>

@@ -70,17 +70,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
 window.toggleApplyButton = function () {
     const agree = document.getElementById('agree_terms');
-    const checkPayment = document.getElementById('check_payment');
-    const checkCancel = document.getElementById('check_cancel');
     const btn = document.getElementById('btn-apply-sig');
     
-    if (agree && checkPayment && checkCancel && btn) {
-        const allChecked = agree.checked && checkPayment.checked && checkCancel.checked;
-        btn.disabled = !(allChecked && sigPad && !sigPad.isEmpty());
+    if (agree && btn) {
+        btn.disabled = !(agree.checked && sigPad && !sigPad.isEmpty());
     }
 };
 
 window.applySignatureLocal = function () {
+    const agreementCheck = document.getElementById('agree_terms');
+    if (agreementCheck && !agreementCheck.checked) {
+        if (window.showError) window.showError('Please agree to the terms shown above before confirming your signature.', 'Agreement Required');
+        else if (window.Swal) Swal.fire('Agreement Required', 'Please agree to the terms shown above before confirming your signature.', 'warning');
+        return;
+    }
     if (!sigPad || sigPad.isEmpty()) {
         if (window.showError) window.showError('Please sign the pad first.', 'Empty Signature'); else Swal.fire('Empty Signature', 'Please sign the pad first.', 'warning');
         return;
@@ -117,10 +120,6 @@ window.applySignatureLocal = function () {
     const agreeCheck = document.getElementById('agree_terms');
     if (btnApply) btnApply.disabled = true;
     if (agreeCheck) agreeCheck.disabled = true;
-    const checkPayment = document.getElementById('check_payment');
-    const checkCancel = document.getElementById('check_cancel');
-    if (checkPayment) checkPayment.disabled = true;
-    if (checkCancel) checkCancel.disabled = true;
 
     if (window.showToast) {
         window.showToast("Review your signature on the contract below, then click Finalize.", "success");
@@ -148,10 +147,6 @@ window.clearSignature = function () {
             agreeCheck.checked = false;
             agreeCheck.disabled = false;
         }
-        const checkPayment = document.getElementById('check_payment');
-        const checkCancel = document.getElementById('check_cancel');
-        if (checkPayment) { checkPayment.checked = false; checkPayment.disabled = false; }
-        if (checkCancel) { checkCancel.checked = false; checkCancel.disabled = false; }
         if (btnApply) btnApply.disabled = true;
         if (finalizeBtn) finalizeBtn.style.display = 'none';
         if (applyPrompt) applyPrompt.style.display = 'flex';
@@ -172,11 +167,13 @@ window.setDPTier = async function (percent) {
     if (isSigned) return;
 
     percent = Number(percent);
-    if (![30, 40, 50, 60, 70, 80, 90, 100].includes(percent)) return;
+    if (!Number.isInteger(percent) || percent < 20 || percent > 100 || percent % 5 !== 0) return;
 
     const bookingId = window.bookingId || window.location.pathname.split('/').pop();
     const dpValEl = document.getElementById('deposit-val');
     const input = document.getElementById('dp-percent-input');
+    const select = document.getElementById('dp-percent-select');
+    const previousPercent = Number(input?.value || select?.value || percent);
     const totalInput = document.getElementById('total-amount-input');
     const totalVal = totalInput ? Number(totalInput.value) : 0;
     const calculatedDeposit = Math.round((totalVal * percent / 100 + Number.EPSILON) * 100) / 100;
@@ -194,10 +191,13 @@ window.setDPTier = async function (percent) {
     if (balBox) balBox.style.display = (percent === 100 || remainingBal <= 0) ? 'none' : 'flex';
     const contractPct = document.getElementById('contract-dp-pct');
     const contractVal = document.getElementById('contract-dp-val');
+    const contractBalanceVal = document.getElementById('contract-balance-val');
     if (contractPct) contractPct.innerText = percent;
     if (contractVal) contractVal.innerText = formattedDeposit;
+    if (contractBalanceVal) contractBalanceVal.innerText = remainingBal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     const requestId = ++dpUpdateRequest;
+    if (select) select.disabled = true;
     try {
         const response = await fetch(`/api/bookings/${bookingId}/update-dp`, {
             method: 'POST',
@@ -216,17 +216,48 @@ window.setDPTier = async function (percent) {
         }
         // Ignore stale replies if the customer selected another percentage while this request was pending.
         if (requestId !== dpUpdateRequest) return;
+        const savedDeposit = Number(data.new_deposit);
+        const savedBalance = Number(data.remaining_balance);
+        if (Number.isFinite(Number(data.total_amount)) && totalInput) totalInput.value = String(data.total_amount);
+        if (Number.isFinite(savedDeposit) && dpValEl) {
+            dpValEl.textContent = `\u20B1${savedDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+        if (Number.isFinite(savedBalance) && balValEl) {
+            balValEl.textContent = `\u20B1${savedBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            if (balBox) balBox.style.display = (percent === 100 || savedBalance <= 0) ? 'none' : 'flex';
+        }
+        if (Number.isFinite(savedBalance) && contractBalanceVal) {
+            contractBalanceVal.textContent = savedBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
     } catch (error) {
         console.error('Error updating DP tier:', error);
-        if (requestId === dpUpdateRequest && window.showError) {
-            window.showError(error.message || 'The deposit option could not be saved. Please try again.', 'Deposit not saved');
+        if (requestId === dpUpdateRequest) {
+            if (input) input.value = previousPercent;
+            if (select) select.value = String(previousPercent);
+            const previousDeposit = Math.round((totalVal * previousPercent / 100 + Number.EPSILON) * 100) / 100;
+            const previousBalance = Math.max(0, totalVal - previousDeposit);
+            if (dpValEl) dpValEl.textContent = `\u20B1${previousDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            if (tierLabel) tierLabel.textContent = previousPercent === 100 ? '100% Full Payment' : `${previousPercent}% Deposit`;
+            if (balValEl) balValEl.textContent = `\u20B1${previousBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            if (balBox) balBox.style.display = (previousPercent === 100 || previousBalance <= 0) ? 'none' : 'flex';
+            if (contractPct) contractPct.innerText = previousPercent;
+            if (contractVal) contractVal.innerText = previousDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (contractBalanceVal) contractBalanceVal.innerText = previousBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (window.showError) window.showError(error.message || 'The deposit option could not be saved. Please try again.', 'Deposit not saved');
         }
+    } finally {
+        if (select) select.disabled = isSigned;
     }
 };
 
 let sigPad; // Declare globally
 
 window.submitSignature = async function () {
+    const agreementCheck = document.getElementById('agree_terms');
+    if (!agreementCheck?.checked) {
+        await Swal.fire({ icon: 'warning', title: 'Agreement Required', text: 'Check “I agree to the terms shown above” before finalizing your signature.' });
+        return;
+    }
     if (!sigPad || sigPad.isEmpty()) {
         Swal.fire({
             icon: 'error',

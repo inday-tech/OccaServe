@@ -3223,6 +3223,12 @@ async def sign_contract_caterer(
     if not quotation:
         raise HTTPException(status_code=404, detail="Quotation not found for this booking")
 
+    if quotation.status != "awaiting_caterer" or quotation.caterer_signature:
+        return RedirectResponse(
+            url=f"/caterer/bookings/{booking.id}/quotation?modal=true" if request.query_params.get("modal") == "true" else f"/caterer/bookings/{booking.id}/quotation",
+            status_code=303,
+        )
+
     return templates.TemplateResponse("caterer/sign_contract.html", {
         "request": request,
         "user": user,
@@ -4317,7 +4323,12 @@ async def get_contract_content_caterer(
 
     quotation = booking.quotation
     if not quotation:
-        raise HTTPException(status_code=404, detail="Contract/Quotation not found")
+        return HTMLResponse(
+            '<div style="max-width:620px;margin:2rem auto;padding:1.25rem;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;color:#334155;text-align:center;">'
+            '<h3 style="margin:0 0 .4rem;font-size:1rem;color:#0f172a;">Contract not issued yet</h3>'
+            '<p style="margin:0;font-size:.85rem;line-height:1.5;">The booking quotation is still being prepared. The contract and its signature status will appear here once it is issued.</p>'
+            '</div>'
+        )
 
     return templates.TemplateResponse("shared/contract_content_partial.html", {
         "request": request,
@@ -5107,7 +5118,13 @@ async def submit_proposal_maker(
         "inclusions": _normalize_inclusions_for_api(
             booking.package.inclusions if booking.package else None
         ),
+        "accepted_payment_terms": sorted({
+            int(term) for term in (user.caterer_profile.accepted_payment_terms or [])
+            if str(term).strip().isdigit() and 20 <= int(term) <= 100 and int(term) % 5 == 0
+        }) or [30],
     }
+    from ..services.quotation import quotation_service
+    package_details["agreement_terms"] = quotation_service._agreement_terms_for_booking(booking)
     
     # Dynamic downpayment percent from caterer profile
     downpayment_percent = 30.0
@@ -5151,37 +5168,83 @@ async def send_standard_quotation(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only),
 ):
-    """Generate a draft standard quotation for caterer review and signature."""
+    """Prepare a draft for review, then send it for customer deposit selection."""
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.status != "inquiry":
-        raise HTTPException(status_code=400, detail="Accept the booking request before sending a quotation.")
-    if booking.is_custom_event or booking.travel_fee_status == "manual_quote" or (booking.package and booking.package.pricing_mode == "customizable"):
-        raise HTTPException(status_code=400, detail="Custom quotations must be prepared in the quotation workspace.")
-    if booking.quotation and booking.quotation.status != "draft":
-        raise HTTPException(status_code=400, detail="Quotation already exists")
+        if booking.status == "pending_quotation" and booking.quotation and booking.quotation.status == "quoted":
+            redirect_url = f"/caterer/bookings/{booking.id}/quotation"
+            if request.query_params.get("modal") == "true":
+                redirect_url += "?modal=true"
+            return RedirectResponse(url=redirect_url, status_code=303)
+        raise HTTPException(status_code=400, detail="Accept the booking request before preparing or sending a quotation.")
 
-    from ..services.quotation import quotation_service
-    terms = user.caterer_profile.accepted_payment_terms or []
-    downpayment_percent = int(float(min(float(term) for term in terms))) if terms else 30
-    quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
+    prepare_only = request.query_params.get("prepare") == "true"
+    quotation = booking.quotation
+    created_now = False
+    if quotation and quotation.status != "draft":
+        raise HTTPException(status_code=400, detail="This quotation has already been sent.")
+
+    if not quotation:
+        if booking.is_custom_event or booking.travel_fee_status == "manual_quote" or (booking.package and booking.package.pricing_mode == "customizable"):
+            raise HTTPException(status_code=400, detail="Prepare this custom quotation in the quotation workspace first.")
+        from ..services.quotation import quotation_service
+        terms = user.caterer_profile.accepted_payment_terms or []
+        downpayment_percent = int(float(min(float(term) for term in terms))) if terms else 30
+        quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
+        created_now = True
+
     if not quotation or not quotation.total_amount or quotation.total_amount <= 0:
         if quotation and quotation.status == "draft":
             db.delete(quotation)
             db.commit()
-        raise HTTPException(status_code=400, detail="A valid quotation could not be generated for this booking.")
+        raise HTTPException(status_code=400, detail="A valid quotation could not be prepared for this booking.")
 
-    quotation.status = "draft"
     booking.total_amount = quotation.total_amount
     booking.total_price = quotation.total_amount
-    booking.reservation_fee = float(
-        Decimal(str(quotation.total_amount))
-        * Decimal(str(quotation.downpayment_percent or downpayment_percent))
-        / Decimal("100")
-    )
+    if created_now or prepare_only:
+        percent = int(quotation.downpayment_percent or 30)
+        booking.reservation_fee = float(Decimal(str(quotation.total_amount)) * Decimal(percent) / Decimal("100"))
+        db.commit()
+        redirect_url = f"/caterer/bookings/{booking.id}/quotation"
+        if request.query_params.get("modal") == "true":
+            redirect_url += "?modal=true"
+        return RedirectResponse(url=redirect_url, status_code=303)
+
+    package_details = quotation.package_details or {}
+    accepted_terms = package_details.get("accepted_payment_terms") or user.caterer_profile.accepted_payment_terms or [30]
+    valid_terms = sorted({
+        int(term) for term in accepted_terms
+        if str(term).strip().isdigit() and 20 <= int(term) <= 100 and int(term) % 5 == 0
+    }) or [30]
+    percent = int(quotation.downpayment_percent or valid_terms[0])
+    if percent not in valid_terms:
+        percent = valid_terms[0]
+        quotation.downpayment_percent = percent
+    package_details["accepted_payment_terms"] = valid_terms
+    if "agreement_terms" not in package_details:
+        from ..services.quotation import quotation_service
+        package_details["agreement_terms"] = quotation_service._agreement_terms_for_booking(booking)
+    quotation.package_details = package_details
+    quotation.status = "quoted"
+    booking.status = "pending_quotation"
+    booking.expires_at = None
+    booking.reservation_fee = float(Decimal(str(quotation.total_amount)) * Decimal(percent) / Decimal("100"))
+    db.add(models.BookingHistory(
+        booking_id=booking.id,
+        status="pending_quotation",
+        notes=f"Caterer sent the quotation with deposit options: {', '.join(f'{term}%' for term in valid_terms)}.",
+    ))
     db.commit()
+    await NotificationService.notify_status_update(
+        db,
+        booking.user_id,
+        "Quotation ready — choose a deposit",
+        f"{user.caterer_profile.business_name} sent your booking quotation. Review the agreement and choose one of the listed deposit options.",
+        f"/bookings/step/quotation/{booking.id}",
+    )
     redirect_url = f"/caterer/bookings/{booking.id}/quotation"
     if request.query_params.get("modal") == "true":
         redirect_url += "?modal=true"

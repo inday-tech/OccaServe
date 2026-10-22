@@ -1371,40 +1371,30 @@
                             </div>
                         </div>
 
-                        <h4
-                            style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-top: 0.5rem;">
-                            Business Address (PSGC)</h4>
-                        <div class="onboard-address-grid">
-                            <div>
-                                <label class="onboard-field-label" for="onboard_province">Province <span class="onboard-required">*</span></label>
-                                <div class="dm-input-group">
-                                    <select name="province" id="onboard_province" onchange="fetchMunicipalities()" required>
-                                        <option value="" disabled selected>Select Province</option>
-                                    </select>
-                                </div>
+                        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--adm-primary); text-transform: uppercase; margin-top: 0.5rem;">Business Location</h4>
+                        <div class="onboard-location-picker" style="padding:1rem;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc;">
+                            <label class="onboard-field-label" for="onboard_location_search">Search address or business <span class="onboard-required">*</span></label>
+                            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.6rem;">
+                                <div class="dm-input-group"><input type="search" id="onboard_location_search" placeholder="Search an address or landmark" autocomplete="off"></div>
+                                <button type="button" id="onboard_use_location" class="btn-clean" style="white-space:nowrap;background:#fff7f7;color:#9f1239;border:1px solid #fecaca;"><i class="fas fa-crosshairs" aria-hidden="true"></i> Use my location</button>
                             </div>
-                            <div>
-                                <label class="onboard-field-label" for="onboard_city">City / Municipality <span class="onboard-required">*</span></label>
-                                <div class="dm-input-group">
-                                    <select name="municipality" id="onboard_city" onchange="fetchBarangays()" disabled required>
-                                        <option value="" disabled selected>Select City/Muni</option>
-                                    </select>
-                                </div>
+                            <div id="onboard_location_map" data-maps-api-key="{{ google_maps_api_key() }}" style="height:300px;border:1px solid #cbd5e1;border-radius:12px;margin-top:.7rem;overflow:hidden;"></div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;gap:.65rem;flex-wrap:wrap;margin-top:.65rem;">
+                                <p id="onboard_location_status" role="status" aria-live="polite" style="margin:0;color:#475569;font-size:.72rem;">Search, use current location, or click the map to place a pin.</p>
+                                <button type="button" id="onboard_save_location" class="btn-clean" disabled style="background:#166534;color:white;"><i class="fas fa-check" aria-hidden="true"></i> Save location</button>
                             </div>
+                            <div class="onboard-address-grid" style="margin-top:.7rem;">
+                                <div><label class="onboard-field-label" for="onboard_province">Province</label><div class="dm-input-group"><input name="province" id="onboard_province" placeholder="Filled from map; editable" required></div></div>
+                                <div><label class="onboard-field-label" for="onboard_city">City / Municipality</label><div class="dm-input-group"><input name="municipality" id="onboard_city" placeholder="Filled from map; editable" required></div></div>
+                            </div>
+                            <div style="margin-top:.55rem;"><label class="onboard-field-label" for="onboard_brgy">Barangay</label><div class="dm-input-group"><input name="barangay" id="onboard_brgy" placeholder="Filled from map; editable" required></div></div>
+                            <input type="hidden" name="latitude" id="onboard_latitude">
+                            <input type="hidden" name="longitude" id="onboard_longitude">
+                            <p id="onboard_location_summary" style="display:none;margin:.65rem 0 0;padding:.6rem .7rem;border-radius:9px;background:#ecfdf5;color:#166534;font-size:.72rem;overflow-wrap:anywhere;"></p>
                         </div>
-                        <div class="onboard-address-grid">
-                            <div>
-                                <label class="onboard-field-label" for="onboard_brgy">Barangay <span class="onboard-required">*</span></label>
-                                <div class="dm-input-group">
-                                    <select name="barangay" id="onboard_brgy" disabled required>
-                                        <option value="" disabled selected>Select Barangay</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="onboard-field-label" for="onboard_street">Building / Street / Subdivision <span class="onboard-required">*</span></label>
-                                <div class="dm-input-group"><input type="text" name="street" id="onboard_street" required></div>
-                            </div>
+                        <div>
+                            <label class="onboard-field-label" for="onboard_street">Building / Street / Subdivision <span class="onboard-required">*</span></label>
+                            <div class="dm-input-group"><input type="text" name="street" id="onboard_street" placeholder="Unit, street, subdivision, or landmark" required></div>
                         </div>
                     </div>
 
@@ -1676,6 +1666,133 @@
 
 {% block extra_js %}
 <script>
+(() => {
+    let adminLocationMap, adminLocationMarker, adminLocationGeocoder;
+    let adminLocationSaved = false, adminLocationReady = false, adminLocationRequest = 0;
+    const byId = id => document.getElementById(id);
+    const status = message => { const el = byId('onboard_location_status'); if (el) el.textContent = message; };
+    window.adminCatererLocationIsSaved = () => adminLocationSaved;
+    const setSaved = saved => {
+        adminLocationSaved = saved;
+        const button = byId('onboard_save_location');
+        if (button) button.innerHTML = saved ? '<i class="fas fa-check-circle" aria-hidden="true"></i> Location saved' : '<i class="fas fa-check" aria-hidden="true"></i> Save location';
+        window.updateAddCatererSubmitState?.();
+    };
+    const addressParts = result => {
+        const components = result?.address_components || [];
+        const find = (...types) => components.find(item => types.some(type => item.types.includes(type)))?.long_name || '';
+        return {
+            province: find('administrative_area_level_2', 'administrative_area_level_1'),
+            city: find('locality', 'postal_town', 'administrative_area_level_3'),
+            barangay: find('sublocality_level_1', 'sublocality_level_2', 'neighborhood', 'administrative_area_level_4')
+        };
+    };
+    const setPin = position => {
+        const request = ++adminLocationRequest;
+        adminLocationSaved = false;
+        adminLocationReady = false;
+        setSaved(false);
+        byId('onboard_latitude').value = position.lat().toFixed(6);
+        byId('onboard_longitude').value = position.lng().toFixed(6);
+        byId('onboard_province').value = byId('onboard_city').value = byId('onboard_brgy').value = '';
+        const summary = byId('onboard_location_summary');
+        summary.style.display = 'none';
+        status('Finding the address for this pin…');
+        adminLocationMarker.setPosition(position);
+        adminLocationMap.panTo(position);
+        adminLocationGeocoder.geocode({ location: position }, (results, resultStatus) => {
+            if (request !== adminLocationRequest) return;
+            const result = results?.[0];
+            const parts = addressParts(result);
+            if (resultStatus !== 'OK' || !result) {
+                status('Could not identify this address. Move the pin or choose another search result.');
+                return;
+            }
+            if (parts.province) byId('onboard_province').value = parts.province;
+            if (parts.city) byId('onboard_city').value = parts.city;
+            if (parts.barangay) byId('onboard_brgy').value = parts.barangay;
+            byId('onboard_location_search').value = result.formatted_address || '';
+            adminLocationReady = true;
+            summary.textContent = `${result.formatted_address || ''} · ${byId('onboard_latitude').value}, ${byId('onboard_longitude').value}`;
+            summary.style.display = 'block';
+            const addressComplete = Boolean(parts.province && parts.city && parts.barangay);
+            byId('onboard_save_location').disabled = false;
+            status(addressComplete ? 'Address found. Save this location to include it in the caterer profile.' : 'Some address details were not returned. Fill in the province, city, and barangay, then save.');
+            window.updateAddCatererSubmitState?.();
+        });
+    };
+    window.initAdminCatererLocationMap = () => {
+        const element = byId('onboard_location_map');
+        if (!element || adminLocationMap || !element.offsetWidth || !window.google?.maps) return;
+        const start = { lat: 14.2811, lng: 121.4150 };
+        adminLocationMap = new google.maps.Map(element, { center: start, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
+        adminLocationMarker = new google.maps.Marker({ map: adminLocationMap, position: start, draggable: true, title: 'Drag to set business location' });
+        adminLocationGeocoder = new google.maps.Geocoder();
+        adminLocationMap.addListener('click', event => setPin(event.latLng));
+        adminLocationMarker.addListener('dragend', event => setPin(event.latLng));
+        const search = byId('onboard_location_search');
+        if (google.maps.places && search) {
+            const autocomplete = new google.maps.places.Autocomplete(search, { componentRestrictions: { country: 'ph' }, fields: ['geometry', 'formatted_address', 'address_components'] });
+            autocomplete.addListener('place_changed', () => {
+                const place = autocomplete.getPlace();
+                if (!place.geometry?.location) { status('Choose an address from the suggestions or click the map.'); return; }
+                adminLocationMap.setZoom(16);
+                setPin(place.geometry.location);
+            });
+            search.addEventListener('keydown', event => { if (event.key === 'Enter') event.preventDefault(); });
+        }
+        byId('onboard_use_location')?.addEventListener('click', event => {
+            const button = event.currentTarget;
+            if (!navigator.geolocation) { status('Location access is not available in this browser.'); return; }
+            button.disabled = true;
+            status('Finding your current location…');
+            navigator.geolocation.getCurrentPosition(position => {
+                adminLocationMap.setZoom(16);
+                setPin(new google.maps.LatLng(position.coords.latitude, position.coords.longitude));
+                button.disabled = false;
+            }, error => {
+                status(error.code === 1 ? 'Allow location access, or place the pin manually.' : 'Could not get your location. Place the pin manually.');
+                button.disabled = false;
+            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+        });
+        byId('onboard_save_location')?.addEventListener('click', () => {
+            if (!adminLocationReady) return;
+            if (!byId('onboard_province').value.trim() || !byId('onboard_city').value.trim() || !byId('onboard_brgy').value.trim()) {
+                status('Enter province, city/municipality, and barangay before saving the pin.');
+                return;
+            }
+            setSaved(true);
+            status('Location saved. It will be written to the caterer profile when you add the account.');
+        });
+        ['onboard_province', 'onboard_city', 'onboard_brgy'].forEach(id => byId(id)?.addEventListener('input', () => {
+            if (adminLocationSaved) {
+                setSaved(false);
+                status('Address changed. Save the location again to confirm these details.');
+            }
+        }));
+        byId('onboard_location_search')?.addEventListener('input', () => {
+            if (adminLocationSaved) {
+                setSaved(false);
+                status('Choose a search result or confirm the current pin again.');
+            }
+        });
+    };
+    window.gm_authFailure = () => status('Map could not authenticate. Check the Maps API key, billing, enabled APIs, and allowed website domains.');
+    window.addEventListener('load', () => {
+        const element = byId('onboard_location_map');
+        if (!element) return;
+        const key = element.dataset.mapsApiKey;
+        if (!key) { status('Map is not configured.'); return; }
+        if (window.google?.maps) { window.initAdminCatererLocationMap(); return; }
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&libraries=places&callback=initAdminCatererLocationMap`;
+        script.async = true;
+        script.onerror = () => status('Map could not load. Check your connection and Maps API configuration.');
+        document.head.appendChild(script);
+    });
+})();
+</script>
+<script>
     // UI Logic
     function toggleActionDropdown(btn, event) {
         event.stopPropagation();
@@ -1837,13 +1954,16 @@
         const auditsPassed = auditStatuses.every(status =>
             status && status.classList.contains('status-ok')
         );
+        const locationSaved = window.adminCatererLocationIsSaved?.() === true;
         addCatererSubmit.disabled = !(
             addCatererForm.checkValidity()
             && eventsSelected
             && cuisinesSelected
+            && locationSaved
             && auditsPassed
         );
     }
+    window.updateAddCatererSubmitState = updateAddCatererSubmitState;
 
     document.querySelectorAll('#addCatererModal [data-select-all]').forEach(button => {
         button.addEventListener('click', () => {
@@ -1860,76 +1980,9 @@
 
     function openAddCatererModal() {
         document.getElementById('addCatererModal').classList.add('active');
-        if (document.getElementById('onboard_province').options.length <= 1) fetchProvinces();
+        window.initAdminCatererLocationMap?.();
     }
     function closeAddCatererModal() { document.getElementById('addCatererModal').classList.remove('active'); }
-
-    const PSGC_BASE = 'https://psgc.gitlab.io/api';
-    async function fetchProvinces() {
-        try {
-            const res = await fetch(`${PSGC_BASE}/provinces/`);
-            if (!res.ok) throw new Error(`Province lookup failed (${res.status}).`);
-            const provinces = await res.json();
-            const sel = document.getElementById('onboard_province');
-            provinces.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.code; opt.textContent = p.name;
-                sel.appendChild(opt);
-            });
-        } catch (err) {
-            console.error("Could not load provinces.", err);
-            document.getElementById('onboard_province').innerHTML = '<option value="" selected>Could not load provinces</option>';
-            Swal.fire('Address lookup failed', err.message, 'error');
-        }
-        updateAddCatererSubmitState();
-    }
-    async function fetchMunicipalities() {
-        const provCode = document.getElementById('onboard_province').value;
-        const citySel = document.getElementById('onboard_city');
-        const brgySel = document.getElementById('onboard_brgy');
-        citySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
-        brgySel.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
-        brgySel.disabled = true;
-        try {
-            const res = await fetch(`${PSGC_BASE}/provinces/${provCode}/cities-municipalities/`);
-            if (!res.ok) throw new Error(`City/municipality lookup failed (${res.status}).`);
-            const cities = await res.json();
-            citySel.innerHTML = '<option value="" disabled selected>Select City/Muni</option>';
-            cities.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.code; opt.textContent = c.name;
-                citySel.appendChild(opt);
-            });
-            citySel.disabled = false;
-        } catch (err) {
-            console.error("Could not load cities and municipalities.", err);
-            citySel.innerHTML = '<option value="" selected>Could not load cities</option>';
-            Swal.fire('Address lookup failed', err.message, 'error');
-        }
-        updateAddCatererSubmitState();
-    }
-    async function fetchBarangays() {
-        const cityCode = document.getElementById('onboard_city').value;
-        const brgySel = document.getElementById('onboard_brgy');
-        brgySel.innerHTML = '<option value="" disabled selected>Loading...</option>';
-        try {
-            const res = await fetch(`${PSGC_BASE}/cities-municipalities/${cityCode}/barangays/`);
-            if (!res.ok) throw new Error(`Barangay lookup failed (${res.status}).`);
-            const brgys = await res.json();
-            brgySel.innerHTML = '<option value="" disabled selected>Select Barangay</option>';
-            brgys.sort((a, b) => a.name.localeCompare(b.name)).forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b.code; opt.textContent = b.name;
-                brgySel.appendChild(opt);
-            });
-            brgySel.disabled = false;
-        } catch (err) {
-            console.error("Could not load barangays.", err);
-            brgySel.innerHTML = '<option value="" selected>Could not load barangays</option>';
-            Swal.fire('Address lookup failed', err.message, 'error');
-        }
-        updateAddCatererSubmitState();
-    }
 
     // --- Real-time Identity Audit Engine ---
     let bizCheckTimeout;
@@ -2141,12 +2194,9 @@
 
         if (fd.get('business_name').trim().length < 3) return Swal.fire('Error', 'Business name is too short.', 'error');
 
-        const pSel = document.getElementById('onboard_province');
-        const cSel = document.getElementById('onboard_city');
-        const bSel = document.getElementById('onboard_brgy');
-        fd.set('province', pSel.options[pSel.selectedIndex].text);
-        fd.set('municipality', cSel.options[cSel.selectedIndex].text);
-        fd.set('barangay', bSel.options[bSel.selectedIndex].text);
+        if (!window.adminCatererLocationIsSaved?.()) {
+            return Swal.fire('Save business location', 'Place the pin, confirm the address, and save the location before adding the caterer.', 'warning');
+        }
 
         const events = Array.from(e.target.querySelectorAll('input[name="events"]:checked')).map(i => i.value);
         const cuisines = Array.from(e.target.querySelectorAll('input[name="cuisines"]:checked')).map(i => i.value);

@@ -2012,3 +2012,40 @@
     .signature-pad-premium { height: 220px; }
     .sig-footer-actions { grid-template-columns: 1fr !important; }
 }
+
+/* Compact signing area: keep the actual signature pad prominent without excess whitespace. */
+.sig-section-up {
+    margin: 1rem auto 0;
+    padding: 1.1rem;
+    border-radius: 14px;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
+}
+.sig-section-up .card-glass-header {
+    margin-bottom: .75rem;
+    padding-bottom: .6rem;
+}
+.sig-section-up .inv-section-title { font-size: .98rem; }
+.signature-input-box { display: grid; gap: .55rem; }
+.signature-instructions {
+    padding: .65rem .8rem;
+    border-radius: 9px;
+}
+.signature-instructions p { font-size: .82rem; }
+.policy-checkpoints-pro { padding: .1rem .2rem; }
+.check-box-pro { min-height: 32px; padding: .2rem 0; font-size: .82rem; }
+.check-box-pro input { width: 18px; height: 18px; }
+.signature-pad-premium { height: 160px; padding: .65rem; border-radius: 12px; }
+.signature-pad-premium::before { inset: .65rem; border-radius: 8px; }
+#signature-pad { inset: .65rem; width: calc(100% - 1.3rem); height: calc(100% - 1.3rem); }
+#sig-placeholder { width: calc(100% - 2.2rem); gap: .2rem; }
+#sig-placeholder strong { font-size: .9rem; }
+#sig-placeholder span { font-size: .78rem; }
+.sig-writing-line { margin-top: .55rem; }
+.sig-footer-actions { gap: .55rem !important; }
+.sig-footer-actions .btn-clear,
+.sig-footer-actions .btn-primary-sm { min-height: 42px; border-radius: 8px !important; font-size: .84rem; }
+@media (max-width: 640px) {
+    .sig-section-up { padding: .8rem; }
+    .signature-pad-premium { height: 145px; }
+    .sig-footer-actions { grid-template-columns: 1fr 1fr !important; }
+}

@@ -62,8 +62,6 @@
                     </div>
                 </div>
 
-                <div class="parties-divider-icon"><i class="fas fa-handshake"></i></div>
-
                 <div class="party-card-pro">
                     <div class="party-label-tag">THE CLIENT</div>
                     <div class="party-content-main">
@@ -119,7 +117,7 @@
                 </table>
             </div>
 
-            <h2 class="contract-section-title">2. Package and Included Services</h2>
+            <h2 class="contract-section-title">2. Package Details</h2>
             <div class="contract-details-table-wrapper">
                 <table class="contract-spec-table">
                     <tr>
@@ -129,46 +127,38 @@
                 </table>
             </div>
             {% set agreement_inclusions = quotation.package_details.get('inclusions') if quotation.package_details else None %}
-            {% if not agreement_inclusions and booking.package %}
-                {% set agreement_inclusions = booking.package.inclusions %}
+            {% if agreement_inclusions is string and agreement_inclusions %}
+                {% set agreement_inclusions = [agreement_inclusions] %}
             {% endif %}
             {% if agreement_inclusions %}
             <p class="financial-terms-para">
-                The package and included items below are part of the services agreed to by both parties.
+                Included items recorded in this quotation:
             </p>
             <div class="contract-details-table-wrapper">
                 <table class="contract-spec-table">
                     <thead>
                         <tr>
-                            <th>Type</th>
                             <th>Included item</th>
-                            <th>Quantity</th>
-                            <th>Details</th>
+                            <th>Quantity / notes</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% if agreement_inclusions is mapping %}
                             {% for inclusion_name, is_included in agreement_inclusions.items() if is_included %}
                             <tr>
-                                <td>Included</td>
                                 <td>{{ inclusion_name }}</td>
                                 <td>—</td>
-                                <td>Included in {{ quotation.package_details.get('name') or (booking.package.name if booking.package else 'the agreed service package') }}.</td>
                             </tr>
                             {% endfor %}
                         {% else %}
                             {% for inclusion in agreement_inclusions %}
                             <tr>
                                 {% if inclusion is mapping %}
-                                <td>{{ inclusion.get('category') or inclusion.get('item_type') or 'Included' }}</td>
-                                <td>{{ inclusion.get('name') or inclusion.get('label') or 'Included item' }}</td>
-                                <td>{{ inclusion.get('quantity') or '—' }}{% if inclusion.get('unit') %} {{ inclusion.get('unit') }}{% endif %}</td>
-                                <td>{{ inclusion.get('description') or inclusion.get('notes') or '—' }}</td>
+                                <td>{{ inclusion.get('name') or inclusion.get('label') or 'Package item' }}</td>
+                                <td>{% if inclusion.get('quantity') %}{{ inclusion.get('quantity') }}{% if inclusion.get('unit') %} {{ inclusion.get('unit') }}{% endif %}{% endif %}{% if inclusion.get('description') or inclusion.get('notes') %}{% if inclusion.get('quantity') %} · {% endif %}{{ inclusion.get('description') or inclusion.get('notes') }}{% endif %}{{ '—' if not inclusion.get('quantity') and not inclusion.get('description') and not inclusion.get('notes') else '' }}</td>
                                 {% else %}
-                                <td>Included</td>
                                 <td>{{ inclusion }}</td>
                                 <td>—</td>
-                                <td>Included in the agreed service package.</td>
                                 {% endif %}
                             </tr>
                             {% endfor %}
@@ -177,7 +167,7 @@
                 </table>
             </div>
             {% else %}
-            <p class="financial-terms-para">No package inclusions were listed for this booking.</p>
+            <p class="financial-terms-para">No package inclusions were recorded in this quotation.</p>
             {% endif %}
 
             <!-- Section 3 -->
@@ -201,7 +191,7 @@
                     <!-- CUSTOMIZABLE PACKAGE FINANCIAL BREAKDOWN -->
                     <tr class="summary-row-item">
                         <td class="summary-td-desc" colspan="2" style="background: #f8fafc; font-weight: 800; color: #1e293b; padding: 12px 16px;">
-                            <strong>Customized Catering Selections — {{ quotation.package_details.name or (booking.package.name if booking.package else 'Customizable Package') }}</strong><br>
+                            <strong>Customized selections</strong><br>
                             <span class="summary-desc-subtext" style="font-weight: normal; color: #64748b;">
                                 Client-configured menu and service choices for {{ quotation.package_details.guest_count or booking.guest_count }} guests
                             </span>
@@ -274,14 +264,18 @@
                     {% endif %}
 
                     {% else %}
-                    <!-- FIXED PACKAGE FINANCIAL BREAKDOWN (UNTOUCHED) -->
+            <!-- FIXED PACKAGE FINANCIAL BREAKDOWN -->
                     {% if quotation and quotation.package_details and quotation.package_details.base_amount|float > 0 %}
                     <tr class="summary-row-item">
                         <td class="summary-td-desc">
-                            <strong>Base Package: {{ quotation.package_details.name }}</strong><br>
-                            <span class="summary-desc-subtext">Includes {{ quotation.package_details.guest_count or 1 }}
-                                guests at
-                                ₱{{ "{:,.2f}".format(quotation.package_details.unit_price|float) }}/head</span>
+                            <strong>Base package amount</strong><br>
+                            <span class="summary-desc-subtext">
+                                {% if quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}
+                                Fixed package rate for {{ quotation.package_details.guest_count or booking.guest_count or 1 }} guests
+                                {% else %}
+                                {{ quotation.package_details.guest_count or booking.guest_count or 1 }} guests × ₱{{ "{:,.2f}".format(quotation.package_details.unit_price|float) }} per guest
+                                {% endif %}
+                            </span>
                         </td>
                         <td class="summary-td-amount">
                             ₱{{ "{:,.2f}".format(quotation.package_details.base_amount|float) }}
@@ -319,10 +313,16 @@
                     booking.caterer.accepted_payment_terms else 30) %}
                     {% set dp_amount = (quotation.total_amount|float) * ((min_term|float) / 100.0) %}
                     <tr>
-                        <td class="deposit-info-label-cell">Required Security Deposit (<span id="contract-dp-pct">{{
+                        <td class="deposit-info-label-cell">Required Downpayment (<span id="contract-dp-pct">{{
                                 min_term }}</span>%):</td>
                         <td class="deposit-info-amount-cell">
                             ₱<span id="contract-dp-val">{{ "{:,.2f}".format(dp_amount) }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="deposit-info-label-cell">Remaining Balance:</td>
+                        <td class="deposit-info-amount-cell">
+                            ₱<span id="contract-balance-val">{{ "{:,.2f}".format([((quotation.total_amount|float) - dp_amount), 0]|max) }}</span>
                         </td>
                     </tr>
                 </tfoot>
@@ -331,26 +331,23 @@
             <!-- Section 3: Standard Clauses -->
             <h2 class="contract-section-title">{% if agreement_inclusions %}4{% else %}3{% endif %}. Standard Terms & Conditions</h2>
             <div class="contract-clauses-list">
-                <p class="clause-text" style="white-space: pre-line; margin-top: 0;">{% if booking.document_type == "rental_agreement" and booking.caterer.rental_policies %}
-{{ booking.caterer.rental_policies }}
-{% elif booking.document_type in ["invoice", "fast_track"] and booking.caterer.general_terms %}
-{{ booking.caterer.general_terms }}
-{% elif booking.caterer.terms_and_conditions %}
-{{ booking.caterer.terms_and_conditions }}
-{% else %}
-The Service Provider is not liable for indirect or consequential damages. The Client assumes responsibility for venue compliance and obtaining necessary permits. Full payment is required prior to the event date. Cancellations are subject to forfeiture of the security deposit.
-{% endif %}</p>
+                {% if quotation.package_details and 'agreement_terms' in quotation.package_details %}
+                    {% set agreement_terms = quotation.package_details.get('agreement_terms') %}
+                {% elif booking.document_type == "rental_agreement" and booking.caterer.rental_policies %}
+                    {% set agreement_terms = booking.caterer.rental_policies %}
+                {% elif booking.caterer.general_terms %}
+                    {% set agreement_terms = booking.caterer.general_terms %}
+                {% else %}
+                    {% set agreement_terms = booking.caterer.terms_and_conditions %}
+                {% endif %}
+                <p class="clause-text" style="white-space: pre-line; margin-top: 0;">{{ agreement_terms or 'No additional terms have been provided by the service provider for this booking.' }}</p>
             </div>
 
             <!-- Section 4 -->
-            <h2 class="contract-section-title">{% if agreement_inclusions %}5{% else %}4{% endif %}. Agreement Terms & Legal Validity</h2>
+            <h2 class="contract-section-title">{% if agreement_inclusions %}5{% else %}4{% endif %}. Acknowledgment</h2>
             <p class="agreement-status-para">
-                By signing this document, both the Customer and the Caterer agree that this is the final and complete
-                agreement for the event. This contract replaces any previous chats, messages, or verbal promises made
-                outside of this document.
-                <br><br>
-                Signing this contract digitally through the OccaServe Platform is just as valid and legally binding as a
-                handwritten signature on a physical paper, as supported by the Electronic Commerce Act.
+                By signing, both parties confirm the booking details, quoted price, selected downpayment, and the
+                service provider's terms shown in this agreement. Any changes must be confirmed by both parties.
             </p>
 
             <!-- Signatures Section -->
@@ -416,7 +413,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
         .contract-paper-container {
             display: flex;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 20px 14px;
             background: #f1f5f9;
             /* Contrast background */
             min-height: 100%;
@@ -426,7 +423,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
             background: #fff;
             width: 100%;
             max-width: 800px;
-            padding: 60px 80px;
+            padding: 34px 48px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             border-radius: 4px;
             font-family: 'Crimson Pro', serif;
@@ -436,8 +433,8 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
         .formal-doc-header {
             text-align: center;
             border-bottom: 2px solid #1a1a1a;
-            padding-bottom: 2rem;
-            margin-bottom: 3rem;
+            padding-bottom: 1rem;
+            margin-bottom: 1.25rem;
         }
 
         .formal-doc-main-title {
@@ -466,26 +463,26 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
         .clause-text,
         .agreement-status-para {
             text-align: justify;
-            line-height: 1.7;
-            font-size: 1rem;
+            line-height: 1.5;
+            font-size: 0.94rem;
             color: #334155;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.75rem;
             display: block; /* Ensures spans act like paragraphs */
             font-family: 'Crimson Pro', serif;
         }
 
         .contract-parties-layout {
             display: grid;
-            grid-template-columns: 1fr 40px 1fr;
-            gap: 1.5rem;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
             align-items: start;
-            margin-bottom: 3rem;
+            margin-bottom: 1.25rem;
         }
 
         .party-card-pro {
             background: #f8fafc;
-            padding: 1.5rem;
-            border-radius: 12px;
+            padding: 1rem;
+            border-radius: 8px;
             border: 1px solid #e2e8f0;
         }
 
@@ -528,7 +525,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
             text-transform: uppercase;
             border-bottom: 1px solid #e2e8f0;
             padding-bottom: 0.5rem;
-            margin: 2.5rem 0 1.25rem 0;
+            margin: 1.35rem 0 0.65rem 0;
             color: #0f172a;
         }
 
@@ -538,7 +535,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
         }
 
         .contract-spec-table td {
-            padding: 0.75rem 0;
+            padding: 0.45rem 0;
             border-bottom: 1px solid #f1f5f9;
             font-size: 0.95rem;
         }
@@ -556,12 +553,12 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
             width: 100%;
             border-collapse: collapse;
             border: 2px solid #0f172a;
-            margin: 1.5rem 0;
+            margin: 0.75rem 0;
         }
 
         .summary-header-row th {
             background: #f8fafc;
-            padding: 1rem;
+            padding: 0.55rem 0.65rem;
             text-align: left;
             font-family: 'Poppins', sans-serif;
             font-size: 0.75rem;
@@ -571,7 +568,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
 
         .summary-row-item td,
         .addon-row-item td {
-            padding: 1rem;
+            padding: 0.55rem 0.65rem;
             border-bottom: 1px solid #e2e8f0;
             font-size: 1rem;
         }
@@ -582,7 +579,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
         }
 
         .summary-tfoot td {
-            padding: 1rem;
+            padding: 0.55rem 0.65rem;
             font-weight: 800;
             background: #fcfcfd;
         }
@@ -602,12 +599,12 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
         .signatures-side-by-side {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 4rem;
-            margin-top: 4rem;
+            gap: 2rem;
+            margin-top: 1.5rem;
         }
 
         .sig-placeholder-area {
-            height: 100px;
+            height: 76px;
             border-bottom: 2px solid #0f172a;
             display: flex;
             align-items: flex-end;
@@ -693,7 +690,7 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
 
         .formal-footer-note {
             text-align: center;
-            margin-top: 4rem;
+            margin-top: 1.5rem;
             font-size: 0.7rem;
             color: #cbd5e1;
             font-style: italic;
@@ -818,17 +815,13 @@ The Service Provider is not liable for indirect or consequential damages. The Cl
                 grid-template-columns: 1fr;
                 gap: 0.5rem;
             }
-            .parties-divider-icon {
-                padding-top: 0;
-                transform: rotate(90deg);
-                margin: 0.25rem 0;
-            }
+            .party-card-pro { padding: 0.85rem; }
             .signatures-side-by-side {
                 grid-template-columns: 1fr;
-                gap: 2rem;
+                gap: 1rem;
             }
             .formal-doc-main-title {
-                font-size: 1.3rem;
+                font-size: 1.15rem;
             }
             .spec-label-col {
                 width: 120px;

@@ -11,6 +11,8 @@
     let catererRegistrationGeocoder;
     let catererRegistrationMapLoading = false;
     let catererRegistrationGeocodeRequest = 0;
+    let catererRegistrationPinReady = false;
+    let catererRegistrationPinSaved = false;
 
     function setCatererLocationStatus(message) {
         const status = document.getElementById('catererLocationStatus');
@@ -55,8 +57,12 @@
         document.getElementById('city_cat').value = '';
         document.getElementById('barangay_cat').value = '';
         document.getElementById('address_cat_hidden').value = '';
+        catererRegistrationPinReady = false;
+        catererRegistrationPinSaved = false;
+        const saveButton = document.getElementById('catererSaveLocation');
+        if (saveButton) saveButton.disabled = true;
         setCatererLocationError('');
-        setCatererLocationStatus('Pin saved. Finding the address...');
+        setCatererLocationStatus('Pin placed. Finding the address...');
 
         window.catererRegistrationAddressPromise = new Promise(resolve => {
             catererRegistrationGeocoder.geocode({ location: position }, (results, status) => {
@@ -65,9 +71,11 @@
                     return;
                 }
                 const addressApplied = status === 'OK' && applyCatererAddress(results || []);
+                catererRegistrationPinReady = addressApplied;
+                if (saveButton) saveButton.disabled = !addressApplied;
                 setCatererLocationStatus(addressApplied
-                    ? 'Location pinned and address found.'
-                    : 'Pin saved, but the address could not be identified. Try moving the pin or choosing a search result.');
+                    ? 'Address found. Save this location to attach it to your registration.'
+                    : 'Could not identify the full address. Try moving the pin or choosing a search result.');
                 resolve(addressApplied);
             });
         });
@@ -136,6 +144,17 @@
             search.addEventListener('keydown', event => {
                 if (event.key === 'Enter') event.preventDefault();
             });
+            search.addEventListener('input', () => {
+                if (catererRegistrationPinSaved) {
+                    catererRegistrationPinSaved = false;
+                    const saveButton = document.getElementById('catererSaveLocation');
+                    if (saveButton) {
+                        saveButton.disabled = !catererRegistrationPinReady;
+                        saveButton.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Save Business Location';
+                    }
+                    setCatererLocationStatus('Choose a search result or save the confirmed pin again.');
+                }
+            });
         }
 
         const locateButton = document.getElementById('catererUseMyLocation');
@@ -164,6 +183,28 @@
                 },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
+        });
+
+        document.getElementById('catererSaveLocation')?.addEventListener('click', async event => {
+            const button = event.currentTarget;
+            button.disabled = true;
+            if (window.catererRegistrationAddressPromise) await window.catererRegistrationAddressPromise;
+            const saved = catererRegistrationPinReady
+                && document.getElementById('catererLocationLatitude')?.value
+                && document.getElementById('catererLocationLongitude')?.value
+                && document.getElementById('address_cat_hidden')?.value
+                && document.getElementById('province_cat')?.value
+                && document.getElementById('city_cat')?.value
+                && document.getElementById('barangay_cat')?.value;
+            if (!saved) {
+                setCatererLocationError('Choose a pin with a complete address before saving.');
+                button.disabled = false;
+                return;
+            }
+            catererRegistrationPinSaved = true;
+            setCatererLocationError('');
+            setCatererLocationStatus('Business location saved. It will be stored when you submit your registration.');
+            button.innerHTML = '<i class="fas fa-check-circle" aria-hidden="true"></i> Location Saved';
         });
     };
 
@@ -438,8 +479,8 @@
             const province = document.getElementById('province_cat')?.value;
             const city = document.getElementById('city_cat')?.value;
             const barangay = document.getElementById('barangay_cat')?.value;
-            if (!latitude || !longitude || !address || !province || !city || !barangay) {
-                setCatererLocationError('Set your business pin and confirm that its address was found.');
+            if (!catererRegistrationPinSaved || !latitude || !longitude || !address || !province || !city || !barangay) {
+                setCatererLocationError('Set your business pin, then save the confirmed location.');
                 valid = false;
             } else {
                 setCatererLocationError('');

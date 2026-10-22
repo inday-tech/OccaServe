@@ -4,6 +4,27 @@ from decimal import Decimal
 from datetime import datetime
 
 class QuotationService:
+    @staticmethod
+    def _payment_terms_for_booking(booking: models.Booking) -> list[int]:
+        raw_terms = getattr(booking.caterer, "accepted_payment_terms", None) or []
+        terms = sorted({
+            int(term) for term in raw_terms
+            if str(term).strip().isdigit() and 20 <= int(term) <= 100 and int(term) % 5 == 0
+        })
+        return terms or [30]
+
+    @staticmethod
+    def _agreement_terms_for_booking(booking: models.Booking) -> str:
+        """Capture the provider terms that belong to the quotation being issued."""
+        caterer = booking.caterer
+        if not caterer:
+            return ""
+        if booking.document_type == "rental_agreement" and caterer.rental_policies:
+            return caterer.rental_policies
+        if caterer.general_terms:
+            return caterer.general_terms
+        return caterer.terms_and_conditions or ""
+
     def create_quotation(self, db: Session, booking: models.Booking, downpayment_percent: int = 30) -> models.Quotation:
         """
         Dispatches to Fixed Package or Customizable Package quotation generation
@@ -18,7 +39,7 @@ class QuotationService:
 
         # Check for existing quotation to update or preserve
         existing_quote = db.query(models.Quotation).filter(models.Quotation.booking_id == booking.id).first()
-        if existing_quote and existing_quote.status in ['signed', 'awaiting_caterer', 'awaiting_customer']:
+        if existing_quote and existing_quote.status in ['signed', 'quoted', 'awaiting_caterer', 'awaiting_customer']:
             return existing_quote
 
         if is_customizable:
@@ -195,6 +216,8 @@ class QuotationService:
             "name": package.name if package else "Customizable Catering Package",
             "description": getattr(package, 'description', '') or "Customized selections chosen by customer.",
             "inclusions": getattr(package, "inclusions", None) or [],
+            "agreement_terms": self._agreement_terms_for_booking(booking),
+            "accepted_payment_terms": self._payment_terms_for_booking(booking),
             "guest_count": guest_count,
             "pricing_mode": "customizable",
             "selected_food": selected_food,
@@ -278,6 +301,8 @@ class QuotationService:
                 "name": package.name,
                 "description": getattr(package, 'description', ''),
                 "inclusions": getattr(package, "inclusions", None) or [],
+                "agreement_terms": self._agreement_terms_for_booking(booking),
+                "accepted_payment_terms": self._payment_terms_for_booking(booking),
                 "unit_price": float(actual_unit_price),
                 "guest_count": booking.guest_count,
                 "base_amount": float(base_amount),

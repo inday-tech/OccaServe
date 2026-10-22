@@ -748,8 +748,10 @@ async def cancel_booking(
     if not booking or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
     
-    # Only allow cancelling drafts or unpaid pending bookings
-    if booking.status in ['draft', 'pending', 'pending_payment'] and booking.payment_status not in ['paid', 'deposit_paid']:
+    # Customers may cancel before any payment is received, including a fully signed
+    # agreement that is still waiting for the first payment.
+    cancellable_statuses = {'draft', 'pending', 'pending_payment', 'awaiting_payment', 'pending_quotation', 'awaiting_customer', 'awaiting_caterer'}
+    if booking.status in cancellable_statuses and booking.payment_status not in ['paid', 'deposit_paid', 'partially_paid', 'proof_submitted', 'balance_proof_submitted', 'pending_verification']:
         # Prevent race condition: Block cancellation if admin is currently reviewing a payment proof
         if booking.payment_status == 'proof_submitted':
             return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}?error_msg=Cannot+cancel+while+payment+is+under+review", status_code=303)
@@ -762,7 +764,15 @@ async def cancel_booking(
         else:
             # Soft cancel for submitted but unpaid bookings
             booking.status = 'cancelled'
+            db.add(models.BookingHistory(booking_id=booking.id, status='cancelled', notes='Customer cancelled the booking before making a payment.'))
             db.commit()
+            from ..services.notification import NotificationService
+            if booking.caterer and booking.caterer.user:
+                await NotificationService.notify_status_update(
+                    db, booking.caterer.user_id, 'Booking Cancelled',
+                    f'{user.first_name} {user.last_name} cancelled booking #{booking.id} before payment.',
+                    f'/caterer/bookings?open_booking={booking.id}', 'booking_update'
+                )
             return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}?success_msg=Booking+cancelled+successfully", status_code=303)
     else:
         return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}?error_msg=Booking+cannot+be+cancelled", status_code=303)

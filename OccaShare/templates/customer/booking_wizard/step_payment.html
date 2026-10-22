@@ -528,8 +528,8 @@
                 </div>
 
                 <label id="referenceField" class="reference-field" for="referenceNoInput">
-                    <span>Reference Number <small>(Required for GCash/Bank)</small></span>
-                    <span class="reference-input-wrap"><i class="fas fa-hashtag"></i><input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Enter the reference shown on your receipt" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" class="ref-input-clean"></span>
+                    <span>Reference Number <small>(Optional · up to 30 characters)</small></span>
+                    <span class="reference-input-wrap"><i class="fas fa-hashtag"></i><input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Enter the reference shown on your receipt (optional)" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" class="ref-input-clean"></span>
                 </label>
 
                 {% set doc_type_display = "Booking Agreement" %}
@@ -801,12 +801,6 @@
                             return;
                         }
                     }
-                    if (refInput && !refInput.value.trim()) {
-                        e.preventDefault();
-                        Swal.fire('Reference Number Required', 'Enter the reference number shown on your receipt.', 'warning');
-                        return;
-                    }
-
                     if(submitBtn) {
                         submitBtn.disabled = true;
                         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking screenshot...';

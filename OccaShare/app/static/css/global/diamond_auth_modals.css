@@ -2100,6 +2100,80 @@ body.modal-open {
     box-shadow: none !important;
 }
 
+/* Keep the registration map controls visibly outlined inside the shared input wrapper. */
+#authModalCaterer #catererLocationWrapper {
+    box-sizing: border-box;
+    border: 1px solid #dbe3ee !important;
+    border-radius: 16px !important;
+    background: #f8fafc !important;
+}
+
+#authModalCaterer #catererLocationSearch,
+#authModalCaterer #catererUseMyLocation {
+    box-sizing: border-box !important;
+    min-width: 0;
+    min-height: 48px;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 12px !important;
+    background: #fff !important;
+    box-shadow: none !important;
+}
+
+#authModalCaterer #catererLocationSearch:focus,
+#authModalCaterer #catererUseMyLocation:focus-visible {
+    border-color: #f97316 !important;
+    outline: 2px solid rgba(249, 115, 22, 0.2);
+    outline-offset: 1px;
+}
+
+#authModalCaterer #catererUseMyLocation {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    background: #fff7f7 !important;
+    color: #9f1239 !important;
+}
+
+#authModalCaterer #catererSaveLocation {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    border: 1px solid #14532d !important;
+    border-radius: 10px !important;
+    background: #166534 !important;
+    color: #fff !important;
+    box-shadow: 0 2px 5px rgba(22, 101, 52, 0.18) !important;
+}
+
+#authModalCaterer #catererSaveLocation:disabled,
+#authModalCaterer #catererUseMyLocation:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+}
+
+#authModalCaterer #streetCatWrapper {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 3.5rem;
+}
+
+@media (max-width: 560px) {
+    #authModalCaterer .caterer-location-controls {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+
+    #authModalCaterer #catererUseMyLocation,
+    #authModalCaterer #catererSaveLocation {
+        width: 100% !important;
+    }
+
+    #authModalCaterer .caterer-location-actions {
+        align-items: stretch !important;
+    }
+}
+
 .auth-modal-content .contact-person-fields {
     row-gap: 0.35rem !important;
 }
