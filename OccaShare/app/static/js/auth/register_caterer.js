@@ -467,13 +467,17 @@
     }
 
     function updateAddressCat() {
+        const street = document.getElementById('street_cat')?.value.trim() || '';
         const prov = document.getElementById('province_cat')?.value;
         const city = document.getElementById('city_cat')?.value;
         const brgy = document.getElementById('barangay_cat')?.value;
-        const street = document.getElementById('street_cat')?.value;
         const hiddenAddress = document.getElementById('address_cat_hidden');
         if (hiddenAddress) {
-            hiddenAddress.value = `${street}, ${brgy}, ${city}, ${prov}`;
+            const mapAddress = hiddenAddress.value.trim();
+            const locationAddress = mapAddress || [brgy, city, prov].filter(Boolean).join(', ');
+            hiddenAddress.value = street && !locationAddress.toLowerCase().includes(street.toLowerCase())
+                ? [street, locationAddress].filter(Boolean).join(', ')
+                : locationAddress;
         }
     }
 

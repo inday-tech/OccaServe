@@ -1086,7 +1086,16 @@ window.handleFormSubmitState = function(event) {
         (async () => {
             const pendingAddressUpdate = window.catererAddressUpdatePromise;
             if (pendingAddressUpdate) {
-                await Promise.race([pendingAddressUpdate, new Promise(resolve => setTimeout(resolve, 5000))]);
+                const addressReady = await Promise.race([
+                    pendingAddressUpdate,
+                    new Promise(resolve => setTimeout(() => resolve(false), 10000))
+                ]);
+                if (!addressReady) {
+                    if (window.showToast) window.showToast('Could not confirm an address for this pin. Try again or choose a Google Maps result.', 'error');
+                    else if (window.showError) window.showError('Could not confirm an address for this pin. Try again or choose a Google Maps result.');
+                    submitAfterConfirm(false);
+                    return;
+                }
             }
             const province = document.getElementById('provinceNameHidden')?.value || '';
             const city = document.getElementById('cityNameHidden')?.value || '';

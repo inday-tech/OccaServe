@@ -2329,6 +2329,30 @@ currentPassInput.addEventListener('input', validateRequirements);
             if (window.triggerSettingsDirty) window.triggerSettingsDirty();
         }
 
+        function getResultAddress(result) {
+            return result.formatted_address ||
+                result.plus_code?.compound_code ||
+                result.plus_code?.global_code || '';
+        }
+
+        function getMostDetailedAddressResult(results) {
+            return (results || [])
+                .filter(result => getResultAddress(result))
+                .map(result => {
+                    const types = result.types || [];
+                    const components = (result.address_components || []).flatMap(component => component.types || []);
+                    const typeScore = types.reduce((score, type) => score + ({
+                        street_address: 5, premise: 4, subpremise: 4, route: 3, establishment: 2
+                    }[type] || 0), 0);
+                    const componentScore = components.reduce((score, type) => score + ({
+                        sublocality_level_1: 2, sublocality_level_2: 1, locality: 2,
+                        postal_town: 2, administrative_area_level_1: 1, administrative_area_level_2: 1
+                    }[type] || 0), 0);
+                    return { result, score: typeScore + componentScore };
+                })
+                .sort((a, b) => b.score - a.score)[0]?.result || null;
+        }
+
         function reverseGeocode(lat, lng) {
             const requestId = ++locationGeocodeRequest;
             const updatePromise = new Promise(resolve => {
@@ -2337,16 +2361,14 @@ currentPassInput.addEventListener('input', validateRequirements);
                         resolve(false);
                         return;
                     }
-                    if (status === 'OK' && results[0]) {
-                        const bestResult = (results || []).find(result => {
-                            const types = result.types || [];
-                            const names = (result.address_components || []).flatMap(component => component.types || []);
-                            return (types.some(type => ['street_address', 'premise', 'subpremise', 'route'].includes(type)) || names.includes('sublocality_level_1')) &&
-                                (names.includes('administrative_area_level_1') || names.includes('administrative_area_level_2'));
-                        }) || results[0];
+                    if (status !== 'OK') {
+                        console.error('Google Maps reverse geocoding failed:', status);
+                    }
+                    const bestResult = status === 'OK' ? getMostDetailedAddressResult(results) : null;
+                    if (bestResult) {
                         const components = bestResult.address_components || [];
                         const addressInput = document.getElementById('businessAddress');
-                        if (addressInput && bestResult.formatted_address) addressInput.value = bestResult.formatted_address;
+                        if (addressInput) addressInput.value = getResultAddress(bestResult);
                         if (window.applyGoogleAddressComponents) await window.applyGoogleAddressComponents(components);
                         if (window.triggerSettingsDirty) window.triggerSettingsDirty();
                         resolve(true);
@@ -2360,8 +2382,8 @@ currentPassInput.addEventListener('input', validateRequirements);
         }
 
         map.addListener('click', (event) => {
-            marker.setMap(map);
             if (event.latLng.lat() < 4.2 || event.latLng.lat() > 21.6 || event.latLng.lng() < 116.7 || event.latLng.lng() > 127.2) return;
+            marker.setMap(map);
             marker.setPosition(event.latLng);
             map.panTo(event.latLng);
             updateCoords(event.latLng.lat(), event.latLng.lng());
@@ -2410,9 +2432,13 @@ currentPassInput.addEventListener('input', validateRequirements);
 
             const addressInput = document.getElementById('businessAddress');
             const components = place.address_components || [];
-            if (addressInput && place.formatted_address) addressInput.value = place.formatted_address;
+            if (addressInput) addressInput.value = place.formatted_address || '';
             if (window.applyGoogleAddressComponents) {
-                window.catererAddressUpdatePromise = window.applyGoogleAddressComponents(components);
+                window.catererAddressUpdatePromise = Promise.resolve(
+                    window.applyGoogleAddressComponents(components)
+                ).then(() => Boolean(place.formatted_address && addressInput?.value.trim()));
+            } else {
+                window.catererAddressUpdatePromise = Promise.resolve(Boolean(place.formatted_address));
             }
             if (window.triggerSettingsDirty) window.triggerSettingsDirty();
         });
@@ -2606,8 +2632,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cityCandidates = [
             getComponentName(components, 'locality'),
             getComponentName(components, 'postal_town'),
-            getComponentName(components, 'administrative_area_level_2'),
             getComponentName(components, 'administrative_area_level_3'),
+            getComponentName(components, 'administrative_area_level_2'),
             getComponentName(components, 'sublocality_level_1')
         ];
         const barangayCandidates = [

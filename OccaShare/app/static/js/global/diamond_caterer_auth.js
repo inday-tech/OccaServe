@@ -27,24 +27,47 @@
     }
 
     function applyCatererAddress(results) {
-        const result = results[0];
+        const candidates = (results || []).filter(result =>
+            result.formatted_address || result.plus_code?.compound_code || result.plus_code?.global_code
+        );
+        const component = (result, types) => {
+            for (const type of types) {
+                const match = (result.address_components || []).find(item => item.types.includes(type));
+                if (match?.long_name) return match.long_name;
+            }
+            return '';
+        };
+        const result = candidates
+            .map(candidate => {
+                const level1 = component(candidate, ['administrative_area_level_1']);
+                const level2 = component(candidate, ['administrative_area_level_2']);
+                const level3 = component(candidate, ['administrative_area_level_3']);
+                const locality = component(candidate, ['locality']);
+                const province = level2 && (
+                    level3 || (locality && locality.toLowerCase() !== level2.toLowerCase())
+                ) ? level2 : level1 || level2 || level3;
+                const city = ['locality', 'postal_town', 'administrative_area_level_3', 'administrative_area_level_2']
+                    .map(type => component(candidate, [type]))
+                    .find(name => name && name.toLowerCase() !== province.toLowerCase()) || '';
+                const barangay = component(candidate, ['sublocality_level_1', 'sublocality_level_2', 'neighborhood', 'administrative_area_level_4']);
+                const typeScore = (candidate.types || []).reduce((score, type) => score + ({
+                    street_address: 5, premise: 4, subpremise: 4, route: 3, establishment: 2
+                }[type] || 0), 0);
+                return { candidate, province, city, barangay, score: typeScore + (province ? 20 : 0) + (city ? 20 : 0) + (barangay ? 5 : 0) };
+            })
+            .sort((a, b) => b.score - a.score)[0];
         if (!result) return false;
 
-        const components = result.address_components || [];
-        const component = type => components.find(item => item.types.includes(type))?.long_name || '';
-        const province = component('administrative_area_level_2') || component('administrative_area_level_1');
-        const city = component('locality') || component('postal_town') ||
-            component('administrative_area_level_3') || component('administrative_area_level_2');
-        const barangay = component('sublocality_level_1') || component('sublocality_level_2') ||
-            component('neighborhood') || component('administrative_area_level_4');
-
-        document.getElementById('province_cat').value = province;
-        document.getElementById('city_cat').value = city;
-        document.getElementById('barangay_cat').value = barangay;
-        document.getElementById('address_cat_hidden').value = result.formatted_address || '';
+        const address = result.candidate.formatted_address ||
+            result.candidate.plus_code?.compound_code ||
+            result.candidate.plus_code?.global_code || '';
+        document.getElementById('province_cat').value = result.province;
+        document.getElementById('city_cat').value = result.city;
+        document.getElementById('barangay_cat').value = result.barangay;
+        document.getElementById('address_cat_hidden').value = address;
         updateAddressCat();
 
-        return Boolean(province && city && barangay && result.formatted_address);
+        return Boolean(result.province && result.city && address);
     }
 
     function reverseGeocodeCatererLocation(position) {
@@ -72,12 +95,17 @@
                     resolve(false);
                     return;
                 }
+                if (status !== 'OK') {
+                    console.error('Google Maps reverse geocoding failed:', status);
+                }
                 const addressApplied = status === 'OK' && applyCatererAddress(results || []);
                 catererRegistrationPinReady = addressApplied;
                 if (saveButton) saveButton.disabled = !addressApplied;
                 setCatererLocationStatus(addressApplied
                     ? 'Address found. Save this location to attach it to your registration.'
-                    : 'Could not identify the full address. Try moving the pin or choosing a search result.');
+                    : status === 'REQUEST_DENIED'
+                        ? 'Google Maps could not verify the address. Please contact support to check the Maps API configuration.'
+                        : 'Could not identify the address and city for this pin. Choose a suggested result or adjust the pin.');
                 resolve(addressApplied);
             });
         });
@@ -110,7 +138,7 @@
         catererRegistrationGeocoder = new google.maps.Geocoder();
         setCatererLocationStatus('Drag the pin or click the map to confirm your business location.');
 
-        const setPin = position => {
+        const setPin = (position, selectedPlace = null) => {
             if (position.lat() < 4.2 || position.lat() > 21.6 || position.lng() < 116.7 || position.lng() > 127.2) {
                 setCatererLocationError('Choose a map pin within the Philippines.');
                 return;
@@ -118,7 +146,24 @@
             catererRegistrationMarker.setMap(catererRegistrationMap);
             catererRegistrationMarker.setPosition(position);
             catererRegistrationMap.panTo(position);
-            reverseGeocodeCatererLocation(position);
+            if (!selectedPlace) {
+                reverseGeocodeCatererLocation(position);
+                return;
+            }
+
+            ++catererRegistrationGeocodeRequest;
+            document.getElementById('catererLocationLatitude').value = position.lat().toFixed(7);
+            document.getElementById('catererLocationLongitude').value = position.lng().toFixed(7);
+            const addressFound = applyCatererAddress([selectedPlace]);
+            catererRegistrationPinReady = addressFound;
+            catererRegistrationPinSaved = false;
+            const saveButton = document.getElementById('catererSaveLocation');
+            if (saveButton) saveButton.disabled = !addressFound;
+            setCatererLocationError('');
+            setCatererLocationStatus(addressFound
+                ? 'Location pinned and address found.'
+                : 'Could not identify the address and city for this result. Choose another result or adjust the pin.');
+            window.catererRegistrationAddressPromise = Promise.resolve(addressFound);
         };
 
         catererRegistrationMap.addListener('click', event => setPin(event.latLng));
@@ -137,17 +182,7 @@
                     return;
                 }
                 catererRegistrationMap.setZoom(17);
-                setPin(place.geometry.location);
-                if (place.address_components?.length) {
-                    const result = {
-                        ...place,
-                        address_components: place.address_components,
-                        formatted_address: place.formatted_address
-                    };
-                    if (applyCatererAddress([result])) {
-                        setCatererLocationStatus('Location pinned and address found.');
-                    }
-                }
+                setPin(place.geometry.location, place);
             });
             search.addEventListener('keydown', event => {
                 if (event.key === 'Enter') event.preventDefault();
@@ -218,10 +253,9 @@
                 && document.getElementById('catererLocationLongitude')?.value
                 && document.getElementById('address_cat_hidden')?.value
                 && document.getElementById('province_cat')?.value
-                && document.getElementById('city_cat')?.value
-                && document.getElementById('barangay_cat')?.value;
+                && document.getElementById('city_cat')?.value;
             if (!saved) {
-                setCatererLocationError('Choose a pin with a complete address before saving.');
+                setCatererLocationError('Choose a pin with a recognized address, province, and city before saving.');
                 button.disabled = false;
                 return;
             }
@@ -502,9 +536,8 @@
             const address = document.getElementById('address_cat_hidden')?.value;
             const province = document.getElementById('province_cat')?.value;
             const city = document.getElementById('city_cat')?.value;
-            const barangay = document.getElementById('barangay_cat')?.value;
-            if (!catererRegistrationPinSaved || !latitude || !longitude || !address || !province || !city || !barangay) {
-                setCatererLocationError('Set your business pin, then save the confirmed location.');
+            if (!catererRegistrationPinSaved || !latitude || !longitude || !address || !province || !city) {
+                setCatererLocationError('Set your business pin, then save the confirmed address and city.');
                 valid = false;
             } else {
                 setCatererLocationError('');
