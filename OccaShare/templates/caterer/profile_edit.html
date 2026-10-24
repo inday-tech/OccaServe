@@ -329,7 +329,10 @@ window.gm_authFailure = function() {
                 <div class="location-details-card">
                     <div class="location-picker-card" style="margin-top: 0;">
                         <label><i class="fas fa-crosshairs"></i> Business Location</label>
-                        <p class="field-hint">Search and choose a result, click the map, drag the pin, or use your current location.</p>
+                        <p class="field-hint">Search and choose a result, click the map, drag the pin, or use your current location. Save only after confirming the exact business entrance.</p>
+                        {% if (profile.latitude is not none or profile.longitude is not none) and not profile.location_pin_confirmed %}
+                        <p class="field-hint" style="color:#9a3412;">Your previous coordinates were not confirmed as an exact map pin. Place the pin again to show the right location to customers.</p>
+                        {% endif %}
 
                         <div class="location-picker-wrapper" id="location-pin">
                             <div class="map-search-group" style="display:flex;gap:0.5rem;align-items:center;">
@@ -343,13 +346,13 @@ window.gm_authFailure = function() {
                             </div>
                             <div id="pickerMap" style="height: 420px; border-radius: var(--border-radius); border: 1px solid #e2e8f0; margin-top: 0.5rem; z-index: 1;"></div>
                             <div class="coords-display">
-                                <span><i class="fas fa-map-pin" style="color:var(--primary-color);margin-right:4px;"></i> Lat: <strong id="latDisplay">{{ profile.latitude or '0.00' }}</strong></span>
-                                <span><i class="fas fa-map-pin" style="color:var(--primary-color);margin-right:4px;"></i> Lon: <strong id="lonDisplay">{{ profile.longitude or '0.00' }}</strong></span>
+                                <span><i class="fas fa-map-pin" style="color:var(--primary-color);margin-right:4px;"></i> Lat: <strong id="latDisplay">{{ '%.7f'|format(profile.latitude) if profile.location_pin_confirmed and profile.latitude is not none and profile.longitude is not none and profile.latitude >= 4.2 and profile.latitude <= 21.6 and profile.longitude >= 116.7 and profile.longitude <= 127.2 else 'Not set' }}</strong></span>
+                                <span><i class="fas fa-map-pin" style="color:var(--primary-color);margin-right:4px;"></i> Lon: <strong id="lonDisplay">{{ '%.7f'|format(profile.longitude) if profile.location_pin_confirmed and profile.latitude is not none and profile.longitude is not none and profile.latitude >= 4.2 and profile.latitude <= 21.6 and profile.longitude >= 116.7 and profile.longitude <= 127.2 else 'Not set' }}</strong></span>
                             </div>
                         </div>
 
-                        <input type="hidden" name="latitude" id="latInput" value="{{ profile.latitude or '' }}">
-                        <input type="hidden" name="longitude" id="lonInput" value="{{ profile.longitude or '' }}">
+                        <input type="hidden" name="latitude" id="latInput" value="{{ profile.latitude if profile.location_pin_confirmed and profile.latitude is not none and profile.longitude is not none and profile.latitude >= 4.2 and profile.latitude <= 21.6 and profile.longitude >= 116.7 and profile.longitude <= 127.2 else '' }}">
+                        <input type="hidden" name="longitude" id="lonInput" value="{{ profile.longitude if profile.location_pin_confirmed and profile.latitude is not none and profile.longitude is not none and profile.latitude >= 4.2 and profile.latitude <= 21.6 and profile.longitude >= 116.7 and profile.longitude <= 127.2 else '' }}">
                     </div>
 
                     <div hidden aria-hidden="true">
@@ -2266,8 +2269,9 @@ currentPassInput.addEventListener('input', validateRequirements);
     let map, marker, geocoder;
     let locationGeocodeRequest = 0;
 
-    const initialLat = {{ profile.latitude if profile.latitude else 14.2811 }};
-    const initialLng = {{ profile.longitude if profile.longitude else 121.4150 }};
+    const hasSavedCoordinatePair = {{ 'true' if profile.location_pin_confirmed and profile.latitude is not none and profile.longitude is not none and profile.latitude >= 4.2 and profile.latitude <= 21.6 and profile.longitude >= 116.7 and profile.longitude <= 127.2 else 'false' }};
+    const initialLat = {{ profile.latitude if profile.location_pin_confirmed and profile.latitude is not none and profile.longitude is not none and profile.latitude >= 4.2 and profile.latitude <= 21.6 and profile.longitude >= 116.7 and profile.longitude <= 127.2 else 12.8797 }};
+    const initialLng = {{ profile.longitude if profile.location_pin_confirmed and profile.latitude is not none and profile.longitude is not none and profile.latitude >= 4.2 and profile.latitude <= 21.6 and profile.longitude >= 116.7 and profile.longitude <= 127.2 else 121.7740 }};
     const initialPos = { lat: initialLat, lng: initialLng };
 
     function initLocationMap() {
@@ -2286,6 +2290,7 @@ currentPassInput.addEventListener('input', validateRequirements);
         map = new google.maps.Map(mapDiv, {
             center: initialPos,
             zoom: 16,
+            restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true },
             mapTypeId: 'hybrid',
             mapTypeControl: true,
             mapTypeControlOptions: {
@@ -2301,44 +2306,18 @@ currentPassInput.addEventListener('input', validateRequirements);
         // Locked Marker (Anti-Spoofing)
         marker = new google.maps.Marker({
             position: initialPos,
-            map: map,
+            map: hasSavedCoordinatePair ? map : null,
             draggable: true,
             animation: google.maps.Animation.DROP,
             title: 'Drag to set your business location'
         });
+        if (hasSavedCoordinatePair) {
+            document.getElementById('latDisplay').innerText = Number(initialLat).toFixed(7);
+            document.getElementById('lonDisplay').innerText = Number(initialLng).toFixed(7);
+        }
 
         // Geocoder (for reverse geocoding on drag/click)
         geocoder = new google.maps.Geocoder();
-
-        window.autoGeocodeAddress = function(addressStr) {
-            if (!geocoder || !map || !marker) return;
-            
-            function attemptGeocode(query) {
-                if (!query || query.trim() === 'Philippines') return;
-                geocoder.geocode({ address: query }, (results, status) => {
-                    if (status === 'OK' && results[0]) {
-                        const loc = results[0].geometry.location;
-                        map.setCenter(loc);
-                        map.setZoom(16);
-                        marker.setPosition(loc);
-                        marker.setAnimation(google.maps.Animation.DROP);
-                        updateCoords(loc.lat(), loc.lng());
-                        if (results[0].address_components && window.applyGoogleAddressComponents) {
-                            window.applyGoogleAddressComponents(results[0].address_components);
-                        }
-                    } else {
-                        const parts = query.split(',');
-                        if (parts.length > 2) {
-                            parts.shift(); // remove the most specific part
-                            attemptGeocode(parts.join(',').trim());
-                        } else {
-                            console.warn("Geocoding failed for:", addressStr);
-                        }
-                    }
-                });
-            }
-            attemptGeocode(addressStr);
-        };
 
         function updateCoords(lat, lng) {
             document.getElementById('latInput').value = lat.toFixed(7);
@@ -2381,12 +2360,15 @@ currentPassInput.addEventListener('input', validateRequirements);
         }
 
         map.addListener('click', (event) => {
+            marker.setMap(map);
+            if (event.latLng.lat() < 4.2 || event.latLng.lat() > 21.6 || event.latLng.lng() < 116.7 || event.latLng.lng() > 127.2) return;
             marker.setPosition(event.latLng);
             map.panTo(event.latLng);
             updateCoords(event.latLng.lat(), event.latLng.lng());
             reverseGeocode(event.latLng.lat(), event.latLng.lng());
         });
         marker.addListener('dragend', (event) => {
+            if (event.latLng.lat() < 4.2 || event.latLng.lat() > 21.6 || event.latLng.lng() < 116.7 || event.latLng.lng() > 127.2) return;
             updateCoords(event.latLng.lat(), event.latLng.lng());
             reverseGeocode(event.latLng.lat(), event.latLng.lng());
         });
@@ -2413,9 +2395,15 @@ currentPassInput.addEventListener('input', validateRequirements);
 
             const lat = place.geometry.location.lat();
             const lng = place.geometry.location.lng();
+            if (lat < 4.2 || lat > 21.6 || lng < 116.7 || lng > 127.2) {
+                if (window.showError) window.showError('Choose a business location within the Philippines.');
+                return;
+            }
+            ++locationGeocodeRequest;
 
             map.setCenter(place.geometry.location);
             map.setZoom(17);
+            marker.setMap(map);
             marker.setPosition(place.geometry.location);
             marker.setAnimation(google.maps.Animation.DROP);
             updateCoords(lat, lng);
@@ -2446,10 +2434,18 @@ currentPassInput.addEventListener('input', validateRequirements);
                     (position) => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
+                        if (lat < 4.2 || lat > 21.6 || lng < 116.7 || lng > 127.2) {
+                            if (window.showError) window.showError('Your current location is outside the Philippines. Place the pin manually.');
+                            gpsBtn.disabled = false;
+                            gpsBtn.innerHTML = origHtml;
+                            return;
+                        }
+                        ++locationGeocodeRequest;
                         const pos = { lat, lng };
 
                         map.setCenter(pos);
                         map.setZoom(18);
+                        marker.setMap(map);
                         marker.setPosition(pos);
                         marker.setAnimation(google.maps.Animation.DROP);
                         updateCoords(lat, lng);
@@ -2481,31 +2477,6 @@ currentPassInput.addEventListener('input', validateRequirements);
             google.maps.event.trigger(map, 'resize');
             map.setCenter(marker.getPosition());
 
-            // If coordinates are missing, geocode the saved address and store the resulting pin.
-            const hasValidCoords = initialLat !== 14.2811 && initialLng !== 121.4150 && initialLat !== 0 && initialLng !== 0;
-            if (!hasValidCoords) {
-                const savedAddress = document.getElementById('businessAddress')?.value?.trim();
-                const savedCity = document.getElementById('cityNameHidden')?.value?.trim();
-                const savedProv = document.getElementById('provinceNameHidden')?.value?.trim();
-                if (savedAddress || savedCity) {
-                    const fullAddress = [savedAddress, savedCity, savedProv, 'Philippines'].filter(Boolean).join(', ');
-                    geocoder.geocode({ address: fullAddress }, (results, status) => {
-                        if (status === 'OK' && results[0]) {
-                            const loc = results[0].geometry.location;
-                            // Move map center and marker visually only
-                            map.setCenter(loc);
-                            map.setZoom(17);
-                            marker.setPosition(loc);
-                            marker.setAnimation(google.maps.Animation.DROP);
-                            // Auto-update the coordinates so it saves properly without confusing the user
-                            updateCoords(loc.lat(), loc.lng());
-                            
-                            const display = document.getElementById('latDisplay');
-                            if (display) display.closest('.coords-display').style.borderColor = 'var(--accent-color)';
-                        }
-                    });
-                }
-            }
         }, 200);
     }
 
@@ -2713,25 +2684,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         
-        // Auto-geocode on load moved to after barangays are loaded to prevent race conditions
+        // Keep text address edits separate from the map pin. Customers can only
+        // save coordinates by selecting a map suggestion or explicitly placing the marker.
     } catch (e) { console.error('Failed to load provinces:', e); }
 
     function triggerAutoGeocode() {
-        const prov = provNameHidden.value;
-        const city = cityNameHidden.value;
-        const brgy = brgyNameHidden.value;
-        const detailStr = document.getElementById('businessAddress').value.trim();
-        
-        let parts = [];
-        if (detailStr) parts.push(detailStr);
-        if (brgy && !detailStr.toLowerCase().includes(brgy.toLowerCase())) parts.push("Brgy. " + brgy);
-        if (city && !detailStr.toLowerCase().includes(city.toLowerCase())) parts.push(city);
-        if (prov && !detailStr.toLowerCase().includes(prov.toLowerCase())) parts.push(prov);
-        parts.push("Philippines");
-        const addressStr = parts.join(", ");
-        if (window.autoGeocodeAddress && (city || prov || detailStr)) {
-            window.autoGeocodeAddress(addressStr);
-        }
+        // Address text is not precise enough to create or replace an exact pin.
     }
 
     document.getElementById('businessAddress').addEventListener('blur', triggerAutoGeocode);

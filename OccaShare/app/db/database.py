@@ -49,6 +49,7 @@ Base = declarative_base()
 def _ensure_schema_sync():
     from sqlalchemy import text
     sync_sqls = [
+        "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS location_pin_confirmed BOOLEAN NOT NULL DEFAULT FALSE;",
         "ALTER TABLE booking_history ADD COLUMN IF NOT EXISTS entry_type VARCHAR DEFAULT 'system_change';",
         "ALTER TABLE booking_history ADD COLUMN IF NOT EXISTS communication_channel VARCHAR;",
         "ALTER TABLE booking_menu_items ADD COLUMN IF NOT EXISTS custom_name VARCHAR;",

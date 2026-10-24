@@ -154,6 +154,8 @@ class CatererProfile(Base):
     admin_remarks = Column(Text, nullable=True)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    # True only after an authorized user explicitly confirms the pin on the map.
+    location_pin_confirmed = Column(Boolean, nullable=False, default=False)
     
     # NEW: Brand Customization Fields
     primary_color = Column(String, default="#FF7B54") # OccaServe Orange

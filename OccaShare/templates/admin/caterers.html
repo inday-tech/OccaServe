@@ -1689,6 +1689,11 @@
     };
     const setPin = position => {
         const request = ++adminLocationRequest;
+        if (position.lat() < 4.2 || position.lat() > 21.6 || position.lng() < 116.7 || position.lng() > 127.2) {
+            status('Choose a map pin within the Philippines.');
+            return;
+        }
+        adminLocationMarker.setMap(adminLocationMap);
         adminLocationSaved = false;
         adminLocationReady = false;
         setSaved(false);
@@ -1725,8 +1730,8 @@
         const element = byId('onboard_location_map');
         if (!element || adminLocationMap || !element.offsetWidth || !window.google?.maps) return;
         const start = { lat: 14.2811, lng: 121.4150 };
-        adminLocationMap = new google.maps.Map(element, { center: start, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
-        adminLocationMarker = new google.maps.Marker({ map: adminLocationMap, position: start, draggable: true, title: 'Drag to set business location' });
+        adminLocationMap = new google.maps.Map(element, { center: start, zoom: 11, restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true }, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
+        adminLocationMarker = new google.maps.Marker({ map: null, position: start, draggable: true, title: 'Drag to set business location' });
         adminLocationGeocoder = new google.maps.Geocoder();
         adminLocationMap.addListener('click', event => setPin(event.latLng));
         adminLocationMarker.addListener('dragend', event => setPin(event.latLng));
@@ -1771,10 +1776,14 @@
             }
         }));
         byId('onboard_location_search')?.addEventListener('input', () => {
-            if (adminLocationSaved) {
-                setSaved(false);
-                status('Choose a search result or confirm the current pin again.');
-            }
+            ++adminLocationRequest;
+            adminLocationReady = false;
+            byId('onboard_latitude').value = '';
+            byId('onboard_longitude').value = '';
+            adminLocationMarker?.setMap(null);
+            byId('onboard_location_summary').style.display = 'none';
+            setSaved(false);
+            status('Choose a search result or place a new pin on the map.');
         });
     };
     window.gm_authFailure = () => status('Map could not authenticate. Check the Maps API key, billing, enabled APIs, and allowed website domains.');

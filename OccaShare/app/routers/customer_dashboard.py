@@ -1295,7 +1295,7 @@ async def customer_marketplace(
         # Caterers without coordinates get distance 99999 (sorted to end)
         distance_query = text("""
             CASE 
-                WHEN latitude IS NULL OR longitude IS NULL THEN 99999
+                WHEN latitude IS NULL OR longitude IS NULL OR location_pin_confirmed IS NOT TRUE THEN 99999
                 ELSE (6371 * acos(
                     LEAST(1.0, GREATEST(-1.0,
                         cos(radians(:lat)) * cos(radians(latitude)) * 
@@ -1319,8 +1319,8 @@ async def customer_marketplace(
     results = query.all()
     
     import math
-    def get_dist(lat1, lon1, lat2, lon2):
-        if lat1 is None or lon1 is None or lat2 is None or lon2 is None: return None
+    def get_dist(lat1, lon1, lat2, lon2, pin_confirmed=True):
+        if lat1 is None or lon1 is None or lat2 is None or lon2 is None or not pin_confirmed: return None
         try:
             r = 6371
             dlat = math.radians(float(lat2)-float(lat1))
@@ -1334,7 +1334,7 @@ async def customer_marketplace(
     for profile, min_p, max_c in results:
         profile.min_package_price = min_p or profile.starting_price or 0
         profile.max_capacity = max_c or 0
-        profile.distance_km = get_dist(lat, lon, profile.latitude, profile.longitude)
+        profile.distance_km = get_dist(lat, lon, profile.latitude, profile.longitude, profile.location_pin_confirmed)
         caterers.append(profile)
 
     # Dynamic filter options

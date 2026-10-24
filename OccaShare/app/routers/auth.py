@@ -333,8 +333,8 @@ async def register(
 
         if latitude is None or longitude is None:
             errors["location"] = "Choose your business location on the map."
-        elif not (-90 <= latitude <= 90 and -180 <= longitude <= 180) or (latitude == 0 and longitude == 0):
-            errors["location"] = "Choose a valid business location on the map."
+        elif not utils.is_valid_ph_coordinates(latitude, longitude):
+            errors["location"] = "Choose a valid business location pin in the Philippines."
 
         if not coverage_area or not coverage_area.strip():
             errors["coverage_area"] = "Service areas are required"
@@ -607,6 +607,7 @@ async def register(
                 gov_id_url=gov_id_url,
                 latitude=latitude,
                 longitude=longitude,
+                location_pin_confirmed=True,
                 verification_status="Not Verified",
                 status="Pending Approval"
             )
@@ -667,8 +668,6 @@ async def register(
             email_sent = EmailService.send_verification_email(email, otp)
             if email_sent:
                 print(f"[AUTH] Registration buffered for {email}. Verification email sent.")
-                if role == "caterer":
-                    background_tasks.add_task(utils.background_geocode, new_profile.id)
             else:
                 print(f"[AUTH WARNING] Verification email delivery failed for {email}: {EmailService.get_last_error()}")
         except Exception as e:

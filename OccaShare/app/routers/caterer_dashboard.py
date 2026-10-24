@@ -8,6 +8,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from ..db import database, models, schemas
 from ..core import security as auth
+from ..core.utils import is_valid_ph_coordinates
 import json
 import math
 import os
@@ -324,11 +325,8 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
         and profile.province_code
         and profile.city_code
         and profile.brgy_code
-        and profile.latitude is not None
-        and profile.longitude is not None
-        and -90 <= float(profile.latitude) <= 90
-        and -180 <= float(profile.longitude) <= 180
-        and not (float(profile.latitude) == 0 and float(profile.longitude) == 0)
+        and profile.location_pin_confirmed
+        and is_valid_ph_coordinates(profile.latitude, profile.longitude)
         and (profile.coverage_area or "").strip()
     )
 
@@ -7884,20 +7882,19 @@ async def update_profile(
     profile.show_platform_logo = bool(show_platform_logo) if show_platform_logo is not None else True
     profile.dashboard_texture = dashboard_texture or "none"
 
-    if latitude and latitude.strip() != "":
-        try:
-            val = float(latitude)
-            if val != 0.0:
-                profile.latitude = val
-        except ValueError:
-            pass
-    if longitude and longitude.strip() != "":
-        try:
-            val = float(longitude)
-            if val != 0.0:
-                profile.longitude = val
-        except ValueError:
-            pass
+    submitted_latitude = (latitude or "").strip()
+    submitted_longitude = (longitude or "").strip()
+    if submitted_latitude or submitted_longitude:
+        if not submitted_latitude or not submitted_longitude or not is_valid_ph_coordinates(submitted_latitude, submitted_longitude):
+            return RedirectResponse(
+                url="/caterer/profile?error_msg=Choose+and+save+a+valid+business+location+pin+in+the+Philippines.",
+                status_code=303,
+            )
+        # Save the coordinate pair together; never combine a new latitude with
+        # a stale longitude from an earlier pin selection.
+        profile.latitude = float(submitted_latitude)
+        profile.longitude = float(submitted_longitude)
+        profile.location_pin_confirmed = True
 
     import base64
     # Handle Single File Uploads
@@ -8026,9 +8023,6 @@ async def update_profile(
                     traceback.print_exc()
 
     db.commit()
-    from ..core import utils
-    if background_tasks:
-        background_tasks.add_task(utils.background_geocode, profile.id)
     valid_settings_sections = {
         "general", "location", "payment-methods", "booking-policies", "availability",
         "brand", "verification", "account"

@@ -2,7 +2,35 @@ import random
 import string
 import re
 import math
+from math import isfinite
 from typing import Optional
+
+
+# A broad bounding box that includes the Philippine archipelago. Used to catch
+# accidental map clicks/geocoding results outside the country without snapping
+# valid pins to an approximate city center.
+PHILIPPINES_BOUNDS = {
+    "south": 4.2,
+    "north": 21.6,
+    "west": 116.7,
+    "east": 127.2,
+}
+
+
+def is_valid_ph_coordinates(latitude, longitude) -> bool:
+    """Return whether a complete, finite coordinate pair falls in the Philippines."""
+    try:
+        lat = float(latitude)
+        lng = float(longitude)
+    except (TypeError, ValueError):
+        return False
+    bounds = PHILIPPINES_BOUNDS
+    return (
+        isfinite(lat)
+        and isfinite(lng)
+        and bounds["south"] <= lat <= bounds["north"]
+        and bounds["west"] <= lng <= bounds["east"]
+    )
 
 def calculate_entropy(text: str) -> float:
     if not text:
@@ -164,57 +192,6 @@ def validate_file_type_and_size(file_content: bytes, filename: str, max_size_mb:
             return "File appears to be corrupted or is not a valid PDF."
             
     return None
-
-def background_geocode(caterer_id: int):
-    """Geocodes a caterer's address in the background and saves to DB."""
-    try:
-        from ..db.database import SessionLocal
-        from ..db.models import CatererProfile
-        import os
-        import requests
-        
-        db = SessionLocal()
-        try:
-            caterer = db.query(CatererProfile).filter(CatererProfile.id == caterer_id).first()
-            if not caterer:
-                return
-                
-            addr = caterer.address_details or caterer.contact_address or ''
-            if not addr:
-                return
-                
-            api_key = os.getenv('GOOGLE_MAPS_API_KEY', '').strip()
-            if not api_key:
-                print('[Geocode] No API key found')
-                return
-                
-            query = addr
-            while query:
-                resp = requests.get('https://maps.googleapis.com/maps/api/geocode/json', params={
-                    'address': query,
-                    'key': api_key,
-                    'region': 'ph'
-                }, timeout=10)
-                
-                data = resp.json()
-                if data.get('status') == 'OK' and data.get('results'):
-                    loc = data['results'][0]['geometry']['location']
-                    caterer.latitude = loc['lat']
-                    caterer.longitude = loc['lng']
-                    db.commit()
-                    print(f"[Geocode] Successfully geocoded Caterer {caterer_id} to {loc['lat']}, {loc['lng']} using query: {query}")
-                    break
-                else:
-                    parts = query.split(',')
-                    if len(parts) > 2:
-                        query = ','.join(parts[1:]).strip()
-                    else:
-                        print(f"[Geocode] Failed to geocode {addr}: {data.get('status')}")
-                        break
-        finally:
-            db.close()
-    except Exception as e:
-        print(f"[Geocode] Exception during geocoding: {e}")
 
 def is_customer_profile_complete(user) -> tuple:
     """

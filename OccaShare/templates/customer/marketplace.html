@@ -523,9 +523,6 @@
     let mapMarkers = [];
     let mapInfoWindow;
     let customerMarker;
-    let geocoder;
-    let geocodeQueue = [];
-    let isGeocoding = false;
 
     function toggleView(view) {
         currentView = view;
@@ -555,10 +552,11 @@
     }
 
     function initMarketplaceMap() {
-        const lagunaCenter = { lat: 14.2811, lng: 121.4150 };
+        const philippinesCenter = { lat: 12.8797, lng: 121.7740 };
         marketplaceMap = new google.maps.Map(document.getElementById('marketplaceMap'), {
-            center: lagunaCenter,
-            zoom: 12,
+            center: philippinesCenter,
+            zoom: 5,
+            restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true },
             mapTypeId: 'hybrid',
             mapTypeControl: true,
             mapTypeControlOptions: {
@@ -570,8 +568,6 @@
             fullscreenControl: true
         });
         mapInfoWindow = new google.maps.InfoWindow();
-        geocoder = new google.maps.Geocoder();
-
         // Add customer location pin if available
         addCustomerPin();
 
@@ -582,7 +578,7 @@
     function addCustomerPin() {
         const lat = parseFloat(sessionStorage.getItem('user_lat'));
         const lng = parseFloat(sessionStorage.getItem('user_lon'));
-        if (isNaN(lat) || isNaN(lng)) return;
+        if (isNaN(lat) || isNaN(lng) || lat < 4.2 || lat > 21.6 || lng < 116.7 || lng > 127.2) return;
 
         if (customerMarker) customerMarker.setMap(null);
 
@@ -623,31 +619,6 @@
         });
     }
 
-    // Geocode an address and return the result via callback
-    function geocodeAddress(address, callback) {
-        geocodeQueue.push({ address, callback });
-        processGeocodeQueue();
-    }
-
-    function processGeocodeQueue() {
-        if (isGeocoding || geocodeQueue.length === 0) return;
-        isGeocoding = true;
-
-        const { address, callback } = geocodeQueue.shift();
-        geocoder.geocode({ address: address }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                const loc = results[0].geometry.location;
-                callback({ lat: loc.lat(), lng: loc.lng() });
-            } else {
-                console.log('Geocode failed for:', address, status);
-                callback(null);
-            }
-            isGeocoding = false;
-            // Add delay to avoid OVER_QUERY_LIMIT
-            setTimeout(processGeocodeQueue, 300);
-        });
-    }
-
     function updateMapMarkers() {
         if (!marketplaceMap) return;
 
@@ -662,7 +633,7 @@
         // Include customer location in bounds
         const custLat = parseFloat(sessionStorage.getItem('user_lat'));
         const custLng = parseFloat(sessionStorage.getItem('user_lon'));
-        if (!isNaN(custLat) && !isNaN(custLng)) {
+        if (!isNaN(custLat) && !isNaN(custLng) && custLat >= 4.2 && custLat <= 21.6 && custLng >= 116.7 && custLng <= 127.2) {
             bounds.extend({ lat: custLat, lng: custLng });
             hasCoords = true;
         }
@@ -683,34 +654,9 @@
             const ratingText = ratingEl ? ratingEl.innerText.trim() : '';
 
             // If valid coordinates, place marker directly
-            if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+            if (!isNaN(lat) && !isNaN(lng) && lat >= 4.2 && lat <= 21.6 && lng >= 116.7 && lng <= 127.2) {
                 placeMarker({ lat, lng }, businessName, fullAddressToDisplay, ratingText, cardLink, imgUrl, bounds);
                 hasCoords = true;
-            }
-            // If no coordinates but has address, geocode it
-            else if (address || city) {
-                const fullAddress = [address, city, 'Philippines'].filter(Boolean).join(', ');
-                geocodeAddress(fullAddress, (pos) => {
-                    if (pos) {
-                        // Update card dataset so proximity sorting and distance display works
-                        card.dataset.lat = pos.lat;
-                        card.dataset.lon = pos.lng;
-                        
-                        placeMarker(pos, businessName, fullAddressToDisplay, ratingText, cardLink, imgUrl, bounds);
-                        // Re-fit bounds after geocoding
-                        if (mapMarkers.length > 0) {
-                            const newBounds = new google.maps.LatLngBounds();
-                            mapMarkers.forEach(m => newBounds.extend(m.getPosition()));
-                            if (!isNaN(custLat) && !isNaN(custLng)) {
-                                newBounds.extend({ lat: custLat, lng: custLng });
-                            }
-                            marketplaceMap.fitBounds(newBounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 } });
-                        }
-                        
-                        // Re-calculate distances now that we have coordinates
-                        sortCaterersByProximity();
-                    }
-                });
             }
         });
 

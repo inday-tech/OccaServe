@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from ..core.templates import is_local_development_host, templates
+from ..core.templates import templates
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import Optional
@@ -21,7 +21,7 @@ from ..services.notification import NotificationService
 from ..services.payment_verification import payment_verification_service
 from ..services.booking_validator import BookingValidator
 from ..services.payment_deadline import format_payment_deadline
-from ..core.utils import is_customer_profile_complete
+from ..core.utils import is_customer_profile_complete, is_valid_ph_coordinates
 from PIL import Image
 try:
     import pytesseract
@@ -1893,7 +1893,6 @@ async def step_details_submit(
     other_event_type: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
-    is_local_development = is_local_development_host(request.url.hostname or "")
     theme_motif = (theme_motif or "").strip()
     celebrant_name = (celebrant_name or "").strip()
 
@@ -2036,18 +2035,10 @@ async def step_details_submit(
     if not venue_address and province and city and barangay:
         venue_address = f"{barangay}, {city}, {province}"
     venue_location_valid = bool(
-        venue_address
-        and venue_latitude is not None
-        and venue_longitude is not None
-        and -90 <= venue_latitude <= 90
-        and -180 <= venue_longitude <= 180
+        venue_address and is_valid_ph_coordinates(venue_latitude, venue_longitude)
     )
-    if not venue_location_valid and not is_local_development:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Please+pin+the+exact+venue+location+on+the+map.", status_code=303)
     if not venue_location_valid:
-        venue_address = ""
-        venue_latitude = None
-        venue_longitude = None
+        return RedirectResponse(url=f"{redirect_base}?booking_error=Please+pin+the+exact+venue+location+on+the+map.", status_code=303)
 
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:

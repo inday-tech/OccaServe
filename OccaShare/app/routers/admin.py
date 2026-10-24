@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 import os, secrets, string, logging
 from ..db import database, models
 from ..core import security as auth
-from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address, is_valid_person_name, is_valid_business_name
+from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address, is_valid_person_name, is_valid_business_name, is_valid_ph_coordinates
 from ..services.email import EmailService
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import quote
@@ -1943,8 +1943,8 @@ async def add_caterer(
 
     if latitude is None or longitude is None:
         errors["location"] = "Save a valid business location pin before creating the caterer."
-    elif not (-90 <= latitude <= 90 and -180 <= longitude <= 180) or (latitude == 0 and longitude == 0):
-        errors["location"] = "The business location coordinates are invalid."
+    elif not is_valid_ph_coordinates(latitude, longitude):
+        errors["location"] = "Choose a valid business location pin in the Philippines."
 
     for field_name, field_value in (("first_name", first_name), ("last_name", last_name)):
         if field_value and is_valid_person_name(field_value):
@@ -2057,6 +2057,7 @@ async def add_caterer(
             cuisine_types=parsed_cuisines,
             latitude=latitude,
             longitude=longitude,
+            location_pin_confirmed=True,
             verification_status="Unverified",
             is_verified=False,
             slug=business_name.lower().replace(" ", "-") + f"-{new_user.id}"

@@ -96,12 +96,13 @@
         catererRegistrationMap = new google.maps.Map(mapElement, {
             center: initialPosition,
             zoom: 12,
+            restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true },
             mapTypeControl: false,
             streetViewControl: false,
             fullscreenControl: true
         });
         catererRegistrationMarker = new google.maps.Marker({
-            map: catererRegistrationMap,
+            map: null,
             position: initialPosition,
             draggable: true,
             title: 'Drag to set your business location'
@@ -110,6 +111,11 @@
         setCatererLocationStatus('Drag the pin or click the map to confirm your business location.');
 
         const setPin = position => {
+            if (position.lat() < 4.2 || position.lat() > 21.6 || position.lng() < 116.7 || position.lng() > 127.2) {
+                setCatererLocationError('Choose a map pin within the Philippines.');
+                return;
+            }
+            catererRegistrationMarker.setMap(catererRegistrationMap);
             catererRegistrationMarker.setPosition(position);
             catererRegistrationMap.panTo(position);
             reverseGeocodeCatererLocation(position);
@@ -152,6 +158,7 @@
                 catererRegistrationPinSaved = false;
                 catererRegistrationPinReady = false;
                 ++catererRegistrationGeocodeRequest;
+                catererRegistrationMarker?.setMap(null);
                 document.getElementById('catererLocationLatitude').value = '';
                 document.getElementById('catererLocationLongitude').value = '';
                 document.getElementById('province_cat').value = '';

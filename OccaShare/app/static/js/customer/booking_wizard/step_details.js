@@ -897,10 +897,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!mapEl || !window.google?.maps) return;
         const geocoder = new google.maps.Geocoder();
         const fallback = { lat: 14.2811, lng: 121.4150 };
-        const savedPoint = Number(venueLat?.value) && Number(venueLng?.value)
+        const savedPoint = venueLat?.value !== '' && venueLng?.value !== '' && venueLat?.value != null && venueLng?.value != null
             ? { lat: Number(venueLat.value), lng: Number(venueLng.value) } : fallback;
-        const map = new google.maps.Map(mapEl, { center: savedPoint, zoom: venueLat?.value ? 17 : 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
-        const marker = new google.maps.Marker({ map, position: savedPoint, draggable: true });
+        const map = new google.maps.Map(mapEl, { center: savedPoint, zoom: venueLat?.value ? 17 : 11, restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true }, mapTypeControl: false, streetViewControl: false, fullscreenControl: true });
+        const hasSavedPin = venueLat?.value !== '' && venueLng?.value !== '' && venueLat?.value != null && venueLng?.value != null &&
+            Number.isFinite(savedPoint.lat) && Number.isFinite(savedPoint.lng) && savedPoint.lat >= 4.2 && savedPoint.lat <= 21.6 && savedPoint.lng >= 116.7 && savedPoint.lng <= 127.2;
+        const marker = new google.maps.Marker({ map: hasSavedPin ? map : null, position: savedPoint, draggable: true });
         let pendingLocation = null;
         let geocodeRequest = 0;
         const clearSavedLocation = () => {
@@ -931,7 +933,10 @@ document.addEventListener('DOMContentLoaded', function () {
         saveVenueButton?.addEventListener('click', savePendingLocation);
         venueSearch?.addEventListener('input', () => {
             if (venueSearch.value.trim() === (venueHidden?.value || '').trim()) return;
+            // Ignore delayed reverse-geocode responses for the previous pin.
+            ++geocodeRequest;
             pendingLocation = null;
+            marker.setMap(null);
             clearSavedLocation();
             if (saveVenueButton) saveVenueButton.disabled = true;
             if (venuePinStatus) venuePinStatus.textContent = 'Choose a search result or pin the map, then save the location.';
@@ -943,6 +948,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (saveVenueButton) saveVenueButton.disabled = true;
             if (venuePinStatus) venuePinStatus.textContent = 'Finding the complete address…';
             marker.setPosition(point);
+            marker.setMap(map);
             geocoder.geocode({ location: point }, (results, status) => {
                 if (requestId !== geocodeRequest) return;
                 const result = status === 'OK' ? results?.[0] : null;
@@ -985,13 +991,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 setLocation(place.geometry.location, place.formatted_address || '');
             });
         }
-        if (!venueLat?.value && venueSearch?.value) geocoder.geocode({ address: venueSearch.value }, (results, status) => {
-            if (status === 'OK' && results?.[0]) {
-                map.setCenter(results[0].geometry.location);
-                map.setZoom(17);
-                setLocation(results[0].geometry.location, results[0].formatted_address || '');
-            }
-        });
     }
     const mapWait = window.setInterval(() => {
         if (window.googleMapsAuthorizationFailed) {

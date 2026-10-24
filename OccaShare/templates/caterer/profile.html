@@ -422,12 +422,10 @@
             const fullAddress = mapEl.getAttribute('data-address') || '';
             const lat = mapEl.getAttribute('data-lat') || '';
             const lng = mapEl.getAttribute('data-lng') || '';
-            
-            let query = encodeURIComponent(fullAddress || businessName);
-            if (lat && lng && lat !== '0' && lng !== '0') {
-                query = `${lat},${lng}`;
-            }
-            const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${query}`;
+            const exactPin = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) &&
+                Number(lat) >= 4.2 && Number(lat) <= 21.6 && Number(lng) >= 116.7 && Number(lng) <= 127.2;
+            const query = exactPin ? `${lat},${lng}` : '';
+            const googleMapsLink = exactPin ? `https://www.google.com/maps/search/?api=1&query=${query}` : '';
             
             mapEl.style.height = 'auto';
             mapEl.style.border = 'none';
@@ -438,12 +436,12 @@
                     </div>
                     <div class="space-y-1">
                         <h4 class="text-sm font-bold text-slate-800">Map View Offline</h4>
-                        <p class="text-xs text-slate-500 max-w-sm">We couldn't load the interactive map on this page, but you can view the location and get directions directly on Google Maps.</p>
+                        <p class="text-xs text-slate-500 max-w-sm">We couldn't load the interactive map on this page.${exactPin ? ' Open the exact saved pin in Google Maps.' : ' This business has no verified map pin yet.'}</p>
                     </div>
-                    <a href="${googleMapsLink}" target="_blank" 
+                    ${exactPin ? `<a href="${googleMapsLink}" target="_blank" rel="noopener noreferrer"` : '<span'}
                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-brand text-white text-xs uppercase font-black tracking-widest rounded-full shadow-md hover:shadow-lg transition-all decoration-none">
-                        <i class="fas fa-external-link-alt text-[10px]"></i> Open in Google Maps
-                    </a>
+                        ${exactPin ? '<i class="fas fa-external-link-alt text-[10px]"></i> Open exact pin in Google Maps' : 'No verified pin'}
+                    ${exactPin ? '</a>' : '</span>'}
                 </div>
             `;
         }
@@ -718,8 +716,8 @@
                 <div id="map" class="rounded-2xl border border-slate-100" style="height: 300px;"
                      data-business-name="{{ caterer.business_name }}"
                      data-address="{{ caterer.address_details or caterer.contact_address or caterer.city or '' }}"
-                     data-lat="{{ caterer.latitude or '' }}"
-                     data-lng="{{ caterer.longitude or '' }}"></div>
+                     data-lat="{{ caterer.latitude if caterer.location_pin_confirmed else '' }}"
+                     data-lng="{{ caterer.longitude if caterer.location_pin_confirmed else '' }}"></div>
                 <div
                     class="mt-5 flex flex-col sm:flex-row gap-4 items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
                     <div class="flex items-center gap-3 w-full sm:w-auto">
@@ -2555,6 +2553,12 @@
         const btnText = document.getElementById('profileDistText');
         const btn = document.getElementById('profileDistBtn');
 
+        if (!Number.isFinite(targetLat) || !Number.isFinite(targetLon) ||
+            targetLat < 4.2 || targetLat > 21.6 || targetLon < 116.7 || targetLon > 127.2) {
+            btnText.textContent = 'Location unpinned';
+            return;
+        }
+
         btnText.innerHTML = 'Locating...';
 
         const doCalculate = (uLat, uLon) => {
@@ -2620,12 +2624,10 @@
     document.addEventListener('DOMContentLoaded', function () {
         const businessName = {{ caterer.business_name | tojson }};
         const savedAddress = {{ (caterer.address_details or caterer.contact_address or '') | tojson }};
-        const savedCity = {{ (caterer.city or '') | tojson }};
-        const fullAddress = savedAddress || [savedCity, 'Philippines'].filter(Boolean).join(', ');
 
         // Use null to distinguish "not set" from 0.0
-        let cLat = {{ caterer.latitude if (caterer.latitude is not none and caterer.latitude != '') else 'null' }};
-        let cLon = {{ caterer.longitude if (caterer.longitude is not none and caterer.longitude != '') else 'null' }};
+        let cLat = {{ caterer.latitude if caterer.location_pin_confirmed and caterer.latitude is not none else 'null' }};
+        let cLon = {{ caterer.longitude if caterer.location_pin_confirmed and caterer.longitude is not none else 'null' }};
 
     const mapElement = document.getElementById('map');
     if (!mapElement) return;
@@ -2637,6 +2639,7 @@
 
     const map = new google.maps.Map(mapElement, {
         zoom: 16,
+        restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true },
         mapTypeId: 'roadmap',
         mapTypeControl: true,
         streetViewControl: false,
@@ -2688,25 +2691,20 @@
         window.catererResolvedLon = loc.lng();
     }
 
-    // Priority: use saved pin coords → geocode text address → default center
-    if (cLat !== null && cLon !== null && cLat !== 0 && cLon !== 0) {
-        // Caterer has pinned their exact location — use it directly
+    // Show a business marker only for an explicitly confirmed saved pin.
+    const hasExactPhilippinePin = Number.isFinite(cLat) && Number.isFinite(cLon) &&
+        cLat >= 4.2 && cLat <= 21.6 && cLon >= 116.7 && cLon <= 127.2;
+    if (hasExactPhilippinePin) {
         placeMarker(new google.maps.LatLng(cLat, cLon));
-    } else if (savedAddress || savedCity) {
-        // Fallback: geocode their text address
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: fullAddress }, (results, status) => {
-            if (status === 'OK' && results[0]) {
-                placeMarker(results[0].geometry.location);
-            } else {
-                // Last resort: center on Laguna
-                placeMarker(new google.maps.LatLng(14.1989, 121.4286));
-            }
-        });
     } else {
-        // No coordinates, no address — show default center with a note
-        map.setCenter(new google.maps.LatLng(14.2811, 121.4150));
-        map.setZoom(10);
+        map.setCenter(new google.maps.LatLng(12.8797, 121.7740));
+        map.setZoom(5);
+        const pinNotice = document.createElement('div');
+        pinNotice.textContent = 'Exact business pin not provided';
+        pinNotice.style.cssText = 'margin:10px;padding:8px 12px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;color:#475569;font:600 12px Arial,sans-serif;box-shadow:0 1px 4px #0002';
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(pinNotice);
+        const distanceLabel = document.getElementById('profileDistText');
+        if (distanceLabel) distanceLabel.textContent = 'Location unpinned';
     }
 
     window.updateMapDistance = function (distanceText) {
