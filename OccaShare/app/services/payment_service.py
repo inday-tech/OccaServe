@@ -223,6 +223,8 @@ class PaymentService:
             new_status = "partially_paid"
 
         booking.amount_paid = verified
+        if new_status in {"deposit_paid", "paid", "fully_paid"} and getattr(booking, "payment_request_status", None) != "paid":
+            booking.payment_request_status = "paid"
         if booking.payment_status != new_status:
             booking.payment_status = new_status
             db.add(booking)
@@ -309,7 +311,7 @@ class PaymentService:
                     else:
                         verified_paid += amt
             else:
-                # Caterer or System (Paymongo) — counted as verified
+                # Caterer or system-recorded payments are counted as verified.
                 verified_paid += amt
 
         legacy_paid = float(booking.amount_paid or 0.0)

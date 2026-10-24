@@ -1559,6 +1559,10 @@
     line-height: 1.5;
 }
 
+@media (max-width: 768px) {
+    .payments-wrapper .pay-title-group h1 { font-size: 1.35rem; }
+}
+
 .cash-request-notice i {
     margin-top: 0.15rem;
     color: #d97706;

@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
             paymentType: row.getAttribute('data-type') || 'Payment',
             amount: getPaymentAmount(row),
             method: row.getAttribute('data-method') || 'Direct',
-            date: row.getAttribute('data-date') || '',
+            date: row.getAttribute('data-date') || row.getAttribute('data-date-iso') || '',
             status: getRowStatusText(row)
         }));
     }
@@ -416,7 +416,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const a = document.createElement('a');
             a.href = url;
             a.download = `Payments_Report_${Date.now()}.csv`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
             a.click();
+            a.remove();
+            window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
         } catch (e) {
             console.error("CSV Export error:", e);
             alert("Could not export CSV file.");

@@ -186,6 +186,7 @@ class CatererProfile(Base):
     equipment_turnover_hours = Column(Integer, default=24) # Turnaround time for rentals
     min_pax = Column(Integer, default=20) # Minimum pax for services
     accepted_payment_terms = Column(JSONB, default=[100]) # Flexible array, e.g. [30, 50, 100]
+    payment_deadline_hours = Column(Integer, nullable=False, default=48)
     default_labor_cost = Column(Float, default=0.0)
     default_utility_cost = Column(Float, default=0.0)
     default_transport_cost = Column(Float, default=0.0)
@@ -697,8 +698,6 @@ class Booking(Base):
     payment_proof_url = Column(String, nullable=True)
     balance_proof_url = Column(String, nullable=True)
     dispatch_proof_url = Column(String, nullable=True)
-    paymongo_link_id = Column(String, nullable=True)
-    paymongo_link_url = Column(String, nullable=True)
     payout_id = Column(Integer, ForeignKey("payouts.id"), nullable=True)
     ocr_verification = relationship("OCRVerification", back_populates="booking", uselist=False, cascade="all, delete-orphan")
     contract = relationship("BookingContract", back_populates="booking", uselist=False, cascade="all, delete-orphan")
@@ -729,6 +728,10 @@ class Booking(Base):
     
     expires_at = Column(DateTime(timezone=True), nullable=True)
     balance_due_date = Column(DateTime(timezone=True), nullable=True) 
+    payment_deadline_hours_snapshot = Column(Integer, nullable=True)
+    payment_request_activated_at = Column(DateTime(timezone=True), nullable=True)
+    payment_deadline_at = Column(DateTime(timezone=True), nullable=True)
+    payment_request_status = Column(String(20), nullable=True, default="pending")
     payment_plan = Column(String, default='downpayment') # 'downpayment' or 'full'
     event_location = Column(Text, nullable=True)
     terms_accepted_at = Column(DateTime(timezone=True), nullable=True)
@@ -948,6 +951,27 @@ class BookingHistory(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     booking = relationship("Booking", back_populates="history")
+
+
+class PaymentExtensionRequest(Base):
+    __tablename__ = "payment_extension_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True)
+    customer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"), nullable=False)
+    reason = Column(Text, nullable=False)
+    status = Column(String(20), nullable=False, default="pending", index=True)
+    decision_reason = Column(Text, nullable=True)
+    previous_deadline_at = Column(DateTime(timezone=True), nullable=True)
+    previous_deadline_hours = Column(Integer, nullable=True)
+    requested_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+    new_deadline_at = Column(DateTime(timezone=True), nullable=True)
+
+    booking = relationship("Booking")
+    customer = relationship("User", foreign_keys=[customer_id])
+    caterer = relationship("CatererProfile", foreign_keys=[caterer_id])
 
 class BookingContract(Base):
     __tablename__ = "booking_contracts"
@@ -1349,7 +1373,7 @@ class PayoutItem(Base):
     booking_id = Column(Integer, ForeignKey("bookings.id"))
     amount = Column(Float) # Net to Caterer
     commission_amount = Column(Float, default=0.0) # Platform Cut
-    payment_reference = Column(String, nullable=True) # Paymongo/External Ref
+    payment_reference = Column(String, nullable=True) # External payment reference
     status = Column(String, default="pending") # pending, escrowed, ready, released
     release_trigger = Column(String, default="on_completion") # immediate, on_completion
     created_at = Column(DateTime(timezone=True), server_default=func.now())

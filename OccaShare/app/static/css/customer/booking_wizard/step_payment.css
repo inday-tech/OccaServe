@@ -21,6 +21,25 @@
     --pay-shadow-lg:   0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
 }
 
+/* Keep payment cards text-led and uncluttered at every screen size. */
+.payment-step-container .pay-section-title > i,
+.payment-step-container .plan-radio,
+.payment-step-container .method-logo-box i,
+.payment-step-container .trust-badge-item > i,
+.payment-step-container .summary-merchant-header .ref-pill > i,
+.payment-step-container .summary-body > div > a > i {
+    display: none !important;
+}
+
+.payment-step-container .fin-item .value,
+.payment-step-container .fin-item.highlight-pay .value {
+    min-width: 0;
+    font-size: 1rem;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
 .payment-step-container {
     max-width: 1100px;
     margin: 0 auto;
@@ -936,4 +955,313 @@
     .file-input-button { padding: 0.65rem 0.7rem; font-size: 0.82rem; }
     .file-input-name { font-size: 0.78rem; }
     .btn-submit-modal { padding: 0.9rem 0.65rem; font-size: 0.88rem; }
+    #paymentModalCard .terms-label-clean { align-items: flex-start; gap: 0.55rem; min-width: 0; }
+    #paymentModalCard .terms-label-clean > span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; font-size: 0.78rem; line-height: 1.4; }
+    #paymentModalCard .terms-checkbox {
+        appearance: auto;
+        -webkit-appearance: checkbox;
+        flex: 0 0 16px !important;
+        width: 16px !important;
+        min-width: 16px !important;
+        max-width: 16px !important;
+        height: 16px !important;
+        min-height: 16px !important;
+        max-height: 16px !important;
+        margin: 2px 0 0 !important;
+        padding: 0 !important;
+        transform: none !important;
+        box-sizing: border-box;
+    }
+}
+
+/* Full-width, roomier payment cards to match the earlier booking steps. */
+@media (max-width: 640px) {
+    .wizard-container:has(.payment-step-container) {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 1rem 0.5rem 1.5rem !important;
+        overflow-x: clip;
+        box-sizing: border-box;
+    }
+
+    .wizard-container:has(.payment-step-container) .wizard-content-wrap {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .payment-step-container {
+        width: 100%;
+        max-width: none;
+        margin: 0 !important;
+        padding: 0.5rem 0 2rem;
+        box-sizing: border-box;
+    }
+
+    /* Remove the shared navigation stylesheet's inner 1.25rem side padding. */
+    .wizard-container:has(.payment-step-container) .payment-step-container {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .payment-step-container .wizard-header-content,
+    .payment-step-container .countdown-banner-clean,
+    .payment-step-container .pay-grid-layout,
+    .payment-step-container .pay-section-box,
+    .payment-step-container .pay-summary-card {
+        width: 100% !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .payment-step-container > *,
+    .payment-step-container .payment-form,
+    .payment-step-container .pay-grid-layout,
+    .payment-step-container .pay-grid-layout > *,
+    .payment-step-container .pay-section-box,
+    .payment-step-container .pay-summary-card {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .payment-step-container .pay-grid-layout {
+        gap: 1rem;
+    }
+
+    .payment-step-container .pay-section-box,
+    .payment-step-container .pay-summary-card {
+        width: 100%;
+        padding: 0.95rem;
+        margin-bottom: 1rem;
+        border-radius: 16px;
+    }
+
+    .payment-step-container .plan-card-clean,
+    .payment-step-container .method-card-clean,
+    .payment-step-container .payment-channel-box,
+    .payment-step-container .cash-payment-summary,
+    .payment-step-container .cash-payment-hero,
+    .payment-step-container .instruction-steps-clean {
+        padding: 0.85rem;
+        border-radius: 14px;
+    }
+
+    .payment-step-container p,
+    .payment-step-container label,
+    .payment-step-container .pay-section-subtitle,
+    .payment-step-container .plan-description,
+    .payment-step-container .method-description {
+        line-height: 1.45;
+        overflow-wrap: break-word;
+    }
+
+    .payment-step-container .pay-section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .payment-step-container .pay-section-title {
+        font-size: 0.94rem;
+        line-height: 1.4;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .payment-step-container .pay-section-subtitle {
+        display: block;
+        font-size: 0.78rem;
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+    }
+
+    .payment-step-container .pay-config-col,
+    .payment-step-container .pay-summary-sidebar,
+    .payment-step-container .plan-card-clean,
+    .payment-step-container .plan-left,
+    .payment-step-container .plan-info,
+    .payment-step-container .method-card-clean,
+    .payment-step-container .summary-body {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .payment-step-container .pay-summary-sidebar {
+        position: static;
+    }
+
+    .payment-step-container .plan-card-clean {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 0.75rem;
+    }
+
+    .payment-step-container .plan-left {
+        flex: 1 1 100%;
+        align-items: flex-start;
+        gap: 0.65rem;
+    }
+
+    .payment-step-container .plan-price {
+        flex: 1 1 100%;
+        text-align: left;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        font-size: 1rem;
+    }
+
+    .payment-step-container .method-grid-clean {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.75rem;
+    }
+
+    .payment-step-container .method-card-clean {
+        width: 100%;
+        padding: 1rem;
+    }
+
+    .payment-step-container .summary-merchant-header {
+        flex-wrap: wrap;
+        align-items: flex-start;
+        padding: 1rem;
+        gap: 0.75rem;
+    }
+
+    .payment-step-container .merchant-id-box,
+    .payment-step-container .merchant-text {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .payment-step-container .merchant-text p,
+    .payment-step-container .fin-item .label,
+    .payment-step-container .fin-item .value {
+        overflow-wrap: anywhere;
+        word-break: normal;
+    }
+
+    .payment-step-container .fin-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 45%);
+        align-items: start;
+        gap: 0.6rem;
+    }
+
+    .payment-step-container .fin-item .label,
+    .payment-step-container .fin-item .value {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .payment-step-container .fin-item .value { text-align: right; }
+
+    .payment-step-container .wizard-actions-clean {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .payment-step-container .wizard-actions-clean > * {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.4;
+    }
+
+    .payment-step-container .file-input-shell {
+        flex-wrap: wrap;
+        min-width: 0;
+        padding: 0.55rem;
+    }
+
+    .payment-step-container .file-input-name {
+        flex: 1 1 120px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    .payment-step-container .trust-badges-clean {
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 0.65rem 0.85rem;
+    }
+
+    .payment-step-container .trust-badge-item {
+        flex: 1 1 110px;
+        min-width: 0;
+        line-height: 1.35;
+    }
+
+    .payment-step-container .ref-pill {
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .payment-step-container .wizard-title {
+        font-size: 1.3rem !important;
+        line-height: 1.3;
+    }
+
+    .payment-step-container .wizard-subtitle {
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+
+    .payment-step-container .countdown-banner-clean {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+        border-radius: 14px;
+        gap: 0.85rem;
+    }
+
+    .payment-step-container .countdown-banner-clean > div:first-child {
+        width: 100%;
+        min-width: 0;
+        align-items: flex-start !important;
+    }
+
+    .payment-step-container .countdown-banner-clean > div:first-child > div {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    .payment-step-container .countdown-banner-clean p {
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+
+    .payment-step-container .timer-badge-clean {
+        align-self: flex-end;
+    }
+
+    .payment-step-container .fin-item .value,
+    .payment-step-container .fin-item.highlight-pay .value {
+        font-size: 0.96rem !important;
+        line-height: 1.3 !important;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .payment-step-container .fin-item.highlight-pay .label { font-size: 0.78rem; }
+    .payment-step-container .plan-price { font-size: 0.94rem !important; line-height: 1.35; }
+
+    /* Hide decorative card glyphs while keeping payment method names and copy clear. */
+    .payment-step-container .pay-section-title > i,
+    .payment-step-container .plan-radio,
+    .payment-step-container .method-logo-box i,
+    .payment-step-container .trust-badge-item > i,
+    .payment-step-container .summary-merchant-header .ref-pill > i,
+    .payment-step-container .summary-body > div > a > i {
+        display: none !important;
+    }
 }

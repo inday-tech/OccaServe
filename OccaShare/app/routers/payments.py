@@ -1,197 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from ..db import database, models
-from ..core import security as auth
 from datetime import datetime, timezone
-import json
-from fastapi.responses import RedirectResponse
+from ..services.notification import NotificationService
 
 router = APIRouter(prefix="/api", tags=["payments"])
-
-@router.get("/payment/success")
-async def payment_success(request: Request):
-    return RedirectResponse(
-        url="/customer/bookings?success_msg=Payment+Received!+Your+booking+has+been+updated+in+our+system.", 
-        status_code=303
-    )
-
-@router.post("/bookings/{booking_id}/pay")
-async def process_payment(
-    request: Request,
-    booking_id: int,
-    payment_type: str = Form("dp"), # "dp" or "balance"
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user)
-):
-    booking = db.query(models.Booking).get(booking_id)
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-        
-    # Tenant / Customer ownership verification
-    if current_user.role == 'customer' and booking.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Unauthorized: this booking does not belong to you.")
-    if current_user.role == 'caterer' and (not current_user.caterer_profile or booking.caterer_id != current_user.caterer_profile.id):
-        raise HTTPException(status_code=403, detail="Unauthorized: this booking does not belong to your business.")
-    
-    try:
-        res_fee = float(booking.reservation_fee or 0)
-        total = float(booking.total_amount or 0)
-        
-        amount = res_fee if payment_type == "dp" else (total - res_fee)
-        
-        if amount <= 0:
-            return {"success": False, "message": f"Invalid payment amount: ₱{amount:,.2f}. Please contact support."}
-    except Exception as e:
-        return {"success": False, "message": f"Calculation error: {str(e)}"}
-
-    from ..services.paymongo import paymongo_service
-    description = f"Payment for {booking.event_name or 'Event'} ({payment_type.upper()})"
-    remarks = f"booking_id:{booking.id}:type:{payment_type}"
-    
-    # Generate Success URL dynamically
-    base_url = str(request.base_url).rstrip('/')
-    success_url = f"{base_url}/api/payment/success"
-    
-    try:
-        # Use Modern Checkout Session instead of legacy link
-        link_data = paymongo_service.create_checkout_session(amount, description, remarks, success_url)
-        
-        booking.paymongo_link_id = link_data["id"]
-        booking.paymongo_link_url = link_data["url"]
-        db.commit()
-
-        return {
-            "success": True, 
-            "checkout_url": link_data["url"],
-            "message": "Checkout session generated"
-        }
-    except Exception as e:
-        print(f"FAILED TO GENERATE PAYMONGO LINK: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/webhooks/payment")
-async def payment_webhook(
-    request: Request,
-    db: Session = Depends(database.get_db)
-):
-    """
-    Official Paymongo Webhook Handler
-    """
-    try:
-        body = await request.body()
-        signature = request.headers.get("paymongo-signature", "")
-        # For simplicity in this demo environment, we extract signature components if needed
-        # but the specific signature verification logic is in PaymongoService
-        
-        payload = json.loads(body)
-        
-        if "data" in payload and "attributes" in payload["data"]:
-            event_type = payload["data"]["attributes"].get("type")
-            
-            if event_type == "link.payment.paid":
-                payment_data = payload["data"]["attributes"].get("data", {}).get("attributes", {})
-                remarks = payment_data.get("remarks", "")
-                external_ref = payment_data.get("reference_number")
-                amount_paid = payment_data.get("amount", 0) / 100.0 # convert cents to pesos
-                
-                # Parse remarks e.g. "booking_id:15:type:dp"
-                parts = remarks.split(":")
-                booking_id = None
-                pay_type = "dp"
-                
-                if len(parts) >= 2 and parts[0] == "booking_id":
-                    booking_id = int(parts[1])
-                if len(parts) >= 4 and parts[2] == "type":
-                    pay_type = parts[3]
-                
-                if not booking_id:
-                     return {"error": "Booking ID missing in remarks"}
-
-                booking = db.query(models.Booking).get(booking_id)
-                if not booking:
-                     return {"error": "Booking not found"}
-
-                # 1. Update Booking Status
-                # Record the payment in BookingPaymentRecord for audit and status computation
-                from ..db.models import BookingPaymentRecord
-                payment_record = BookingPaymentRecord(
-                    booking_id=booking.id,
-                    amount=amount_paid,
-                    payment_method=payment_data.get("source", "Paymongo"),
-                    payment_type="Deposit" if pay_type == "dp" else "Full",
-                    reference_notes=remarks,
-                    recorded_by="System"
-                )
-                db.add(payment_record)
-                # Use centralized payment service to derive the correct payment_status
-                from ..services.payment_service import PaymentService
-                PaymentService.update_payment_status(booking, db)
-                # Preserve legacy status fields for backward compatibility
-                if pay_type == "dp":
-                    booking.status = "confirmed"
-                    booking.expires_at = None
-                # Note: booking.payment_status is now set by the service
-                
-                booking.payment_reference = external_ref
-
-                # 2. Logic for Escrow / Payout
-                config = db.query(models.WebsiteConfig).first()
-                commission = config.commission_fixed_amount if pay_type == "dp" else 0.0
-                net_amount = amount_paid - commission
-                
-                # Check if a Payout record exists for this caterer/booking
-                payout = db.query(models.Payout).filter(
-                    models.Payout.caterer_id == booking.caterer_id,
-                    models.Payout.status == "pending"
-                ).first()
-                
-                if not payout:
-                    payout = models.Payout(
-                        caterer_id=booking.caterer_id,
-                        amount=0,
-                        status="pending"
-                    )
-                    db.add(payout)
-                    db.flush()
-
-                # Create Payout Item
-                # DP is released 'immediate' (Prep Funds), Balance is released 'on_completion' (Escrow)
-                trigger = "immediate" if pay_type == "dp" else "on_completion"
-                status = "ready" if trigger == "immediate" else "escrowed"
-                
-                payout_item = models.PayoutItem(
-                    payout_id=payout.id,
-                    booking_id=booking.id,
-                    amount=net_amount,
-                    commission_amount=commission,
-                    payment_reference=external_ref,
-                    status=status,
-                    release_trigger=trigger
-                )
-                db.add(payout_item)
-                
-                # Update total payout amount
-                payout.amount += net_amount
-
-                # 3. Log history
-                history = models.BookingHistory(
-                    booking_id=booking_id,
-                    status=booking.status,
-                    notes=f"Payment of ₱{amount_paid:,.2f} ({pay_type.upper()}) received via Paymongo."
-                )
-                db.add(history)
-                
-                # 4. Trigger Notification
-                from ..services.notification import NotificationService
-                await NotificationService.notify_payment_received(db, booking, amount_paid, "Paymongo Online")
-                
-                db.commit()
-                return {"status": "success", "booking_id": booking_id}
-            
-        return {"status": "ignored", "event": payload.get("data", {}).get("attributes", {}).get("type")}
-    except Exception as e:
-        db.rollback()
-        return {"error": str(e)}
 
 @router.post("/bookings/{booking_id}/expire")
 async def expire_booking(
@@ -221,7 +34,7 @@ async def expire_booking(
 @router.post("/internal/cleanup-expired")
 async def cleanup_expired_bookings(db: Session = Depends(database.get_db)):
     """
-    Finds and marks only overdue unfinished booking drafts as expired.
+    Expires unfinished drafts and overdue initial payment requests without cancelling bookings.
     """
     now = datetime.now(timezone.utc)
     expired_bookings = db.query(models.Booking).filter(
@@ -239,6 +52,28 @@ async def cleanup_expired_bookings(db: Session = Depends(database.get_db)):
         )
         db.add(history)
         count += 1
+
+    from ..services.payment_deadline import expire_initial_payment_if_due
+    overdue_payment_requests = db.query(models.Booking).filter(
+        models.Booking.payment_deadline_at <= now,
+        models.Booking.payment_request_status == "pending",
+        models.Booking.status.in_(["pending", "awaiting_payment", "pending_payment"]),
+    ).all()
+    payment_expired_count = 0
+    for booking in overdue_payment_requests:
+        if not expire_initial_payment_if_due(db, booking, now=now):
+            continue
+        payment_expired_count += 1
+        await NotificationService.notify_status_update(
+            db, booking.user_id, "Payment Request Expired",
+            "The initial payment deadline passed. You can request an extension from the caterer.",
+            f"/customer/bookings?open_detail={booking.id}&open_chat=1", "warning"
+        )
+        await NotificationService.notify_status_update(
+            db, booking.caterer.user_id, "Payment Request Expired",
+            "The customer's initial payment deadline passed. Review the booking and any extension request.",
+            f"/caterer/bookings?open_booking={booking.id}&open_tab=payment", "warning"
+        )
     
     db.commit()
-    return {"expired_count": count}
+    return {"expired_count": count, "payment_requests_expired": payment_expired_count}

@@ -19,6 +19,7 @@ from ..services.realtime import manager
 from ..services.payment_verification import payment_verification_service
 from ..services.notification import NotificationService, caterer_notification_destination
 from ..services.reminders import billing_period_due_date
+from ..services.payment_deadline import ALLOWED_PAYMENT_DEADLINE_HOURS, normalize_deadline_hours
 from ..services.commission import (
     build_commission_invoice_rows,
     calculate_booking_commission,
@@ -4437,6 +4438,20 @@ async def get_booking_details_api(
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    from ..services.payment_deadline import expire_initial_payment_if_due
+    expired_now = expire_initial_payment_if_due(db, booking)
+    if expired_now:
+        await NotificationService.notify_status_update(
+            db, booking.user_id, "Payment Request Expired",
+            "The initial payment deadline passed. You can request an extension from the caterer.",
+            f"/customer/bookings?open_detail={booking.id}&open_chat=1", "warning"
+        )
+        await NotificationService.notify_status_update(
+            db, user.id, "Payment Request Expired",
+            "The customer's initial payment deadline passed. Review the booking and any extension request.",
+            f"/caterer/bookings?open_booking={booking.id}&open_tab=payment", "warning"
+        )
+
     # Reopen premature completions so remaining-balance settlement works
     from app.services.payment_service import PaymentService
     if PaymentService.heal_premature_completion(booking, db):
@@ -4458,6 +4473,10 @@ async def get_booking_details_api(
 
     total_price = float(booking.total_price or booking.total_amount or 0)
     payment_records = sorted(booking.payment_records or [], key=lambda record: record.payment_date.isoformat() if record.payment_date else "", reverse=True)
+    pending_payment_extension = db.query(models.PaymentExtensionRequest).filter(
+        models.PaymentExtensionRequest.booking_id == booking.id,
+        models.PaymentExtensionRequest.status == "pending",
+    ).first()
     selected_items = []
     for item in booking.selected_items or []:
         related_item = item.menu_item or item.equipment or item.service
@@ -4733,6 +4752,14 @@ async def get_booking_details_api(
         "net_amount": round(net_amount, 2),
         "commission_rate": comm_rate,
         "payment_status": booking.payment_status,
+        "payment_request_status": booking.payment_request_status,
+        "payment_deadline_hours": booking.payment_deadline_hours_snapshot,
+        "payment_deadline_at": booking.payment_deadline_at.isoformat() if booking.payment_deadline_at else None,
+        "payment_extension_request": ({
+            "id": pending_payment_extension.id,
+            "reason": pending_payment_extension.reason,
+            "requested_at": pending_payment_extension.requested_at.isoformat() if pending_payment_extension.requested_at else None,
+        } if pending_payment_extension else None),
         "computed_payment_status": computed_payment_status,
         "payment_method": booking.payment_method,
         "payment_plan": booking.payment_plan,
@@ -4827,6 +4854,76 @@ async def get_booking_details_api(
         "custom_requirements": sanitized_custom_reqs,
         "caterer_notes": booking.caterer_notes
     }
+
+
+@router.post("/bookings/{booking_id}/payment-extension/{extension_id}")
+async def decide_payment_extension(
+    booking_id: int,
+    extension_id: int,
+    decision: str = Form(...),
+    decision_reason: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only),
+):
+    profile = user.caterer_profile
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == booking_id,
+        models.Booking.caterer_id == (profile.id if profile else -1),
+    ).with_for_update().first()
+    extension = db.query(models.PaymentExtensionRequest).filter(
+        models.PaymentExtensionRequest.id == extension_id,
+        models.PaymentExtensionRequest.booking_id == booking_id,
+        models.PaymentExtensionRequest.caterer_id == (profile.id if profile else -1),
+    ).with_for_update().first()
+    if not booking or not extension:
+        raise HTTPException(status_code=404, detail="Payment extension request not found")
+    if extension.status != "pending":
+        raise HTTPException(status_code=409, detail="This extension request has already been decided.")
+    if decision not in {"approve", "reject"}:
+        raise HTTPException(status_code=400, detail="Choose approve or reject.")
+    decision_reason = (decision_reason or "").strip()
+    if len(decision_reason) < 4 or len(decision_reason) > 500:
+        raise HTTPException(status_code=400, detail="Add a decision note between 4 and 500 characters.")
+
+    extension.decided_at = datetime.now(timezone.utc)
+    extension.decision_reason = decision_reason
+    if decision == "approve":
+        from ..services.payment_deadline import booking_is_extension_eligible, format_payment_deadline, normalize_deadline_hours
+        eligible, error = booking_is_extension_eligible(booking)
+        if not eligible:
+            raise HTTPException(status_code=409, detail=error)
+        hours = normalize_deadline_hours(getattr(profile, "payment_deadline_hours", 48))
+        extension.status = "approved"
+        extension.new_deadline_at = extension.decided_at + timedelta(hours=hours)
+        booking.payment_deadline_hours_snapshot = hours
+        booking.payment_request_activated_at = extension.decided_at
+        booking.payment_deadline_at = extension.new_deadline_at
+        booking.payment_request_status = "pending"
+        booking.payment_status = "pending"
+        booking.status = "awaiting_payment"
+        history_status = "awaiting_payment"
+        customer_message = f"Your payment extension was approved. You have {hours} hours to submit the payment by {format_payment_deadline(extension.new_deadline_at)}."
+        title = "Payment Extension Approved"
+    else:
+        extension.status = "rejected"
+        history_status = booking.status
+        customer_message = f"Your payment extension request was declined. Caterer note: {decision_reason}"
+        title = "Payment Extension Declined"
+
+    db.add(models.BookingHistory(
+        booking_id=booking.id,
+        status=history_status,
+        notes=f"Payment extension {extension.status} by caterer. Note: {decision_reason}",
+    ))
+    db.commit()
+    await NotificationService.notify_status_update(
+        db, booking.user_id, title, customer_message,
+        f"/bookings/step/payment/{booking.id}", "success" if decision == "approve" else "warning"
+    )
+    return RedirectResponse(
+        f"/caterer/bookings?open_booking={booking.id}&open_tab=payment&extension_decision={extension.status}",
+        status_code=303,
+    )
 
 
 @router.post("/api/bookings/{booking_id}/document-link")
@@ -6680,6 +6777,7 @@ async def edit_profile(
         },
         "can_publish": can_publish,
         "listing_is_live": listing_is_live,
+        "payment_deadline_options": ALLOWED_PAYMENT_DEADLINE_HOURS,
         "active_page": "settings"
     })
 
@@ -7392,6 +7490,7 @@ async def update_profile(
     card_number: Optional[str] = Form(None),
     cash_instructions: Optional[str] = Form(None),
     booking_lead_time: Optional[str] = Form("7"),
+    payment_deadline_hours: Optional[str] = Form(None),
     min_pax: Optional[str] = Form(None),
     starting_price: Optional[str] = Form("0.0"),
     default_excess_guest_price: Optional[str] = Form(None),
@@ -7491,6 +7590,16 @@ async def update_profile(
         raise HTTPException(status_code=400, detail="Choose at least one deposit percentage from 20% to 100%.")
     if not selected_payment_terms or any(term < 20 or term > 100 or term % 5 for term in selected_payment_terms):
         raise HTTPException(status_code=400, detail="Choose deposit options in 5% steps from 20% to 100%.")
+
+    if payment_deadline_hours is None:
+        selected_payment_deadline = normalize_deadline_hours(profile.payment_deadline_hours)
+    else:
+        try:
+            selected_payment_deadline = int(payment_deadline_hours)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Choose a valid payment deadline.")
+    if selected_payment_deadline not in ALLOWED_PAYMENT_DEADLINE_HOURS:
+        raise HTTPException(status_code=400, detail="Payment deadline must be 24, 48, or 72 hours.")
 
     def _to_int(val, default=0):
         if val is None: return default
@@ -7751,6 +7860,7 @@ async def update_profile(
             else profile.starting_price,
         )
     profile.terms_and_conditions = terms_and_conditions
+    profile.payment_deadline_hours = selected_payment_deadline
     profile.general_terms = general_terms
     profile.default_labor_cost = _to_float(default_labor_cost, 0.0)
     profile.default_utility_cost = _to_float(default_utility_cost, 0.0)

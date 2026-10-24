@@ -24,6 +24,7 @@ class EmailService:
         body: str,
         html_body: str = None
     ):
+        server = None
         try:
             to_email = to_email.strip()
 
@@ -53,16 +54,6 @@ class EmailService:
                     MIMEText(html_body, "html", "utf-8")
                 )
 
-            print("\n==================== [SMTP DIAGNOSTIC] ====================")
-            print("MAIL_USERNAME:", settings.MAIL_USERNAME)
-            print("MAIL_SERVER:", settings.MAIL_SERVER)
-            print("MAIL_PORT:", settings.MAIL_PORT)
-            print("MAIL_TLS:", settings.MAIL_TLS)
-            print("MAIL_PASSWORD SET:", bool(clean_password), f"(Length: {len(clean_password)})")
-            print(f"[EMAIL] Connecting to {settings.MAIL_SERVER}:{settings.MAIL_PORT}")
-            print(f"[EMAIL] From: {from_email}")
-            print(f"[EMAIL] To: {to_email}")
-
             if settings.MAIL_SSL or settings.MAIL_PORT == 465:
                 ssl_context = ssl.create_default_context()
                 server = smtplib.SMTP_SSL(
@@ -84,35 +75,34 @@ class EmailService:
                     server.starttls()
                     server.ehlo()
 
-            print("[EMAIL] Logging in...")
-
             server.login(
                 settings.MAIL_USERNAME,
                 clean_password
             )
-
-            print("[EMAIL] Login successful!")
-
             result = server.sendmail(
                 from_email,
                 [to_email],
                 msg.as_string()
             )
 
-            print(f"[EMAIL] sendmail result: {result}")
-
-            server.quit()
-
-            print("[EMAIL] Email sent successfully!")
-            print("===========================================================\n")
+            if result:
+                raise smtplib.SMTPRecipientsRefused(result)
             EmailService._last_error = None
             return True
 
         except Exception as e:
             EmailService._last_error = f"{type(e).__name__}: {str(e)}"
-            print(f"[EMAIL ERROR] {type(e).__name__}: {e}")
-            print("===========================================================\n")
-            raise
+            logger.warning("Email delivery failed (%s): %s", type(e).__name__, e)
+            return False
+        finally:
+            if server is not None:
+                try:
+                    server.quit()
+                except Exception:
+                    try:
+                        server.close()
+                    except Exception:
+                        pass
 
     @staticmethod
     def send_welcome_email(email: str, user_id: int):

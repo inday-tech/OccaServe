@@ -592,6 +592,20 @@ window.gm_authFailure = function() {
             <!-- Section: Payment Methods -->
             <div class="settings-section" id="section-payment-methods">
 
+                    <div class="payment-box-compact full-width" style="margin-bottom:1rem;">
+                        <h4>Payment Policy</h4>
+                        <div class="form-group">
+                            <label for="payment_deadline_hours">Payment Deadline</label>
+                            <select id="payment_deadline_hours" name="payment_deadline_hours" required>
+                                {% set deadline_hours = profile.payment_deadline_hours if profile.payment_deadline_hours in payment_deadline_options else 48 %}
+                                {% for hours in payment_deadline_options %}
+                                <option value="{{ hours }}" {% if deadline_hours == hours %}selected{% endif %}>{{ hours }} hours</option>
+                                {% endfor %}
+                            </select>
+                            <span class="field-hint">Customers have this long to submit the required initial payment after both parties sign. Existing payment deadlines will not change.</span>
+                        </div>
+                    </div>
+
                     {% set standard_payment_methods = ['gcash', 'maya', 'bank', 'bank transfer', 'card', 'debit / credit card', 'cash', 'cash / manual'] %}
                     {% set saved_custom_payment_method = profile.payout_method if profile.payout_method and profile.payout_method|lower|trim not in standard_payment_methods else '' %}
                     {% set saved_custom_payment_details = profile.custom_payment_details or {} %}
@@ -2250,6 +2264,7 @@ currentPassInput.addEventListener('input', validateRequirements);
 (function() {
     let mapInitialized = false;
     let map, marker, geocoder;
+    let locationGeocodeRequest = 0;
 
     const initialLat = {{ profile.latitude if profile.latitude else 14.2811 }};
     const initialLng = {{ profile.longitude if profile.longitude else 121.4150 }};
@@ -2326,18 +2341,23 @@ currentPassInput.addEventListener('input', validateRequirements);
         };
 
         function updateCoords(lat, lng) {
-            document.getElementById('latInput').value = lat.toFixed(6);
-            document.getElementById('lonInput').value = lng.toFixed(6);
-            document.getElementById('latDisplay').innerText = lat.toFixed(6);
-            document.getElementById('lonDisplay').innerText = lng.toFixed(6);
+            document.getElementById('latInput').value = lat.toFixed(7);
+            document.getElementById('lonInput').value = lng.toFixed(7);
+            document.getElementById('latDisplay').innerText = lat.toFixed(7);
+            document.getElementById('lonDisplay').innerText = lng.toFixed(7);
             window.catererLocationPinChanged = true;
             window.catererLocationPinConfirmed = false;
             if (window.triggerSettingsDirty) window.triggerSettingsDirty();
         }
 
         function reverseGeocode(lat, lng) {
+            const requestId = ++locationGeocodeRequest;
             const updatePromise = new Promise(resolve => {
                 geocoder.geocode({ location: { lat, lng } }, async (results, status) => {
+                    if (requestId !== locationGeocodeRequest) {
+                        resolve(false);
+                        return;
+                    }
                     if (status === 'OK' && results[0]) {
                         const bestResult = (results || []).find(result => {
                             const types = result.types || [];

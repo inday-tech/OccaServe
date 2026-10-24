@@ -51,8 +51,10 @@
         const latitude = position.lat();
         const longitude = position.lng();
         const requestId = ++catererRegistrationGeocodeRequest;
-        document.getElementById('catererLocationLatitude').value = latitude.toFixed(6);
-        document.getElementById('catererLocationLongitude').value = longitude.toFixed(6);
+        // Keep the submitted coordinates tied to the actual map marker. Seven
+        // decimals retain sub-meter placement without introducing rounding drift.
+        document.getElementById('catererLocationLatitude').value = latitude.toFixed(7);
+        document.getElementById('catererLocationLongitude').value = longitude.toFixed(7);
         document.getElementById('province_cat').value = '';
         document.getElementById('city_cat').value = '';
         document.getElementById('barangay_cat').value = '';
@@ -145,15 +147,23 @@
                 if (event.key === 'Enter') event.preventDefault();
             });
             search.addEventListener('input', () => {
-                if (catererRegistrationPinSaved) {
-                    catererRegistrationPinSaved = false;
-                    const saveButton = document.getElementById('catererSaveLocation');
-                    if (saveButton) {
-                        saveButton.disabled = !catererRegistrationPinReady;
-                        saveButton.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Save Business Location';
-                    }
-                    setCatererLocationStatus('Choose a search result or save the confirmed pin again.');
+                // Typing a new query must invalidate the prior confirmation so
+                // submitting cannot silently save the previous pin.
+                catererRegistrationPinSaved = false;
+                catererRegistrationPinReady = false;
+                ++catererRegistrationGeocodeRequest;
+                document.getElementById('catererLocationLatitude').value = '';
+                document.getElementById('catererLocationLongitude').value = '';
+                document.getElementById('province_cat').value = '';
+                document.getElementById('city_cat').value = '';
+                document.getElementById('barangay_cat').value = '';
+                document.getElementById('address_cat_hidden').value = '';
+                const saveButton = document.getElementById('catererSaveLocation');
+                if (saveButton) {
+                    saveButton.disabled = true;
+                    saveButton.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Save Business Location';
                 }
+                setCatererLocationStatus('Choose a suggested result, or place the pin on the map.');
             });
         }
 
@@ -189,6 +199,13 @@
             const button = event.currentTarget;
             button.disabled = true;
             if (window.catererRegistrationAddressPromise) await window.catererRegistrationAddressPromise;
+            // Read the final marker position at confirmation time, so the
+            // coordinates persisted by the form always match the visible pin.
+            const markerPosition = catererRegistrationMarker?.getPosition();
+            if (markerPosition && catererRegistrationPinReady) {
+                document.getElementById('catererLocationLatitude').value = markerPosition.lat().toFixed(7);
+                document.getElementById('catererLocationLongitude').value = markerPosition.lng().toFixed(7);
+            }
             const saved = catererRegistrationPinReady
                 && document.getElementById('catererLocationLatitude')?.value
                 && document.getElementById('catererLocationLongitude')?.value

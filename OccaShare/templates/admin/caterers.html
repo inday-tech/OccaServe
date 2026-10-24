@@ -1692,8 +1692,8 @@
         adminLocationSaved = false;
         adminLocationReady = false;
         setSaved(false);
-        byId('onboard_latitude').value = position.lat().toFixed(6);
-        byId('onboard_longitude').value = position.lng().toFixed(6);
+        byId('onboard_latitude').value = position.lat().toFixed(7);
+        byId('onboard_longitude').value = position.lng().toFixed(7);
         byId('onboard_province').value = byId('onboard_city').value = byId('onboard_brgy').value = '';
         const summary = byId('onboard_location_summary');
         summary.style.display = 'none';

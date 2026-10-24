@@ -8,10 +8,7 @@ def migrate():
     
     with engine.connect() as conn:
         # 1. Add columns to 'bookings'
-        print("Checking/Adding Paymongo columns to 'bookings'...")
         booking_cols = [
-            ("paymongo_link_id", "VARCHAR"),
-            ("paymongo_link_url", "VARCHAR"),
             ("payout_id", "INTEGER")
         ]
         for col_name, col_type in booking_cols:

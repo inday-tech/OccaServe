@@ -39,8 +39,6 @@ def master_migration():
             ("payment_plan", "VARCHAR DEFAULT 'downpayment'"),
             ("ocr_verified", "BOOLEAN DEFAULT FALSE"),
             ("liveness_verified", "BOOLEAN DEFAULT FALSE"),
-            ("paymongo_link_id", "VARCHAR"),
-            ("paymongo_link_url", "VARCHAR"),
             ("payment_verification_data", "JSONB"),
             ("proof_image_hash", "VARCHAR"),
             ("actual_cost_breakdown", "JSONB"),

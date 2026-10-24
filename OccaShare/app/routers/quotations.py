@@ -410,10 +410,14 @@ async def sign_contract(
     if has_cust and has_cat:
         quotation.status = "signed"
         booking.status = "awaiting_payment"
+        from ..services.payment_deadline import activate_initial_payment_request, format_payment_deadline
+        payment_request_activated = activate_initial_payment_request(booking)
+        deadline_text = format_payment_deadline(booking.payment_deadline_at) or "the configured deadline"
         
         # Notify Both Parties
-        background_tasks.add_task(NotificationService.notify_status_update, db, booking.user_id, "Contract Fully Signed", f"Caterer {booking.caterer.business_name} has signed. Proceed to payment.", f"/bookings/step/payment/{booking.id}")
-        background_tasks.add_task(NotificationService.notify_status_update, db, booking.caterer.user_id, "Contract Fully Signed", f"Customer {booking.user.first_name} has signed. Awaiting payment.", f"/caterer/bookings")
+        if payment_request_activated:
+            background_tasks.add_task(NotificationService.notify_status_update, db, booking.user_id, "Payment Request Activated", f"Both parties signed the agreement. Submit the initial payment by {deadline_text}.", f"/bookings/step/payment/{booking.id}", "payment")
+            background_tasks.add_task(NotificationService.notify_status_update, db, booking.caterer.user_id, "Payment Request Activated", f"Both parties signed the agreement. The customer has until {deadline_text} to submit the initial payment.", f"/caterer/bookings?open_booking={booking.id}&open_tab=payment", "payment")
     elif has_cust:
         quotation.status = "awaiting_caterer"
         booking.status = "awaiting_caterer"

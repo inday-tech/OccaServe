@@ -20,6 +20,7 @@ from ..services.realtime import manager
 from ..services.notification import NotificationService
 from ..services.payment_verification import payment_verification_service
 from ..services.booking_validator import BookingValidator
+from ..services.payment_deadline import format_payment_deadline
 from ..core.utils import is_customer_profile_complete
 from PIL import Image
 try:
@@ -2682,6 +2683,84 @@ async def _validate_receipt_with_gemini(b64_string: str, payment_method: str, ex
     return True
 
 # Phase 4: Payment Confirmation
+@router.get("/step/payment/{booking_id}/status")
+async def step_payment_status(booking_id: int, request: Request, db: Session = Depends(database.get_db)):
+    user = get_current_user_from_session(request, db)
+    booking = db.query(models.Booking).get(int(booking_id))
+    if not user or user.role != "customer" or not booking or booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    from ..services.payment_deadline import expire_initial_payment_if_due
+    expired_now = expire_initial_payment_if_due(db, booking)
+    if expired_now:
+        await NotificationService.notify_status_update(
+            db, booking.user_id, "Payment Request Expired",
+            "The initial payment deadline passed. You can request an extension from the caterer.",
+            f"/customer/bookings?open_detail={booking.id}&open_chat=1", "warning"
+        )
+        await NotificationService.notify_status_update(
+            db, booking.caterer.user_id, "Payment Request Expired",
+            "The customer's initial payment deadline passed. Review the booking and any extension request.",
+            f"/caterer/bookings?open_booking={booking.id}&open_tab=payment", "warning"
+        )
+    return {
+        "status": booking.payment_request_status or "pending",
+        "payment_status": booking.payment_status or "pending",
+        "deadline_at": booking.payment_deadline_at.isoformat() if booking.payment_deadline_at else None,
+        "server_now": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.post("/step/payment/{booking_id}/extension-request")
+async def request_payment_extension(
+    booking_id: int,
+    request: Request,
+    reason: str = Form(...),
+    db: Session = Depends(database.get_db),
+):
+    user = get_current_user_from_session(request, db)
+    booking = db.query(models.Booking).get(booking_id)
+    if not user or user.role != "customer" or not booking or booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    from ..services.payment_deadline import booking_is_extension_eligible, expire_initial_payment_if_due
+    if not expire_initial_payment_if_due(db, booking):
+        if booking.payment_request_status != "expired":
+            raise HTTPException(status_code=409, detail="The payment request has not expired.")
+    eligible, error = booking_is_extension_eligible(booking)
+    if not eligible:
+        raise HTTPException(status_code=409, detail=error)
+    reason = (reason or "").strip()
+    if len(reason) < 8 or len(reason) > 1000:
+        raise HTTPException(status_code=400, detail="Explain your request in 8 to 1000 characters.")
+    pending = db.query(models.PaymentExtensionRequest).filter(
+        models.PaymentExtensionRequest.booking_id == booking.id,
+        models.PaymentExtensionRequest.status == "pending",
+    ).first()
+    if pending:
+        return RedirectResponse(f"/bookings/step/payment/{booking.id}?extension=pending", status_code=303)
+    extension = models.PaymentExtensionRequest(
+        booking_id=booking.id,
+        customer_id=user.id,
+        caterer_id=booking.caterer_id,
+        reason=reason,
+        previous_deadline_at=booking.payment_deadline_at,
+        previous_deadline_hours=booking.payment_deadline_hours_snapshot,
+        status="pending",
+    )
+    db.add(extension)
+    db.add(models.BookingHistory(
+        booking_id=booking.id,
+        status=booking.status,
+        notes=f"Customer requested a payment extension: {reason}",
+    ))
+    db.commit()
+    await NotificationService.notify_status_update(
+        db, booking.caterer.user_id, "Payment Extension Requested",
+        f"The customer requested more time for booking {booking.booking_ref or booking.id}. Reason: {reason}",
+        f"/caterer/bookings?open_booking={booking.id}&open_tab=payment", "warning"
+    )
+    return RedirectResponse(f"/bookings/step/payment/{booking.id}?extension=pending", status_code=303)
+
+
 @router.get("/step/payment/{booking_id}", response_class=HTMLResponse)
 async def step_payment_page(booking_id: str, request: Request, db: Session = Depends(database.get_db)):
     user = get_current_user_from_session(request, db)
@@ -2695,6 +2774,8 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
         
     booking = db.query(models.Booking).get(booking_id_int)
     if not booking: raise HTTPException(status_code=404)
+    if user.role != "customer" or booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
 
     # Heal premature completion (completed while balance still unpaid)
     from ..services.payment_service import PaymentService
@@ -2717,7 +2798,40 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
             db.refresh(booking)
 
     is_balance = request.query_params.get("balance") == "true"
+    if not is_balance and booking.transaction_type != "fast_track":
+        from ..services.payment_deadline import ensure_initial_payment_request, expire_initial_payment_if_due
+        if ensure_initial_payment_request(booking):
+            db.commit()
+        expired_now = expire_initial_payment_if_due(db, booking)
+        if expired_now:
+            await NotificationService.notify_status_update(
+                db, booking.user_id, "Payment Request Expired",
+                "The initial payment deadline passed. You can request an extension from the caterer.",
+                f"/customer/bookings?open_detail={booking.id}&open_chat=1", "warning"
+            )
+            await NotificationService.notify_status_update(
+                db, booking.caterer.user_id, "Payment Request Expired",
+                "The customer's initial payment deadline passed. Review the booking and any extension request.",
+                f"/caterer/bookings?open_booking={booking.id}&open_tab=payment", "warning"
+            )
+    pending_extension_request = db.query(models.PaymentExtensionRequest).filter(
+        models.PaymentExtensionRequest.booking_id == booking.id,
+        models.PaymentExtensionRequest.status == "pending",
+    ).first() if not is_balance else None
+    payment_expired = bool(not is_balance and booking.payment_request_status == "expired")
+    extension_eligible = False
+    extension_unavailable_reason = ""
+    if payment_expired and not pending_extension_request:
+        from ..services.payment_deadline import booking_is_extension_eligible
+        extension_eligible, extension_unavailable_reason = booking_is_extension_eligible(booking)
     payment_summary = PaymentService.get_payment_summary(booking)
+    if not is_balance and booking.transaction_type != "fast_track":
+        required_initial = float(booking.reservation_fee or 0)
+        current_payment_status = (booking.payment_status or "").lower()
+        if float(payment_summary.get("verified_paid") or 0) >= required_initial - 0.01 and required_initial > 0:
+            return RedirectResponse(f"/customer/bookings/manage/{booking.id}?success_msg=Initial+payment+already+recorded", status_code=303)
+        if current_payment_status in {"proof_submitted", "cash_payment_requested", "pending_verification"}:
+            return RedirectResponse(f"/customer/bookings/manage/{booking.id}?success_msg=Payment+is+awaiting+caterer+verification", status_code=303)
     if is_balance and payment_summary["verified_paid"] <= 0.009:
         return RedirectResponse(
             url=f"/customer/bookings/manage/{booking_id_int}?error_msg=Balance+payment+is+available+after+the+downpayment+is+verified.",
@@ -2772,7 +2886,14 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
         "active_page": "bookings",
         "is_balance": is_balance,
         "verified_paid": verified_paid,
-        "verified_balance": max(float(booking.total_amount or booking.total_price or 0) - verified_paid, 0.0)
+        "verified_balance": max(float(booking.total_amount or booking.total_price or 0) - verified_paid, 0.0),
+        "payment_expired": payment_expired,
+        "pending_extension_request": pending_extension_request,
+        "payment_deadline_at": booking.payment_deadline_at,
+        "payment_deadline_display": format_payment_deadline(booking.payment_deadline_at),
+        "payment_deadline_hours": booking.payment_deadline_hours_snapshot or 48,
+        "extension_eligible": extension_eligible,
+        "extension_unavailable_reason": extension_unavailable_reason,
     })
 
 @router.post("/step/payment/{path_booking_id}")
@@ -2822,7 +2943,33 @@ async def step_payment_submit(
         booking.reservation_fee = round(signed_total * signed_percent / 100, 2)
 
     is_balance = str(payment_plan).strip().lower() == "balance"
+    if not is_balance and booking.transaction_type != "fast_track":
+        from ..services.payment_deadline import ensure_initial_payment_request, expire_initial_payment_if_due
+        if ensure_initial_payment_request(booking):
+            db.commit()
+        expired_now = expire_initial_payment_if_due(db, booking)
+        if expired_now:
+            await NotificationService.notify_status_update(
+                db, booking.user_id, "Payment Request Expired",
+                "The initial payment deadline passed. You can request an extension from the caterer.",
+                f"/customer/bookings?open_detail={booking.id}&open_chat=1", "warning"
+            )
+            await NotificationService.notify_status_update(
+                db, booking.caterer.user_id, "Payment Request Expired",
+                "The customer's initial payment deadline passed. Review the booking and any extension request.",
+                f"/caterer/bookings?open_booking={booking.id}&open_tab=payment", "warning"
+            )
+        if booking.payment_request_status == "expired":
+            raise HTTPException(status_code=400, detail="The initial payment request has expired. Request an extension from the caterer to continue.")
+
     payment_summary = PaymentService.get_payment_summary(booking)
+    if not is_balance and booking.transaction_type != "fast_track":
+        required_initial = float(booking.reservation_fee or 0)
+        current_payment_status = (booking.payment_status or "").lower()
+        if float(payment_summary.get("verified_paid") or 0) >= required_initial - 0.01 and required_initial > 0:
+            raise HTTPException(status_code=409, detail="The required initial payment has already been recorded.")
+        if current_payment_status in {"proof_submitted", "cash_payment_requested", "pending_verification"}:
+            raise HTTPException(status_code=409, detail="Your initial payment is already awaiting caterer verification.")
     if is_balance and payment_summary["verified_paid"] <= 0.009:
         raise HTTPException(
             status_code=400,
@@ -3240,7 +3387,7 @@ async def alacarte_manage_payment_submit(
 async def reupload_proof_submit(
     booking_id: int,
     request: Request,
-    payment_method: str = Form("Paymongo"),
+    payment_method: str = Form("GCash"),
     payment_proof: UploadFile = File(...),
     db: Session = Depends(database.get_db)
 ):
@@ -3363,7 +3510,7 @@ async def reupload_proof_submit(
 async def pay_balance_submit(
     booking_id: int,
     request: Request,
-    payment_method: str = Form("Paymongo"),
+    payment_method: str = Form("GCash"),
     payment_proof: Optional[UploadFile] = File(None),
     reference_no: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)

@@ -64,6 +64,12 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel_fee_status VARCHAR DEFAULT 'confirmed'",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'pending'",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status VARCHAR DEFAULT 'pending'",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_deadline_hours_snapshot INTEGER",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_request_activated_at TIMESTAMP WITH TIME ZONE",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_deadline_at TIMESTAMP WITH TIME ZONE",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_request_status VARCHAR(20) DEFAULT 'pending'",
+        "ALTER TABLE payment_extension_requests ADD COLUMN IF NOT EXISTS previous_deadline_at TIMESTAMP WITH TIME ZONE",
+        "ALTER TABLE payment_extension_requests ADD COLUMN IF NOT EXISTS previous_deadline_hours INTEGER",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_method VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS amount_paid FLOAT DEFAULT 0.0",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS preparation_status VARCHAR DEFAULT 'not_started'",
@@ -74,8 +80,6 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_proof_url VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS balance_proof_url VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dispatch_proof_url VARCHAR",
-        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paymongo_link_id VARCHAR",
-        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paymongo_link_url VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payout_id INTEGER",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_verification_data JSONB",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS proof_image_hash VARCHAR",
@@ -161,6 +165,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS booking_lead_time INTEGER DEFAULT 7",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS equipment_turnover_hours INTEGER DEFAULT 24",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS accepted_payment_terms JSONB DEFAULT '[100]'",
+        "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS payment_deadline_hours INTEGER NOT NULL DEFAULT 48",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS default_labor_cost FLOAT DEFAULT 0.0",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS default_utility_cost FLOAT DEFAULT 0.0",
         "ALTER TABLE caterer_profiles ADD COLUMN IF NOT EXISTS default_transport_cost FLOAT DEFAULT 0.0",
@@ -445,6 +450,7 @@ async def lifespan(app: FastAPI):
         # booking_history
         "ALTER TABLE booking_history ADD COLUMN IF NOT EXISTS entry_type VARCHAR DEFAULT 'system_change'",
         "ALTER TABLE booking_history ADD COLUMN IF NOT EXISTS communication_channel VARCHAR",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_payment_extension_pending_booking ON payment_extension_requests (booking_id) WHERE status = 'pending'",
 
         # booking_menu_items
         "ALTER TABLE booking_menu_items ADD COLUMN IF NOT EXISTS custom_name VARCHAR",
@@ -504,6 +510,8 @@ async def lifespan(app: FastAPI):
             
             # Post-sync updates
             post_updates = [
+                "UPDATE caterer_profiles SET payment_deadline_hours = 48 WHERE payment_deadline_hours IS NULL OR payment_deadline_hours NOT IN (24, 48, 72)",
+                "UPDATE bookings b SET payment_deadline_hours_snapshot = 48, payment_request_activated_at = COALESCE(q.customer_signed_at, q.updated_at, b.updated_at, b.created_at, CURRENT_TIMESTAMP), payment_deadline_at = COALESCE(q.customer_signed_at, q.updated_at, b.updated_at, b.created_at, CURRENT_TIMESTAMP) + INTERVAL '48 hours', payment_request_status = CASE WHEN COALESCE(q.customer_signed_at, q.updated_at, b.updated_at, b.created_at, CURRENT_TIMESTAMP) + INTERVAL '48 hours' <= CURRENT_TIMESTAMP AND COALESCE(b.amount_paid, 0) <= 0 AND NOT EXISTS (SELECT 1 FROM booking_payment_records p WHERE p.booking_id = b.id) AND LOWER(COALESCE(b.payment_status, 'pending')) NOT IN ('proof_submitted', 'balance_proof_submitted', 'reupload_requested', 'balance_reupload_requested', 'pending_verification', 'cash_payment_requested', 'cash_balance_requested', 'deposit_paid', 'partially_paid', 'paid', 'fully_paid') THEN 'expired' ELSE 'pending' END, payment_status = CASE WHEN COALESCE(q.customer_signed_at, q.updated_at, b.updated_at, b.created_at, CURRENT_TIMESTAMP) + INTERVAL '48 hours' <= CURRENT_TIMESTAMP AND COALESCE(b.amount_paid, 0) <= 0 AND NOT EXISTS (SELECT 1 FROM booking_payment_records p WHERE p.booking_id = b.id) AND LOWER(COALESCE(b.payment_status, 'pending')) NOT IN ('proof_submitted', 'balance_proof_submitted', 'reupload_requested', 'balance_reupload_requested', 'pending_verification', 'cash_payment_requested', 'cash_balance_requested', 'deposit_paid', 'partially_paid', 'paid', 'fully_paid') THEN 'expired' ELSE b.payment_status END FROM quotations q WHERE q.booking_id = b.id AND q.status = 'signed' AND b.payment_deadline_at IS NULL AND b.status IN ('pending', 'awaiting_payment', 'pending_payment')",
                 "UPDATE caterer_profiles SET is_verified = TRUE WHERE verification_status = 'Verified'",
                 "UPDATE users SET is_verified = TRUE WHERE id IN (SELECT user_id FROM caterer_profiles WHERE verification_status = 'Verified')",
                 "UPDATE caterer_profiles SET account_status = 'Active' WHERE account_status = 'Approved'"

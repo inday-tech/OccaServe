@@ -2174,6 +2174,84 @@ body.modal-open {
     }
 }
 
+/* Caterer registration Step 2: keep the map and its controls inside the
+   scrollable modal on narrow screens (including short landscape phones). */
+#authModalCaterer,
+#authModalCaterer .auth-modal-container,
+#authModalCaterer .auth-modal-content,
+#authModalCaterer #catererRegFormContainer,
+#authModalCaterer #catererForm,
+#authModalCaterer #step-2,
+#authModalCaterer #step-2 .form-grid,
+#authModalCaterer #step-2 .form-group {
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+#authModalCaterer #step-2 .caterer-location-controls,
+#authModalCaterer #step-2 .caterer-location-actions {
+    min-width: 0;
+}
+
+#authModalCaterer #catererRegistrationMap {
+    width: 100%;
+    max-width: 100%;
+}
+
+@media (max-width: 600px) {
+    #authModalOverlay:has(#authModalCaterer.active) {
+        align-items: flex-start !important;
+    }
+
+    #authModalOverlay:has(#authModalCaterer.active) .auth-modal-container,
+    #authModalCaterer {
+        max-height: calc(100dvh - 1rem) !important;
+        min-height: 0 !important;
+    }
+
+    #authModalCaterer {
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+    }
+
+    #authModalCaterer #catererRegFormContainer {
+        padding: 3.25rem 1rem 1.25rem !important;
+        overflow: hidden !important;
+    }
+
+    #authModalCaterer #step-2 .form-group[style*="margin-top"] {
+        margin-top: 0.5rem !important;
+    }
+
+    #authModalCaterer #catererLocationWrapper {
+        padding: 0.65rem !important;
+    }
+
+    #authModalCaterer #catererRegistrationMap {
+        height: clamp(190px, 34dvh, 280px) !important;
+    }
+
+    #authModalCaterer .caterer-location-actions {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+
+    #authModalCaterer #catererLocationStatus {
+        overflow-wrap: anywhere;
+    }
+
+    #authModalCaterer #catererNavButtonsContainer {
+        margin-top: 0.75rem !important;
+        padding-top: 0.75rem !important;
+    }
+}
+
+@media (max-height: 600px) and (max-width: 900px) {
+    #authModalCaterer #catererRegistrationMap {
+        height: 180px !important;
+    }
+}
+
 .auth-modal-content .contact-person-fields {
     row-gap: 0.35rem !important;
 }

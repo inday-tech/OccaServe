@@ -665,20 +665,19 @@
 </style>
  <!-- End of Bookings JS -->
 <script>
-    // Check for Overdue Payments (48-hour rule)
+    // Apply the server-stored payment deadline to the booking list badge.
     document.addEventListener("DOMContentLoaded", function() {
         document.querySelectorAll('.timer-overdue-check').forEach(badge => {
-            const startStr = badge.getAttribute('data-start');
-            if(startStr) {
-                const signedAt = new Date(startStr).getTime();
-                const expiresAt = signedAt + (48 * 60 * 60 * 1000); // 48 hours
+            const deadlineStr = badge.getAttribute('data-deadline');
+            if(deadlineStr) {
+                const expiresAt = new Date(deadlineStr).getTime();
                 const now = new Date().getTime();
                 if(now > expiresAt) {
                     badge.innerHTML = 'Overdue / Expired';
                     badge.style.background = '#fef2f2';
                     badge.style.color = '#991b1b';
                     badge.style.borderColor = '#fecaca';
-                    badge.title = "Customer failed to pay within 48 hours.";
+                    badge.title = "The customer's payment deadline has passed.";
 
                     // Update the View Details button in the same row so the modal reflects the expired status
                     const row = badge.closest('tr');
@@ -1075,7 +1074,7 @@
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <!-- Status badges row -->
                             <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
-                                <span class="badge-status {{ badge_class }}" data-start="{{ signed_dt.isoformat() if signed_dt else '' }}" style="padding: 2px 7px; font-size: 0.7rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em;">{{ status_label }}</span>
+                                <span class="badge-status {{ badge_class }}" data-deadline="{{ booking.payment_deadline_at.isoformat() if booking.payment_deadline_at else '' }}" style="padding: 2px 7px; font-size: 0.7rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em;">{{ status_label }}</span>
                                 <span class="badge-status {{ pay_class }}" style="padding: 2px 7px; font-size: 0.7rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em;">{{ pay_label }}</span>
                             </div>
                             
@@ -2385,6 +2384,21 @@
         #bookingDetailModal .mtab-pane-pro > * { max-width:100%;min-width:0;box-sizing:border-box; }
         #bookingDetailModal .overview-grid { grid-template-columns:minmax(0,1fr) !important;gap:.75rem !important; }
     }
+    @media (max-width:540px) {
+        #bookingDetailModal .payment-records-panel { padding:.8rem !important; }
+        #bookingDetailModal .payment-records-header { align-items:stretch !important;gap:.65rem !important;padding-bottom:.65rem !important; }
+        #bookingDetailModal .payment-records-header > div:first-child { font-size:.9rem !important;line-height:1.35; }
+        #bookingDetailModal .payment-tab-actions { width:100%;display:flex;align-items:stretch !important;gap:.4rem !important; }
+        #bookingDetailModal .payment-tab-actions > button:not(#paymentGuideToggle) { flex:1 1 calc(50% - .4rem);justify-content:center;min-height:38px;padding:.45rem .55rem !important;font-size:.72rem !important;line-height:1.2;white-space:normal; }
+        #bookingDetailModal .payment-tab-actions #paymentGuideToggle { align-self:center; }
+        #bookingDetailModal #paymentTabBadge { align-self:center;font-size:.68rem !important; }
+        #bookingDetailModal #paymentExtensionReview { padding:.8rem !important;font-size:.84rem;line-height:1.45; }
+        #bookingDetailModal #paymentExtensionReview strong { font-size:.88rem;line-height:1.35; }
+        #bookingDetailModal #paymentExtensionDecisionForm textarea { font-size:.82rem !important;line-height:1.4; }
+        #bookingDetailModal #paymentExtensionDecisionForm > div { display:grid !important;grid-template-columns:1fr 1fr; }
+        #bookingDetailModal #paymentExtensionDecisionForm button { min-width:0;padding:.55rem .5rem !important;font-size:.72rem;line-height:1.25; }
+        #bookingDetailModal .payment-history-scroll { max-width:100%; }
+    }
 </style>
 
 <div id="bookingDetailModal" class="occ-modal-overlay">
@@ -2939,11 +2953,11 @@
             <!-- ─── TAB 6: PAYMENT ─── -->
             <div id="btab-payment" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
                 <div class="payment-records-panel" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div class="payment-records-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
                         <div style="font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 0.5rem;">
                             Payment Records &amp; Settlement
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <div class="payment-tab-actions" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                             <span id="paymentTabBadge" style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; padding: 3px 10px; border-radius: 20px; background: #fff7ed; color: #c2410c;">UNPAID</span>
                             <button type="button" id="paymentGuideToggle" onclick="window.togglePaymentGuide(event)" aria-label="Payment status information" aria-expanded="false" title="Payment status information" style="display:none;width:28px;height:28px;border:1px solid color-mix(in srgb,var(--primary-color) 32%,white);border-radius:50%;background:#fff;color:var(--primary-color);align-items:center;justify-content:center;cursor:pointer;padding:0;"><i class="fas fa-info" aria-hidden="true"></i></button>
                             <button type="button" id="btnPaymentRecordAction" onclick="openRecordPaymentModal()" class="btn-primary" style="display: none; background: #16a34a; color: white; border: none; padding: 0.4rem 0.95rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; align-items: center; gap: 5px;">
@@ -2956,11 +2970,24 @@
                                 <i class="fas fa-money-bill-wave"></i> Confirm Cash Balance
                             </button>
                             <button type="button" id="btnPaymentTabCopyLink" onclick="window.copyInvoiceLink(currentBookingId)" class="btn-secondary-pro" style="padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
-                                <i class="fas fa-link"></i> Copy Link
+                                <i class="fas fa-link"></i> Copy Payment Link
                             </button>
                         </div>
                     </div>
                     <div id="paymentBalanceSettleGuide" style="display: none; margin: -0.35rem 0 1rem; padding: 0.65rem 0.85rem; background: color-mix(in srgb,var(--primary-color) 6%,white); border: 1px solid color-mix(in srgb,var(--primary-color) 24%,white); border-radius: var(--border-radius, 8px); font-size: 0.78rem; color: #1e293b; font-weight: 600; line-height: 1.4;"></div>
+
+                    <div id="paymentExtensionReview" style="display:none;margin:0 0 1rem;padding:1rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;">
+                        <strong style="display:block;color:#9a3412;margin-bottom:.45rem;">Customer payment extension request</strong>
+                        <p id="paymentExtensionReason" style="margin:0 0 .75rem;color:#475569;white-space:pre-wrap;overflow-wrap:anywhere;"></p>
+                        <form id="paymentExtensionDecisionForm" method="post" style="display:grid;gap:.55rem;">
+                            <label for="paymentExtensionDecisionReason" style="font-size:.78rem;font-weight:700;color:#334155;">Decision note (required)</label>
+                            <textarea id="paymentExtensionDecisionReason" name="decision_reason" minlength="4" maxlength="500" required rows="2" placeholder="Explain the decision to the customer" style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:.65rem;font:inherit;"></textarea>
+                            <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+                                <button type="submit" name="decision" value="approve" style="border:0;border-radius:7px;background:#15803d;color:white;padding:.55rem .85rem;font-weight:700;cursor:pointer;">Approve and reopen payment</button>
+                                <button type="submit" name="decision" value="reject" style="border:1px solid #fecaca;border-radius:7px;background:white;color:#b91c1c;padding:.55rem .85rem;font-weight:700;cursor:pointer;">Decline request</button>
+                            </div>
+                        </form>
+                    </div>
 
                     <!-- Payment Financial Summary 3 Cards -->
                     <div class="payment-summary-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem;">
@@ -3393,7 +3420,7 @@
                 window.closeWalkinModal = () => window.bk_closeModal('walkinBookingModal');
                 window.bk_closeBookingDetailModal = () => window.bk_closeModal('bookingDetailModal');
                 window.closeExpenseTracker = () => window.bk_closeModal('expenseTrackerModal');
-                window.closeContractModal = () => window.bk_closeModal('contractModal');
+                window.closeContractModal = () => window.closeIframeModal();
             }
 
             // Global Search Listener

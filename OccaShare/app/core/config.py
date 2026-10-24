@@ -75,9 +75,6 @@ class Settings:
     # inside the public static directory.
     KYC_PRIVATE_STORAGE_DIR = os.getenv("KYC_PRIVATE_STORAGE_DIR", "")
 
-    # PAYMONGO CONFIG
-    PAYMONGO_SECRET_KEY = os.getenv("PAYMONGO_SECRET_KEY", "")
-    PAYMONGO_WEBHOOK_SIG_KEY = os.getenv("PAYMONGO_WEBHOOK_SIG_KEY", "")
 
     # SUPABASE STORAGE CONFIG
     SUPABASE_URL = os.getenv("SUPABASE_URL", "")

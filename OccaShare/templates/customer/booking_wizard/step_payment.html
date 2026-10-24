@@ -58,18 +58,37 @@
     <!-- Expired Banner Container (Moved to Top for Clean UI) -->
     <div id="expired-banner-container"></div>
 
+    {% if payment_expired %}
+    <section class="pay-section-box" style="max-width:720px;margin:0 auto 1.25rem;border-color:#fecaca;background:#fff7f7;">
+        <h3 style="margin:0 0 .5rem;color:#9f1239;">Payment request expired</h3>
+        <p style="margin:0 0 .5rem;line-height:1.5;color:#7f1d1d;">The deadline passed. Your reservation is still available for review and has not been automatically cancelled. Ask the caterer to approve a new payment deadline.</p>
+        {% if payment_deadline_display %}<p style="margin:0 0 1rem;color:#7f1d1d;font-size:.88rem;">Expired: {{ payment_deadline_display }}</p>{% endif %}
+        <a href="/customer/bookings?open_detail={{ booking.id }}&open_chat=1" class="btn-back-clean" style="display:inline-flex;width:auto;margin-bottom:1rem;">Contact Caterer</a>
+        {% if pending_extension_request %}
+        <div role="status" style="padding:.8rem;background:#fff;border:1px solid #fed7aa;border-radius:9px;color:#9a3412;">Your extension request is waiting for the caterer's decision. You will receive a notification when it is reviewed.</div>
+        {% elif extension_eligible %}
+        <form action="/bookings/step/payment/{{ booking.id }}/extension-request" method="post" style="display:grid;gap:.6rem;">
+            <label for="paymentExtensionReason" style="font-weight:700;color:#334155;">Request a payment extension</label>
+            <textarea id="paymentExtensionReason" name="reason" minlength="8" maxlength="1000" required rows="3" placeholder="Tell the caterer why you need more time" style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:.7rem;font:inherit;"></textarea>
+            <button type="submit" class="btn-submit-modal" style="width:auto;justify-self:start;">Send Extension Request</button>
+        </form>
+        {% else %}
+        <div role="status" style="padding:.8rem;background:#fff;border:1px solid #fecaca;border-radius:9px;color:#9f1239;">{{ extension_unavailable_reason or 'This booking is no longer eligible for a payment extension. Contact the caterer to discuss next steps.' }}</div>
+        {% endif %}
+    </section>
+    {% else %}
+
     {% if not is_balance and quotation and quotation.status == 'signed' %}
-    {% set signed_at = quotation.customer_signed_at if quotation.customer_signed_at else quotation.updated_at %}
     <div class="countdown-banner-clean animate-up" id="active-timer-banner">
         <div style="display: flex; align-items: center; gap: 1rem;">
             <i class="fas fa-clock fa-spin" style="color: #e11d48; font-size: 1.4rem;"></i>
             <div>
-                <h4>Time Left to Pay: 48 Hours</h4>
-                <p>Please upload your payment screenshot before the timer runs out to save your event date.</p>
+                <h4>Time Left to Pay: {{ payment_deadline_hours }} Hours</h4>
+                <p>Payment deadline: {{ payment_deadline_display or 'See your booking details' }}. If it expires, you can request an extension from the caterer.</p>
             </div>
         </div>
-        <div class="timer-badge-clean" id="paymentTimer" data-start="{{ signed_at.isoformat() if signed_at else '' }}">
-            48:00:00
+        <div class="timer-badge-clean" id="paymentTimer" data-deadline="{{ booking.payment_deadline_at.isoformat() if booking.payment_deadline_at else '' }}">
+            {{ payment_deadline_hours }} hours
         </div>
     </div>
 
@@ -78,19 +97,42 @@
         const timerEl = document.getElementById('paymentTimer');
         if (!timerEl) return;
         
-        const startStr = timerEl.getAttribute('data-start');
-        if (!startStr) return;
-        
-        const signedAt = new Date(startStr).getTime();
-        const expiresAt = signedAt + (48 * 60 * 60 * 1000); // 48 hours later
+        const deadlineStr = timerEl.getAttribute('data-deadline');
+        if (!deadlineStr) return;
+        let expiresAt = new Date(deadlineStr).getTime();
+        let serverClockOffset = 0;
+        let statusCheckPending = false;
+
+        async function refreshPaymentStatus() {
+            if (statusCheckPending) return null;
+            statusCheckPending = true;
+            try {
+                const response = await fetch('/bookings/step/payment/{{ booking.id }}/status', { headers: { Accept: 'application/json' } });
+                if (!response.ok) return null;
+                const status = await response.json();
+                if (status.server_now) serverClockOffset = Date.parse(status.server_now) - Date.now();
+                if (status.deadline_at) expiresAt = Date.parse(status.deadline_at);
+                if (status.status === 'expired') window.location.reload();
+                return status;
+            } catch (error) {
+                return null;
+            } finally {
+                statusCheckPending = false;
+            }
+        }
         
         function updateTimer() {
-            const now = new Date().getTime();
+            const now = new Date().getTime() + serverClockOffset;
             const distance = expiresAt - now;
             
             if (distance < 0) {
-                timerEl.innerHTML = "EXPIRED";
-                timerEl.style.background = "#881337";
+                timerEl.innerHTML = "Checking status…";
+                refreshPaymentStatus().then(result => {
+                    if (result && result.status !== 'expired' && result.payment_status !== 'pending') {
+                        timerEl.textContent = 'Payment submitted';
+                    }
+                });
+                return;
                 
                 const activeBanner = document.getElementById('active-timer-banner');
                 if (activeBanner) activeBanner.style.display = 'none';
@@ -125,7 +167,7 @@
                         warn.style.display = 'flex';
                         warn.style.alignItems = 'center';
                         warn.style.gap = '1rem';
-                        warn.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: #e11d48;"></i><div><h4 style="margin: 0 0 0.2rem 0; font-size: 1rem; font-weight: 700; color: #9f1239;">Time Expired: 48-Hour Limit Ended</h4><p style="margin: 0; font-size: 0.88rem; color: #be123c; line-height: 1.4;">Your reservation time limit has ended and online payment is locked. Please contact the caterer directly if you need more time.</p></div>';
+                        warn.innerHTML = '<div><h4 style="margin: 0 0 0.2rem 0; font-size: 1rem; font-weight: 700; color: #9f1239;">Payment deadline ended</h4><p style="margin: 0 0 0.8rem; font-size: 0.88rem; color: #be123c; line-height: 1.4;">The server is checking the payment request. If it expired, request an extension from the caterer.</p><a href="/customer/bookings?open_detail={{ booking.id }}&open_chat=1" style="display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0.55rem 0.9rem;border-radius:9px;background:#be123c;color:#fff;text-decoration:none;font-size:0.85rem;font-weight:700;">Contact Caterer</a></div>';
                         topContainer.appendChild(warn);
                     }
                 }
@@ -142,8 +184,9 @@
                 (seconds < 10 ? "0" + seconds : seconds);
         }
         
-        updateTimer();
+        refreshPaymentStatus().then(updateTimer);
         setInterval(updateTimer, 1000);
+        setInterval(refreshPaymentStatus, 60000);
     });
     </script>
     {% endif %}
@@ -378,6 +421,7 @@
 
         </div>
     </form>
+    {% endif %}
 </div>
 {% endblock %}
 

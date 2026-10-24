@@ -70,6 +70,10 @@
     letter-spacing: -0.02em;
 }
 
+@media (max-width: 768px) {
+    .overview-header-text h1 { font-size: 1.35rem; }
+}
+
 .overview-header-text p {
     margin: 4px 0 0;
     color: var(--biz-text-muted);

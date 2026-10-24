@@ -55,8 +55,6 @@ def upgrade():
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_proof_url VARCHAR;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS balance_proof_url VARCHAR;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS dispatch_proof_url VARCHAR;",
-            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paymongo_link_id VARCHAR;",
-            "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS paymongo_link_url VARCHAR;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payout_id INTEGER;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_verification_data JSONB;",
             "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS proof_image_hash VARCHAR;",

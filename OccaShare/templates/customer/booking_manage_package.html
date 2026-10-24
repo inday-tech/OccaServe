@@ -598,17 +598,6 @@
 
 {% block extra_js %}
 <script>
-    async function initiatePaymongo(type) {
-        const formData = new FormData();
-        formData.append('payment_type', type);
-        try {
-            const response = await fetch(`/api/bookings/{{ booking.id }}/pay`, { method: 'POST', body: formData });
-            const data = await response.json();
-            if (data.success && data.checkout_url) { window.location.href = data.checkout_url; }
-            else { alert(data.message || 'Failed to generate link.'); }
-        } catch (error) { alert('Connection error.'); }
-    }
-
     function openContractModal(bookingId) {
         // HIDE sidebar/header to ensure they are GONE
         document.body.classList.add('contract-modal-open');

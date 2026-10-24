@@ -1256,6 +1256,7 @@ function hydrateButtonDataset(btn, detail) {
         addedBy: detail.added_by || btn.dataset.addedBy || (isManual ? 'Caterer / Staff' : 'Customer'),
         celebrantName: hasDetailField('celebrant_name') ? (detail.celebrant_name || '') : '',
         paymentRecordsJson: JSON.stringify(detail.payment_records || []),
+        paymentExtensionRequestJson: JSON.stringify(detail.payment_extension_request || null),
         eventDate: detail.event_date || btn.dataset.eventDate || '',
         eventTime: hasDetailField('event_time') ? (detail.event_time || 'TBA') : (btn.dataset.eventTime || 'TBA'),
         customerRef: customerRef,
@@ -1509,6 +1510,21 @@ function showBookingDetails(btn) {
     var isManual = sourceKindVal === 'manual' || data.isWalkin === 'true' || data.isManual === 'true' || sourceVal.includes('walk') || sourceVal.includes('manual');
     var bookingStatus = (data.status || 'pending').toLowerCase();
     var paymentStatus = (data.paymentStatus || 'unpaid').toLowerCase();
+
+    var extensionReview = document.getElementById('paymentExtensionReview');
+    var extensionReason = document.getElementById('paymentExtensionReason');
+    var extensionForm = document.getElementById('paymentExtensionDecisionForm');
+    var pendingExtension = null;
+    try { pendingExtension = JSON.parse(data.paymentExtensionRequestJson || 'null'); } catch (e) {}
+    if (extensionReview && extensionForm) {
+        extensionReview.style.display = pendingExtension ? 'block' : 'none';
+        if (pendingExtension) {
+            extensionReason.textContent = pendingExtension.reason || 'No reason supplied.';
+            extensionForm.action = `/caterer/bookings/${cleanId}/payment-extension/${pendingExtension.id}`;
+        } else {
+            extensionForm.reset();
+        }
+    }
 
     var totalAmountValue = Math.max(parseFloat(data.totalRawAmount) || 0, 0);
     var paidAmountValue = Math.max(parseFloat(data.amountPaid) || 0, 0);
@@ -3582,21 +3598,16 @@ function openContractModal(bookingId) {
         return;
     }
     currentBookingIdForContract = cleanId;
-    var body = document.getElementById('contractModalBody');
-    if (!body) return;
-    body.innerHTML = '<div style="text-align:center;padding:4rem;"><i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary-color);"></i></div>';
-    bk_openModal('contractModal');
-    fetch('/caterer/api/bookings/' + cleanId + '/contract/content', { headers: { Accept: 'text/html' } })
-        .then(async function(r) {
-            const html = await r.text();
-            if (!r.ok) throw new Error(html || 'Could not load this booking contract.');
-            return html;
-        })
-        .then(function(html) { body.innerHTML = html; })
-        .catch(function() { body.innerHTML = '<p style="color:#ef4444;text-align:center;">Failed to load contract.</p>'; });
+    if (typeof window.openIframeModal === 'function') {
+        window.openIframeModal('/caterer/bookings/' + cleanId + '/contract?modal=true', 'Booking Contract');
+        return;
+    }
+    window.showError?.('The contract viewer is unavailable. Refresh the page and try again.');
 }
 
-function closeContractModal() { bk_closeModal('contractModal'); }
+function closeContractModal() {
+    if (typeof window.closeIframeModal === 'function') window.closeIframeModal();
+}
 
 function printContract(bookingId) {
     const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
@@ -4833,7 +4844,22 @@ window.exportBookings = function(format) {
             const idText = clean(cells[0].innerText);
             const customerRef = clean(cells[1].innerText);
             const eventInfo = clean(cells[2].innerText);
-            const dateTime = clean(cells[3].innerText);
+            const detailButton = row.querySelector('.view-details');
+            const rawEventDate = detailButton?.dataset.eventDate || row.dataset.eventDate || '';
+            const eventTime = detailButton?.dataset.eventTime || row.dataset.eventTime || '';
+            let dateTime = clean(cells[3].innerText);
+            if (rawEventDate) {
+                const parts = rawEventDate.split('-').map(Number);
+                if (parts.length === 3 && parts.every(Number.isFinite)) {
+                    const formattedDate = new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString('en-PH', {
+                        month: 'short', day: '2-digit', year: 'numeric'
+                    });
+                    dateTime = `${formattedDate}${eventTime && eventTime !== 'TBA' ? ` ${eventTime}` : ''}`;
+                } else {
+                    dateTime = rawEventDate;
+                }
+            }
+            if (!dateTime) dateTime = 'Date TBA';
             const statusBilling = clean(cells[4].innerText);
             
             data.push({ idText, customerRef, eventInfo, dateTime, statusBilling });
@@ -4845,22 +4871,21 @@ window.exportBookings = function(format) {
     if (data.length === 0) return;
 
     if (format === 'excel') {
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Booking ID,Customer Ref,Event,Date & Time,Status & Billing\n";
+        const csvRows = [["Booking ID", "Customer Ref", "Event", "Date & Time", "Status & Billing"]];
         
         data.forEach(d => {
-            const escapeCSV = (val) => '"' + String(val).replace(/"/g, '""') + '"';
-            const rowStr = [d.idText, d.customerRef, d.eventInfo, d.dateTime, d.statusBilling].map(escapeCSV).join(",");
-            csvContent += rowStr + "\n";
+            csvRows.push([d.idText, d.customerRef, d.eventInfo, d.dateTime, d.statusBilling]);
         });
-        
-        const encodedUri = encodeURI(csvContent);
+        const escapeCSV = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        const csvContent = csvRows.map(row => row.map(escapeCSV).join(',')).join('\r\n');
+        const fileUrl = URL.createObjectURL(new Blob(['\ufeff', csvContent], { type: 'text/csv;charset=utf-8;' }));
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
+        link.setAttribute("href", fileUrl);
         link.setAttribute("download", `bookings_export_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
     } 
     else if (format === 'pdf' || format === 'word') {
         let html = `
