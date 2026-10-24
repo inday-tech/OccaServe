@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from pydantic import EmailStr, ValidationError
 
@@ -381,7 +381,6 @@ async def register(
     if user and not user.is_email_verified:
         otp = utils.get_random_digits(6)
         user.verification_code = otp
-        from datetime import datetime, timedelta, timezone
         user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
         user.first_name = first_name.strip() if first_name else None
         user.middle_name = mn or None
@@ -459,7 +458,6 @@ async def register(
             # If user exists but not verified, generate new OTP and redirect
             otp = utils.get_random_digits(6)
             user.verification_code = otp
-            from datetime import datetime, timedelta, timezone
             user.otp_expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
             db.commit()
             
@@ -555,8 +553,6 @@ async def register(
         if event_types:
             event_list = [e.strip() for e in event_types.split(",") if e.strip()]
 
-        from datetime import datetime, timedelta, timezone
-        
         new_user = models.User(
             email=email, 
             password_hash=hashed_password,
