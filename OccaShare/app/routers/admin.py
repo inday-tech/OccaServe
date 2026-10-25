@@ -1898,7 +1898,7 @@ async def add_caterer(
     province: str = Form(...),
     municipality: str = Form(...),
     barangay: str = Form(...),
-    street: str = Form(...),
+    street: str = Form(""),
     event_types: str = Form(...), # JSON String from JS
     cuisine_types: str = Form(...), # JSON String from JS
     latitude: Optional[float] = Form(None),
@@ -1936,7 +1936,6 @@ async def add_caterer(
         "province": province,
         "municipality": municipality,
         "barangay": barangay,
-        "street": street,
     }.items():
         if not field_value:
             errors[field_name] = "This field is required."
@@ -1987,7 +1986,7 @@ async def add_caterer(
         return {"success": False, "errors": errors, "message": "Identity verification failed."}
 
     # Process Address
-    full_address = f"{street}, Brgy. {barangay}, {municipality}, {province}"
+    full_address = ", ".join(part for part in (street, barangay, municipality, province) if part)
     
     # Process Categories
     try:
@@ -2051,7 +2050,7 @@ async def add_caterer(
             province_code=province,
             city_code=municipality,
             brgy_code=barangay,
-            address_details=street,
+            address_details=street or None,
             city=municipality,
             event_types=parsed_events,
             cuisine_types=parsed_cuisines,

@@ -1,10 +1,13 @@
 {% if caterers %}
 {% for caterer in caterers %}
 <article class="caterer-card-premium animate-up" 
-    data-lat="{{ caterer.latitude if caterer.location_pin_confirmed else '' }}"
-    data-lon="{{ caterer.longitude if caterer.location_pin_confirmed else '' }}"
+    data-lat="{{ caterer.latitude if caterer.latitude is not none and caterer.longitude is not none and 4.2 <= caterer.latitude <= 21.6 and 116.7 <= caterer.longitude <= 127.2 else '' }}"
+    data-lon="{{ caterer.longitude if caterer.latitude is not none and caterer.longitude is not none and 4.2 <= caterer.latitude <= 21.6 and 116.7 <= caterer.longitude <= 127.2 else '' }}"
     data-address="{{ caterer.address_details or caterer.contact_address or '' }}"
     data-city="{{ caterer.city or '' }}"
+    data-province="{{ caterer.province_code or '' }}"
+    data-barangay="{{ caterer.brgy_code or '' }}"
+    data-profile-image="{{ caterer.logo_url or (caterer.user.profile_image_url if caterer.user else '') or caterer.cover_image_url or '' }}"
     data-caterer-id="{{ caterer.id }}">
     <div class="card-image-wrapper">
         <img src="{{ caterer.cover_image_url if caterer.cover_image_url else 'https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop' }}"

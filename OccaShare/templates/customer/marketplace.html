@@ -456,7 +456,7 @@
         filterTimeout = setTimeout(runFilters, 400);
     }
 
-    async function runFilters() {
+    function marketplaceFilterParams() {
         const globalSearch = document.getElementById('globalSearchInput');
         const query = globalSearch ? globalSearch.value.trim() : (document.getElementById('searchInput')?.value || '');
         const city = document.getElementById('cityInput')?.value || '';
@@ -475,6 +475,11 @@
             params.append('lon', lon);
         }
 
+        return params;
+    }
+
+    async function runFilters() {
+        const params = marketplaceFilterParams();
         const resultsContainer = document.getElementById('catererResults');
         const skeletonContainer = document.getElementById('skeletonContainer');
 
@@ -523,6 +528,11 @@
     let mapMarkers = [];
     let mapInfoWindow;
     let customerMarker;
+    let customerAccuracyCircle;
+    let mapRefreshTimer;
+    let mapRefreshInFlight = false;
+    let marketplaceGeocoder;
+    const geocodedCatererAddresses = new Map();
 
     function toggleView(view) {
         currentView = view;
@@ -536,6 +546,10 @@
             mapBtn.classList.remove('active');
             results.style.display = 'grid';
             mapContainer.style.display = 'none';
+            if (mapRefreshTimer) {
+                clearInterval(mapRefreshTimer);
+                mapRefreshTimer = null;
+            }
         } else {
             mapBtn.classList.add('active');
             gridBtn.classList.remove('active');
@@ -547,6 +561,9 @@
             } else {
                 google.maps.event.trigger(marketplaceMap, 'resize');
                 updateMapMarkers();
+            }
+            if (!mapRefreshTimer) {
+                mapRefreshTimer = setInterval(refreshMapMarkers, 30000);
             }
         }
     }
@@ -568,6 +585,7 @@
             fullscreenControl: true
         });
         mapInfoWindow = new google.maps.InfoWindow();
+        marketplaceGeocoder = new google.maps.Geocoder();
         // Add customer location pin if available
         addCustomerPin();
 
@@ -581,6 +599,7 @@
         if (isNaN(lat) || isNaN(lng) || lat < 4.2 || lat > 21.6 || lng < 116.7 || lng > 127.2) return;
 
         if (customerMarker) customerMarker.setMap(null);
+        if (customerAccuracyCircle) customerAccuracyCircle.setMap(null);
 
         customerMarker = new google.maps.Marker({
             position: { lat, lng },
@@ -594,10 +613,10 @@
                 strokeWeight: 3
             },
             title: 'Your Location',
-            zIndex: 999
+            zIndex: 10
         });
 
-        const pulseCircle = new google.maps.Circle({
+        customerAccuracyCircle = new google.maps.Circle({
             map: marketplaceMap,
             center: { lat, lng },
             radius: 200,
@@ -619,53 +638,80 @@
         });
     }
 
-    function updateMapMarkers() {
+    function updateMapMarkers(catererCards = document.querySelectorAll('.caterer-card-premium'), fitMap = true) {
         if (!marketplaceMap) return;
 
         // Clear existing caterer markers
         mapMarkers.forEach(m => m.setMap(null));
         mapMarkers = [];
 
-        const catererCards = document.querySelectorAll('.caterer-card-premium');
         const bounds = new google.maps.LatLngBounds();
-        let hasCoords = false;
-
-        // Include customer location in bounds
-        const custLat = parseFloat(sessionStorage.getItem('user_lat'));
-        const custLng = parseFloat(sessionStorage.getItem('user_lon'));
-        if (!isNaN(custLat) && !isNaN(custLng) && custLat >= 4.2 && custLat <= 21.6 && custLng >= 116.7 && custLng <= 127.2) {
-            bounds.extend({ lat: custLat, lng: custLng });
-            hasCoords = true;
-        }
+        let catererCount = 0;
 
         catererCards.forEach(card => {
             const lat = parseFloat(card.dataset.lat);
             const lng = parseFloat(card.dataset.lon);
             const address = card.dataset.address || '';
             const city = card.dataset.city || '';
-            const fullAddressToDisplay = (address && city && !address.toLowerCase().includes(city.toLowerCase()))
-                ? `${address}, ${city}`
-                : address || city || 'Philippines';
+            const province = card.dataset.province || '';
+            const barangay = card.dataset.barangay || '';
+            const addressParts = [address, barangay, city, province]
+                .flatMap(part => part.split(','))
+                .map(part => part.trim())
+                .filter(part => part && !/^\d{6,12}$/.test(part));
+            const fullAddressToDisplay = addressParts.filter((part, index) =>
+                addressParts.findIndex(candidate => candidate.toLowerCase() === part.toLowerCase()) === index
+            ).join(', ');
             const businessName = card.querySelector('.card-title')?.innerText || card.querySelector('h3')?.innerText || 'Caterer';
             const cardLink = card.querySelector('.btn-premium-explore')?.getAttribute('href') || card.querySelector('a')?.getAttribute('href') || '#';
-            const imgEl = card.querySelector('.card-img') || card.querySelector('img');
-            const imgUrl = imgEl ? imgEl.src : '';
+            const profileImage = card.dataset.profileImage || '';
             const ratingEl = card.querySelector('.rating-pro');
             const ratingText = ratingEl ? ratingEl.innerText.trim() : '';
 
             // If valid coordinates, place marker directly
             if (!isNaN(lat) && !isNaN(lng) && lat >= 4.2 && lat <= 21.6 && lng >= 116.7 && lng <= 127.2) {
-                placeMarker({ lat, lng }, businessName, fullAddressToDisplay, ratingText, cardLink, imgUrl, bounds);
-                hasCoords = true;
+                placeMarker({ lat, lng }, businessName, fullAddressToDisplay, ratingText, profileImage, cardLink, bounds);
+                catererCount += 1;
             }
         });
 
-        if (hasCoords) {
-            marketplaceMap.fitBounds(bounds, { padding: { top: 60, bottom: 60, left: 60, right: 60 } });
+        if (fitMap && catererCount > 1) {
+            marketplaceMap.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+        } else if (fitMap && catererCount === 1) {
+            const markerPosition = mapMarkers[0].getPosition();
+            marketplaceMap.setCenter(markerPosition);
+            marketplaceMap.setZoom(14);
+        } else if (fitMap && catererCount === 0) {
+            const custLat = parseFloat(sessionStorage.getItem('user_lat'));
+            const custLng = parseFloat(sessionStorage.getItem('user_lon'));
+            if (!isNaN(custLat) && !isNaN(custLng) && custLat >= 4.2 && custLat <= 21.6 && custLng >= 116.7 && custLng <= 127.2) {
+                marketplaceMap.setCenter({ lat: custLat, lng: custLng });
+                marketplaceMap.setZoom(12);
+            }
         }
     }
 
-    function placeMarker(position, businessName, fullAddressText, ratingText, cardLink, imgUrl, bounds) {
+    async function refreshMapMarkers() {
+        if (currentView !== 'map' || mapRefreshInFlight) return;
+        mapRefreshInFlight = true;
+        try {
+            const response = await fetch(`/customer/marketplace?${marketplaceFilterParams().toString()}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                cache: 'no-store'
+            });
+            if (!response.ok) throw new Error(`Marketplace map refresh failed (${response.status}).`);
+            const html = await response.text();
+            const refreshedResults = document.createElement('div');
+            refreshedResults.innerHTML = html;
+            updateMapMarkers(refreshedResults.querySelectorAll('.caterer-card-premium'), false);
+        } catch (error) {
+            console.error('Could not refresh marketplace map locations.', error);
+        } finally {
+            mapRefreshInFlight = false;
+        }
+    }
+
+    function placeMarker(position, businessName, savedAddress, ratingText, profileImage, profileLink, bounds) {
         // Determine distance color if customer location available
         const custLat = parseFloat(sessionStorage.getItem('user_lat'));
         const custLng = parseFloat(sessionStorage.getItem('user_lon'));
@@ -688,6 +734,7 @@
             map: marketplaceMap,
             animation: google.maps.Animation.DROP,
             title: businessName,
+            zIndex: 20,
             icon: {
                 path: 'M12 0C7.03 0 3 4.03 3 9c0 6.75 9 15 9 15s9-8.25 9-15c0-4.97-4.03-9-9-9zm0 12.75c-2.07 0-3.75-1.68-3.75-3.75S9.93 5.25 12 5.25s3.75 1.68 3.75 3.75-1.68 3.75-3.75 3.75z',
                 fillColor: pinColor,
@@ -705,20 +752,91 @@
 
         marker.addListener('click', () => {
             mapInfoWindow.setContent(`
-                <div style="padding:6px;width:200px;">
-                    ${imgUrl ? `<img src="${imgUrl}" style="width:100%;height:90px;object-fit:cover;border-radius:8px;margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
-                    <h4 style="margin:0 0 3px;font-size:14px;font-weight:700;color:#1e293b;">${businessName}</h4>
-                    <p style="margin:0 0 2px;font-size:12px;color:#64748b;"><i class="fas fa-location-dot" style="color:#f97316;"></i> ${fullAddressText}</p>
-                    ${ratingText ? `<p style="margin:0 0 2px;font-size:12px;color:#f59e0b;"><i class="fas fa-star"></i> ${ratingText}</p>` : ''}
+                <div style="padding:8px;min-width:180px;max-width:280px;">
+                    <a href="${escapeMapText(profileLink)}" aria-label="View ${escapeMapText(businessName)} profile" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;color:#1e293b;text-decoration:none;">
+                        ${profileImage
+                            ? `<img src="${escapeMapText(profileImage)}" alt="" style="width:48px;height:48px;flex:0 0 48px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0;" onerror="this.style.display='none'">`
+                            : `<span aria-hidden="true" style="width:48px;height:48px;flex:0 0 48px;display:grid;place-items:center;border-radius:50%;background:#fff7ed;color:#c2410c;font-weight:800;font-size:18px;">${escapeMapText(businessName.trim().charAt(0).toUpperCase())}</span>`
+                        }
+                        <strong style="font-size:14px;font-weight:700;">${escapeMapText(businessName)}</strong>
+                    </a>
+                    <p data-caterer-address style="margin:0 0 3px;font-size:12px;color:#64748b;"><i class="fas fa-location-dot" style="color:#f97316;"></i> ${escapeMapText(savedAddress || 'Finding address…')}</p>
                     ${distanceHtml}
-                    <a href="${cardLink}" style="display:block;background:#f97316;color:white;text-align:center;padding:8px;border-radius:8px;font-size:12px;text-decoration:none;font-weight:700;margin-top:6px;">View Profile →</a>
+                    ${ratingText && !/\bnew\b/i.test(ratingText) ? `<p style="margin:3px 0 0;font-size:12px;color:#f59e0b;"><i class="fas fa-star"></i> ${escapeMapText(ratingText)}</p>` : ''}
                 </div>
             `);
             mapInfoWindow.open(marketplaceMap, marker);
+            resolveCatererAddress(position, savedAddress, () => {
+                const addressElement = document.querySelector('.gm-style-iw [data-caterer-address]');
+                if (addressElement && mapInfoWindow.getPosition()?.lat() === position.lat &&
+                    mapInfoWindow.getPosition()?.lng() === position.lng) {
+                    addressElement.innerHTML = `<i class="fas fa-location-dot" style="color:#f97316;"></i> ${escapeMapText(geocodedCatererAddresses.get(`${position.lat},${position.lng}`) || savedAddress || 'Address unavailable')}`;
+                }
+            });
         });
 
         mapMarkers.push(marker);
         if (bounds) bounds.extend(position);
+    }
+
+    function escapeMapText(value) {
+        return String(value || '').replace(/[&<>"']/g, character => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[character]);
+    }
+
+    function reverseGeocodedAddress(results) {
+        const candidates = (results || []).map(result => {
+            const components = result.address_components || [];
+            const value = (...types) => {
+                for (const type of types) {
+                    const component = components.find(item => item.types.includes(type));
+                    if (component?.long_name) return component.long_name;
+                }
+                return '';
+            };
+            const locality = value('locality', 'postal_town');
+            const level1 = value('administrative_area_level_1');
+            const level2 = value('administrative_area_level_2');
+            const level3 = value('administrative_area_level_3');
+            const province = level2 && (level3 || (locality && locality.toLowerCase() !== level2.toLowerCase()))
+                ? level2
+                : level1 || level2 || level3;
+            const city = locality || level3 || (level2 !== province ? level2 : '');
+            const street = [
+                value('subpremise'),
+                value('premise'),
+                [value('street_number'), value('route')].filter(Boolean).join(' ')
+            ].filter(Boolean).join(', ');
+            const barangay = value('administrative_area_level_4', 'sublocality_level_1', 'sublocality_level_2', 'neighborhood', 'sublocality');
+            const address = [street, barangay, city, province]
+                .filter(Boolean)
+                .filter((part, index, parts) => parts.findIndex(item => item.toLowerCase() === part.toLowerCase()) === index)
+                .join(', ');
+            const score = Number(Boolean(street)) * 4 + Number(Boolean(barangay)) * 3 +
+                Number(Boolean(city)) * 2 + Number(Boolean(province));
+            return { address, score };
+        }).filter(candidate => candidate.address).sort((a, b) => b.score - a.score);
+        return candidates[0]?.address || '';
+    }
+
+    function resolveCatererAddress(position, fallbackAddress, onResolved) {
+        const cacheKey = `${position.lat},${position.lng}`;
+        const cached = geocodedCatererAddresses.get(cacheKey);
+        if (cached) {
+            onResolved();
+            return;
+        }
+        marketplaceGeocoder.geocode({ location: position, region: 'PH' }, (results, status) => {
+            if (status !== 'OK') {
+                if (status !== 'ZERO_RESULTS') console.warn('Could not reverse-geocode caterer pin:', status);
+                geocodedCatererAddresses.set(cacheKey, fallbackAddress || 'Address unavailable');
+                onResolved();
+                return;
+            }
+            geocodedCatererAddresses.set(cacheKey, reverseGeocodedAddress(results) || fallbackAddress || 'Address unavailable');
+            onResolved();
+        });
     }
 
     // Haversine formula — compute distance between 2 GPS points in km
@@ -796,5 +914,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', detectUserLocation);
+    window.addEventListener('beforeunload', () => {
+        if (mapRefreshTimer) clearInterval(mapRefreshTimer);
+    });
 </script>
 {% endblock %}

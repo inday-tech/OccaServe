@@ -473,11 +473,10 @@
         const brgy = document.getElementById('barangay_cat')?.value;
         const hiddenAddress = document.getElementById('address_cat_hidden');
         if (hiddenAddress) {
-            const mapAddress = hiddenAddress.value.trim();
-            const locationAddress = mapAddress || [brgy, city, prov].filter(Boolean).join(', ');
-            hiddenAddress.value = street && !locationAddress.toLowerCase().includes(street.toLowerCase())
-                ? [street, locationAddress].filter(Boolean).join(', ')
-                : locationAddress;
+            const parts = [street, brgy, city, prov].filter(Boolean);
+            hiddenAddress.value = parts.filter((part, index) =>
+                parts.findIndex(candidate => candidate.toLowerCase() === part.toLowerCase()) === index
+            ).join(', ');
         }
     }
 

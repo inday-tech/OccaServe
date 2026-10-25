@@ -27,50 +27,52 @@
     }
 
     function applyCatererAddress(results) {
-        const candidates = (results || []).filter(result =>
-            result.formatted_address || result.plus_code?.compound_code || result.plus_code?.global_code
-        );
-        const component = (result, types) => {
-            for (const type of types) {
-                const match = (result.address_components || []).find(item => item.types.includes(type));
-                if (match?.long_name) return match.long_name;
-            }
-            return '';
-        };
-        const result = candidates
-            .map(candidate => {
-                const level1 = component(candidate, ['administrative_area_level_1']);
-                const level2 = component(candidate, ['administrative_area_level_2']);
-                const level3 = component(candidate, ['administrative_area_level_3']);
-                const locality = component(candidate, ['locality']);
-                const province = level2 && (
-                    level3 || (locality && locality.toLowerCase() !== level2.toLowerCase())
-                ) ? level2 : level1 || level2 || level3;
-                const city = ['locality', 'postal_town', 'administrative_area_level_3', 'administrative_area_level_2']
-                    .map(type => component(candidate, [type]))
-                    .find(name => name && name.toLowerCase() !== province.toLowerCase()) || '';
-                const barangay = component(candidate, ['sublocality_level_1', 'sublocality_level_2', 'neighborhood', 'administrative_area_level_4']);
-                const typeScore = (candidate.types || []).reduce((score, type) => score + ({
-                    street_address: 5, premise: 4, subpremise: 4, route: 3, establishment: 2
-                }[type] || 0), 0);
-                return { candidate, province, city, barangay, score: typeScore + (province ? 20 : 0) + (city ? 20 : 0) + (barangay ? 5 : 0) };
-            })
-            .sort((a, b) => b.score - a.score)[0];
+        const read = (result, type) =>
+            (result.address_components || []).find(item => item.types.includes(type))?.long_name || '';
+        const candidates = (results || []).map(candidate => {
+            const locality = read(candidate, 'locality') || read(candidate, 'postal_town');
+            const level1 = read(candidate, 'administrative_area_level_1');
+            const level2 = read(candidate, 'administrative_area_level_2');
+            const level3 = read(candidate, 'administrative_area_level_3');
+            const province = level2 && (level3 || (locality && locality.toLowerCase() !== level2.toLowerCase()))
+                ? level2
+                : level1 || level2 || level3;
+            const city = locality || level3 || (level2 !== province ? level2 : '');
+            const streetNumber = read(candidate, 'street_number');
+            const route = read(candidate, 'route');
+            const street = [
+                read(candidate, 'subpremise'),
+                read(candidate, 'premise'),
+                [streetNumber, route].filter(Boolean).join(' ')
+            ].filter(Boolean).join(', ');
+            const barangay = read(candidate, 'administrative_area_level_4') ||
+                read(candidate, 'sublocality_level_1') || read(candidate, 'sublocality_level_2') ||
+                read(candidate, 'neighborhood') || read(candidate, 'sublocality');
+            return { province, city, barangay, street };
+        }).filter(candidate => candidate.province || candidate.city || candidate.barangay)
+            .sort((a, b) =>
+                Number(Boolean(b.street)) - Number(Boolean(a.street)) ||
+                Number(Boolean(b.barangay)) - Number(Boolean(a.barangay)) ||
+                Number(Boolean(b.city)) - Number(Boolean(a.city)) ||
+                Number(Boolean(b.province)) - Number(Boolean(a.province))
+            );
+        const result = candidates[0];
         if (!result) return false;
 
-        const address = result.candidate.formatted_address ||
-            result.candidate.plus_code?.compound_code ||
-            result.candidate.plus_code?.global_code || '';
         document.getElementById('province_cat').value = result.province;
         document.getElementById('city_cat').value = result.city;
         document.getElementById('barangay_cat').value = result.barangay;
-        document.getElementById('address_cat_hidden').value = address;
+        if (result.street && !document.getElementById('street_cat').value.trim()) {
+            document.getElementById('street_cat').value = result.street;
+        }
         updateAddressCat();
+        const search = document.getElementById('catererLocationSearch');
+        if (search) search.value = document.getElementById('address_cat_hidden').value;
 
-        return Boolean(result.province && result.city && address);
+        return Boolean(result.province && result.city && document.getElementById('address_cat_hidden').value);
     }
 
-    function reverseGeocodeCatererLocation(position) {
+    function reverseGeocodeCatererLocation(position, selectedPlace = null) {
         const latitude = position.lat();
         const longitude = position.lng();
         const requestId = ++catererRegistrationGeocodeRequest;
@@ -81,6 +83,7 @@
         document.getElementById('province_cat').value = '';
         document.getElementById('city_cat').value = '';
         document.getElementById('barangay_cat').value = '';
+        document.getElementById('street_cat').value = '';
         document.getElementById('address_cat_hidden').value = '';
         catererRegistrationPinReady = false;
         catererRegistrationPinSaved = false;
@@ -98,7 +101,10 @@
                 if (status !== 'OK') {
                     console.error('Google Maps reverse geocoding failed:', status);
                 }
-                const addressApplied = status === 'OK' && applyCatererAddress(results || []);
+                let addressApplied = status === 'OK' && applyCatererAddress(results || []);
+                if (!addressApplied && selectedPlace) {
+                    addressApplied = applyCatererAddress([selectedPlace]);
+                }
                 catererRegistrationPinReady = addressApplied;
                 if (saveButton) saveButton.disabled = !addressApplied;
                 setCatererLocationStatus(addressApplied
@@ -146,24 +152,7 @@
             catererRegistrationMarker.setMap(catererRegistrationMap);
             catererRegistrationMarker.setPosition(position);
             catererRegistrationMap.panTo(position);
-            if (!selectedPlace) {
-                reverseGeocodeCatererLocation(position);
-                return;
-            }
-
-            ++catererRegistrationGeocodeRequest;
-            document.getElementById('catererLocationLatitude').value = position.lat().toFixed(7);
-            document.getElementById('catererLocationLongitude').value = position.lng().toFixed(7);
-            const addressFound = applyCatererAddress([selectedPlace]);
-            catererRegistrationPinReady = addressFound;
-            catererRegistrationPinSaved = false;
-            const saveButton = document.getElementById('catererSaveLocation');
-            if (saveButton) saveButton.disabled = !addressFound;
-            setCatererLocationError('');
-            setCatererLocationStatus(addressFound
-                ? 'Location pinned and address found.'
-                : 'Could not identify the address and city for this result. Choose another result or adjust the pin.');
-            window.catererRegistrationAddressPromise = Promise.resolve(addressFound);
+            reverseGeocodeCatererLocation(position, selectedPlace);
         };
 
         catererRegistrationMap.addListener('click', event => setPin(event.latLng));

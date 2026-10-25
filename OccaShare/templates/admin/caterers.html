@@ -1393,8 +1393,8 @@
                             <p id="onboard_location_summary" style="display:none;margin:.65rem 0 0;padding:.6rem .7rem;border-radius:9px;background:#ecfdf5;color:#166534;font-size:.72rem;overflow-wrap:anywhere;"></p>
                         </div>
                         <div>
-                            <label class="onboard-field-label" for="onboard_street">Building / Street / Subdivision <span class="onboard-required">*</span></label>
-                            <div class="dm-input-group"><input type="text" name="street" id="onboard_street" placeholder="Unit, street, subdivision, or landmark" required></div>
+                            <label class="onboard-field-label" for="onboard_street">Building / Street / Subdivision <span style="color:#64748b;font-weight:600;">(Optional)</span></label>
+                            <div class="dm-input-group"><input type="text" name="street" id="onboard_street" placeholder="Unit, street, subdivision, or landmark (optional)"></div>
                         </div>
                     </div>
 
@@ -1680,12 +1680,40 @@
     };
     const addressParts = result => {
         const components = result?.address_components || [];
-        const find = (...types) => components.find(item => types.some(type => item.types.includes(type)))?.long_name || '';
-        return {
-            province: find('administrative_area_level_2', 'administrative_area_level_1'),
-            city: find('locality', 'postal_town', 'administrative_area_level_3'),
-            barangay: find('sublocality_level_1', 'sublocality_level_2', 'neighborhood', 'administrative_area_level_4')
+        const find = (...types) => {
+            for (const type of types) {
+                const item = components.find(component => component.types.includes(type));
+                if (item?.long_name) return item.long_name;
+            }
+            return '';
         };
+        const locality = find('locality', 'postal_town');
+        const level1 = find('administrative_area_level_1');
+        const level2 = find('administrative_area_level_2');
+        const level3 = find('administrative_area_level_3');
+        const province = level2 && (level3 || (locality && locality.toLowerCase() !== level2.toLowerCase()))
+            ? level2
+            : level1 || level2 || level3;
+        const city = locality || level3 || (level2 !== province ? level2 : '');
+        const streetNumber = find('street_number');
+        const route = find('route');
+        return {
+            province,
+            city,
+            barangay: find('administrative_area_level_4', 'sublocality_level_1', 'sublocality_level_2', 'neighborhood', 'sublocality'),
+            street: [find('subpremise'), find('premise'), [streetNumber, route].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+        };
+    };
+    const formatAddress = parts => {
+        const segments = [
+            byId('onboard_street')?.value.trim() || parts.street,
+            byId('onboard_brgy')?.value.trim() || parts.barangay,
+            byId('onboard_city')?.value.trim() || parts.city,
+            byId('onboard_province')?.value.trim() || parts.province
+        ].filter(Boolean);
+        return segments.filter((segment, index) =>
+            segments.findIndex(candidate => candidate.toLowerCase() === segment.toLowerCase()) === index
+        ).join(', ');
     };
     const setPin = position => {
         const request = ++adminLocationRequest;
@@ -1700,6 +1728,7 @@
         byId('onboard_latitude').value = position.lat().toFixed(7);
         byId('onboard_longitude').value = position.lng().toFixed(7);
         byId('onboard_province').value = byId('onboard_city').value = byId('onboard_brgy').value = '';
+        byId('onboard_street').value = '';
         const summary = byId('onboard_location_summary');
         summary.style.display = 'none';
         status('Finding the address for this pin…');
@@ -1707,22 +1736,34 @@
         adminLocationMap.panTo(position);
         adminLocationGeocoder.geocode({ location: position }, (results, resultStatus) => {
             if (request !== adminLocationRequest) return;
-            const result = results?.[0];
-            const parts = addressParts(result);
-            if (resultStatus !== 'OK' || !result) {
+            const candidates = resultStatus === 'OK'
+                ? (results || []).map(result => ({ result, parts: addressParts(result) }))
+                    .filter(candidate => candidate.parts.province || candidate.parts.city || candidate.parts.barangay)
+                    .sort((a, b) =>
+                        Number(Boolean(b.parts.street)) - Number(Boolean(a.parts.street)) ||
+                        Number(Boolean(b.parts.barangay)) - Number(Boolean(a.parts.barangay)) ||
+                        Number(Boolean(b.parts.city)) - Number(Boolean(a.parts.city)) ||
+                        Number(Boolean(b.parts.province)) - Number(Boolean(a.parts.province))
+                    )
+                : [];
+            const result = candidates[0];
+            if (!result) {
                 status('Could not identify this address. Move the pin or choose another search result.');
                 return;
             }
+            const parts = result.parts;
             if (parts.province) byId('onboard_province').value = parts.province;
             if (parts.city) byId('onboard_city').value = parts.city;
             if (parts.barangay) byId('onboard_brgy').value = parts.barangay;
-            byId('onboard_location_search').value = result.formatted_address || '';
+            if (parts.street && !byId('onboard_street').value.trim()) byId('onboard_street').value = parts.street;
+            const address = formatAddress(parts);
+            byId('onboard_location_search').value = address;
             adminLocationReady = true;
-            summary.textContent = `${result.formatted_address || ''} · ${byId('onboard_latitude').value}, ${byId('onboard_longitude').value}`;
+            summary.textContent = `${address} · ${byId('onboard_latitude').value}, ${byId('onboard_longitude').value}`;
             summary.style.display = 'block';
             const addressComplete = Boolean(parts.province && parts.city && parts.barangay);
             byId('onboard_save_location').disabled = false;
-            status(addressComplete ? 'Address found. Save this location to include it in the caterer profile.' : 'Some address details were not returned. Fill in the province, city, and barangay, then save.');
+            status(addressComplete ? 'Address found. Confirm the address and save this location to include it in the caterer profile.' : 'Some address details were not returned. Fill in the province, city/municipality, and barangay, then save.');
             window.updateAddCatererSubmitState?.();
         });
     };
@@ -1774,7 +1815,17 @@
                 setSaved(false);
                 status('Address changed. Save the location again to confirm these details.');
             }
+            const summary = byId('onboard_location_summary');
+            if (summary?.style.display !== 'none') {
+                summary.textContent = `${formatAddress({})} · ${byId('onboard_latitude').value}, ${byId('onboard_longitude').value}`;
+            }
         }));
+        byId('onboard_street')?.addEventListener('input', () => {
+            const summary = byId('onboard_location_summary');
+            if (summary?.style.display !== 'none') {
+                summary.textContent = `${formatAddress({})} · ${byId('onboard_latitude').value}, ${byId('onboard_longitude').value}`;
+            }
+        });
         byId('onboard_location_search')?.addEventListener('input', () => {
             ++adminLocationRequest;
             adminLocationReady = false;

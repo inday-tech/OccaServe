@@ -326,6 +326,7 @@ async def register(
         for field, value, label in (
             ("province", province, "Province"),
             ("city_municipality", city_municipality, "City / Municipality"),
+            ("barangay", barangay, "Barangay"),
         ):
             if not value or not value.strip():
                 errors[field] = f"{label} is required"
