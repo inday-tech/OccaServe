@@ -136,7 +136,7 @@
             <div class="form-grid">
                 <div class="form-group full-width" style="margin-top: 1.5rem;">
                     <label for="catererLocationSearch">Business Location <span style="color:#ef4444;">*</span></label>
-                    <p class="field-hint">Search for your business, choose a result, drag the pin, or click the map to set its exact location.</p>
+                    <p class="field-hint">Search for your business, choose a result, drag the pin, or click the map to set its exact location. The pin fills the province, municipality/city, and barangay fields below.</p>
                     <div class="input-wrapper" id="catererLocationWrapper" style="padding:1rem;border:1px solid #dbe3ee;border-radius:16px;background:#f8fafc;">
                         <div class="caterer-location-controls" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.65rem;align-items:center;">
                             <input type="search" id="catererLocationSearch" class="minimal-input" placeholder="Search business name, address, or landmark" autocomplete="off" style="min-width:0;height:48px;padding:0 1rem;border:1px solid #cbd5e1;border-radius:12px;background:white;">
@@ -171,9 +171,9 @@
                     </div>
                 </div>
                 <div class="form-group full-width">
-                    <label for="street_cat">Business Address / Landmark <span class="optional-label">(Optional)</span></label>
+                    <label for="street_cat">Street / Building / Subdivision / Landmark <span class="optional-label">(Optional)</span></label>
                     <div class="input-wrapper" id="streetCatWrapper" style="width:100%;">
-                        <input type="text" id="street_cat" name="street_address" class="minimal-input" placeholder="Add a landmark or specific directions (optional)">
+                        <input type="text" id="street_cat" name="street_address" class="minimal-input" placeholder="Enter a street, building, subdivision, or landmark (optional)">
                     </div>
                 </div>
                 <input type="hidden" name="address" id="address_cat_hidden">

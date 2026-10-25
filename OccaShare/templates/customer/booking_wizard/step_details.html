@@ -519,7 +519,11 @@
                     <label class="form-label" for="venue-search">Search venue or pin the exact location</label>
                     <input type="text" id="venue-search" class="form-input" autocomplete="off" value="{{ booking_data.get('venue_address', booking.venue_address if booking else '') }}">
                     <div id="venue-map" role="application" aria-label="Pin the exact event venue on the map" style="width:100%;height:260px;border:1px solid #e2e8f0;border-radius:12px;margin-top:.65rem;background:#f1f5f9;"></div>
-                    <small style="display:block;color:#64748b;margin-top:.45rem;">Search for a venue or move the map pin to the exact spot, then save the location.</small>
+                    <small style="display:block;color:#64748b;margin-top:.45rem;">Search for a venue or move the map pin to the exact spot. The pin fills the province, municipality/city, and barangay fields below; enter a street or landmark separately if needed.</small>
+                    <div style="margin-top:.75rem;">
+                        <label class="form-label" for="venue-landmark">Street / Building / Subdivision / Landmark <small>(Optional)</small></label>
+                        <input type="text" class="form-input" name="venue_landmark" id="venue-landmark" value="{{ booking_data.get('venue_landmark', '') }}" placeholder="Enter a street, building, subdivision, or landmark (optional)">
+                    </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.75rem;margin-top:.75rem;">
                         <div>
                             <label class="form-label" for="province_select">Province</label>
@@ -688,6 +692,8 @@
     window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
     window.customization = {{ (customization or {}) | tojson | safe }};
 </script>
+<script
+    src="{{ url_for('static', path='/js/global/ph_location_address.js') }}?v={{ static_asset_version('js/global/ph_location_address.js') }}"></script>
 <script
     src="{{ url_for('static', path='/js/customer/booking_wizard/step_details.js') }}?v={{ static_asset_version('js/customer/booking_wizard/step_details.js') }}"></script>
 {% endblock %}

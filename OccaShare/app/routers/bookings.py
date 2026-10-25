@@ -1876,6 +1876,7 @@ async def step_details_submit(
     event_end_time: Optional[str] = Form(None),
     guest_count: Optional[str] = Form("0"),
     venue_address: Optional[str] = Form(""),
+    venue_landmark: Optional[str] = Form(None),
     venue_latitude: Optional[str] = Form(None),
     venue_longitude: Optional[str] = Form(None),
     total_price: Optional[float] = Form(0.0),
@@ -1907,6 +1908,8 @@ async def step_details_submit(
         if val is not None:
             return str(val).strip() or None
         return None
+
+    venue_landmark = _clean_str(venue_landmark)
 
     # Safely parse IDs and numbers
     cleaned_pkg_str = _clean_str(package_id)
@@ -2032,7 +2035,12 @@ async def step_details_submit(
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-type:Event+type+is+required", status_code=303)
 
     # Construct venue address if missing from hidden field
-    if not venue_address and province and city and barangay:
+    if venue_landmark and province and city and barangay:
+        venue_address = ", ".join(dict.fromkeys(
+            part.strip() for part in (venue_landmark, barangay, city, province)
+            if part and part.strip()
+        ))
+    elif not venue_address and province and city and barangay:
         venue_address = f"{barangay}, {city}, {province}"
     venue_location_valid = bool(
         venue_address and is_valid_ph_coordinates(venue_latitude, venue_longitude)

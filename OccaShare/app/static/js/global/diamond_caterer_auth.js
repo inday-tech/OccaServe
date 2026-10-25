@@ -27,44 +27,12 @@
     }
 
     function applyCatererAddress(results) {
-        const read = (result, type) =>
-            (result.address_components || []).find(item => item.types.includes(type))?.long_name || '';
-        const candidates = (results || []).map(candidate => {
-            const locality = read(candidate, 'locality') || read(candidate, 'postal_town');
-            const level1 = read(candidate, 'administrative_area_level_1');
-            const level2 = read(candidate, 'administrative_area_level_2');
-            const level3 = read(candidate, 'administrative_area_level_3');
-            const province = level2 && (level3 || (locality && locality.toLowerCase() !== level2.toLowerCase()))
-                ? level2
-                : level1 || level2 || level3;
-            const city = locality || level3 || (level2 !== province ? level2 : '');
-            const streetNumber = read(candidate, 'street_number');
-            const route = read(candidate, 'route');
-            const street = [
-                read(candidate, 'subpremise'),
-                read(candidate, 'premise'),
-                [streetNumber, route].filter(Boolean).join(' ')
-            ].filter(Boolean).join(', ');
-            const barangay = read(candidate, 'administrative_area_level_4') ||
-                read(candidate, 'sublocality_level_1') || read(candidate, 'sublocality_level_2') ||
-                read(candidate, 'neighborhood') || read(candidate, 'sublocality');
-            return { province, city, barangay, street };
-        }).filter(candidate => candidate.province || candidate.city || candidate.barangay)
-            .sort((a, b) =>
-                Number(Boolean(b.street)) - Number(Boolean(a.street)) ||
-                Number(Boolean(b.barangay)) - Number(Boolean(a.barangay)) ||
-                Number(Boolean(b.city)) - Number(Boolean(a.city)) ||
-                Number(Boolean(b.province)) - Number(Boolean(a.province))
-            );
-        const result = candidates[0];
+        const result = window.OccaServeLocationAddress?.parseResults(results);
         if (!result) return false;
 
         document.getElementById('province_cat').value = result.province;
         document.getElementById('city_cat').value = result.city;
         document.getElementById('barangay_cat').value = result.barangay;
-        if (result.street && !document.getElementById('street_cat').value.trim()) {
-            document.getElementById('street_cat').value = result.street;
-        }
         updateAddressCat();
         const search = document.getElementById('catererLocationSearch');
         if (search) search.value = document.getElementById('address_cat_hidden').value;
@@ -674,12 +642,13 @@
     function updateAddressCat() {
         const street = document.getElementById('street_cat')?.value || '';
         const hiddenAddress = document.getElementById('address_cat_hidden');
-        if (hiddenAddress) {
-            const mapAddress = hiddenAddress.value.trim();
-            hiddenAddress.value = street.trim() && !mapAddress.toLowerCase().includes(street.trim().toLowerCase())
-                ? [street.trim(), mapAddress].filter(Boolean).join(', ')
-                : mapAddress;
-        }
+        if (!hiddenAddress) return;
+        hiddenAddress.value = window.OccaServeLocationAddress?.composeAddress({
+            landmark: street,
+            barangay: document.getElementById('barangay_cat')?.value,
+            municipality: document.getElementById('city_cat')?.value,
+            province: document.getElementById('province_cat')?.value
+        }) || '';
     }
 
     async function finalExecuteSubmit() {

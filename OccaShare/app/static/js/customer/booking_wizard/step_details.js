@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const barangaySelect = document.getElementById('barangay_select');
         const venueHidden = document.getElementById('venue_address_hidden');
         const venueSearch = document.getElementById('venue-search');
+        const venueLandmark = document.getElementById('venue-landmark');
         const venueLat = document.getElementById('venue_latitude');
         const venueLng = document.getElementById('venue_longitude');
         const saveVenueButton = document.getElementById('save-venue-location');
@@ -905,7 +906,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const marker = new google.maps.Marker({ map: hasSavedPin ? map : null, position: savedPoint, draggable: true });
         let pendingLocation = null;
         let geocodeRequest = 0;
-        let selectedStreetAddress = '';
         const clearSavedLocation = () => {
             if (venueHidden) venueHidden.value = '';
             if (venueLat) venueLat.value = '';
@@ -920,10 +920,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (venuePinStatus) venuePinStatus.textContent = 'Enter the province, municipality/city, and barangay before saving this pin.';
                 return;
             }
-            const addressParts = [pendingLocation.street, barangay, city, province].filter(Boolean);
-            const address = addressParts.filter((part, index) =>
-                addressParts.findIndex(candidate => candidate.toLowerCase() === part.toLowerCase()) === index
-            ).join(', ');
+            const address = window.OccaServeLocationAddress.composeAddress({
+                landmark: venueLandmark?.value,
+                barangay,
+                municipality: city,
+                province
+            });
             if (!address) return;
             venueLat.value = pendingLocation.lat;
             venueLng.value = pendingLocation.lng;
@@ -950,8 +952,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const barangay = barangaySelect?.value.trim() || '';
             pendingLocation = {
                 lat: position.lat().toFixed(7),
-                lng: position.lng().toFixed(7),
-                street: pendingLocation?.street || selectedStreetAddress
+                lng: position.lng().toFixed(7)
             };
             clearSavedLocation();
             if (saveVenueButton) saveVenueButton.disabled = !(province && city && barangay);
@@ -959,7 +960,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? 'Address details changed. Save the pinned location again to confirm the update.'
                 : 'Complete the province, municipality/city, and barangay before saving the pin.';
         };
-        [provinceSelect, citySelect, barangaySelect].forEach(input => {
+        [provinceSelect, citySelect, barangaySelect, venueLandmark].forEach(input => {
             input?.addEventListener('input', onAddressFieldChange);
         });
         venueSearch?.addEventListener('input', () => {
@@ -968,7 +969,6 @@ document.addEventListener('DOMContentLoaded', function () {
             ++geocodeRequest;
             pendingLocation = null;
             marker.setMap(null);
-            selectedStreetAddress = '';
             clearSavedLocation();
             if (saveVenueButton) saveVenueButton.disabled = true;
             if (venuePinStatus) venuePinStatus.textContent = 'Choose a search result or pin the map, then save the location.';
@@ -976,8 +976,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const setLocation = point => {
             const requestId = ++geocodeRequest;
             pendingLocation = null;
-            selectedStreetAddress = '';
             clearSavedLocation();
+            if (venueLandmark) venueLandmark.value = '';
             if (provinceSelect) provinceSelect.value = '';
             if (citySelect) citySelect.value = '';
             if (barangaySelect) barangaySelect.value = '';
@@ -987,39 +987,14 @@ document.addEventListener('DOMContentLoaded', function () {
             marker.setMap(map);
             geocoder.geocode({ location: point, region: 'PH' }, (results, status) => {
                 if (requestId !== geocodeRequest) return;
-                const result = status === 'OK'
-                    ? (results || []).map(candidate => {
-                        const components = candidate.address_components || [];
-                        const has = type => components.some(part => part.types.includes(type));
-                        return {
-                            candidate,
-                            score: Number(has('street_number') || has('premise') || has('route')) * 4 +
-                                Number(has('administrative_area_level_4') || has('sublocality_level_1') || has('neighborhood')) * 3 +
-                                Number(has('locality') || has('postal_town') || has('administrative_area_level_3')) * 2 +
-                                Number(has('administrative_area_level_2') || has('administrative_area_level_1'))
-                        };
-                    }).sort((a, b) => b.score - a.score)[0]?.candidate
+                const address = status === 'OK'
+                    ? window.OccaServeLocationAddress.parseResults(results)
                     : null;
-                if (!result) {
+                if (!address) {
                     if (venuePinStatus) venuePinStatus.textContent = 'Could not find an address for this pin. Move it slightly or search for the venue.';
                     return;
                 }
-                const parts = result?.address_components || [];
-                const valueFor = (...types) => parts.find(part => types.some(type => part.types.includes(type)))?.long_name || '';
-                const brgy = valueFor('administrative_area_level_4', 'sublocality_level_1', 'sublocality_level_2', 'neighborhood', 'sublocality');
-                const locality = valueFor('locality', 'postal_town');
-                const level1 = valueFor('administrative_area_level_1');
-                const level2 = valueFor('administrative_area_level_2');
-                const level3 = valueFor('administrative_area_level_3');
-                const province = level2 && (level3 || (locality && locality.toLowerCase() !== level2.toLowerCase()))
-                    ? level2
-                    : level1 || level2 || level3;
-                const city = locality || level3 || (level2 !== province ? level2 : '');
-                const street = [
-                    valueFor('subpremise'),
-                    valueFor('premise'),
-                    [valueFor('street_number'), valueFor('route')].filter(Boolean).join(' ')
-                ].filter(Boolean).join(', ');
+                const { province, city, barangay: brgy } = address;
                 if (!province || !city || !brgy) {
                     if (provinceSelect) provinceSelect.value = province;
                     if (citySelect) citySelect.value = city;
@@ -1027,28 +1002,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (venuePinStatus) venuePinStatus.textContent = 'Address partly found. Complete the highlighted province, municipality/city, and barangay fields before saving.';
                     pendingLocation = {
                         lat: point.lat().toFixed(7),
-                        lng: point.lng().toFixed(7),
-                        street
+                        lng: point.lng().toFixed(7)
                     };
                     if (saveVenueButton) saveVenueButton.disabled = true;
-                    return;
-                }
-                const addressParts = [street, brgy, city, province].filter(Boolean);
-                const address = addressParts.filter((part, index) =>
-                    addressParts.findIndex(candidate => candidate.toLowerCase() === part.toLowerCase()) === index
-                ).join(', ');
-                if (!address) {
-                    if (venuePinStatus) venuePinStatus.textContent = 'Could not find an address for this pin. Move it slightly or search for the venue.';
                     return;
                 }
                 if (provinceSelect) provinceSelect.value = province;
                 if (citySelect) citySelect.value = city;
                 if (barangaySelect) barangaySelect.value = brgy;
-                selectedStreetAddress = street;
                 pendingLocation = {
                     lat: point.lat().toFixed(7),
-                    lng: point.lng().toFixed(7),
-                    street
+                    lng: point.lng().toFixed(7)
                 };
                 if (saveVenueButton) saveVenueButton.disabled = false;
                 if (venuePinStatus) venuePinStatus.textContent = 'Address found. Save this pinned location to use it for your booking.';
@@ -1073,46 +1037,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (status !== 'ZERO_RESULTS') console.warn('Could not verify saved event venue address:', status);
                     return;
                 }
-                const candidates = (results || []).map(candidate => {
-                    const components = candidate.address_components || [];
-                    const has = type => components.some(part => part.types.includes(type));
-                    return {
-                        candidate,
-                        score: Number(has('street_number') || has('premise') || has('route')) * 4 +
-                            Number(has('administrative_area_level_4') || has('sublocality_level_1') || has('neighborhood')) * 3 +
-                            Number(has('locality') || has('postal_town') || has('administrative_area_level_3')) * 2 +
-                            Number(has('administrative_area_level_2') || has('administrative_area_level_1'))
-                    };
-                }).sort((a, b) => b.score - a.score);
-                const result = candidates[0]?.candidate;
-                if (!result) return;
-                const components = result.address_components || [];
-                const valueFor = (...types) => components.find(part => types.some(type => part.types.includes(type)))?.long_name || '';
-                const locality = valueFor('locality', 'postal_town');
-                const level1 = valueFor('administrative_area_level_1');
-                const level2 = valueFor('administrative_area_level_2');
-                const level3 = valueFor('administrative_area_level_3');
-                const province = level2 && (level3 || (locality && locality.toLowerCase() !== level2.toLowerCase()))
-                    ? level2
-                    : level1 || level2 || level3;
-                const city = locality || level3 || (level2 !== province ? level2 : '');
-                const barangay = valueFor('administrative_area_level_4', 'sublocality_level_1', 'sublocality_level_2', 'neighborhood', 'sublocality');
-                selectedStreetAddress = [
-                    valueFor('subpremise'),
-                    valueFor('premise'),
-                    [valueFor('street_number'), valueFor('route')].filter(Boolean).join(' ')
-                ].filter(Boolean).join(', ');
+                const address = window.OccaServeLocationAddress.parseResults(results);
+                if (!address) return;
+                const { province, city, barangay } = address;
                 if (provinceSelect && !provinceSelect.value) provinceSelect.value = province;
                 if (citySelect && !citySelect.value) citySelect.value = city;
                 if (barangaySelect && !barangaySelect.value) barangaySelect.value = barangay;
-                const addressParts = [selectedStreetAddress, barangaySelect?.value, citySelect?.value, provinceSelect?.value].filter(Boolean);
-                const address = addressParts.filter((part, index) =>
-                    addressParts.findIndex(candidate => candidate.toLowerCase() === part.toLowerCase()) === index
-                ).join(', ');
-                if (address && venueHidden) {
-                    venueHidden.value = address;
-                    if (venueSearch) venueSearch.value = address;
-                    if (savedVenueText) savedVenueText.textContent = address;
+                const formattedAddress = window.OccaServeLocationAddress.composeAddress({
+                    landmark: venueLandmark?.value,
+                    barangay: barangaySelect?.value,
+                    municipality: citySelect?.value,
+                    province: provinceSelect?.value
+                });
+                if (formattedAddress && venueHidden && !venueHidden.value.trim()) {
+                    venueHidden.value = formattedAddress;
+                    if (venueSearch) venueSearch.value = formattedAddress;
+                    if (savedVenueText) savedVenueText.textContent = formattedAddress;
                 }
             });
         }
