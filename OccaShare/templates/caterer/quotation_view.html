@@ -206,6 +206,9 @@
         <div class="invoice-meta">
             <h2>{% if booking.document_type == 'invoice' %}INVOICE{% else %}QUOTATION{% endif %}</h2>
             <p>Ref: #{% if booking.document_type == 'invoice' %}ORD-{% else %}BK-{% endif %}{{ booking.id }}</p>
+            {% if quotation.package_details and quotation.package_details.get('revision_number') %}
+            <p>Version: {{ quotation.package_details.get('revision_number') }}</p>
+            {% endif %}
             <p>Date: {{ booking.created_at.strftime('%B %d, %Y') }}</p>
         </div>
     </div>
@@ -226,6 +229,13 @@
             <button type="submit" class="quotation-send-button"><i class="fas fa-paper-plane"></i> Send Quotation to Customer</button>
         </form>
     </div>
+    {% elif booking.document_type != 'invoice' and booking.status == 'pending_quotation' and booking.quotation and booking.quotation.status == 'draft' and booking.quotation.package_details.get('revision_pending') %}
+    <div class="quotation-send-action">
+        <p>Revision {{ booking.quotation.package_details.get('revision_number', 2) }} is saved. Review the changes before sending the updated quotation to the customer.</p>
+        <form method="post" action="/caterer/bookings/{{ booking.id }}/send-quotation{% if request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" onsubmit="const button=this.querySelector('button');button.disabled=true;button.innerHTML='<i class=&quot;fas fa-spinner fa-spin&quot;></i> Sending…';">
+            <button type="submit" class="quotation-send-button"><i class="fas fa-paper-plane"></i> Send Revised Quotation</button>
+        </form>
+    </div>
     {% elif booking.document_type != 'invoice' and booking.status in ['inquiry', 'awaiting_customer', 'awaiting_caterer'] and booking.quotation and not booking.quotation.caterer_signature and booking.quotation.status not in ['signed', 'rejected'] %}
     <div class="quotation-send-action">
         <p>{% if booking.quotation.customer_signature %}The customer has already signed this agreement. Review and sign it to complete the agreement.{% else %}The customer selected a deposit option. Review the quotation and sign the agreement to send it back for the customer's signature.{% endif %}</p>
@@ -238,6 +248,30 @@
         <p>{% if booking.quotation.customer_signature and booking.quotation.caterer_signature %}Both parties have signed the agreement.{% elif booking.quotation.customer_signature %}The customer has signed. Your signature is still required to complete this agreement.{% elif booking.quotation.caterer_signature %}The signed agreement is with the customer for review and signature.{% elif booking.quotation.status == 'quoted' %}Quotation sent. Waiting for the customer to choose a deposit option.{% elif booking.quotation.status == 'awaiting_caterer' %}The customer selected a deposit option. The agreement is ready for your review and signature.{% else %}The quotation is awaiting its next step.{% endif %}</p>
         <span class="quotation-sent-status"><i class="fas fa-check-circle"></i> {% if booking.quotation.customer_signature and booking.quotation.caterer_signature %}Fully signed{% elif booking.quotation.customer_signature %}Awaiting caterer signature{% elif booking.quotation.caterer_signature %}Awaiting customer signature{% elif booking.quotation.status == 'quoted' %}Awaiting customer deposit choice{% elif booking.quotation.status == 'awaiting_caterer' %}Ready for caterer review{% else %}Quotation sent{% endif %}</span>
     </div>
+    {% endif %}
+
+    {% if can_revise_quotation %}
+    <div class="quotation-send-action">
+        <p>Before both parties sign and payment is activated, you can propose a revised price or add-on breakdown. The prior version and its approval state will be preserved.</p>
+        <a class="quotation-send-button" href="/caterer/bookings/{{ booking.id }}/quotation?revise=true{% if request.query_params.get('modal') == 'true' %}&amp;modal=true{% endif %}">
+            <i class="fas fa-edit"></i> Prepare a Revised Quotation
+        </a>
+    </div>
+    {% endif %}
+
+    {% if quotation.revisions %}
+    <details class="quotation-send-action">
+        <summary style="cursor:pointer;font-weight:750;">Earlier quotation versions ({{ quotation.revisions|length }})</summary>
+        <div style="margin-top:.75rem;">
+            {% for revision in quotation.revisions %}
+            <p style="margin:.4rem 0;color:#475569;font-size:.85rem;">
+                Version {{ revision.revision_number }} · ₱{{ "{:,.2f}".format(revision.total_amount|float) }}
+                {% if revision.created_at %}· {{ revision.created_at.strftime('%b %d, %Y %I:%M %p') }}{% endif %}
+                {% if revision.revision_reason %}<br>{{ revision.revision_reason }}{% endif %}
+            </p>
+            {% endfor %}
+        </div>
+    </details>
     {% endif %}
 
     <div class="info-grid">
@@ -322,12 +356,25 @@
                 </tr>
                 {% endfor %}
 
+                {% set c_menu_extras = quotation.package_details.selected_menu_extras if quotation.package_details and quotation.package_details.selected_menu_extras else [] %}
+                {% for extra in c_menu_extras %}
+                <tr>
+                    <td>
+                        <div class="item-name">{{ extra.name }}</div>
+                        <div class="item-desc">Extra dish</div>
+                    </td>
+                    <td style="text-align:center;font-weight:600;color:var(--color-neutral-600);">{{ extra.qty }}</td>
+                    <td style="text-align:right;color:var(--color-neutral-600);">₱{{ "{:,.2f}".format(extra.price|float) }}</td>
+                    <td style="text-align:right;font-weight:700;">₱{{ "{:,.2f}".format(extra.subtotal|float) }}</td>
+                </tr>
+                {% endfor %}
+
                 {% set c_srv = quotation.package_details.selected_services if quotation.package_details and quotation.package_details.selected_services else [] %}
                 {% for s in c_srv %}
                 <tr>
                     <td>
                         <div class="item-name">{{ s.name if s.name is defined else s.service.name }}</div>
-                        <div class="item-desc">Custom Selected Service ({{ s.unit if s.unit is defined else 'Per Event' }})</div>
+                        <div class="item-desc">{% if s.included %}Included in base package{% else %}Custom Selected Service ({{ s.unit if s.unit is defined else 'Per Event' }}){% endif %}</div>
                     </td>
                     <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
                         {{ s.qty or s.quantity or 1 }}
@@ -344,7 +391,7 @@
                 <tr>
                     <td>
                         <div class="item-name">{{ eq.name if eq.name is defined else eq.equipment.name }}</div>
-                        <div class="item-desc">Custom Selected Equipment</div>
+                        <div class="item-desc">{% if eq.included %}Included in base package{% else %}Custom Selected Equipment{% endif %}</div>
                     </td>
                     <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
                         {{ eq.qty or eq.quantity or 1 }}

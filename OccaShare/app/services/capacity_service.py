@@ -4,6 +4,20 @@ from sqlalchemy import or_, and_
 from typing import List, Dict, Tuple
 from ..db import models
 
+
+def _booked_service_capacity(service: models.Service, booking: models.Booking, item: models.BookingMenuItem) -> int:
+    if getattr(service, "capacity_type", "unit_based") == "staff_based":
+        ratio = int(getattr(service, "staff_to_pax_ratio", 0) or 0)
+        if ratio > 0:
+            minimum = max(1, int(getattr(service, "min_staff_required", 1) or 1))
+            guests = int(getattr(booking, "guest_count", 0) or 0)
+            return max(minimum, (guests + ratio - 1) // ratio)
+    unit = str(getattr(service, "unit_type", "") or "").lower()
+    if any(token in unit for token in ("pax", "guest", "person")):
+        return 1
+    return max(1, int(item.quantity or 1))
+
+
 class CapacityService:
     @staticmethod
     def validate_booking_capacity(db: Session, caterer_id: int, event_date: date, event_time: dt_time, event_end_time: dt_time, requested_services: List[Tuple[int, int]], current_booking_id: int = None) -> Tuple[bool, str]:
@@ -80,7 +94,7 @@ class CapacityService:
                 
                 # Check overlap: (StartA < EndB) and (EndA > StartB)
                 if req_start_dt < b_end_dt and req_end_dt > b_start_dt:
-                    used_qty += booking_service_item.quantity
+                    used_qty += _booked_service_capacity(service, b, booking_service_item)
                     
             if (used_qty + required_qty) > service.max_available:
                 service_type_name = "personnel" if service.capacity_type == "staff_based" else "units"

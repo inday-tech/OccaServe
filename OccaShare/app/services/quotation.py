@@ -2,6 +2,83 @@ from sqlalchemy.orm import Session
 from ..db import models
 from decimal import Decimal
 from datetime import datetime
+from copy import deepcopy
+
+
+def archive_current_quotation_revision(
+    db: Session,
+    quotation: models.Quotation,
+    created_by_user_id: int | None,
+    revision_reason: str,
+) -> models.QuotationRevision:
+    details = deepcopy(quotation.package_details or {})
+    if not isinstance(details, dict):
+        details = {}
+    try:
+        revision_number = max(1, int(details.get("revision_number", 1)))
+    except (TypeError, ValueError):
+        revision_number = 1
+    revision = models.QuotationRevision(
+        quotation_id=quotation.id,
+        revision_number=revision_number,
+        package_details=details,
+        addons=deepcopy(quotation.addons or []),
+        total_amount=quotation.total_amount or 0,
+        downpayment_percent=int(quotation.downpayment_percent or 30),
+        status=quotation.status or "draft",
+        caterer_signature=quotation.caterer_signature,
+        customer_signature=quotation.customer_signature,
+        caterer_signed_at=quotation.caterer_signed_at,
+        customer_signed_at=quotation.customer_signed_at,
+        customer_approved_at=quotation.customer_approved_at,
+        contract_url=quotation.contract_url,
+        revision_reason=(revision_reason or "").strip()[:2000] or None,
+        created_by_user_id=created_by_user_id,
+    )
+    db.add(revision)
+    return revision
+
+
+def revise_quotation(
+    db: Session,
+    quotation: models.Quotation,
+    created_by_user_id: int,
+    revision_reason: str,
+    base_amount: Decimal,
+    addons: list[dict],
+    total_amount: Decimal,
+    revision_item_changes: str = "",
+) -> int:
+    previous_details = deepcopy(quotation.package_details or {})
+    if not isinstance(previous_details, dict):
+        previous_details = {}
+    try:
+        previous_version = max(1, int(previous_details.get("revision_number", 1)))
+    except (TypeError, ValueError):
+        previous_version = 1
+
+    archive_current_quotation_revision(db, quotation, created_by_user_id, revision_reason)
+    revised_details = previous_details
+    revised_details.update({
+        "base_amount": float(base_amount),
+        "unit_price": float(base_amount / Decimal(max(1, int(quotation.booking.guest_count or 1)))),
+        "guest_count": quotation.booking.guest_count,
+        "revision_number": previous_version + 1,
+        "revision_note": revision_reason.strip()[:2000],
+        "revision_item_changes": revision_item_changes.strip()[:4000],
+        "revision_pending": True,
+    })
+    quotation.package_details = revised_details
+    quotation.addons = deepcopy(addons)
+    quotation.total_amount = total_amount
+    quotation.status = "draft"
+    quotation.caterer_signature = None
+    quotation.customer_signature = None
+    quotation.caterer_signed_at = None
+    quotation.customer_signed_at = None
+    quotation.customer_approved_at = None
+    quotation.contract_url = None
+    return previous_version + 1
 
 class QuotationService:
     @staticmethod
@@ -65,6 +142,7 @@ class QuotationService:
             sess_cust = booking.custom_requirements.get("customization", {}) or {}
 
         selected_food = []
+        selected_menu_extras = []
         selected_services = []
         selected_equipment = []
 
@@ -97,12 +175,30 @@ class QuotationService:
                     "id": food.get("id"),
                     "name": food.get("name", "Dish"),
                     "category": food.get("category", "Menu Item"),
+                    "replacement_for": food.get("replacement_for"),
+                    "replacement_for_name": food.get("replacement_for_name"),
                     "price": u_price,
                     "unit_price": u_price,
                     "unit": food.get("unit", "Per Pax / Guest"),
                     "qty": qty,
                     "quantity": qty,
-                    "subtotal": subtotal
+                    "subtotal": subtotal,
+                })
+
+            for extra in sess_cust.get("selected_menu_extras", []):
+                u_price = float(extra.get("price", 0) or 0)
+                qty = int(extra.get("qty", 1) or 1)
+                subtotal = float(Decimal(str(u_price)) * Decimal(str(qty)))
+                selected_menu_extras.append({
+                    "id": extra.get("id"),
+                    "name": extra.get("name", "Extra dish"),
+                    "category": extra.get("category", "Menu Item"),
+                    "price": u_price,
+                    "unit_price": u_price,
+                    "unit": extra.get("unit", "dish"),
+                    "qty": qty,
+                    "quantity": qty,
+                    "subtotal": subtotal,
                 })
 
             for srv in sess_cust.get("selected_services", []):
@@ -117,13 +213,15 @@ class QuotationService:
                     "unit": srv.get("unit", "Per Event"),
                     "qty": qty,
                     "quantity": qty,
-                    "subtotal": subtotal
+                    "subtotal": subtotal,
+                    "included": bool(srv.get("included", False)),
                 })
 
             for eq in sess_cust.get("selected_equipment", []):
                 u_price = float(eq.get("price", 0))
                 qty = int(eq.get("qty", 1) or 1)
-                subtotal = float(Decimal(str(u_price)) * Decimal(str(qty)))
+                duration_qty = int(eq.get("duration_qty", 1) or 1)
+                subtotal = float(Decimal(str(u_price)) * Decimal(str(qty)) * Decimal(str(duration_qty)))
                 selected_equipment.append({
                     "id": eq.get("id"),
                     "name": eq.get("name", "Equipment"),
@@ -132,11 +230,13 @@ class QuotationService:
                     "unit": eq.get("unit", "Per Piece"),
                     "qty": qty,
                     "quantity": qty,
-                    "subtotal": subtotal
+                    "duration_qty": duration_qty,
+                    "subtotal": subtotal,
+                    "included": bool(eq.get("included", False)),
                 })
 
         # Fallback to BookingMenuItem if session customization payload was missing
-        if not selected_food and not selected_services and not selected_equipment:
+        if not selected_food and not selected_menu_extras and not selected_services and not selected_equipment:
             from ..db.models import BookingMenuItem
             booking_items = db.query(BookingMenuItem).filter(BookingMenuItem.booking_id == booking.id).all()
             for b_item in booking_items:
@@ -185,13 +285,14 @@ class QuotationService:
                     })
 
         food_total = sum(Decimal(str(f["subtotal"])) for f in selected_food)
+        menu_extras_total = sum(Decimal(str(extra["subtotal"])) for extra in selected_menu_extras)
         services_total = sum(Decimal(str(s["subtotal"])) for s in selected_services)
         equipment_total = sum(Decimal(str(e["subtotal"])) for e in selected_equipment)
         try:
             food_removal_credit = max(Decimal("0"), Decimal(str(sess_cust.get("food_removal_credit", 0) or 0)))
         except Exception:
             food_removal_credit = Decimal("0")
-        customized_subtotal = max(Decimal("0"), base_total + food_total + services_total + equipment_total - food_removal_credit)
+        customized_subtotal = max(Decimal("0"), base_total + food_total + menu_extras_total + services_total + equipment_total - food_removal_credit)
 
         addons = []
         travel_fee = Decimal(str(getattr(booking, 'travel_fee', 0) or 0))
@@ -221,9 +322,11 @@ class QuotationService:
             "guest_count": guest_count,
             "pricing_mode": "customizable",
             "selected_food": selected_food,
+            "selected_menu_extras": selected_menu_extras,
             "selected_services": selected_services,
             "selected_equipment": selected_equipment,
             "food_total": float(food_total),
+            "menu_extras_total": float(menu_extras_total),
             "food_removal_credit": float(food_removal_credit),
             "services_total": float(services_total),
             "equipment_total": float(equipment_total),

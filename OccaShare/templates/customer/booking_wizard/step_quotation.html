@@ -30,6 +30,35 @@
     <div class="quote-main-content-centered">
         <!-- Main Document Flow -->
         <div class="q-document-flow">
+            {% if quotation.package_details and quotation.package_details.get('revision_number', 1)|int > 1 %}
+            <section style="margin-bottom:1rem;padding:1rem;border:1px solid #fed7aa;border-radius:10px;background:#fff7ed;">
+                <strong style="color:#9a3412;">Revised quotation · Version {{ quotation.package_details.get('revision_number') }}</strong>
+                {% if quotation.package_details.get('revision_note') %}
+                <p style="margin:.35rem 0 0;color:#7c2d12;font-size:.85rem;">{{ quotation.package_details.get('revision_note') }}</p>
+                {% endif %}
+                {% if quotation.package_details.get('revision_item_changes') %}
+                <div style="margin-top:.65rem;padding:.65rem .75rem;border-radius:8px;background:#fff;">
+                    <strong style="display:block;color:#7c2d12;font-size:.8rem;">Updated items / proposed alternatives</strong>
+                    <p style="margin:.3rem 0 0;color:#7c2d12;font-size:.85rem;white-space:pre-line;">{{ quotation.package_details.get('revision_item_changes') }}</p>
+                </div>
+                {% endif %}
+                <p style="margin:.35rem 0 0;color:#7c2d12;font-size:.8rem;">Please review the updated items, charges, total, and deposit choice. Earlier approvals and signatures no longer apply to this version.</p>
+            </section>
+            {% endif %}
+            {% if quotation.revisions %}
+            <details style="margin-bottom:1rem;padding:.85rem 1rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                <summary style="cursor:pointer;color:#334155;font-weight:750;">Earlier quotation versions ({{ quotation.revisions|length }})</summary>
+                <div style="margin-top:.6rem;">
+                    {% for revision in quotation.revisions %}
+                    <p style="margin:.45rem 0;color:#64748b;font-size:.8rem;">
+                        Version {{ revision.revision_number }} · ₱{{ "{:,.2f}".format(revision.total_amount|float) }}
+                        {% if revision.created_at %}· {{ revision.created_at.strftime('%b %d, %Y') }}{% endif %}
+                        {% if revision.revision_reason %}<br>{{ revision.revision_reason }}{% endif %}
+                    </p>
+                    {% endfor %}
+                </div>
+            </details>
+            {% endif %}
             {% set saved_dp_options = quotation.package_details.get('accepted_payment_terms') if quotation.package_details else None %}
             {% set dp_options = (saved_dp_options or booking.caterer.accepted_payment_terms or [30])|map('int')|list %}
             {% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent in dp_options else dp_options[0] %}

@@ -536,6 +536,21 @@ def parse_optional_service_fee(raw_value) -> float:
     return parse_service_fee(raw_value)
 
 
+def parse_catalog_item_price(raw_value) -> float:
+    amount_text = str(raw_value or "").replace(",", "").strip()
+    if not amount_text:
+        return 0.0
+    if not re.fullmatch(r"\d{1,8}(?:\.\d{1,2})?", amount_text):
+        raise HTTPException(status_code=400, detail="Enter a valid catalog price with up to 2 decimal places.")
+    try:
+        amount = Decimal(amount_text)
+    except InvalidOperation as exc:
+        raise HTTPException(status_code=400, detail="Enter a valid catalog price.") from exc
+    if amount < 0 or amount > MAX_SERVICE_FEE:
+        raise HTTPException(status_code=400, detail="Catalog price must be between 0 and 99,999,999.99.")
+    return float(amount)
+
+
 def parse_delivery_fee(raw_value) -> float:
     amount_text = str(raw_value or "").strip()
     if not re.fullmatch(r"(?:\d{1,6}|\d{1,3},\d{3})(?:\.\d{1,2})?", amount_text):
@@ -5115,6 +5130,36 @@ async def view_booking_quotation(
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
     
     quotation = booking.quotation
+    if request.query_params.get("revise") == "true":
+        revision_eligible = bool(
+            quotation
+            and quotation.status in {"quoted", "awaiting_caterer", "awaiting_customer"}
+            and booking.status in {"pending_quotation", "awaiting_caterer", "awaiting_customer"}
+            and not (quotation.caterer_signature and quotation.customer_signature)
+            and not booking.payment_request_activated_at
+            and not booking.payment_deadline_at
+        )
+        if not revision_eligible:
+            raise HTTPException(status_code=409, detail="This quotation can no longer be revised before payment.")
+        details = quotation.package_details or {}
+        addon_total = sum(Decimal(str(item.get("price", 0) or 0)) for item in (quotation.addons or []))
+        raw_base_amount = details.get("base_amount")
+        if raw_base_amount is None:
+            raw_base_amount = Decimal(str(quotation.total_amount or 0)) - addon_total
+        proposal_base_price = Decimal(str(raw_base_amount or 0))
+        return templates.TemplateResponse("caterer/proposal_maker.html", {
+            "request": request,
+            "booking": booking,
+            "user": user,
+            "quotation": quotation,
+            "revision_mode": True,
+            "proposal_base_price": proposal_base_price,
+            "proposal_addons": quotation.addons or [],
+            "revision_item_changes": details.get("revision_item_changes", ""),
+            "package_inclusions": _normalize_inclusions_for_api(
+                booking.package.inclusions if booking.package else None
+            ),
+        })
     if not quotation:
         # If it's a custom event or requires manual quote, show the Proposal Maker
         if booking.is_custom_event or booking.travel_fee_status == "manual_quote":
@@ -5140,6 +5185,14 @@ async def view_booking_quotation(
         "booking": booking,
         "quotation": quotation,
         "user": user,
+        "can_revise_quotation": bool(
+            booking.quotation
+            and booking.quotation.status in {"quoted", "awaiting_caterer", "awaiting_customer"}
+            and booking.status in {"pending_quotation", "awaiting_caterer", "awaiting_customer"}
+            and not (booking.quotation.caterer_signature and booking.quotation.customer_signature)
+            and not booking.payment_request_activated_at
+            and not booking.payment_deadline_at
+        ),
         "package_inclusions": _normalize_inclusions_for_api(
             booking.package.inclusions if booking.package else None
         ),
@@ -5152,6 +5205,8 @@ async def submit_proposal_maker(
     base_price: Decimal = Form(...),
     addon_names: List[str] = Form([]),
     addon_prices: List[Decimal] = Form([]),
+    revision_reason: str = Form(""),
+    revision_item_changes: str = Form(""),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
@@ -5160,11 +5215,25 @@ async def submit_proposal_maker(
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
-    if booking.status != "inquiry":
-        raise HTTPException(status_code=400, detail="Accept the booking request before preparing a quotation.")
-        
-    if booking.quotation and booking.quotation.status != "draft":
-        raise HTTPException(status_code=400, detail="Quotation already exists")
+    revision_mode = request.query_params.get("revision") == "true"
+    existing_quotation = booking.quotation
+    if revision_mode:
+        if (
+            not existing_quotation
+            or existing_quotation.status not in {"quoted", "awaiting_caterer", "awaiting_customer"}
+            or booking.status not in {"pending_quotation", "awaiting_caterer", "awaiting_customer"}
+            or (existing_quotation.caterer_signature and existing_quotation.customer_signature)
+            or booking.payment_request_activated_at
+            or booking.payment_deadline_at
+        ):
+            raise HTTPException(status_code=409, detail="This quotation can no longer be revised before payment.")
+        if len(revision_reason.strip()) < 3:
+            raise HTTPException(status_code=400, detail="Explain why the quotation is being revised.")
+    else:
+        if booking.status != "inquiry":
+            raise HTTPException(status_code=400, detail="Accept the booking request before preparing a quotation.")
+        if existing_quotation and existing_quotation.status != "draft":
+            raise HTTPException(status_code=400, detail="Quotation already exists")
         
     if not base_price.is_finite() or base_price < 0 or any(
         not amount.is_finite() or amount < 0 for amount in addon_prices
@@ -5206,6 +5275,8 @@ async def submit_proposal_maker(
             
     package_details = {
         "name": f"Custom Request: {booking.event_name or booking.event_type}",
+        "revision_number": 1,
+        "revision_pending": False,
         "unit_price": float(base_price / Decimal(booking.guest_count or 1)),
         "base_amount": float(base_price),
         "guest_count": booking.guest_count,
@@ -5227,7 +5298,29 @@ async def submit_proposal_maker(
         downpayment_percent = float(min(float(x) for x in user.caterer_profile.accepted_payment_terms))
         
     quotation = booking.quotation
-    if quotation:
+    if revision_mode:
+        from ..services.quotation import revise_quotation
+        quotation = existing_quotation
+        new_version = revise_quotation(
+            db,
+            quotation,
+            user.id,
+            revision_reason,
+            base_price,
+            addons,
+            total_amount,
+            revision_item_changes,
+        )
+        booking.status = "pending_quotation"
+        booking.expires_at = None
+        quotation.downpayment_percent = int(quotation.downpayment_percent or downpayment_percent)
+        booking.reservation_fee = float(total_amount) * quotation.downpayment_percent / 100
+        db.add(models.BookingHistory(
+            booking_id=booking.id,
+            status="pending_quotation",
+            notes=f"Caterer prepared quotation revision {new_version}: {revision_reason.strip()[:500]}",
+        ))
+    elif quotation:
         quotation.package_details = package_details
         quotation.addons = addons
         quotation.total_amount = total_amount
@@ -5246,7 +5339,8 @@ async def submit_proposal_maker(
     
     booking.total_amount = float(total_amount)
     booking.total_price = float(total_amount)
-    booking.reservation_fee = float(total_amount) * (float(downpayment_percent) / 100.0)
+    effective_downpayment = int(quotation.downpayment_percent or downpayment_percent)
+    booking.reservation_fee = float(total_amount) * effective_downpayment / 100.0
     
     db.commit()
     
@@ -5268,16 +5362,24 @@ async def send_standard_quotation(
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+    quotation = booking.quotation
+    revision_draft = bool(
+        quotation
+        and quotation.status == "draft"
+        and (quotation.package_details or {}).get("revision_pending")
+    )
     if booking.status != "inquiry":
-        if booking.status == "pending_quotation" and booking.quotation and booking.quotation.status == "quoted":
+        if revision_draft and booking.status in {"pending_quotation", "awaiting_caterer", "awaiting_customer"}:
+            pass
+        elif booking.status == "pending_quotation" and quotation and quotation.status == "quoted":
             redirect_url = f"/caterer/bookings/{booking.id}/quotation"
             if request.query_params.get("modal") == "true":
                 redirect_url += "?modal=true"
             return RedirectResponse(url=redirect_url, status_code=303)
-        raise HTTPException(status_code=400, detail="Accept the booking request before preparing or sending a quotation.")
+        else:
+            raise HTTPException(status_code=400, detail="Accept the booking request before preparing or sending a quotation.")
 
     prepare_only = request.query_params.get("prepare") == "true"
-    quotation = booking.quotation
     created_now = False
     if quotation and quotation.status != "draft":
         raise HTTPException(status_code=400, detail="This quotation has already been sent.")
@@ -5309,6 +5411,8 @@ async def send_standard_quotation(
         return RedirectResponse(url=redirect_url, status_code=303)
 
     package_details = quotation.package_details or {}
+    is_revision = bool(package_details.get("revision_pending"))
+    package_details.setdefault("revision_number", 1)
     accepted_terms = package_details.get("accepted_payment_terms") or user.caterer_profile.accepted_payment_terms or [30]
     valid_terms = sorted({
         int(term) for term in accepted_terms
@@ -5322,6 +5426,7 @@ async def send_standard_quotation(
     if "agreement_terms" not in package_details:
         from ..services.quotation import quotation_service
         package_details["agreement_terms"] = quotation_service._agreement_terms_for_booking(booking)
+    package_details["revision_pending"] = False
     quotation.package_details = package_details
     quotation.status = "quoted"
     booking.status = "pending_quotation"
@@ -5330,14 +5435,22 @@ async def send_standard_quotation(
     db.add(models.BookingHistory(
         booking_id=booking.id,
         status="pending_quotation",
-        notes=f"Caterer sent the quotation with deposit options: {', '.join(f'{term}%' for term in valid_terms)}.",
+        notes=(
+            f"Caterer sent quotation revision {package_details.get('revision_number', 1)} with deposit options: {', '.join(f'{term}%' for term in valid_terms)}."
+            if is_revision
+            else f"Caterer sent the quotation with deposit options: {', '.join(f'{term}%' for term in valid_terms)}."
+        ),
     ))
     db.commit()
     await NotificationService.notify_status_update(
         db,
         booking.user_id,
-        "Quotation ready — choose a deposit",
-        f"{user.caterer_profile.business_name} sent your booking quotation. Review the agreement and choose one of the listed deposit options.",
+        "Revised quotation ready — review and choose a deposit" if is_revision else "Quotation ready — choose a deposit",
+        (
+            f"{user.caterer_profile.business_name} revised your quotation. Review the updated items and charges, then choose a deposit option."
+            if is_revision
+            else f"{user.caterer_profile.business_name} sent your booking quotation. Review the agreement and choose one of the listed deposit options."
+        ),
         f"/bookings/step/quotation/{booking.id}",
     )
     redirect_url = f"/caterer/bookings/{booking.id}/quotation"
@@ -6367,7 +6480,7 @@ async def add_service_item(
     visibility: str = Form("public"),
     usage_type: str = Form("both"),
     is_addon: bool = Form(False),
-    addon_price: float = Form(0.0),
+    addon_price: Optional[float] = Form(None),
     base_duration_hours: int = Form(3),
     staff_to_pax_ratio: int = Form(0),
     min_staff_required: int = Form(1),
@@ -6836,6 +6949,89 @@ def _parse_inclusions(inclusions_json: Optional[str], inclusions_legacy: Optiona
     return []
 
 
+def _validated_selection_rules(db: Session, caterer_id: int, raw_rules: Optional[str], pricing_mode: str):
+    try:
+        rules = json.loads(raw_rules) if raw_rules else None
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Package customization settings must be valid JSON.") from exc
+    if pricing_mode != "customizable" or rules is None:
+        return rules
+
+    from ..services.package_pricing import (
+        PackagePricingError,
+        validate_customizable_addon_rules,
+        validate_customizable_menu_rules,
+    )
+
+    try:
+        if not isinstance(rules, dict):
+            raise PackagePricingError("Package customization settings must be a valid object.")
+        available_ids = {
+            int(value) for value in rules.get("available_menu_ids", [])
+            if str(value).isdigit() and int(value) > 0
+        }
+        menu_items = {
+            item.id: item for item in db.query(models.MenuItem).filter(
+                models.MenuItem.id.in_(available_ids),
+                models.MenuItem.caterer_id == caterer_id,
+                models.MenuItem.is_archived.is_(False),
+                models.MenuItem.is_hidden.is_(False),
+                models.MenuItem.available_for_package.is_(True),
+                models.MenuItem.usage_type.in_(["both", "package_only"]),
+                models.MenuItem.status == "available",
+            ).all()
+        } if available_ids else {}
+        validate_customizable_menu_rules(rules, menu_items)
+        validate_customizable_addon_rules(rules)
+        service_ids = {int(value) for value in rules.get("available_service_ids", []) if str(value).isdigit() and int(value) > 0}
+        equipment_ids = {int(value) for value in rules.get("available_equipment_ids", []) if str(value).isdigit() and int(value) > 0}
+        service_items = {
+            item.id: item for item in db.query(models.Service).filter(
+                models.Service.id.in_(service_ids),
+                models.Service.caterer_id == caterer_id,
+                models.Service.is_archived.is_(False),
+                models.Service.is_hidden.is_(False),
+                models.Service.usage_type.in_(["both", "package_only"]),
+                models.Service.status == "available",
+            ).all()
+        } if service_ids else {}
+        equipment_items = {
+            item.id: item for item in db.query(models.Equipment).filter(
+                models.Equipment.id.in_(equipment_ids),
+                models.Equipment.caterer_id == caterer_id,
+                models.Equipment.is_archived.is_(False),
+                models.Equipment.is_hidden.is_(False),
+                models.Equipment.usage_type.in_(["both", "package_only"]),
+                models.Equipment.status == "available",
+            ).all()
+        } if equipment_ids else {}
+    except PackagePricingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if set(menu_items) != available_ids:
+        raise HTTPException(status_code=400, detail="Package menu options must be available menu items owned by your catalog.")
+    if set(service_items) != service_ids:
+        raise HTTPException(status_code=400, detail="Package service options must be available services owned by your catalog.")
+    if set(equipment_items) != equipment_ids:
+        raise HTTPException(status_code=400, detail="Package equipment options must be available equipment owned by your catalog.")
+    included_services = {int(value) for value in rules.get("included_service_ids", [])}
+    included_equipment = {int(value) for value in rules.get("included_equipment_ids", [])}
+    service_prices = rules.get("service_prices", {})
+    equipment_prices = rules.get("equipment_prices", {})
+    equipment_limits = rules.get("equipment_quantity_limits", {})
+    for item_id, item in service_items.items():
+        package_price = service_prices.get(str(item_id), service_prices.get(item_id, item.selling_price))
+        if item_id not in included_services and float(package_price or 0) <= 0:
+            raise HTTPException(status_code=400, detail=f"{item.name} needs a valid package service price.")
+    for item_id, item in equipment_items.items():
+        package_price = equipment_prices.get(str(item_id), equipment_prices.get(item_id, item.addon_price or item.rental_price))
+        if item_id not in included_equipment and float(package_price or 0) <= 0:
+            raise HTTPException(status_code=400, detail=f"{item.name} needs a valid package rental price.")
+        limit = equipment_limits.get(str(item_id), equipment_limits.get(item_id))
+        if item_id not in included_equipment and limit is not None and int(limit) > int(item.available_qty or 0):
+            raise HTTPException(status_code=400, detail=f"{item.name} package quantity limit cannot exceed available inventory.")
+    return rules
+
+
 def _normalize_inclusions_for_api(inclusions) -> list:
     """Normalize package.inclusions to a list of dicts for the API response."""
     if not inclusions:
@@ -7139,6 +7335,10 @@ async def add_package(
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
         return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
 
+    package_selection_rules = _validated_selection_rules(
+        db, profile.id, selection_rules, pricing_mode
+    )
+
     import base64
     image_url = None
     if image and image.filename:
@@ -7178,7 +7378,7 @@ async def add_package(
         reservation_fee_type=reservation_fee_type,
         reservation_fee_value=reservation_fee_value,
         booking_lead_time=booking_lead_time,
-        selection_rules=json.loads(selection_rules) if selection_rules else None,
+        selection_rules=package_selection_rules,
         policies={"cancellation": policies_cancellation, "internal": policies_internal},
         is_active=status == 'active',
         status=status
@@ -8270,6 +8470,10 @@ async def update_package(
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
         return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
 
+    package_selection_rules = _validated_selection_rules(
+        db, profile.id, selection_rules, pricing_mode
+    )
+
     package.name = name
     package.description = (description or "").strip()
     package.service_type = service_type
@@ -8296,7 +8500,7 @@ async def update_package(
     package.reservation_fee_type = reservation_fee_type
     package.reservation_fee_value = reservation_fee_value
     package.booking_lead_time = booking_lead_time
-    package.selection_rules = json.loads(selection_rules) if selection_rules else None
+    package.selection_rules = package_selection_rules
     
     # Process inclusions: prefer inclusions_json (structured format) over legacy form list
     package.inclusions = _parse_inclusions(inclusions_json, inclusions)
@@ -8627,17 +8831,27 @@ async def get_catalogs_inclusions(
     profile = user.caterer_profile
     equipment = db.query(models.Equipment).filter(
         models.Equipment.caterer_id == profile.id,
-        models.Equipment.is_archived == False
+        models.Equipment.is_archived.is_(False),
+        models.Equipment.is_hidden.is_(False),
+        models.Equipment.usage_type.in_(["both", "package_only"]),
+        models.Equipment.status == "available"
     ).order_by(models.Equipment.name.asc()).all()
     
     menus = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == profile.id,
-        models.MenuItem.is_archived == False
+        models.MenuItem.is_archived.is_(False),
+        models.MenuItem.is_hidden.is_(False),
+        models.MenuItem.available_for_package.is_(True),
+        models.MenuItem.usage_type.in_(["both", "package_only"]),
+        models.MenuItem.status == "available"
     ).order_by(models.MenuItem.name.asc()).all()
     
     services = db.query(models.Service).filter(
         models.Service.caterer_id == profile.id,
-        models.Service.is_archived == False
+        models.Service.is_archived.is_(False),
+        models.Service.is_hidden.is_(False),
+        models.Service.usage_type.in_(["both", "package_only"]),
+        models.Service.status == "available"
     ).order_by(models.Service.name.asc()).all()
     
     return {
@@ -8649,6 +8863,8 @@ async def get_catalogs_inclusions(
                 "unit_type": e.unit_type or "unit",
                 "available_qty": e.available_qty or 0,
                 "rental_price": e.rental_price or 0.0,
+                "addon_price": e.addon_price or 0.0,
+                "status": e.status or "available",
                 "description": e.description or "",
                 "image_url": e.image_url or ""
             } for e in equipment
@@ -8660,6 +8876,10 @@ async def get_catalogs_inclusions(
                 "category": m.category or "Menu",
                 "unit_type": m.pricing_unit or "serving",
                 "price": m.price or 0.0,
+                "addon_price": m.addon_price or 0.0,
+                "upgrade_fee": m.upgrade_fee or 0.0,
+                "serving_size": m.serving_size or "",
+                "status": m.status or "available",
                 "description": m.description or "",
                 "image_url": m.image_url or ""
             } for m in menus
@@ -8672,6 +8892,11 @@ async def get_catalogs_inclusions(
                 "unit_type": s.unit_type or "service",
                 "price": s.selling_price or 0.0,
                 "max_available": s.max_available or 0,
+                "minimum_hours": s.minimum_hours or 1,
+                "capacity_type": s.capacity_type or "unit_based",
+                "staff_to_pax_ratio": s.staff_to_pax_ratio or 0,
+                "min_staff_required": s.min_staff_required or 1,
+                "status": s.status or "available",
                 "description": s.description or "",
                 "image_url": s.image_url or ""
             } for s in services
@@ -8694,10 +8919,17 @@ async def quick_add_catalog_item(
     category: Optional[str] = Form(None),
     custom_category: Optional[str] = Form(None),
     upgrade_fee: float = Form(0.0),
+    addon_price: float = Form(0.0),
+    cost_price: float = Form(0.0),
     price: Optional[str] = Form(None),
     unit_type: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     available_qty: Optional[int] = Form(None),
+    minimum_hours: Optional[int] = Form(1),
+    staff_to_pax_ratio: Optional[int] = Form(0),
+    min_staff_required: Optional[int] = Form(1),
+    serving_size: Optional[str] = Form(None),
+    status: str = Form("available"),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
@@ -8711,13 +8943,34 @@ async def quick_add_catalog_item(
         raise HTTPException(status_code=400, detail="Item name is required.")
 
     item_type = (item_type or "menu").lower()
-    price = (
-        parse_optional_service_fee(price)
-        if item_type == "service"
-        else max(0.0, float(price or 0.0))
-    )
-    if upgrade_fee < 0 or upgrade_fee > 99999999.99:
-        raise HTTPException(status_code=400, detail="Dish swap fee must be between 0 and 99,999,999.99.")
+    price = parse_catalog_item_price(price)
+    monetary_values = [price, upgrade_fee, addon_price, cost_price]
+    if any(not math.isfinite(value) or value < 0 or value > 99999999.99 for value in monetary_values):
+        raise HTTPException(status_code=400, detail="Prices and costs must be between ₱0 and ₱99,999,999.99.")
+    if any(round(value, 2) != value for value in monetary_values):
+        raise HTTPException(status_code=400, detail="Prices and costs can have no more than 2 decimal places.")
+    if status not in {"available", "unavailable"}:
+        raise HTTPException(status_code=400, detail="Choose a valid availability status.")
+    allowed_units = {
+        "menu": {"per_pax", "per_tray", "per_platter", "per_order"},
+        "service": {"per_event", "per_pax", "per_hour", "per_staff"},
+        "equipment": {"piece", "set", "pair", "lot", "per_day", "per_event"},
+    }
+    if item_type not in allowed_units:
+        raise HTTPException(status_code=400, detail="Invalid item type.")
+    if unit_type and unit_type not in allowed_units[item_type]:
+        raise HTTPException(status_code=400, detail="Choose a valid pricing unit for this item type.")
+    if available_qty is not None and not 1 <= available_qty <= 999999:
+        raise HTTPException(status_code=400, detail="Available quantity must be between 1 and 999,999.")
+    if minimum_hours is not None and not 1 <= minimum_hours <= 24:
+        raise HTTPException(status_code=400, detail="Service duration must be between 1 and 24 hours.")
+    if item_type == "service":
+        if staff_to_pax_ratio is not None and not 0 <= staff_to_pax_ratio <= 999999:
+            raise HTTPException(status_code=400, detail="Staff-to-guest ratio must be between 0 and 999,999.")
+        if min_staff_required is not None and not 1 <= min_staff_required <= 999999:
+            raise HTTPException(status_code=400, detail="Minimum staff must be between 1 and 999,999.")
+        if unit_type == "per_staff" and not staff_to_pax_ratio:
+            raise HTTPException(status_code=400, detail="Enter the number of guests served by each staff member.")
     desc = description.strip() if description else None
 
     image_url = None
@@ -8742,15 +8995,18 @@ async def quick_add_catalog_item(
             name=name,
             category=cat,
             price=price,
+            cost_price=cost_price,
+            addon_price=addon_price,
             upgrade_fee=max(0.0, float(upgrade_fee or 0.0)),
             pricing_unit=unit,
+            serving_size=(serving_size or "").strip() or None,
             description=desc,
             image_url=image_url,
             usage_type="both",
             available_for_package=True,
             available_for_order=True,
             pricing_type="fixed",
-            status="available",
+            status=status,
             is_archived=False,
             is_hidden=False
         )
@@ -8766,7 +9022,10 @@ async def quick_add_catalog_item(
                 "category": new_item.category,
                 "unit_type": new_item.pricing_unit or "per_pax",
                 "price": new_item.price or 0.0,
+                "addon_price": new_item.addon_price or 0.0,
                 "upgrade_fee": new_item.upgrade_fee or 0.0,
+                "serving_size": new_item.serving_size or "",
+                "status": new_item.status or "available",
                 "description": new_item.description or "",
                 "image_url": new_item.image_url or ""
             }
@@ -8780,9 +9039,14 @@ async def quick_add_catalog_item(
             category=cat,
             selling_price=price,
             unit_type=unit,
+            max_available=available_qty or 1,
+            minimum_hours=minimum_hours or 1,
+            capacity_type="staff_based" if unit == "per_staff" else "unit_based",
+            staff_to_pax_ratio=staff_to_pax_ratio or 0,
+            min_staff_required=min_staff_required or 1,
             description=desc,
             image_url=image_url,
-            status="available",
+            status=status,
             is_archived=False,
             is_hidden=False
         )
@@ -8799,6 +9063,12 @@ async def quick_add_catalog_item(
                 "unit_type": new_service.unit_type or "service",
                 "price": new_service.selling_price or 0.0,
                 "selling_price": new_service.selling_price or 0.0,
+                "max_available": new_service.max_available or 0,
+                "minimum_hours": new_service.minimum_hours or 1,
+                "capacity_type": new_service.capacity_type or "unit_based",
+                "staff_to_pax_ratio": new_service.staff_to_pax_ratio or 0,
+                "min_staff_required": new_service.min_staff_required or 1,
+                "status": new_service.status or "available",
                 "description": new_service.description or "",
                 "image_url": new_service.image_url or ""
             }
@@ -8813,11 +9083,12 @@ async def quick_add_catalog_item(
             equipment_type="Equipment",
             category=cat,
             rental_price=price,
+            addon_price=addon_price,
             unit_type=unit,
             available_qty=qty,
             description=desc,
             image_url=image_url,
-            status="available",
+            status=status,
             usage_type="both",
             is_archived=False,
             is_hidden=False
@@ -8834,8 +9105,10 @@ async def quick_add_catalog_item(
                 "category": new_equip.category,
                 "unit_type": new_equip.unit_type or "piece",
                 "rental_price": new_equip.rental_price or 0.0,
+                "addon_price": new_equip.addon_price or 0.0,
                 "price": new_equip.rental_price or 0.0,
                 "available_qty": new_equip.available_qty or 0,
+                "status": new_equip.status or "available",
                 "description": new_equip.description or "",
                 "image_url": new_equip.image_url or ""
             }
@@ -8858,8 +9131,14 @@ async def quick_edit_catalog_item(
     category: Optional[str] = Form(None),
     custom_category: Optional[str] = Form(None),
     upgrade_fee: float = Form(0.0),
+    addon_price: Optional[float] = Form(None),
     price: Optional[str] = Form(None),
     unit_type: Optional[str] = Form(None),
+    available_qty: Optional[int] = Form(None),
+    minimum_hours: Optional[int] = Form(1),
+    staff_to_pax_ratio: Optional[int] = Form(0),
+    min_staff_required: Optional[int] = Form(1),
+    status: str = Form("available"),
     description: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
@@ -8874,13 +9153,33 @@ async def quick_edit_catalog_item(
         raise HTTPException(status_code=400, detail="Item name is required.")
 
     item_type = (item_type or "menu").lower()
-    price = (
-        (parse_optional_service_fee(price) if price is not None else None)
-        if item_type == "service"
-        else (max(0.0, float(price or 0.0)) if price is not None else None)
-    )
-    if upgrade_fee < 0 or upgrade_fee > 99999999.99:
-        raise HTTPException(status_code=400, detail="Dish swap fee must be between 0 and 99,999,999.99.")
+    if item_type not in {"menu", "service", "equipment"}:
+        raise HTTPException(status_code=400, detail="Invalid item type.")
+    price = parse_catalog_item_price(price) if price is not None else None
+    if any(not math.isfinite(value) or value < 0 or value > 99999999.99
+           for value in (upgrade_fee, *([addon_price] if addon_price is not None else []))):
+        raise HTTPException(status_code=400, detail="Menu fees must be between 0 and 99,999,999.99.")
+    if price is not None and (not math.isfinite(price) or price < 0 or price > 99999999.99):
+        raise HTTPException(status_code=400, detail="Price must be between 0 and 99,999,999.99.")
+    if status not in {"available", "unavailable"}:
+        raise HTTPException(status_code=400, detail="Choose a valid availability status.")
+    allowed_units = {
+        "menu": {"per_pax", "per_tray", "per_platter", "per_order"},
+        "service": {"per_event", "per_pax", "per_hour", "per_staff"},
+        "equipment": {"piece", "set", "pair", "lot", "per_day", "per_event"},
+    }
+    if unit_type and unit_type not in allowed_units[item_type]:
+        raise HTTPException(status_code=400, detail="Choose a valid pricing unit for this item type.")
+    if available_qty is not None and not 1 <= available_qty <= 999999:
+        raise HTTPException(status_code=400, detail="Available quantity must be between 1 and 999,999.")
+    if minimum_hours is not None and not 1 <= minimum_hours <= 24:
+        raise HTTPException(status_code=400, detail="Service duration must be between 1 and 24 hours.")
+    if staff_to_pax_ratio is not None and not 0 <= staff_to_pax_ratio <= 999999:
+        raise HTTPException(status_code=400, detail="Staff-to-guest ratio must be between 0 and 999,999.")
+    if min_staff_required is not None and not 1 <= min_staff_required <= 999999:
+        raise HTTPException(status_code=400, detail="Minimum staff must be between 1 and 999,999.")
+    if item_type == "service" and unit_type == "per_staff" and not staff_to_pax_ratio:
+        raise HTTPException(status_code=400, detail="Enter the number of guests served by each staff member.")
     desc = description.strip() if description else None
 
     image_url = None
@@ -8897,8 +9196,8 @@ async def quick_edit_catalog_item(
         menu_category = (category or "").strip()
         if menu_category == "Other":
             menu_category = (custom_category or "").strip()
-        if menu_category and len(menu_category) > 60:
-            raise HTTPException(status_code=400, detail="Menu category must be 60 characters or fewer.")
+        if not menu_category or len(menu_category) > 60:
+            raise HTTPException(status_code=400, detail="Enter a menu category up to 60 characters.")
         item = db.query(models.MenuItem).filter(
             models.MenuItem.id == item_id,
             models.MenuItem.caterer_id == profile.id
@@ -8912,6 +9211,9 @@ async def quick_edit_catalog_item(
         if price is not None:
             item.price = price
         item.upgrade_fee = max(0.0, float(upgrade_fee or 0.0))
+        if addon_price is not None:
+            item.addon_price = addon_price
+        item.status = status
         if unit_type:
             item.pricing_unit = unit_type.strip()
         item.description = desc
@@ -8929,7 +9231,9 @@ async def quick_edit_catalog_item(
                 "category": item.category,
                 "unit_type": item.pricing_unit or "per_pax",
                 "price": item.price or 0.0,
+                "addon_price": item.addon_price or 0.0,
                 "upgrade_fee": item.upgrade_fee or 0.0,
+                "status": item.status or "available",
                 "description": item.description or "",
                 "image_url": item.image_url or ""
             }
@@ -8949,6 +9253,17 @@ async def quick_edit_catalog_item(
             svc.selling_price = price
         if unit_type:
             svc.unit_type = unit_type.strip()
+        if available_qty is not None:
+            svc.max_available = available_qty
+        if minimum_hours is not None:
+            svc.minimum_hours = minimum_hours
+        if unit_type:
+            svc.capacity_type = "staff_based" if unit_type == "per_staff" else "unit_based"
+        if staff_to_pax_ratio is not None:
+            svc.staff_to_pax_ratio = staff_to_pax_ratio
+        if min_staff_required is not None:
+            svc.min_staff_required = min_staff_required
+        svc.status = status
         svc.description = desc
         if image_url:
             svc.image_url = image_url
@@ -8965,6 +9280,12 @@ async def quick_edit_catalog_item(
                 "unit_type": svc.unit_type or "service",
                 "price": svc.selling_price or 0.0,
                 "selling_price": svc.selling_price or 0.0,
+                "max_available": svc.max_available or 0,
+                "minimum_hours": svc.minimum_hours or 1,
+                "capacity_type": svc.capacity_type or "unit_based",
+                "staff_to_pax_ratio": svc.staff_to_pax_ratio or 0,
+                "min_staff_required": svc.min_staff_required or 1,
+                "status": svc.status or "available",
                 "description": svc.description or "",
                 "image_url": svc.image_url or ""
             }
@@ -8984,6 +9305,9 @@ async def quick_edit_catalog_item(
             equipment.rental_price = price
         if unit_type:
             equipment.unit_type = unit_type.strip()
+        if available_qty is not None:
+            equipment.available_qty = available_qty
+        equipment.status = status
         equipment.description = desc
         if image_url:
             equipment.image_url = image_url
@@ -9000,7 +9324,9 @@ async def quick_edit_catalog_item(
                 "unit_type": equipment.unit_type or "piece",
                 "price": equipment.rental_price or 0.0,
                 "rental_price": equipment.rental_price or 0.0,
+                "addon_price": equipment.addon_price or 0.0,
                 "available_qty": equipment.available_qty or 0,
+                "status": equipment.status or "available",
                 "description": equipment.description or "",
                 "image_url": equipment.image_url or ""
             }

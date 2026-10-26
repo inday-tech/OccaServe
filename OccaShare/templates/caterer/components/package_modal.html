@@ -255,7 +255,6 @@
                                     <h4>Menu items</h4>
                                     <div class="customizable-section-summary">
                                         <span id="custMenuCountBadge" class="customizable-count-badge">0 selected</span>
-                                        <span class="customizable-required-summary" title="Number of menu choices customers must select across the selected categories">Required: <strong id="custTotalVariantsAllowedText">0</strong></span>
                                         <button type="button" class="btn-secondary-pro customizable-select-all" onclick="window.toggleAllCustomizableCatalog('menu')"
                                             data-catalog-toggle="menu">Select all</button>
                                     </div>
@@ -396,6 +395,15 @@
 
                             <!-- REVIEW FOR CUSTOMIZABLE PACKAGE -->
                             <div id="reviewCustomizablePackageBlock" style="display: none; margin-top: 1.5rem; flex-direction: column; gap: 1.25rem;">
+                                <div id="reviewCustomizableValidation" role="status" style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:10px;padding:1rem;">
+                                    <strong style="display:block;color:#0f172a;font-size:.82rem;margin-bottom:.4rem;">Configuration check</strong>
+                                    <ul id="reviewCustomizableValidationList" style="margin:0;padding-left:1.2rem;color:#475569;font-size:.8rem;"></ul>
+                                </div>
+                                <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:1rem;">
+                                    <strong style="display:block;color:#9a3412;font-size:.82rem;">Sample estimate at minimum guests</strong>
+                                    <span id="reviewCustomizableSampleTotal" style="display:block;color:#0f172a;font-weight:900;font-size:1.15rem;margin-top:.25rem;">—</span>
+                                    <small style="color:#9a3412;">Base package price at the minimum guest count only. Optional services, equipment, and dish upgrades are not included; the customer estimate is recalculated from their selections.</small>
+                                </div>
                                 <!-- 1. Available Menu / Food -->
                                 <div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
@@ -608,7 +616,7 @@
     </div>
 </div>
 
-<!-- Quick Add Option Modal (For package menu and service items) -->
+<!-- Quick Add Option Modal (For package menu, service, and equipment items) -->
 <div class="occ-modal-overlay" id="quickAddOptionModal" data-backdrop-dismiss="false" style="z-index: 2450; display: none;">
     <div class="occ-modal-box sz-md occ-content-pop" style="max-width: 500px; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
         <div class="occ-modal-header"
@@ -659,6 +667,10 @@
                     <div id="quickAddOptionCategorySuggestions" class="quick-add-category-suggestions" style="display: none;"></div>
                     <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">Choose a category customers can recognize.</small>
                 </div>
+                <div class="form-group-pro" id="quickAddOptionCatalogCategoryWrapper" style="display: none; margin-bottom: 1rem;">
+                    <label id="quickAddOptionCatalogCategoryLabel" for="quickAddOptionCatalogCategory">Category</label>
+                    <input type="text" id="quickAddOptionCatalogCategory" class="control-pro" maxlength="60" />
+                </div>
                 <div class="form-group-pro" id="quickAddOptionCustomCategoryWrapper" style="display: none; margin-bottom: 1rem;">
                     <label for="quickAddOptionCustomCategory">Custom category <span style="color: #ef4444;">*</span></label>
                     <input type="text" name="custom_category" id="quickAddOptionCustomCategory" class="control-pro" maxlength="60" placeholder="Enter a category" />
@@ -671,10 +683,83 @@
                     <small id="quickAddOptionUpgradeFeeError" class="swap-fee-error" aria-live="polite"></small>
                 </div>
 
+                <div class="form-group-pro" id="quickAddOptionExtraDishWrapper" style="display: none; margin-bottom: 1rem;">
+                    <label for="quickAddOptionExtraDishPrice">Default extra-dish price (₱) <small>(Optional)</small></label>
+                    <input type="text" inputmode="decimal" name="addon_price" id="quickAddOptionExtraDishPrice" class="control-pro" maxlength="12" placeholder="Optional" oninput="window.sanitizeMoneyInput(this)" />
+                    <small style="display:block;margin-top:.3rem;color:#64748b;font-size:.76rem;">Kept separate from the swap fee; used when this dish is added as an extra.</small>
+                </div>
+                <section class="package-item-settings" id="quickAddPackageMenuSettings" hidden>
+                    <h4>For this customizable package</h4>
+                    <label class="package-item-setting-toggle">
+                        <input type="checkbox" id="quickAddPackageIncludeMenu" onchange="window.togglePackageMenuReplacements('quickAddOption')">
+                        Include as a default dish
+                    </label>
+                    <div class="package-menu-replacements" id="quickAddOptionPackageMenuReplacements" hidden>
+                        <strong>Offer approved replacement dishes</strong>
+                        <div class="package-menu-replacement-list" data-replacement-list="quickAddOption"></div>
+                    </div>
+                    <label class="package-item-setting-toggle">
+                        <input type="checkbox" id="quickAddPackageOfferExtra" onchange="window.togglePackageExtraVariants('quickAddOption')">
+                        Offer as an extra dish
+                    </label>
+                    <div class="package-extra-variants" id="quickAddOptionPackageExtraVariants" hidden>
+                        <div class="package-extra-variant-list" data-variant-list="quickAddOption"></div>
+                        <button type="button" class="btn-secondary-pro package-extra-add" onclick="window.addPackageExtraVariant('quickAddOption')">Add another tray size</button>
+                    </div>
+                </section>
+                <section class="package-item-settings" id="quickAddPackageServiceSettings" hidden>
+                    <h4>For this customizable package</h4>
+                    <label class="package-item-setting-toggle">
+                        <input type="checkbox" id="quickAddPackageIncludeService">
+                        Include in the base package
+                    </label>
+                </section>
+                <section class="package-item-settings" id="quickAddPackageEquipmentSettings" hidden>
+                    <h4>For this customizable package</h4>
+                    <label class="package-item-setting-toggle">
+                        <input type="checkbox" id="quickAddPackageIncludeEquipment">
+                        Include in the base package
+                    </label>
+                </section>
+
+                <div class="form-row-pro" id="quickAddOptionUnitWrapper" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
+                    <div class="form-group-pro">
+                        <label id="quickAddOptionUnitLabel" for="quickAddOptionUnit">Pricing unit</label>
+                        <select name="unit_type" id="quickAddOptionUnit" class="control-pro" onchange="window.toggleQuickAddStaffingFields(this.value)"></select>
+                    </div>
+                    <div class="form-group-pro" id="quickAddOptionQuantityWrapper">
+                        <label id="quickAddOptionQuantityLabel" for="quickAddOptionQuantity">Available quantity</label>
+                        <input type="number" min="1" max="999999" name="available_qty" id="quickAddOptionQuantity" class="control-pro" value="1" />
+                    </div>
+                </div>
+
+                <div class="form-group-pro" id="quickAddOptionDurationWrapper" style="display: none; margin-bottom: 1rem;">
+                    <label for="quickAddOptionDuration">Minimum duration (hours)</label>
+                    <input type="number" min="1" max="24" name="minimum_hours" id="quickAddOptionDuration" class="control-pro" value="1" />
+                </div>
+                <div class="form-row-pro" id="quickAddOptionStaffingWrapper" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
+                    <div class="form-group-pro">
+                        <label for="quickAddOptionStaffRatio">Staff per guests</label>
+                        <input type="number" min="1" max="999999" id="quickAddOptionStaffRatio" class="control-pro" value="25" />
+                    </div>
+                    <div class="form-group-pro">
+                        <label for="quickAddOptionMinStaff">Minimum staff</label>
+                        <input type="number" min="1" max="999999" id="quickAddOptionMinStaff" class="control-pro" value="1" />
+                    </div>
+                </div>
+
+                <div class="form-group-pro" id="quickAddOptionAvailabilityWrapper" style="display: none; margin-bottom: 1rem;">
+                    <label for="quickAddOptionStatus">Availability</label>
+                    <select name="status" id="quickAddOptionStatus" class="control-pro">
+                        <option value="available" selected>Available</option>
+                        <option value="unavailable">Unavailable</option>
+                    </select>
+                </div>
+
                 <div class="form-row-pro" id="quickAddOptionPriceRow" style="display: none; grid-template-columns: 1fr; gap: 10px; margin-bottom: 1rem;">
                     <div class="form-group-pro" id="quickAddOptionPriceWrapper">
                         <label id="quickAddOptionPriceLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                            Price (₱)
+                            Customer-facing price (₱)
                         </label>
                         <input type="text" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2"
                             name="price" id="quickAddOptionPrice" class="control-pro" value="0.00"
@@ -682,7 +767,6 @@
                             style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #0f172a;" />
                         <small id="quickAddOptionPriceError" aria-live="polite" style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
                     </div>
-
                 </div>
 
                 <div class="form-group-pro" id="quickAddOptionDescriptionWrapper" style="display: none; margin-bottom: 0.5rem;">
@@ -760,6 +844,46 @@
                     <small id="editMenuItemUpgradeFeeError" class="swap-fee-error" aria-live="polite"></small>
                 </div>
                 <div class="form-group-pro">
+                    <label for="editMenuItemExtraDishPrice">Default extra-dish price (₱) <small>(Optional)</small></label>
+                    <input type="text" id="editMenuItemExtraDishPrice" class="control-pro" inputmode="decimal" maxlength="12" placeholder="Optional" oninput="window.sanitizeMoneyInput(this)">
+                    <small>Separate from the swap fee; used when this dish is added as an extra.</small>
+                </div>
+                <section class="package-item-settings" id="editPackageMenuSettings" hidden>
+                    <h4>For this customizable package</h4>
+                    <label class="package-item-setting-toggle">
+                        <input type="checkbox" id="editPackageIncludeMenu" onchange="window.togglePackageMenuReplacements('editMenuItem')">
+                        Include as a default dish
+                    </label>
+                    <div class="package-menu-replacements" id="editMenuItemPackageMenuReplacements" hidden>
+                        <strong>Offer approved replacement dishes</strong>
+                        <div class="package-menu-replacement-list" data-replacement-list="editMenuItem"></div>
+                    </div>
+                    <label class="package-item-setting-toggle">
+                        <input type="checkbox" id="editPackageOfferExtra" onchange="window.togglePackageExtraVariants('editMenuItem')">
+                        Offer as an extra dish
+                    </label>
+                    <div class="package-extra-variants" id="editMenuItemPackageExtraVariants" hidden>
+                        <div class="package-extra-variant-list" data-variant-list="editMenuItem"></div>
+                        <button type="button" class="btn-secondary-pro package-extra-add" onclick="window.addPackageExtraVariant('editMenuItem')">Add another tray size</button>
+                    </div>
+                </section>
+                <div class="form-group-pro">
+                    <label for="editMenuItemUnit">Serving / pricing unit</label>
+                    <select id="editMenuItemUnit" class="control-pro">
+                        <option value="per_pax">Per Pax / Guest</option>
+                        <option value="per_tray">Per Tray</option>
+                        <option value="per_platter">Per Platter</option>
+                        <option value="per_order">Per Order</option>
+                    </select>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editMenuItemStatus">Availability</label>
+                    <select id="editMenuItemStatus" class="control-pro">
+                        <option value="available">Available</option>
+                        <option value="unavailable">Unavailable</option>
+                    </select>
+                </div>
+                <div class="form-group-pro">
                     <label for="editMenuItemDescription">Description <small>(Optional)</small></label>
                     <textarea id="editMenuItemDescription" class="control-pro" rows="2" placeholder="Details, ingredients, specifications or notes..."></textarea>
                 </div>
@@ -797,9 +921,54 @@
                     <input type="text" id="editServiceItemName" class="control-pro" required>
                 </div>
                 <div class="form-group-pro">
+                    <label for="editServiceItemCategory">Service category</label>
+                    <input type="text" id="editServiceItemCategory" class="control-pro" maxlength="60">
+                </div>
+                <div class="form-group-pro">
                     <label for="editServiceItemFee">Service Fee (₱) <small>(Optional)</small></label>
                     <input type="text" id="editServiceItemFee" class="control-pro" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Optional" oninput="window.validateCatalogEditServiceFee()">
                     <small id="editServiceItemFeeError" aria-live="polite"></small>
+                </div>
+                <section class="package-item-settings" id="editPackageServiceSettings" hidden>
+                    <h4>For this customizable package</h4>
+                    <label class="package-item-setting-toggle">
+                        <input type="checkbox" id="editPackageIncludeService">
+                        Include in the base package
+                    </label>
+                </section>
+                <div class="form-group-pro">
+                    <label for="editServiceItemUnit">Pricing unit</label>
+                    <select id="editServiceItemUnit" class="control-pro" onchange="window.toggleCatalogEditStaffFields(this.value)">
+                        <option value="per_event">Per Event (Flat Rate)</option>
+                        <option value="per_pax">Per Person</option>
+                        <option value="per_hour">Per Hour</option>
+                        <option value="per_staff">Per Staff Member</option>
+                    </select>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editServiceItemQuantity">Maximum available units / staff</label>
+                    <input type="number" id="editServiceItemQuantity" class="control-pro" min="1" max="999999">
+                </div>
+                <div class="form-group-pro" id="editServiceItemDurationWrapper">
+                    <label for="editServiceItemDuration">Minimum duration (hours)</label>
+                    <input type="number" id="editServiceItemDuration" class="control-pro" min="1" max="24">
+                </div>
+                <div class="form-row-pro" id="editServiceItemStaffingWrapper" style="display:none;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="form-group-pro">
+                        <label for="editServiceItemStaffRatio">Staff per guests</label>
+                        <input type="number" id="editServiceItemStaffRatio" class="control-pro" min="1" max="999999">
+                    </div>
+                    <div class="form-group-pro">
+                        <label for="editServiceItemMinStaff">Minimum staff</label>
+                        <input type="number" id="editServiceItemMinStaff" class="control-pro" min="1" max="999999">
+                    </div>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editServiceItemStatus">Availability</label>
+                    <select id="editServiceItemStatus" class="control-pro">
+                        <option value="available">Available</option>
+                        <option value="unavailable">Unavailable</option>
+                    </select>
                 </div>
                 <div class="form-group-pro">
                     <label for="editServiceItemDescription">Description <small>(Optional)</small></label>
@@ -837,6 +1006,43 @@
                 <div class="form-group-pro">
                     <label for="editEquipmentItemName">Equipment / Item Name <span>*</span></label>
                     <input type="text" id="editEquipmentItemName" class="control-pro" required>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editEquipmentItemCategory">Equipment category</label>
+                    <input type="text" id="editEquipmentItemCategory" class="control-pro" maxlength="60">
+                </div>
+                <div class="form-group-pro">
+                    <label for="editEquipmentItemFee">Default rental price (₱)</label>
+                    <input type="text" id="editEquipmentItemFee" class="control-pro" inputmode="decimal" maxlength="12" placeholder="Optional" oninput="window.sanitizeMoneyInput(this)">
+                </div>
+                <section class="package-item-settings" id="editPackageEquipmentSettings" hidden>
+                    <h4>For this customizable package</h4>
+                    <label class="package-item-setting-toggle">
+                        <input type="checkbox" id="editPackageIncludeEquipment">
+                        Include in the base package
+                    </label>
+                </section>
+                <div class="form-group-pro">
+                    <label for="editEquipmentItemUnit">Pricing unit</label>
+                    <select id="editEquipmentItemUnit" class="control-pro">
+                        <option value="piece">Per Piece</option>
+                        <option value="set">Per Set</option>
+                        <option value="pair">Per Pair</option>
+                        <option value="lot">Per Lot</option>
+                        <option value="per_day">Per Day</option>
+                        <option value="per_event">Per Event</option>
+                    </select>
+                </div>
+                <div class="form-group-pro">
+                    <label for="editEquipmentItemQuantity">Available quantity</label>
+                    <input type="number" id="editEquipmentItemQuantity" class="control-pro" min="1" max="999999">
+                </div>
+                <div class="form-group-pro">
+                    <label for="editEquipmentItemStatus">Availability</label>
+                    <select id="editEquipmentItemStatus" class="control-pro">
+                        <option value="available">Available</option>
+                        <option value="unavailable">Unavailable</option>
+                    </select>
                 </div>
                 <div class="form-group-pro">
                     <label for="editEquipmentItemDescription">Description <small>(Optional)</small></label>

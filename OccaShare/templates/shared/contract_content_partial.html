@@ -32,9 +32,21 @@
                 <h2 class="formal-doc-main-title">{{ doc_title }}</h2>
                 <div class="formal-doc-meta">
                     <span>Reference No: <strong>#{% if booking.document_type == 'invoice' %}ORD-{% elif booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' %}RT-{% else %}BK-{% endif %}{{ booking.id }}</strong></span>
+                    {% if quotation.package_details and quotation.package_details.get('revision_number', 1)|int > 1 %}
+                    <span>Quotation version: <strong>{{ quotation.package_details.get('revision_number') }}</strong></span>
+                    {% endif %}
                     <span>Date generated: <strong>{{ (quotation.updated_at or quotation.created_at).strftime('%B %d,
                             %Y') }}</strong></span>
                 </div>
+                {% if quotation.package_details and quotation.package_details.get('revision_note') %}
+                <p style="margin:.5rem 0 0;color:#7c2d12;font-size:.82rem;"><strong>Revision note:</strong> {{ quotation.package_details.get('revision_note') }}</p>
+                {% endif %}
+                {% if quotation.package_details and quotation.package_details.get('revision_item_changes') %}
+                <div style="margin-top:.6rem;padding:.65rem .75rem;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;">
+                    <strong style="display:block;color:#9a3412;font-size:.82rem;">Updated items / proposed alternatives</strong>
+                    <p style="margin:.3rem 0 0;color:#7c2d12;font-size:.85rem;white-space:pre-line;">{{ quotation.package_details.get('revision_item_changes') }}</p>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Preamble -->
@@ -212,6 +224,19 @@
                         <td class="summary-td-amount">
                             ₱{{ "{:,.2f}".format((f.subtotal if f.subtotal is defined else ((f.price|float) * (quotation.package_details.guest_count or booking.guest_count|float)))|float) }}
                         </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% set c_menu_extras = quotation.package_details.selected_menu_extras if quotation.package_details and quotation.package_details.selected_menu_extras else [] %}
+                    {% for extra in c_menu_extras %}
+                    <tr class="addon-row-item">
+                        <td class="addon-td-desc">
+                            <strong>{{ extra.name }}</strong> <span style="font-size:0.8rem;color:#64748b;">(Extra dish)</span><br>
+                            <span class="summary-desc-subtext">
+                                Qty: {{ extra.qty }} dish &times; ₱{{ "{:,.2f}".format(extra.price|float) }}
+                            </span>
+                        </td>
+                        <td class="summary-td-amount">₱{{ "{:,.2f}".format(extra.subtotal|float) }}</td>
                     </tr>
                     {% endfor %}
 

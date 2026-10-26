@@ -320,7 +320,7 @@
                 </div>
 
                 <div id="customizable-package-content">
-                    {% if customization and (customization.selected_food or customization.selected_services or customization.selected_equipment) %}
+                    {% if customization and (customization.selected_food or customization.selected_menu_extras or customization.selected_services or customization.selected_equipment) %}
                     <div class="custom-choice-groups">
                         {% if customization.selected_food %}
                         <section class="custom-choice-group" aria-label="Selected menu items">
@@ -334,8 +334,26 @@
                                 <li class="custom-choice-item">
                                     <span class="custom-choice-item-name">{{ dish.name }}</span>
                                     <span class="custom-choice-item-detail">
+                                        {% if dish.replacement_for_name %}Replaces {{ dish.replacement_for_name }} · {% endif %}
                                         {% if dish_fee > 0 %}+₱{{ "{:,.2f}".format(dish_fee) }}/pax{% else %}Included{% endif %}
                                     </span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </section>
+                        {% endif %}
+
+                        {% if customization.selected_menu_extras %}
+                        <section class="custom-choice-group" aria-label="Selected extra dishes">
+                            <div class="custom-choice-group-head">
+                                <span class="custom-choice-group-title">Extra dishes · {{ customization.selected_menu_extras|length }}</span>
+                                <span class="custom-choice-group-total">₱{{ "{:,.2f}".format(customization.menu_extras_total|default(0, true)|float) }}</span>
+                            </div>
+                            <ul class="custom-choice-items">
+                                {% for dish in customization.selected_menu_extras %}
+                                <li class="custom-choice-item">
+                                    <span class="custom-choice-item-name">{{ dish.name }}</span>
+                                    <span class="custom-choice-item-detail">{{ dish.qty }} × ₱{{ "{:,.2f}".format(dish.price|float) }} = ₱{{ "{:,.2f}".format(dish.subtotal|float) }}</span>
                                 </li>
                                 {% endfor %}
                             </ul>
@@ -353,7 +371,7 @@
                                 {% set svc_price = svc.price|default(0, true)|float %}
                                 <li class="custom-choice-item">
                                     <span class="custom-choice-item-name">{{ svc.name }}</span>
-                                    <span class="custom-choice-item-detail">₱{{ "{:,.2f}".format(svc_price) }}{% if svc.unit and svc.unit not in ['service', 'fixed'] %}/{{ svc.unit }}{% endif %}</span>
+                                    <span class="custom-choice-item-detail">{% if svc.included %}Included in base package{% else %}₱{{ "{:,.2f}".format(svc_price) }}{% if svc.unit and svc.unit not in ['service', 'fixed'] %}/{{ svc.unit }}{% endif %}{% endif %}</span>
                                 </li>
                                 {% endfor %}
                             </ul>
@@ -369,10 +387,11 @@
                             <ul class="custom-choice-items">
                                 {% for eq in customization.selected_equipment %}
                                 {% set eq_qty = eq.qty|default(1, true)|int %}
+                                {% set eq_duration_qty = eq.duration_qty|default(1, true)|int %}
                                 {% set eq_price = eq.price|default(0, true)|float %}
                                 <li class="custom-choice-item">
                                     <span class="custom-choice-item-name">{{ eq.name }}</span>
-                                    <span class="custom-choice-item-detail">{{ eq_qty }} × ₱{{ "{:,.2f}".format(eq_price) }} = ₱{{ "{:,.2f}".format(eq.subtotal|default(eq_qty * eq_price, true)|float) }}</span>
+                                    <span class="custom-choice-item-detail">{% if eq.included %}Included in base package{% else %}{{ eq_qty }} × {{ eq_duration_qty }} {{ eq.unit|default('unit', true) }} × ₱{{ "{:,.2f}".format(eq_price) }} = ₱{{ "{:,.2f}".format(eq.subtotal|default(eq_qty * eq_duration_qty * eq_price, true)|float) }}{% endif %}</span>
                                 </li>
                                 {% endfor %}
                             </ul>

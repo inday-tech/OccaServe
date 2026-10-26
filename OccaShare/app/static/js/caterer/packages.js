@@ -337,6 +337,15 @@ window.openAddPackageModal = async function () {
     customizableEquipmentIds = new Set();
     customizableCategoryQuotas = {};
     customizableCategoryRemovalCredits = {};
+    customizableMenuExtraOptions = {};
+    customizableIncludedServiceIds = new Set();
+    customizableIncludedEquipmentIds = new Set();
+    customizableServicePrices = {};
+    customizableEquipmentPrices = {};
+    customizableEquipmentQuantityLimits = {};
+    customizableMenuRulesConfigured = false;
+    customizableDefaultMenuIds = new Set();
+    customizableMenuReplacements = {};
     lastMenuQuery = '';
     lastServiceQuery = '';
     lastEquipmentQuery = '';
@@ -516,10 +525,72 @@ window.editPackage = async function (pkgId) {
                 }
                 customizableCategoryRemovalCredits = rules.category_removal_credits && typeof rules.category_removal_credits === 'object'
                     ? Object.assign({}, rules.category_removal_credits) : {};
+                customizableMenuExtraOptions = rules.menu_extra_options && typeof rules.menu_extra_options === 'object'
+                    ? Object.fromEntries(Object.entries(rules.menu_extra_options)
+                        .map(([id, option]) => [id, {
+                            variants: Array.isArray(option?.variants) && option.variants.length
+                                ? option.variants.map(variant => ({
+                                    size: String(variant?.size || ''),
+                                    price: variant?.price ?? ''
+                                }))
+                                : [{ size: 'Standard serving', price: option?.price ?? '' }]
+                        }])) : {};
+                customizableIncludedServiceIds = new Set(Array.isArray(rules.included_service_ids) ? rules.included_service_ids.map(Number) : []);
+                customizableIncludedEquipmentIds = new Set(Array.isArray(rules.included_equipment_ids) ? rules.included_equipment_ids.map(Number) : []);
+                customizableServicePrices = rules.service_prices && typeof rules.service_prices === 'object' ? Object.assign({}, rules.service_prices) : {};
+                customizableEquipmentPrices = rules.equipment_prices && typeof rules.equipment_prices === 'object' ? Object.assign({}, rules.equipment_prices) : {};
+                customizableEquipmentQuantityLimits = rules.equipment_quantity_limits && typeof rules.equipment_quantity_limits === 'object'
+                    ? Object.assign({}, rules.equipment_quantity_limits) : {};
+                customizableMenuRulesConfigured = Array.isArray(rules.included_menu_ids);
+                customizableDefaultMenuIds = new Set(
+                    customizableMenuRulesConfigured ? rules.included_menu_ids.map(Number) : []
+                );
+                customizableMenuReplacements = rules.menu_replacements && typeof rules.menu_replacements === 'object'
+                    ? Object.fromEntries(Object.entries(rules.menu_replacements).map(([id, options]) => [
+                        id,
+                        Object.assign({}, options)
+                    ])) : {};
             }
         } else {
             customizableCategoryQuotas = {};
             customizableCategoryRemovalCredits = {};
+            customizableMenuExtraOptions = {};
+            customizableIncludedServiceIds = new Set();
+            customizableIncludedEquipmentIds = new Set();
+            customizableServicePrices = {};
+            customizableEquipmentPrices = {};
+            customizableEquipmentQuantityLimits = {};
+            customizableMenuRulesConfigured = false;
+            customizableDefaultMenuIds = new Set();
+            customizableMenuReplacements = {};
+        }
+        const catalogIds = Object.fromEntries(['menu', 'service', 'equipment'].map(type => [
+            type,
+            new Set((window.inclusionsCatalog[type] || []).map(item => Number(item.id)))
+        ]));
+        const retainedSelections = customizableMenuIds.size + customizableServiceIds.size + customizableEquipmentIds.size;
+        customizableMenuIds = new Set([...customizableMenuIds].filter(id => catalogIds.menu.has(id)));
+        customizableServiceIds = new Set([...customizableServiceIds].filter(id => catalogIds.service.has(id)));
+        customizableEquipmentIds = new Set([...customizableEquipmentIds].filter(id => catalogIds.equipment.has(id)));
+        customizableDefaultMenuIds = new Set([...customizableDefaultMenuIds].filter(id => customizableMenuIds.has(id)));
+        customizableIncludedServiceIds = new Set([...customizableIncludedServiceIds].filter(id => customizableServiceIds.has(id)));
+        customizableIncludedEquipmentIds = new Set([...customizableIncludedEquipmentIds].filter(id => customizableEquipmentIds.has(id)));
+        customizableMenuExtraOptions = Object.fromEntries(Object.entries(customizableMenuExtraOptions)
+            .filter(([id]) => customizableMenuIds.has(Number(id))));
+        customizableServicePrices = Object.fromEntries(Object.entries(customizableServicePrices)
+            .filter(([id]) => customizableServiceIds.has(Number(id))));
+        customizableEquipmentPrices = Object.fromEntries(Object.entries(customizableEquipmentPrices)
+            .filter(([id]) => customizableEquipmentIds.has(Number(id))));
+        customizableEquipmentQuantityLimits = Object.fromEntries(Object.entries(customizableEquipmentQuantityLimits)
+            .filter(([id]) => customizableEquipmentIds.has(Number(id))));
+        customizableMenuReplacements = Object.fromEntries(Object.entries(customizableMenuReplacements)
+            .filter(([id]) => customizableDefaultMenuIds.has(Number(id)))
+            .map(([id, options]) => [id, Object.fromEntries(Object.entries(options)
+                .filter(([replacementId]) => customizableMenuIds.has(Number(replacementId))
+                    && !customizableDefaultMenuIds.has(Number(replacementId))))]));
+        const retainedCatalogSelections = customizableMenuIds.size + customizableServiceIds.size + customizableEquipmentIds.size;
+        if (retainedCatalogSelections < retainedSelections) {
+            window.showToast?.('Unavailable catalog items were removed from this package. Review the available options before saving.', 'warning');
         }
         if (typeof renderCustomizableCatalogs === 'function') renderCustomizableCatalogs();
         if (typeof syncCustomizableSelectionRules === 'function') syncCustomizableSelectionRules();
@@ -753,7 +824,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Guarantee inclusions and customizable selection rules are serialized right before form submit
-        form.addEventListener('submit', (event) => {
+        form.addEventListener('submit', async (event) => {
             if (!packageStepIsReady('review')) {
                 event.preventDefault();
                 const activeStep = document.querySelector('.pkg-step-side.active');
@@ -774,6 +845,45 @@ document.addEventListener('DOMContentLoaded', () => {
             syncInclusionsHidden();
             if (typeof syncCustomizableSelectionRules === 'function') {
                 syncCustomizableSelectionRules();
+            }
+            event.preventDefault();
+            const saveButton = document.getElementById('pkgSaveBtn');
+            const previousButtonText = saveButton?.innerHTML;
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Saving...';
+            }
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                });
+                const responseText = await response.text();
+                let result;
+                try {
+                    result = responseText ? JSON.parse(responseText) : {};
+                } catch {
+                    result = { detail: responseText };
+                }
+                if (!response.ok || result.status !== 'success') {
+                    const message = extractErrorMessage(result, 'The package could not be saved. Review the details and try again.');
+                    if (window.showToast) window.showToast(message, 'error');
+                    else window.alert(message);
+                    return;
+                }
+                if (window.showToast) window.showToast(result.message || 'Package saved successfully.', 'success');
+                window.location.reload();
+            } catch (error) {
+                console.error('[Packages] Package save failed:', error);
+                const message = 'Unable to save the package because of a network or server error. Please try again.';
+                if (window.showToast) window.showToast(message, 'error');
+                else window.alert(message);
+            } finally {
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = previousButtonText || 'Save Package';
+                }
             }
         });
     }
@@ -1008,6 +1118,9 @@ function packageStepIsReady(tabName) {
         return hasOptions && quotasReady;
     }
 
+    if (tabName === 'review' && mode === 'customizable') {
+        return packageStepIsReady('basic') && packageStepIsReady('inclusions') && getCustomizableConfigurationIssues().length === 0;
+    }
     return packageStepIsReady('basic') && packageStepIsReady('inclusions');
 }
 
@@ -2355,21 +2468,7 @@ function getPackageInclusionCatalogType(item) {
     return 'menu';
 }
 
-window.archiveInclusion = async function (index, event) {
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-    }
-    if (!Number.isInteger(index) || index < 0 || index >= packageInclusions.length) return;
-    const item = packageInclusions[index];
-    if (!item.item_id) {
-        alert('This item is not linked to a catalog entry, so it cannot be archived. Use Remove to take it out of this package.');
-        return;
-    }
-    await window.quickDeleteCatalogItem(getPackageInclusionCatalogType(item), item.item_id, event);
-};
-
-// Remove an unlinked item from this package only.
+// Remove a package inclusion without changing its reusable catalog item.
 window.removeInclusion = function (index) {
     if (typeof index !== 'number' || index < 0 || index >= packageInclusions.length) return;
     if (!confirm(`Remove "${packageInclusions[index].name}" from this package?`)) return;
@@ -2495,9 +2594,9 @@ function renderInclusionsList() {
                 : catalog.find(entry => String(entry.name || '').toLowerCase() === String(item.name || '').toLowerCase());
             const image = item.image_url || catalogItem?.image_url || '';
             const description = item.description || catalogItem?.description || '';
-            const archiveButton = item.item_id && catalogItem
-                ? `<button type="button" class="inclusion-action-button inclusion-archive-button" onclick="window.archiveInclusion(${index}, event)" title="Archive item" aria-label="Archive item">
-                       <i class="fas fa-archive" aria-hidden="true"></i><span>Archive</span>
+            const removeButton = item.item_id && catalogItem
+                ? `<button type="button" class="inclusion-action-button" onclick="window.removeInclusion(${index})" title="Remove from this package" aria-label="Remove from this package">
+                      <i class="fas fa-minus-circle" aria-hidden="true"></i><span>Remove</span>
                    </button>`
                 : `<button type="button" class="inclusion-action-button" onclick="window.removeInclusion(${index})" title="Remove from package" aria-label="Remove from package">
                        <i class="fas fa-minus-circle" aria-hidden="true"></i><span>Remove</span>
@@ -2517,7 +2616,7 @@ function renderInclusionsList() {
                         <button type="button" class="inclusion-action-button" onclick="window.editInclusion(${index})" title="Edit item" aria-label="Edit item">
                             <i class="fas fa-edit" aria-hidden="true"></i><span>Edit</span>
                         </button>
-                        ${archiveButton}
+                        ${removeButton}
                     </div>
                 </article>
             `;
@@ -2592,6 +2691,15 @@ let customizableServiceIds = new Set();
 let customizableEquipmentIds = new Set();
 let customizableCategoryQuotas = {};
 let customizableCategoryRemovalCredits = {};
+let customizableMenuExtraOptions = {};
+let customizableIncludedServiceIds = new Set();
+let customizableIncludedEquipmentIds = new Set();
+let customizableServicePrices = {};
+let customizableEquipmentPrices = {};
+let customizableEquipmentQuantityLimits = {};
+let customizableMenuRulesConfigured = false;
+let customizableDefaultMenuIds = new Set();
+let customizableMenuReplacements = {};
 
 let lastMenuQuery = '';
 let lastServiceQuery = '';
@@ -2678,8 +2786,24 @@ function getCustomizableMenuCategoryCounts() {
     return counts;
 }
 
+function getCustomizableDefaultMenuCategoryCounts() {
+    const counts = {};
+    (window.inclusionsCatalog.menu || [])
+        .filter(item => customizableMenuIds.has(Number(item.id)) && customizableDefaultMenuIds.has(Number(item.id)))
+        .forEach(item => {
+            const category = String(item.category || '').trim() || 'Uncategorized';
+            counts[category] = (counts[category] || 0) + 1;
+        });
+    return counts;
+}
+
 function updateInlineMenuCategoryQuotas() {
     const categoryCounts = getCustomizableMenuCategoryCounts();
+    Object.entries(categoryCounts).forEach(([category, available]) => {
+        if (available > 0 && customizableCategoryQuotas[category] == null) {
+            customizableCategoryQuotas[category] = 1;
+        }
+    });
     document.querySelectorAll('#customizableMenuList .menu-category-heading').forEach(heading => {
         const category = heading.dataset.category || '';
         const available = categoryCounts[category] || 0;
@@ -2695,23 +2819,168 @@ function updateInlineMenuCategoryQuotas() {
     });
 }
 
+window.toggleCustomizableMenuExtra = function (id, enabled) {
+    if (enabled) {
+        customizableMenuExtraOptions[Number(id)] = {
+            variants: [{ size: '', price: '' }]
+        };
+    } else {
+        delete customizableMenuExtraOptions[Number(id)];
+    }
+    syncCustomizableSelectionRules();
+    renderCustomizableMenu(lastMenuQuery);
+    renderReviewCustomizable();
+};
+
+window.toggleCustomizableMenuDefault = function (id, enabled) {
+    const itemId = Number(id);
+    customizableMenuRulesConfigured = true;
+    if (enabled) {
+        customizableMenuIds.add(itemId);
+        customizableDefaultMenuIds.add(itemId);
+    } else {
+        customizableDefaultMenuIds.delete(itemId);
+        delete customizableMenuReplacements[itemId];
+    }
+    syncCustomizableSelectionRules();
+    renderCustomizableMenu(lastMenuQuery);
+    renderReviewCustomizable();
+};
+
+window.toggleCustomizableMenuReplacement = function (includedId, replacementId, enabled) {
+    const sourceId = Number(includedId);
+    const optionId = Number(replacementId);
+    customizableMenuRulesConfigured = true;
+    if (!customizableMenuReplacements[sourceId]) customizableMenuReplacements[sourceId] = {};
+    if (enabled) {
+        const item = (window.inclusionsCatalog.menu || []).find(candidate => Number(candidate.id) === optionId);
+        customizableMenuIds.add(optionId);
+        const catalogFee = Number(item?.upgrade_fee);
+        customizableMenuReplacements[sourceId][optionId] = item?.upgrade_fee !== ''
+            && item?.upgrade_fee !== null && item?.upgrade_fee !== undefined
+            && Number.isFinite(catalogFee) && catalogFee >= 0
+            ? catalogFee : '';
+    } else {
+        delete customizableMenuReplacements[sourceId][optionId];
+        if (!Object.keys(customizableMenuReplacements[sourceId]).length) {
+            delete customizableMenuReplacements[sourceId];
+        }
+    }
+    syncCustomizableSelectionRules();
+    renderCustomizableMenu(lastMenuQuery);
+    renderReviewCustomizable();
+};
+
+window.setCustomizableMenuReplacementFee = function (includedId, replacementId, value) {
+    const options = customizableMenuReplacements[Number(includedId)];
+    if (!options || options[Number(replacementId)] === undefined) return;
+    options[Number(replacementId)] = value === '' ? '' : Number(value);
+    syncCustomizableSelectionRules();
+    updatePackageWizardControls();
+};
+
+window.addCustomizableMenuExtraVariant = function (id) {
+    const option = customizableMenuExtraOptions[Number(id)];
+    if (!option) return;
+    if (!Array.isArray(option.variants)) option.variants = [];
+    option.variants.push({ size: '', price: '' });
+    syncCustomizableSelectionRules();
+    renderCustomizableMenu(lastMenuQuery);
+    renderReviewCustomizable();
+};
+
+window.removeCustomizableMenuExtraVariant = function (id, index) {
+    const option = customizableMenuExtraOptions[Number(id)];
+    if (!option || !Array.isArray(option.variants) || option.variants.length <= 1) return;
+    option.variants.splice(Number(index), 1);
+    syncCustomizableSelectionRules();
+    renderCustomizableMenu(lastMenuQuery);
+    renderReviewCustomizable();
+};
+
+window.setCustomizableMenuExtra = function (id, index, field, value) {
+    const option = customizableMenuExtraOptions[Number(id)];
+    const variant = option?.variants?.[Number(index)];
+    if (!variant || !['size', 'price'].includes(field)) return;
+    variant[field] = field === 'size' ? String(value) : (value === '' ? '' : Number(value));
+    syncCustomizableSelectionRules();
+    renderReviewCustomizable();
+    updatePackageWizardControls();
+};
+
+window.setCustomizableAddonSetting = function (type, id, field, value) {
+    const itemId = Number(id);
+    const isService = type === 'service';
+    if (!['service', 'equipment'].includes(type) || !Number.isInteger(itemId) || itemId < 1) return;
+    const includedIds = isService ? customizableIncludedServiceIds : customizableIncludedEquipmentIds;
+    const prices = isService ? customizableServicePrices : customizableEquipmentPrices;
+    const quantityLimits = customizableEquipmentQuantityLimits;
+    if (field === 'included') {
+        if (value) includedIds.add(itemId);
+        else includedIds.delete(itemId);
+    } else if (field === 'price') {
+        prices[itemId] = value === '' ? '' : Number(value);
+    } else if (field === 'max_quantity' && !isService) {
+        quantityLimits[itemId] = value === '' ? '' : Number(value);
+    } else {
+        return;
+    }
+    syncCustomizableSelectionRules();
+    if (field === 'included') {
+        if (isService) renderCustomizableServices(lastServiceQuery);
+        else renderCustomizableEquipment(lastEquipmentQuery);
+    }
+    renderReviewCustomizable();
+    updatePackageWizardControls();
+};
+
 window.toggleCustomizableItem = function (type, id, checked) {
     const numId = Number(id);
     if (type === 'menu') {
         if (checked) customizableMenuIds.add(numId);
-        else customizableMenuIds.delete(numId);
+        else {
+            customizableMenuIds.delete(numId);
+            delete customizableMenuExtraOptions[numId];
+            customizableDefaultMenuIds.delete(numId);
+            delete customizableMenuReplacements[numId];
+            Object.keys(customizableMenuReplacements).forEach(includedId => {
+                delete customizableMenuReplacements[includedId][numId];
+                if (!Object.keys(customizableMenuReplacements[includedId]).length) {
+                    delete customizableMenuReplacements[includedId];
+                }
+            });
+        }
         updateCustomizableCounters('menu');
+        renderCustomizableMenu(lastMenuQuery);
         updateInlineMenuCategoryQuotas();
         renderCategoryQuotas();
     } else if (type === 'service') {
-        if (checked) customizableServiceIds.add(numId);
-        else customizableServiceIds.delete(numId);
+        if (checked) {
+            customizableServiceIds.add(numId);
+            const item = (window.inclusionsCatalog.service || []).find(candidate => Number(candidate.id) === numId);
+            if (customizableServicePrices[numId] === undefined) customizableServicePrices[numId] = Number(item?.price || item?.selling_price) || '';
+        } else {
+            customizableServiceIds.delete(numId);
+            customizableIncludedServiceIds.delete(numId);
+            delete customizableServicePrices[numId];
+        }
         updateCustomizableCounters('service');
     } else if (type === 'equipment') {
-        if (checked) customizableEquipmentIds.add(numId);
-        else customizableEquipmentIds.delete(numId);
+        if (checked) {
+            customizableEquipmentIds.add(numId);
+            const item = (window.inclusionsCatalog.equipment || []).find(candidate => Number(candidate.id) === numId);
+            if (customizableEquipmentPrices[numId] === undefined) customizableEquipmentPrices[numId] = Number(item?.addon_price || item?.rental_price || item?.price) || '';
+            if (customizableEquipmentQuantityLimits[numId] === undefined) customizableEquipmentQuantityLimits[numId] = Number(item?.available_qty) || '';
+        } else {
+            customizableEquipmentIds.delete(numId);
+            customizableIncludedEquipmentIds.delete(numId);
+            delete customizableEquipmentPrices[numId];
+            delete customizableEquipmentQuantityLimits[numId];
+        }
         updateCustomizableCounters('equipment');
+        renderCustomizableEquipment(lastEquipmentQuery);
     }
+    if (type === 'service') renderCustomizableServices(lastServiceQuery);
     syncCustomizableSelectionRules();
     updatePackageWizardControls();
 };
@@ -2804,6 +3073,8 @@ window.renderCustomizableCatalogs = function () {
     renderCustomizableMenu(lastMenuQuery);
     renderCustomizableServices(lastServiceQuery);
     renderCustomizableEquipment(lastEquipmentQuery);
+    updateInlineMenuCategoryQuotas();
+    syncCustomizableSelectionRules();
     renderCategoryQuotas();
     updateCustomizableCounters();
     updatePackageWizardControls();
@@ -2826,25 +3097,39 @@ function renderCustomizableEquipment(query = '') {
     container.innerHTML = filtered.map(item => {
         const id = Number(item.id);
         const selected = customizableEquipmentIds.has(id);
-        const price = Number(item.price || item.rental_price || 0);
-        return `<div class="catalog-option-card equipment-option-card${selected ? ' is-selected' : ''}">
-            <input type="checkbox" ${selected ? 'checked' : ''}
-                onchange="const c = this.closest('.catalog-option-card'); c.classList.toggle('is-selected', this.checked); window.toggleCustomizableItem('equipment', ${id}, this.checked)">
-            <div class="equipment-option-copy" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'))">
+        const included = customizableIncludedEquipmentIds.has(id);
+        const price = Number(customizableEquipmentPrices[id] ?? item.addon_price ?? item.rental_price ?? item.price) || 0;
+        const maxQuantity = Number(customizableEquipmentQuantityLimits[id] ?? item.available_qty) || 0;
+        const unit = String(item.unit_type || 'piece').replace(/^per_/, '').replace(/_/g, ' ');
+        return `<article class="catalog-option-card catalog-equipment-card${selected ? ' is-selected' : ''}">
+            <input class="catalog-option-select" type="checkbox" aria-label="Offer ${escapeHtml(item.name || 'equipment')} in this package" ${selected ? 'checked' : ''}
+                onchange="this.closest('.catalog-option-card').classList.toggle('is-selected', this.checked); window.toggleCustomizableItem('equipment', ${id}, this.checked)">
+            <div class="catalog-option-info" onclick="const input = this.closest('.catalog-option-card').querySelector('.catalog-option-select'); input.checked = !input.checked; input.dispatchEvent(new Event('change'))">
                 <strong>${escapeHtml(item.name || 'Equipment')}</strong>
+                <small>${escapeHtml(item.category || 'Equipment')}</small>
             </div>
-            <span class="equipment-option-price">₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+            <span class="catalog-option-price">${included ? 'Included in base' : (price > 0 ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })} / ${escapeHtml(unit)}` : 'Price needed')}</span>
             <div class="catalog-option-actions">
                 <button type="button" title="Edit Equipment" onclick="window.openQuickEditModal('equipment', ${id}, event)"
                         class="catalog-action-button" aria-label="Edit equipment">
                     <i class="fas fa-edit" aria-hidden="true"></i>
                 </button>
-                <button type="button" title="Archive Equipment" onclick="window.quickDeleteCatalogItem('equipment', ${id}, event)"
-                        class="catalog-action-button catalog-archive-button" aria-label="Archive equipment">
-                    <i class="fas fa-archive" aria-hidden="true"></i>
+                <button type="button" title="Remove from package options" onclick="window.removeCatalogItemFromOptions('equipment', ${id}, event)"
+                        class="catalog-action-button" aria-label="Remove equipment from package options">
+                    <i class="fas fa-minus-circle" aria-hidden="true"></i>
                 </button>
             </div>
-        </div>`;
+            ${selected ? `<div class="catalog-option-settings">
+                <label class="catalog-setting-choice"><input type="checkbox" ${included ? 'checked' : ''}
+                    onchange="window.setCustomizableAddonSetting('equipment', ${id}, 'included', this.checked)"> Include in base package</label>
+                ${included ? '' : `<label class="catalog-setting-field">Rental price per ${escapeHtml(unit)}
+                    <input type="number" min="0.01" max="99999999.99" step="0.01" value="${escapeHtml(String(customizableEquipmentPrices[id] ?? item.addon_price ?? item.rental_price ?? item.price ?? ''))}"
+                    oninput="window.setCustomizableAddonSetting('equipment', ${id}, 'price', this.value)"></label>
+                    <label class="catalog-setting-field">Maximum quantity
+                    <input type="number" min="1" max="${Math.max(1, Number(item.available_qty) || 1)}" step="1" value="${escapeHtml(String(customizableEquipmentQuantityLimits[id] ?? item.available_qty ?? ''))}"
+                    oninput="window.setCustomizableAddonSetting('equipment', ${id}, 'max_quantity', this.value)"></label>`}
+            </div>` : ''}
+        </article>`;
     }).join('');
 }
 
@@ -2874,69 +3159,89 @@ function renderCustomizableMenu(query = '') {
         return categoryOrder || String(a.name || '').localeCompare(String(b.name || ''));
     });
     const selectedMenuCounts = getCustomizableMenuCategoryCounts();
+    const defaultMenuCounts = getCustomizableDefaultMenuCategoryCounts();
 
     container.innerHTML = sorted.map((item, index) => {
         const id = Number(item.id);
         const isChecked = customizableMenuIds.has(id);
-        const img = item.image_url || '';
-        const desc = String(item.description || '').trim();
         const category = String(item.category || 'Uncategorized').trim() || 'Uncategorized';
         const previousCategory = index > 0
             ? (String(sorted[index - 1].category || 'Uncategorized').trim() || 'Uncategorized')
             : '';
         const selectedInCategory = selectedMenuCounts[category] || 0;
+        const defaultsInCategory = defaultMenuCounts[category] || 0;
+        const categoryHasIncludedSlots = !customizableMenuRulesConfigured || defaultsInCategory > 0;
         const quotaValue = customizableCategoryQuotas[category];
         const quotaValid = Number.isInteger(Number(quotaValue)) && Number(quotaValue) >= 1 && Number(quotaValue) <= selectedInCategory;
         const removalCredit = Number(customizableCategoryRemovalCredits[category]) || 0;
+        const extraOption = customizableMenuExtraOptions[id];
+        const isExtraEnabled = Boolean(extraOption);
+        const extraVariants = Array.isArray(extraOption?.variants) ? extraOption.variants : [];
+        const isIncludedDefault = customizableDefaultMenuIds.has(id);
+        const replacementOptions = customizableMenuReplacements[id] || {};
+        const replacementCandidates = items.filter(candidate =>
+            Number(candidate.id) !== id
+            && customizableMenuIds.has(Number(candidate.id))
+            && !customizableDefaultMenuIds.has(Number(candidate.id))
+        );
+        const selectedReplacements = replacementCandidates
+            .filter(candidate => replacementOptions[Number(candidate.id)] !== undefined)
+            .map(candidate => `${escapeHtml(candidate.name)} (₱${Number(replacementOptions[Number(candidate.id)]).toLocaleString('en-PH', { minimumFractionDigits: 2 })}/guest)`);
         const encodedCategory = encodeURIComponent(category).replace(/'/g, '%27');
         const categoryHeading = category !== previousCategory
             ? `<div class="menu-category-heading" data-category="${escapeHtml(category)}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                     <h5>${escapeHtml(category)}</h5>
-                    <label class="menu-category-quota" title="Maximum number of choices customers can select in this category">
-                        <span>Choose</span>
-                        <input type="number" min="1" max="${selectedInCategory}" value="${quotaValid ? quotaValue : ''}"
-                            aria-label="Maximum number of ${escapeHtml(category)} choices"
-                            ${selectedInCategory ? '' : 'disabled'}
-                            onchange="window.setCategoryQuota('${encodedCategory}', this.value)" />
-                        <span>of <span class="menu-category-offered">${selectedInCategory}</span></span>
-                    </label>
-                    <label class="menu-category-removal-credit" style="display:flex;align-items:center;gap:6px;color:#64748b;font-size:.74rem;white-space:nowrap;">
-                        <span>Credit if removed (₱/guest)</span>
-                        <input type="number" min="0" max="999999" step="0.01" value="${removalCredit || ''}"
-                            aria-label="Credit per guest if all ${escapeHtml(category)} choices are removed"
-                            onchange="window.setCategoryRemovalCredit('${encodedCategory}', this.value)"
-                            style="width:96px;min-height:34px;padding:5px 8px;border:1px solid #cbd5e1;border-radius:7px;" />
-                    </label>
+                    ${categoryHasIncludedSlots ? `
+                        <label class="menu-category-quota" title="Number of included default slots in this category">
+                            <span>Included slots</span>
+                            <input type="number" min="1" max="${selectedInCategory}" value="${quotaValid ? quotaValue : ''}"
+                                aria-label="Number of included ${escapeHtml(category)} menu slots"
+                                ${selectedInCategory ? '' : 'disabled'}
+                                onchange="window.setCategoryQuota('${encodedCategory}', this.value)" />
+                            <span>of <span class="menu-category-offered">${selectedInCategory}</span> options</span>
+                        </label>
+                        <details class="menu-category-removal-credit">
+                            <summary>${removalCredit ? 'Removal credit set' : 'Optional removal credit'}</summary>
+                            <label>Credit per guest (₱)
+                                <input type="number" min="0" max="999999" step="0.01" value="${removalCredit || ''}"
+                                    aria-label="Credit per guest if all ${escapeHtml(category)} slots are removed"
+                                    onchange="window.setCategoryRemovalCredit('${encodedCategory}', this.value)" />
+                            </label>
+                        </details>` : ''}
                </div>`
             : '';
 
         return `
             ${categoryHeading}
-            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? 'rgba(var(--primary-color-rgb, 255, 123, 84), 0.08)' : '#ffffff'}; border: 1.5px solid ${isChecked ? 'var(--primary-color, #f97316)' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
-                 class="catalog-option-card${isChecked ? ' is-selected' : ''}">
-                <input type="checkbox" ${isChecked ? 'checked' : ''} 
-                       onchange="const c = this.closest('.catalog-option-card'); c.classList.toggle('is-selected', this.checked); c.style.background = this.checked ? 'rgba(var(--primary-color-rgb, 255, 123, 84), 0.08)' : '#ffffff'; c.style.borderColor = this.checked ? 'var(--primary-color, #f97316)' : '#e2e8f0'; window.toggleCustomizableItem('menu', ${id}, this.checked);"
-                       style="width: 16px; height: 16px; accent-color: var(--primary-color, #f97316); cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
-                <div style="width:56px;height:56px;border-radius:10px;overflow:hidden;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
-                    ${img
-                        ? `<img src="${escapeHtml(img)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-utensils\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
-                        : `<i class="fas fa-utensils"></i>`}
-                </div>
-                <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
-                    <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3; display:block;">${escapeHtml(item.name)}</strong>
-                    ${desc.length > 2 ? `<p style="font-size: 0.75rem; color: #64748b; line-height: 1.4; margin: 6px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtml(desc)}</p>` : ''}
+            <article class="catalog-option-card catalog-menu-card${isChecked ? ' is-selected' : ''}">
+                <input class="catalog-option-select" type="checkbox" aria-label="Offer ${escapeHtml(item.name)} in this package" ${isChecked ? 'checked' : ''}
+                       onchange="this.closest('.catalog-option-card').classList.toggle('is-selected', this.checked); window.toggleCustomizableItem('menu', ${id}, this.checked)">
+                <div class="catalog-option-info" onclick="const input = this.closest('.catalog-option-card').querySelector('.catalog-option-select'); input.checked = !input.checked; input.dispatchEvent(new Event('change'))">
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <small>${escapeHtml(category)}</small>
                 </div>
                 <div class="catalog-option-actions">
                     <button type="button" title="Edit Dish" onclick="window.openQuickEditModal('menu', ${id}, event)"
                             class="catalog-action-button" aria-label="Edit dish">
                         <i class="fas fa-edit" aria-hidden="true"></i>
                     </button>
-                    <button type="button" title="Archive Dish" onclick="window.quickDeleteCatalogItem('menu', ${id}, event)"
-                            class="catalog-action-button catalog-archive-button" aria-label="Archive dish">
-                        <i class="fas fa-archive" aria-hidden="true"></i>
+                    <button type="button" title="Remove from package options" onclick="window.removeCatalogItemFromOptions('menu', ${id}, event)"
+                            class="catalog-action-button" aria-label="Remove dish from package options">
+                        <i class="fas fa-minus-circle" aria-hidden="true"></i>
                     </button>
                 </div>
-            </div>
+                ${isChecked ? `<div class="catalog-option-settings catalog-option-summary">
+                    ${isIncludedDefault ? `<span class="catalog-setting-hint">Included in package</span>` : ''}
+                    ${selectedReplacements.length ? `<span class="catalog-setting-hint">Replacement options: ${selectedReplacements.join(', ')}</span>` : ''}
+                    ${isExtraEnabled ? `<span class="catalog-setting-hint">Extra dish: ${extraVariants.map(variant => {
+                        const price = Number(variant.price);
+                        return `${escapeHtml(String(variant.size || 'Size needed'))} ${Number.isFinite(price) && price > 0
+                            ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/tray`
+                            : 'price needed'}`;
+                    }).join(', ') || 'Details needed'}</span>` : ''}
+                    ${!isIncludedDefault && !isExtraEnabled ? '<span class="catalog-setting-hint">Optional menu item</span>' : ''}
+                </div>` : ''}
+            </article>
         `;
     }).join('');
 }
@@ -2965,55 +3270,39 @@ function renderCustomizableServices(query = '') {
     container.innerHTML = filtered.map(item => {
         const id = Number(item.id);
         const isChecked = customizableServiceIds.has(id);
-        const price = parseFloat(item.price || item.selling_price || 0);
+        const included = customizableIncludedServiceIds.has(id);
+        const price = Number(customizableServicePrices[id] ?? item.price ?? item.selling_price) || 0;
         let unitText = item.unit_type || 'service';
         if (unitText.startsWith('per_')) unitText = unitText.replace('per_', '');
-        const priceHtml = price > 0
-            ? `<span class="service-option-price" style="font-size: 0.75rem; font-weight: 800; color: var(--primary-color, #f97316); background: rgba(var(--primary-color-rgb, 255, 123, 84), 0.1); padding: 2px 7px; border-radius: 6px; white-space: nowrap;">
-                   ₱${price.toLocaleString('en-PH', { maximumFractionDigits: 2 })}${unitText && unitText !== 'fixed' ? '/' + escapeHtml(unitText) : ''}
-               </span>`
-            : '';
-        const img = item.image_url || '';
-        const notes = String(item.notes || item.description || '')
-            .split(/[\r\n,]+/)
-            .map(note => note.replace(/^\s*[•*-]\s*/, '').trim())
-            .filter(Boolean);
-        const notesHtml = notes.length
-            ? `<details class="package-service-notes" onclick="event.stopPropagation()">
-                    <summary>Service notes (${notes.length})</summary>
-                    <ul>${notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}</ul>
-               </details>`
-            : '';
+        const unit = unitText.replace(/^per_/, '').replace(/_/g, ' ');
 
         return `
-            <div style="display: flex; align-items: flex-start; gap: 10px; padding: 0.75rem 0.85rem; background: ${isChecked ? 'rgba(var(--primary-color-rgb, 255, 123, 84), 0.08)' : '#ffffff'}; border: 1.5px solid ${isChecked ? 'var(--primary-color, #f97316)' : '#e2e8f0'}; border-radius: 10px; transition: all 0.15s ease;"
-                 class="catalog-option-card service-option-card${isChecked ? ' is-selected' : ''}">
-                <input type="checkbox" ${isChecked ? 'checked' : ''} 
-                       onchange="const c = this.closest('.catalog-option-card'); c.classList.toggle('is-selected', this.checked); c.style.background = this.checked ? 'rgba(var(--primary-color-rgb, 255, 123, 84), 0.08)' : '#ffffff'; c.style.borderColor = this.checked ? 'var(--primary-color, #f97316)' : '#e2e8f0'; window.toggleCustomizableItem('service', ${id}, this.checked);"
-                       style="width: 16px; height: 16px; accent-color: var(--primary-color, #f97316); cursor: pointer; flex-shrink: 0; margin-top: 22px;" />
-                <div style="width:56px;height:56px;border-radius:10px;overflow:hidden;background:#f1f5f9;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#cbd5e1;">
-                    ${img
-                        ? `<img src="${escapeHtml(img)}" alt="" onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\\'fas fa-concierge-bell\\'></i>';" style="width:100%;height:100%;object-fit:cover;">`
-                        : `<i class="fas fa-concierge-bell"></i>`}
+            <article class="catalog-option-card catalog-service-card${isChecked ? ' is-selected' : ''}">
+                <input class="catalog-option-select" type="checkbox" aria-label="Offer ${escapeHtml(item.name)} in this package" ${isChecked ? 'checked' : ''}
+                       onchange="this.closest('.catalog-option-card').classList.toggle('is-selected', this.checked); window.toggleCustomizableItem('service', ${id}, this.checked)">
+                <div class="catalog-option-info" onclick="const input = this.closest('.catalog-option-card').querySelector('.catalog-option-select'); input.checked = !input.checked; input.dispatchEvent(new Event('change'))">
+                    <strong>${escapeHtml(item.name)}</strong>
+                    <small>${escapeHtml(item.category || 'Service')}</small>
                 </div>
-                <div style="flex: 1; min-width: 0; cursor: pointer;" onclick="const cb = this.parentElement.querySelector('input[type=checkbox]'); cb.checked = !cb.checked; cb.dispatchEvent(new Event('change'));">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 6px;">
-                        <strong style="color: #0f172a; font-size: 0.88rem; line-height: 1.3;">${escapeHtml(item.name)}</strong>
-                        ${priceHtml}
-                    </div>
-                    ${notesHtml}
-                </div>
+                <span class="catalog-option-price">${included ? 'Included in base' : (price > 0 ? `₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}${unit && unit !== 'fixed' ? ` / ${escapeHtml(unit)}` : ''}` : 'Price needed')}</span>
                 <div class="catalog-option-actions">
                     <button type="button" title="Edit Service" onclick="window.openQuickEditModal('service', ${id}, event)"
                             class="catalog-action-button" aria-label="Edit service">
                         <i class="fas fa-edit" aria-hidden="true"></i>
                     </button>
-                    <button type="button" title="Archive Service" onclick="window.quickDeleteCatalogItem('service', ${id}, event)"
-                            class="catalog-action-button catalog-archive-button" aria-label="Archive service">
-                        <i class="fas fa-archive" aria-hidden="true"></i>
+                    <button type="button" title="Remove from package options" onclick="window.removeCatalogItemFromOptions('service', ${id}, event)"
+                            class="catalog-action-button" aria-label="Remove service from package options">
+                        <i class="fas fa-minus-circle" aria-hidden="true"></i>
                     </button>
                 </div>
-            </div>
+                ${isChecked ? `<div class="catalog-option-settings">
+                    <label class="catalog-setting-choice"><input type="checkbox" ${included ? 'checked' : ''}
+                        onchange="window.setCustomizableAddonSetting('service', ${id}, 'included', this.checked)"> Include in base package</label>
+                    ${included ? '' : `<label class="catalog-setting-field">Package price
+                        <input type="number" min="0.01" max="99999999.99" step="0.01" value="${escapeHtml(String(customizableServicePrices[id] ?? item.price ?? item.selling_price ?? ''))}"
+                            oninput="window.setCustomizableAddonSetting('service', ${id}, 'price', this.value)"></label>`}
+                </div>` : ''}
+            </article>
         `;
     }).join('');
 }
@@ -3039,6 +3328,43 @@ function syncCustomizableSelectionRules() {
                 cleanRemovalCredits[cat] = Math.round(credit * 100) / 100;
             }
         }
+        const cleanExtraOptions = {};
+        for (const [rawId, rawOption] of Object.entries(customizableMenuExtraOptions)) {
+            const id = Number(rawId);
+            const variants = Array.isArray(rawOption?.variants) ? rawOption.variants : [];
+            const cleanVariants = variants.map(variant => ({
+                size: String(variant?.size || '').trim(),
+                price: Number(variant?.price)
+            }));
+            const validVariants = cleanVariants.length > 0 && cleanVariants.every(variant =>
+                variant.size.length > 0 && variant.size.length <= 80
+                && Number.isFinite(variant.price) && variant.price > 0 && variant.price <= 99999999.99
+            ) && new Set(cleanVariants.map(variant => variant.size.toLocaleLowerCase())).size === cleanVariants.length;
+            if (customizableMenuIds.has(id) && validVariants) {
+                cleanExtraOptions[id] = {
+                    variants: cleanVariants.map(variant => ({
+                        size: variant.size,
+                        price: Math.round(variant.price * 100) / 100
+                    }))
+                };
+            }
+        }
+        const cleanMenuReplacements = {};
+        for (const [rawIncludedId, rawOptions] of Object.entries(customizableMenuReplacements)) {
+            const includedId = Number(rawIncludedId);
+            if (!customizableDefaultMenuIds.has(includedId) || !rawOptions || typeof rawOptions !== 'object') continue;
+            const options = {};
+            for (const [rawReplacementId, rawFee] of Object.entries(rawOptions)) {
+                const replacementId = Number(rawReplacementId);
+                const fee = Number(rawFee);
+                if (customizableMenuIds.has(replacementId) && !customizableDefaultMenuIds.has(replacementId)
+                    && rawFee !== '' && rawFee !== null && rawFee !== undefined
+                    && Number.isFinite(fee) && fee >= 0 && fee <= 99999999.99) {
+                    options[replacementId] = Math.round(fee * 100) / 100;
+                }
+            }
+            if (Object.keys(options).length) cleanMenuReplacements[includedId] = options;
+        }
         const payload = {
             package_type: 'customizable',
             available_menu_ids: Array.from(customizableMenuIds),
@@ -3046,8 +3372,40 @@ function syncCustomizableSelectionRules() {
             available_equipment_ids: Array.from(customizableEquipmentIds),
             category_quotas: cleanQuotas,
             category_removal_credits: cleanRemovalCredits,
+            menu_extra_options: cleanExtraOptions,
             total_variants_allowed: total
         };
+        const cleanServicePrices = {};
+        const cleanEquipmentPrices = {};
+        const cleanEquipmentLimits = {};
+        customizableServiceIds.forEach(id => {
+            const item = (window.inclusionsCatalog.service || []).find(candidate => Number(candidate.id) === Number(id));
+            const price = Number(customizableServicePrices[id] ?? item?.price ?? item?.selling_price);
+            if (!customizableIncludedServiceIds.has(Number(id)) && Number.isFinite(price) && price > 0 && price <= 99999999.99) {
+                cleanServicePrices[id] = Math.round(price * 100) / 100;
+            }
+        });
+        customizableEquipmentIds.forEach(id => {
+            const item = (window.inclusionsCatalog.equipment || []).find(candidate => Number(candidate.id) === Number(id));
+            const price = Number(customizableEquipmentPrices[id] ?? item?.addon_price ?? item?.rental_price ?? item?.price);
+            const maxQuantity = Number(customizableEquipmentQuantityLimits[id] ?? item?.available_qty);
+            if (!customizableIncludedEquipmentIds.has(Number(id)) && Number.isFinite(price) && price > 0 && price <= 99999999.99) {
+                cleanEquipmentPrices[id] = Math.round(price * 100) / 100;
+            }
+            if (!customizableIncludedEquipmentIds.has(Number(id)) && Number.isInteger(maxQuantity)
+                && maxQuantity >= 1 && maxQuantity <= 9999) {
+                cleanEquipmentLimits[id] = maxQuantity;
+            }
+        });
+        payload.included_service_ids = Array.from(customizableIncludedServiceIds).filter(id => customizableServiceIds.has(Number(id)));
+        payload.included_equipment_ids = Array.from(customizableIncludedEquipmentIds).filter(id => customizableEquipmentIds.has(Number(id)));
+        payload.service_prices = cleanServicePrices;
+        payload.equipment_prices = cleanEquipmentPrices;
+        payload.equipment_quantity_limits = cleanEquipmentLimits;
+        if (customizableMenuRulesConfigured) {
+            payload.included_menu_ids = Array.from(customizableDefaultMenuIds);
+            payload.menu_replacements = cleanMenuReplacements;
+        }
         jsonInput.value = JSON.stringify(payload);
     }
 }
@@ -3094,6 +3452,17 @@ function renderCategoryQuotas() {
 
 function renderReviewCustomizable() {
     try {
+        const issues = getCustomizableConfigurationIssues();
+        const validationBox = document.getElementById('reviewCustomizableValidation');
+        const validationList = document.getElementById('reviewCustomizableValidationList');
+        if (validationBox && validationList) {
+            validationBox.style.background = issues.length ? '#fef2f2' : '#f0fdf4';
+            validationBox.style.borderColor = issues.length ? '#fecaca' : '#bbf7d0';
+            validationList.innerHTML = issues.length
+                ? issues.map(issue => `<li>${escapeHtml(issue)}</li>`).join('')
+                : '<li>Package price, guest limits, selected catalog items, and category limits are ready.</li>';
+        }
+
         // 1. Available Menu / Food
         const menuList = document.getElementById('reviewCustMenuList');
         const menuCountBadge = document.getElementById('reviewCustMenuCount');
@@ -3106,9 +3475,38 @@ function renderReviewCustomizable() {
                 menuList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic; padding: 6px 0;">No menu items selected. Customers will not have food options to choose from.</div>';
             } else {
                 menuList.innerHTML = selectedMenuItems.map(i => {
+                    const isDefault = customizableDefaultMenuIds.has(Number(i.id));
+                    const configuredFees = Object.values(customizableMenuReplacements)
+                        .map(options => Number(options?.[Number(i.id)]))
+                        .filter(value => Number.isFinite(value) && value >= 0);
+                    const extraOption = customizableMenuExtraOptions[Number(i.id)];
+                    const extraVariants = Array.isArray(extraOption?.variants) ? extraOption.variants : [];
+                    const minimumReplacementFee = Math.min(...configuredFees);
+                    const maximumReplacementFee = Math.max(...configuredFees);
+                    const replacementFeeSummary = !configuredFees.length
+                        ? 'Not an included default or approved replacement'
+                        : maximumReplacementFee === 0
+                            ? 'Approved free replacement'
+                            : minimumReplacementFee === maximumReplacementFee
+                                ? `Approved replacement fee: ₱${minimumReplacementFee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/guest`
+                                : `Approved replacement fee: ${minimumReplacementFee === 0 ? 'Free' : `₱${minimumReplacementFee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`}–₱${maximumReplacementFee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/guest`;
+                    const priceDetails = [
+                        isDefault ? 'Included in base package' : (customizableMenuRulesConfigured
+                            ? replacementFeeSummary
+                            : `Catalog swap fee: ₱${(Number(i.upgrade_fee) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}/guest`),
+                        `Extra dish: ${extraVariants.length
+                            ? extraVariants.map(variant => {
+                                const price = Number(variant.price);
+                                const size = String(variant.size || 'Unnamed tray size');
+                                return Number.isFinite(price) && price > 0
+                                    ? `${escapeHtml(size)} ₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/tray`
+                                    : `${escapeHtml(size)} price needed`;
+                            }).join(', ')
+                            : 'Not offered'}`
+                    ].join(' · ');
                     return `
                         <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #f1f5f9;">
-                            <span><i class="fas fa-check-circle" style="color:#16a34a; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong>${i.category ? ' <span style="color:#64748b; font-size:0.75rem;">(' + escapeHtml(i.category) + ')</span>' : ''}</span>
+                            <span><i class="fas fa-check-circle" style="color:#16a34a; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong>${i.category ? ' <span style="color:#64748b; font-size:0.75rem;">(' + escapeHtml(i.category) + ')</span>' : ''}<small style="display:block;color:#64748b;margin-left:1.25rem;">${priceDetails}</small></span>
                         </div>
                     `;
                 }).join('');
@@ -3120,13 +3518,11 @@ function renderReviewCustomizable() {
         if (quotaBanner) {
             const summaryParts = [];
             let totalAllowed = 0;
-            if (typeof customizableCategoryQuotas === 'object' && customizableCategoryQuotas !== null) {
-                for (const [cat, val] of Object.entries(customizableCategoryQuotas)) {
-                    const num = parseInt(val, 10);
-                    if (!isNaN(num) && num > 0) {
-                        summaryParts.push(`<span style="background: #ffffff; border: 1px solid #fed7aa; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #9a3412; font-size: 0.8rem;"><strong style="color: #ea580c;">Up to ${num}</strong> from ${escapeHtml(cat)}</span>`);
-                        totalAllowed += num;
-                    }
+            const includedSlotsByCategory = getCustomizableDefaultMenuCategoryCounts();
+            for (const [cat, count] of Object.entries(includedSlotsByCategory)) {
+                if (count > 0) {
+                    summaryParts.push(`<span style="background: #ffffff; border: 1px solid #fed7aa; padding: 3px 8px; border-radius: 6px; font-weight: 700; color: #9a3412; font-size: 0.8rem;"><strong style="color: #ea580c;">${count} included slot${count === 1 ? '' : 's'}</strong> in ${escapeHtml(cat)}</span>`);
+                    totalAllowed += count;
                 }
             }
             if (summaryParts.length > 0) {
@@ -3135,17 +3531,17 @@ function renderReviewCustomizable() {
                     <div style="background: #fff7ed; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 0.85rem 1rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 4px;">
                             <h5 style="font-size: 0.75rem; font-weight: 800; color: #c2410c; text-transform: uppercase; margin: 0;">
-                                <i class="fas fa-layer-group" style="margin-right: 5px;"></i> Menu Choices by Category
+                                <i class="fas fa-layer-group" style="margin-right: 5px;"></i> Included Menu Slots
                             </h5>
                             <span style="font-size: 0.75rem; font-weight: 800; color: #ea580c; background: #ffedd5; padding: 2px 8px; border-radius: 12px; border: 1px solid #fed7aa;">
-                                Maximum: ${totalAllowed} dish${totalAllowed === 1 ? '' : 'es'}
+                                ${totalAllowed} slot${totalAllowed === 1 ? '' : 's'}
                             </span>
                         </div>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;">
                             ${summaryParts.join('')}
                         </div>
                         <div style="font-size: 0.78rem; color: #9a3412; margin-top: 6px;">
-                            Customers can leave a category empty. A removal credit applies only when a per-guest amount is set for that category.
+                            Customers keep the included dish in each slot or choose a caterer-approved replacement. Optional removal credits apply only where configured.
                         </div>
                     </div>
                 `;
@@ -3166,11 +3562,14 @@ function renderReviewCustomizable() {
                 svcList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic; padding: 6px 0;">No services selected.</div>';
             } else {
                 svcList.innerHTML = selectedSvcItems.map(i => {
-                    const price = parseFloat(i.price || i.selling_price || 0);
-                    const unit = (i.unit_type || 'service').replace('per_', '');
-                    const priceHtml = price > 0
+                    const included = customizableIncludedServiceIds.has(Number(i.id));
+                    const price = Number(customizableServicePrices[Number(i.id)] ?? i.price ?? i.selling_price) || 0;
+                    const unit = (i.unit_type || 'service').replace(/^per_/, '').replace(/_/g, ' ');
+                    const priceHtml = included
+                        ? '<span style="font-weight:700;color:#15803d;font-size:.78rem;">Included in base</span>'
+                        : price > 0
                         ? `<span style="font-weight:700; color:#1e40af; font-size:0.78rem;">₱${price.toLocaleString('en-PH', { maximumFractionDigits: 2 })}${unit && unit !== 'fixed' ? '/' + escapeHtml(unit) : ''}</span>`
-                        : '';
+                        : '<span style="font-size:0.75rem;color:#b91c1c;font-weight:700;">Price required</span>';
                     return `
                         <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #f1f5f9;">
                             <span><i class="fas fa-check-circle" style="color:#2563eb; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong></span>
@@ -3192,16 +3591,149 @@ function renderReviewCustomizable() {
             if (selectedEquipmentItems.length === 0) {
                 equipmentList.innerHTML = '<div style="color:#94a3b8; font-size:0.85rem; font-style:italic; padding: 6px 0;">No equipment selected.</div>';
             } else {
-                equipmentList.innerHTML = selectedEquipmentItems.map(i => `
-                    <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #f1f5f9;">
-                        <span><i class="fas fa-check-circle" style="color:#7c3aed; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong>${i.category ? ' <span style="color:#64748b; font-size:0.75rem;">(' + escapeHtml(i.category) + ')</span>' : ''}</span>
-                    </div>
-                `).join('');
+                equipmentList.innerHTML = selectedEquipmentItems.map(i => {
+                    const included = customizableIncludedEquipmentIds.has(Number(i.id));
+                    const price = Number(customizableEquipmentPrices[Number(i.id)] ?? i.addon_price ?? i.rental_price ?? i.price) || 0;
+                    const unit = String(i.unit_type || 'piece').replace(/^per_/, '').replace(/_/g, ' ');
+                    const priceHtml = included
+                        ? '<span style="font-weight:700;color:#15803d;font-size:.78rem;">Included in base</span>'
+                        : price > 0
+                        ? `<span style="font-weight:700;color:#6d28d9;font-size:0.78rem;">₱${price.toLocaleString('en-PH', { maximumFractionDigits: 2 })}/${escapeHtml(unit)}</span>`
+                        : '<span style="font-size:0.75rem;color:#b91c1c;font-weight:700;">Price required</span>';
+                    return `
+                        <div style="font-size:0.85rem; color:#1e293b; display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #f1f5f9;">
+                            <span><i class="fas fa-check-circle" style="color:#7c3aed; font-size:0.8rem; margin-right:6px;"></i><strong>${escapeHtml(i.name)}</strong>${i.category ? ' <span style="color:#64748b; font-size:0.75rem;">(' + escapeHtml(i.category) + ')</span>' : ''}<small style="display:block;color:#64748b;margin-left:1.25rem;">Available quantity: ${Number(i.available_qty) || 0}${included ? ' · included in base' : ` · package limit: ${Number(customizableEquipmentQuantityLimits[Number(i.id)] ?? i.available_qty) || 0}`}</small></span>
+                            ${priceHtml}
+                        </div>
+                    `;
+                }).join('');
             }
         }
+
+        const sampleTotalEl = document.getElementById('reviewCustomizableSampleTotal');
+        if (sampleTotalEl) {
+            const form = document.getElementById('packageForm');
+            const guests = Math.max(1, Number(form?.elements.namedItem('min_guests')?.value) || 1);
+            let total = Number(String(form?.elements.namedItem('price_per_head')?.value || '').replace(/,/g, '')) || 0;
+            if (form?.elements.namedItem('pricing_mode')?.value !== 'fixed') total *= guests;
+            sampleTotalEl.textContent = `₱${total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        updatePackageWizardControls();
     } catch (err) {
         console.error("renderReviewCustomizable error:", err);
     }
+}
+
+function getCustomizableConfigurationIssues() {
+    const issues = [];
+    const form = document.getElementById('packageForm');
+    const price = Number(String(form?.elements.namedItem('price_per_head')?.value || '').replace(/,/g, ''));
+    const minGuests = Number(form?.elements.namedItem('min_guests')?.value);
+    const maxRaw = String(form?.elements.namedItem('max_guests')?.value || '').trim();
+    if (!Number.isFinite(price) || price <= 0) issues.push('Set a valid starting package price above ₱0.');
+    if (!Number.isInteger(minGuests) || minGuests < 1) issues.push('Set a valid minimum guest count.');
+    if (maxRaw && (!Number.isInteger(Number(maxRaw)) || Number(maxRaw) < minGuests)) {
+        issues.push('Maximum guest count must be a whole number equal to or greater than the minimum.');
+    }
+    const selectedServices = (window.inclusionsCatalog.service || []).filter(item => customizableServiceIds.has(Number(item.id)));
+    const selectedEquipment = (window.inclusionsCatalog.equipment || []).filter(item => customizableEquipmentIds.has(Number(item.id)));
+    const selectedMenu = (window.inclusionsCatalog.menu || []).filter(item => customizableMenuIds.has(Number(item.id)));
+    const menuCategories = {};
+    const defaultMenuCounts = {};
+    selectedMenu.forEach(item => {
+        const category = String(item.category || '').trim() || 'Uncategorized';
+        menuCategories[category] = (menuCategories[category] || 0) + 1;
+        if (customizableDefaultMenuIds.has(Number(item.id))) {
+            defaultMenuCounts[category] = (defaultMenuCounts[category] || 0) + 1;
+        }
+        if (item.status !== 'available') issues.push(`${item.name} is unavailable; remove it from the package or restore its availability.`);
+    });
+    if (selectedMenu.length && !customizableMenuRulesConfigured) {
+        issues.push('Configure included default dishes and approved replacements for the customizable menu slots.');
+    }
+    if (customizableMenuRulesConfigured) {
+        if (selectedMenu.length && !Object.keys(defaultMenuCounts).length) {
+            issues.push('Select at least one included default dish for the customizable menu slots.');
+        }
+        Object.entries(menuCategories).forEach(([category, available]) => {
+            const quota = Number(customizableCategoryQuotas[category]);
+            const defaults = defaultMenuCounts[category] || 0;
+            if (defaults === 0) return;
+            if (!Number.isInteger(quota) || quota < 1 || quota > available) {
+                issues.push(`Set a valid menu slot count for ${category} (1 to ${available}).`);
+            } else if (defaults !== quota) {
+                issues.push(`Select exactly ${quota} included default dish${quota === 1 ? '' : 'es'} for ${category}; currently selected: ${defaults}.`);
+            }
+        });
+        Object.entries(customizableMenuReplacements).forEach(([includedId, options]) => {
+            const included = selectedMenu.find(item => Number(item.id) === Number(includedId));
+            if (!included || !customizableDefaultMenuIds.has(Number(includedId))) {
+                issues.push('Replacement rules must belong to an included default dish.');
+                return;
+            }
+            Object.entries(options || {}).forEach(([replacementId, fee]) => {
+                const replacement = selectedMenu.find(item => Number(item.id) === Number(replacementId));
+                const amount = Number(fee);
+                if (!replacement || customizableDefaultMenuIds.has(Number(replacementId))) {
+                    issues.push(`Replacement options for ${included.name} must be selected non-default menu items.`);
+                }
+                if (fee === '' || fee === null || fee === undefined || !Number.isFinite(amount) || amount < 0 || amount > 99999999.99) {
+                    issues.push(`Set a valid per-guest replacement fee (₱0 is free) for ${replacement?.name || 'each replacement'}.`);
+                }
+            });
+        });
+    }
+    Object.entries(customizableMenuExtraOptions).forEach(([id, option]) => {
+        const item = selectedMenu.find(candidate => Number(candidate.id) === Number(id));
+        if (!item) {
+            issues.push('Remove extra-dish pricing for a menu item that is no longer selected.');
+            return;
+        }
+        const variants = Array.isArray(option?.variants) ? option.variants : [];
+        if (!variants.length) {
+            issues.push(`${item.name} needs at least one tray size and price.`);
+            return;
+        }
+        const seenSizes = new Set();
+        variants.forEach((variant, index) => {
+            const size = String(variant?.size || '').trim();
+            const price = Number(variant?.price);
+            if (!size || size.length > 80) {
+                issues.push(`${item.name} tray size ${index + 1} needs a name of 1 to 80 characters.`);
+            } else if (seenSizes.has(size.toLocaleLowerCase())) {
+                issues.push(`${item.name} has duplicate tray size names; each size must be unique.`);
+            }
+            seenSizes.add(size.toLocaleLowerCase());
+            if (!Number.isFinite(price) || price <= 0 || price > 99999999.99) {
+                issues.push(`${item.name} ${size || `tray size ${index + 1}`} needs a valid price above ₱0.`);
+            }
+        });
+    });
+    selectedServices.forEach(item => {
+        const included = customizableIncludedServiceIds.has(Number(item.id));
+        const packagePrice = Number(customizableServicePrices[Number(item.id)] ?? item.price ?? item.selling_price);
+        if (item.status !== 'available') issues.push(`${item.name} is unavailable; remove it from the package or restore its availability.`);
+        if (!included && (!Number.isFinite(packagePrice) || packagePrice <= 0 || packagePrice > 99999999.99)) {
+            issues.push(`${item.name} has no customer price; configure one or remove it from this package.`);
+        }
+    });
+    selectedEquipment.forEach(item => {
+        const included = customizableIncludedEquipmentIds.has(Number(item.id));
+        const packagePrice = Number(customizableEquipmentPrices[Number(item.id)] ?? item.addon_price ?? item.rental_price ?? item.price);
+        const quantityLimit = Number(customizableEquipmentQuantityLimits[Number(item.id)] ?? item.available_qty);
+        if (item.status !== 'available') issues.push(`${item.name} is unavailable; remove it from the package or restore its availability.`);
+        if (!included && (!Number.isFinite(packagePrice) || packagePrice <= 0 || packagePrice > 99999999.99)) {
+            issues.push(`${item.name} has no rental price; configure one or remove it from this package.`);
+        }
+        if (!(Number(item.available_qty) > 0)) {
+            issues.push(`${item.name} has no available inventory; remove it from this package or update its stock.`);
+        }
+        if (!included && (!Number.isInteger(quantityLimit) || quantityLimit < 1 || quantityLimit > Number(item.available_qty))) {
+            issues.push(`${item.name} needs a valid package quantity limit between 1 and its available inventory.`);
+        }
+    });
+    return [...new Set(issues)];
 }
 
 // -------------------------------------------------------------
@@ -3332,6 +3864,246 @@ window.selectQuickAddOptionCategory = function (category) {
     if (suggestionList) suggestionList.style.display = 'none';
 };
 
+function isCustomizablePackageStepActive() {
+    const packageModal = document.getElementById('packageModal');
+    const stepTwo = document.getElementById('step2CustomizableContainer');
+    return Boolean(
+        packageModal?.classList.contains('active')
+        && document.getElementById('pkgPricingModeSelect')?.value === 'customizable'
+        && stepTwo
+        && stepTwo.style.display !== 'none'
+    );
+}
+
+function packageExtraVariantRow(variant = {}) {
+    const row = document.createElement('div');
+    row.className = 'package-extra-variant-row';
+    row.innerHTML = `
+        <label>Tray size
+            <input type="text" class="control-pro package-extra-size" maxlength="80"
+                placeholder="e.g. Half tray (serves 10)" value="${escapeHtml(String(variant.size || ''))}">
+        </label>
+        <label>Price per tray (₱)
+            <input type="number" class="control-pro package-extra-price" min="0.01" max="99999999.99"
+                step="0.01" placeholder="e.g. 850" value="${escapeHtml(String(variant.price ?? ''))}">
+        </label>
+        <button type="button" class="package-extra-remove" aria-label="Remove tray size"
+            onclick="window.removePackageExtraVariant(this)">Remove</button>
+    `;
+    return row;
+}
+
+function syncPackageExtraVariantRemoveButtons(list) {
+    const rows = Array.from(list?.querySelectorAll('.package-extra-variant-row') || []);
+    rows.forEach(row => {
+        const remove = row.querySelector('.package-extra-remove');
+        if (remove) remove.hidden = rows.length <= 1;
+    });
+}
+
+window.addPackageExtraVariant = function (prefix) {
+    const list = document.querySelector(`[data-variant-list="${prefix}"]`);
+    if (!list) return;
+    list.appendChild(packageExtraVariantRow());
+    syncPackageExtraVariantRemoveButtons(list);
+};
+
+window.removePackageExtraVariant = function (button) {
+    const row = button?.closest('.package-extra-variant-row');
+    const list = row?.parentElement;
+    if (!row || !list || list.children.length <= 1) return;
+    row.remove();
+    syncPackageExtraVariantRemoveButtons(list);
+};
+
+window.togglePackageExtraVariants = function (prefix) {
+    const checkboxId = prefix === 'quickAddOption'
+        ? 'quickAddPackageOfferExtra'
+        : 'editPackageOfferExtra';
+    const wrapperId = prefix === 'quickAddOption'
+        ? 'quickAddOptionPackageExtraVariants'
+        : 'editMenuItemPackageExtraVariants';
+    const checkbox = document.getElementById(checkboxId);
+    const wrapper = document.getElementById(wrapperId);
+    if (wrapper) wrapper.hidden = !checkbox?.checked;
+};
+
+function renderPackageMenuReplacementOptions(prefix, sourceId, force = false) {
+    const list = document.querySelector(`[data-replacement-list="${prefix}"]`);
+    if (!list) return;
+    const normalizedSourceId = sourceId == null ? '' : String(Number(sourceId));
+    if (!force && list.dataset.sourceId === normalizedSourceId && list.childElementCount) return;
+    const configured = customizableMenuReplacements[Number(sourceId)] || {};
+    const candidates = (window.inclusionsCatalog.menu || []).filter(item =>
+        customizableMenuIds.has(Number(item.id))
+        && Number(item.id) !== Number(sourceId)
+        && !customizableDefaultMenuIds.has(Number(item.id))
+    );
+    const groupedCandidates = candidates.reduce((groups, item) => {
+        const category = String(item.category || '').trim() || 'Uncategorized';
+        if (!groups.has(category)) groups.set(category, []);
+        groups.get(category).push(item);
+        return groups;
+    }, new Map());
+    list.innerHTML = groupedCandidates.size ? [...groupedCandidates.entries()]
+        .sort(([categoryA], [categoryB]) => categoryA.localeCompare(categoryB))
+        .map(([category, categoryItems]) => `<details class="package-menu-replacement-category">
+            <summary>${escapeHtml(category)} <span>${categoryItems.length}</span></summary>
+            <div class="package-menu-replacement-category-items">${categoryItems.map(item => {
+        const id = Number(item.id);
+        const fee = configured[id];
+        const enabled = fee !== undefined;
+        const catalogFee = Number(item.upgrade_fee);
+        const initialFee = enabled ? fee : (Number.isFinite(catalogFee) && catalogFee >= 0 ? catalogFee : '');
+        return `<label class="package-menu-replacement-option">
+            <span><input type="checkbox" data-replacement-id="${id}" ${enabled ? 'checked' : ''}> ${escapeHtml(item.name || 'Menu item')}</span>
+            <span>Upgrade fee / guest (₱; 0 = free)
+                <input type="number" min="0" max="99999999.99" step="0.01" data-replacement-fee="${id}"
+                    value="${escapeHtml(String(initialFee))}" ${enabled ? '' : 'disabled'} aria-label="Upgrade fee per guest for ${escapeHtml(item.name || 'menu item')}">
+            </span>
+        </label>`;
+    }).join('')}</div>
+        </details>`).join('') : '<small>Select other menu items in Step 2 to offer them as replacements.</small>';
+    list.dataset.sourceId = normalizedSourceId;
+    list.querySelectorAll('[data-replacement-id]').forEach(input => {
+        input.addEventListener('change', () => {
+            const feeInput = list.querySelector(`[data-replacement-fee="${input.dataset.replacementId}"]`);
+            if (feeInput) feeInput.disabled = !input.checked;
+        });
+    });
+}
+
+window.togglePackageMenuReplacements = function (prefix, force = false) {
+    const checkboxId = prefix === 'quickAddOption' ? 'quickAddPackageIncludeMenu' : 'editPackageIncludeMenu';
+    const sourceId = prefix === 'editMenuItem' ? document.getElementById('editMenuItemId')?.value : null;
+    const wrapper = document.getElementById(`${prefix}PackageMenuReplacements`);
+    const enabled = Boolean(document.getElementById(checkboxId)?.checked);
+    if (wrapper) wrapper.hidden = !enabled;
+    if (enabled) renderPackageMenuReplacementOptions(prefix, sourceId, force);
+};
+
+function setPackageItemSettingsVisibility(type, mode, enabled) {
+    const suffix = type === 'menu' ? 'Menu' : type === 'service' ? 'Service' : 'Equipment';
+    const sectionId = mode === 'create'
+        ? `quickAddPackage${suffix}Settings`
+        : `editPackage${suffix}Settings`;
+    const section = document.getElementById(sectionId);
+    if (section) section.hidden = !enabled;
+}
+
+function readPackageItemSettings(type, mode) {
+    if (!isCustomizablePackageStepActive()) return null;
+    if (type === 'menu') {
+        const included = Boolean(document.getElementById(
+            mode === 'create' ? 'quickAddPackageIncludeMenu' : 'editPackageIncludeMenu'
+        )?.checked);
+        const offerExtra = Boolean(document.getElementById(
+            mode === 'create' ? 'quickAddPackageOfferExtra' : 'editPackageOfferExtra'
+        )?.checked);
+        const prefix = mode === 'create' ? 'quickAddOption' : 'editMenuItem';
+        const replacementRows = document.querySelectorAll(`[data-replacement-list="${prefix}"] .package-menu-replacement-option`);
+        const replacements = [];
+        if (included) {
+            for (const row of replacementRows) {
+                const checkbox = row.querySelector('[data-replacement-id]');
+                if (!checkbox?.checked) continue;
+                const feeInput = row.querySelector('[data-replacement-fee]');
+                const feeText = feeInput?.value.trim() || '';
+                const fee = Number(feeText);
+                if (!feeText || !Number.isFinite(fee) || fee < 0 || fee > 99999999.99) {
+                    window.showToast?.('Enter a valid replacement upgrade fee (₱0 is free).', 'error');
+                    feeInput?.focus();
+                    return false;
+                }
+                replacements.push({ id: Number(checkbox.dataset.replacementId), fee: Math.round(fee * 100) / 100 });
+            }
+        }
+        const variants = [];
+        if (offerExtra) {
+            const rows = document.querySelectorAll(`[data-variant-list="${prefix}"] .package-extra-variant-row`);
+            const sizes = new Set();
+            for (const row of rows) {
+                const size = row.querySelector('.package-extra-size')?.value.trim() || '';
+                const rawPrice = row.querySelector('.package-extra-price')?.value.trim() || '';
+                const price = Number(rawPrice);
+                if (!size || size.length > 80 || !rawPrice || !Number.isFinite(price) || price <= 0 || price > 99999999.99) {
+                    window.showToast?.('Enter a tray size and a valid price greater than ₱0 for each extra-dish size.', 'error');
+                    row.querySelector(!size ? '.package-extra-size' : '.package-extra-price')?.focus();
+                    return false;
+                }
+                const normalizedSize = size.toLocaleLowerCase();
+                if (sizes.has(normalizedSize)) {
+                    window.showToast?.('Each extra-dish tray size must have a unique name.', 'error');
+                    row.querySelector('.package-extra-size')?.focus();
+                    return false;
+                }
+                sizes.add(normalizedSize);
+                variants.push({ size, price: Math.round(price * 100) / 100 });
+            }
+            if (!variants.length) return false;
+        }
+        return { included, replacements, offerExtra, variants };
+    }
+
+    const kind = type === 'service' ? 'Service' : 'Equipment';
+    const controlId = mode === 'create'
+        ? `quickAddPackageInclude${kind}`
+        : `editPackageInclude${kind}`;
+    return { included: Boolean(document.getElementById(controlId)?.checked) };
+}
+
+function applyPackageItemSettings(type, id, settings) {
+    if (!settings || settings === false) return;
+    const itemId = Number(id);
+    if (!Number.isInteger(itemId) || itemId < 1) return;
+    if (type === 'menu') {
+        customizableMenuIds.add(itemId);
+        customizableMenuRulesConfigured = customizableMenuRulesConfigured || settings.included;
+        if (settings.included) {
+            customizableDefaultMenuIds.add(itemId);
+            const item = (window.inclusionsCatalog.menu || []).find(entry => Number(entry.id) === itemId);
+            const category = String(item?.category || 'Uncategorized').trim() || 'Uncategorized';
+            const categoryDefaults = getCustomizableDefaultMenuCategoryCounts();
+            customizableCategoryQuotas[category] = categoryDefaults[category] || 1;
+        } else {
+            customizableDefaultMenuIds.delete(itemId);
+            delete customizableMenuReplacements[itemId];
+            Object.values(customizableMenuReplacements).forEach(options => delete options[itemId]);
+            Object.keys(customizableMenuReplacements).forEach(includedId => {
+                if (!Object.keys(customizableMenuReplacements[includedId]).length) {
+                    delete customizableMenuReplacements[includedId];
+                }
+            });
+            const item = (window.inclusionsCatalog.menu || []).find(entry => Number(entry.id) === itemId);
+            const category = String(item?.category || 'Uncategorized').trim() || 'Uncategorized';
+            const defaultsRemaining = getCustomizableDefaultMenuCategoryCounts()[category] || 0;
+            if (defaultsRemaining) customizableCategoryQuotas[category] = defaultsRemaining;
+            else delete customizableCategoryQuotas[category];
+        }
+        if (settings.included && settings.replacements.length) {
+            customizableMenuReplacements[itemId] = Object.fromEntries(
+                settings.replacements.map(option => [option.id, option.fee])
+            );
+        } else {
+            delete customizableMenuReplacements[itemId];
+        }
+        if (settings.offerExtra) {
+            customizableMenuExtraOptions[itemId] = { variants: settings.variants };
+        } else {
+            delete customizableMenuExtraOptions[itemId];
+        }
+    } else if (type === 'service') {
+        customizableServiceIds.add(itemId);
+        if (settings.included) customizableIncludedServiceIds.add(itemId);
+        else customizableIncludedServiceIds.delete(itemId);
+    } else if (type === 'equipment') {
+        customizableEquipmentIds.add(itemId);
+        if (settings.included) customizableIncludedEquipmentIds.add(itemId);
+        else customizableIncludedEquipmentIds.delete(itemId);
+    }
+    syncCustomizableSelectionRules();
+}
+
 window.setQuickAddOptionType = function (type) {
     if (!['menu', 'service', 'equipment'].includes(type)) type = '';
 
@@ -3353,10 +4125,21 @@ window.setQuickAddOptionType = function (type) {
     const unitSelect = document.getElementById('quickAddOptionUnit');
     const categoryInput = document.getElementById('quickAddOptionCategory');
     const categoryWrapper = document.getElementById('quickAddOptionCategoryWrapper');
+    const catalogCategoryWrapper = document.getElementById('quickAddOptionCatalogCategoryWrapper');
+    const catalogCategoryInput = document.getElementById('quickAddOptionCatalogCategory');
+    const catalogCategoryLabel = document.getElementById('quickAddOptionCatalogCategoryLabel');
     const categorySuggestions = document.getElementById('quickAddOptionCategorySuggestions');
     const description = document.getElementById('quickAddOptionDescription');
     const upgradeFeeWrapper = document.getElementById('quickAddOptionUpgradeFeeWrapper');
     const upgradeFeeInput = document.getElementById('quickAddOptionUpgradeFee');
+    const extraDishWrapper = document.getElementById('quickAddOptionExtraDishWrapper');
+    const availabilityWrapper = document.getElementById('quickAddOptionAvailabilityWrapper');
+    const durationWrapper = document.getElementById('quickAddOptionDurationWrapper');
+    const staffingWrapper = document.getElementById('quickAddOptionStaffingWrapper');
+    const quantityWrapper = document.getElementById('quickAddOptionQuantityWrapper');
+    const extraDishInput = document.getElementById('quickAddOptionExtraDishPrice');
+    const durationInput = document.getElementById('quickAddOptionDuration');
+    const quantityLabel = document.getElementById('quickAddOptionQuantityLabel');
     const customCategoryWrapper = document.getElementById('quickAddOptionCustomCategoryWrapper');
     const customCategoryInput = document.getElementById('quickAddOptionCustomCategory');
     const equipmentFlow = type === 'equipment';
@@ -3385,12 +4168,23 @@ window.setQuickAddOptionType = function (type) {
     if (typeWrapper) typeWrapper.style.display = 'block';
     if (footer) footer.style.setProperty('display', hasType ? 'flex' : 'none', 'important');
     if (nameWrapper) nameWrapper.style.display = hasType ? 'block' : 'none';
-    if (unitWrapper) unitWrapper.style.display = 'none';
-    if (priceWrapper) priceWrapper.style.display = type === 'service' ? 'block' : 'none';
+    if (unitWrapper) unitWrapper.style.display = hasType ? 'grid' : 'none';
+    if (priceWrapper) priceWrapper.style.display = type === 'service' || type === 'equipment' ? 'block' : 'none';
     if (descriptionWrapper) descriptionWrapper.style.display = hasType ? 'block' : 'none';
     if (photoWrapper) photoWrapper.style.display = hasType ? 'block' : 'none';
     if (categoryWrapper) categoryWrapper.style.display = type === 'menu' ? 'block' : 'none';
+    if (catalogCategoryWrapper) catalogCategoryWrapper.style.display = type === 'service' || type === 'equipment' ? 'block' : 'none';
+    if (catalogCategoryInput) {
+        catalogCategoryInput.value = type === 'service' ? 'Service' : (type === 'equipment' ? 'Equipment' : '');
+        catalogCategoryInput.placeholder = type === 'service' ? 'e.g. Staffing, Setup, Beverage Service' : 'e.g. Tables, Chairs, Tableware';
+    }
+    if (catalogCategoryLabel) catalogCategoryLabel.textContent = type === 'service' ? 'Service category' : 'Equipment category';
     if (upgradeFeeWrapper) upgradeFeeWrapper.style.display = type === 'menu' ? 'block' : 'none';
+    if (extraDishWrapper) extraDishWrapper.style.display = type === 'menu' ? 'block' : 'none';
+    if (availabilityWrapper) availabilityWrapper.style.display = hasType ? 'block' : 'none';
+    if (quantityWrapper) quantityWrapper.style.display = type === 'menu' ? 'none' : 'block';
+    if (durationWrapper) durationWrapper.style.display = type === 'service' ? 'block' : 'none';
+    if (staffingWrapper) staffingWrapper.style.display = 'none';
     if (upgradeFeeInput && type !== 'menu') upgradeFeeInput.value = '';
     if (customCategoryWrapper) customCategoryWrapper.style.display = 'none';
     if (customCategoryInput) { customCategoryInput.required = false; customCategoryInput.value = ''; }
@@ -3400,7 +4194,7 @@ window.setQuickAddOptionType = function (type) {
     if (categoryInput) categoryInput.setCustomValidity('');
     const upgradeFeeError = document.getElementById('quickAddOptionUpgradeFeeError');
     if (upgradeFeeError) upgradeFeeError.textContent = '';
-    if (priceRow) priceRow.style.display = type === 'service' ? 'grid' : 'none';
+    if (priceRow) priceRow.style.display = type === 'service' || type === 'equipment' ? 'grid' : 'none';
     if (priceRow) priceRow.style.gridTemplateColumns = '1fr';
     if (priceInput) priceInput.required = false;
     if (priceError) {
@@ -3408,6 +4202,10 @@ window.setQuickAddOptionType = function (type) {
         priceError.style.display = 'none';
     }
     if (priceInput) priceInput.setCustomValidity('');
+    const packageContextActive = isCustomizablePackageStepActive();
+    ['menu', 'service', 'equipment'].forEach(itemType => {
+        setPackageItemSettingsVisibility(itemType, 'create', packageContextActive && itemType === type);
+    });
 
     if (!hasType) {
         if (priceRow) priceRow.style.display = 'none';
@@ -3433,6 +4231,8 @@ window.setQuickAddOptionType = function (type) {
             `;
             unitSelect.value = 'per_pax';
         }
+        if (unitLabel) unitLabel.textContent = 'Serving / pricing unit';
+        if (priceLabel) priceLabel.innerHTML = 'Customer-facing catalog price (₱) <small>(Optional)</small>';
         if (categoryInput) categoryInput.value = '';
         if (categorySuggestions) {
             categorySuggestions.innerHTML = '';
@@ -3443,6 +4243,7 @@ window.setQuickAddOptionType = function (type) {
             priceInput.value = '0.00';
             priceInput.required = false;
         }
+        if (extraDishInput) extraDishInput.value = '';
         if (description) description.placeholder = 'Details, ingredients, specifications or notes...';
     } else if (type === 'service') {
         if (nameLabel) nameLabel.innerHTML = 'Service Name <span style="color: #ef4444;">*</span>';
@@ -3452,15 +4253,20 @@ window.setQuickAddOptionType = function (type) {
                 <option value="per_event">Per Event (Flat Rate)</option>
                 <option value="per_pax">Per Person</option>
                 <option value="per_hour">Per Hour</option>
+                <option value="per_staff">Per Staff Member</option>
             `;
             unitSelect.value = 'per_event';
         }
+        if (unitLabel) unitLabel.textContent = 'Pricing unit';
+        if (quantityLabel) quantityLabel.textContent = 'Maximum available units / staff';
+        if (priceLabel) priceLabel.innerHTML = 'Default customer-facing price (₱) <small>(Optional · unpriced selections require review)</small>';
         if (categoryInput) categoryInput.value = 'Service';
         if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>';
         if (priceInput) {
             priceInput.value = '';
             priceInput.placeholder = '0.00';
         }
+        if (durationInput) durationInput.value = '1';
         if (description) description.placeholder = 'Details, inclusions, specifications or notes...';
     } else {
         if (nameLabel) nameLabel.innerHTML = 'Equipment / Item Name <span style="color: #ef4444;">*</span>';
@@ -3472,11 +4278,17 @@ window.setQuickAddOptionType = function (type) {
                 <option value="set">Per Set</option>
                 <option value="pair">Per Pair</option>
                 <option value="lot">Per Lot / Package</option>
+                <option value="per_day">Per Day</option>
+                <option value="per_event">Per Event</option>
             `;
             unitSelect.value = 'piece';
         }
+        if (unitLabel) unitLabel.textContent = 'Rental pricing unit';
+        if (quantityLabel) quantityLabel.textContent = 'Available quantity';
+        if (priceLabel) priceLabel.innerHTML = 'Default rental price (₱) <small>(Optional · unpriced selections require review)</small>';
         if (categoryInput) categoryInput.value = 'Equipment';
         if (priceInput) priceInput.value = '';
+        if (extraDishInput) extraDishInput.value = '';
     }
 
     const title = document.getElementById('quickAddOptionModalTitle');
@@ -3484,6 +4296,11 @@ window.setQuickAddOptionType = function (type) {
     const itemLabel = type === 'menu' ? 'menu item' : type;
     if (title) title.textContent = `Create ${itemLabel}`;
     if (subtitle) subtitle.textContent = `Save this ${itemLabel} to your catalog to reuse in future packages${window._pkgInclusionReturnState?.direct ? ' and add it to this package' : ''}.`;
+};
+
+window.toggleQuickAddStaffingFields = function (unit) {
+    const wrapper = document.getElementById('quickAddOptionStaffingWrapper');
+    if (wrapper) wrapper.style.display = unit === 'per_staff' ? 'grid' : 'none';
 };
 
 window.toggleQuickAddCustomCategory = function (category) {
@@ -3499,7 +4316,11 @@ window.toggleQuickAddCustomCategory = function (category) {
 
 window.openQuickAddOptionModal = function (type) {
     const modal = document.getElementById('quickAddOptionModal');
-    if (!modal) return;
+    if (!modal) {
+        console.error('[Packages] Quick add option modal not found');
+        window.showToast?.('The add-item form could not be opened. Refresh the page and try again.', 'error');
+        return;
+    }
 
     const form = document.getElementById('quickAddOptionForm');
     if (form) form.reset();
@@ -3515,7 +4336,33 @@ window.openQuickAddOptionModal = function (type) {
     if (typeLabel) typeLabel.innerHTML = 'What would you like to add? <span style="color: #ef4444;">*</span>';
 
     const normalizedType = ['menu', 'service', 'equipment'].includes(type) ? type : '';
+    const packageContextActive = isCustomizablePackageStepActive();
+    const packageMenuSettings = document.getElementById('quickAddPackageMenuSettings');
+    const packageServiceSettings = document.getElementById('quickAddPackageServiceSettings');
+    const packageEquipmentSettings = document.getElementById('quickAddPackageEquipmentSettings');
+    if (packageMenuSettings) packageMenuSettings.hidden = true;
+    if (packageServiceSettings) packageServiceSettings.hidden = true;
+    if (packageEquipmentSettings) packageEquipmentSettings.hidden = true;
+    const includeMenu = document.getElementById('quickAddPackageIncludeMenu');
+    const offerExtra = document.getElementById('quickAddPackageOfferExtra');
+    const includeService = document.getElementById('quickAddPackageIncludeService');
+    const includeEquipment = document.getElementById('quickAddPackageIncludeEquipment');
+    if (includeMenu) includeMenu.checked = false;
+    if (offerExtra) offerExtra.checked = false;
+    if (includeService) includeService.checked = false;
+    if (includeEquipment) includeEquipment.checked = false;
+    const replacementList = document.querySelector('[data-replacement-list="quickAddOption"]');
+    if (replacementList) replacementList.replaceChildren();
+    const variantList = document.querySelector('[data-variant-list="quickAddOption"]');
+    if (variantList) {
+        variantList.replaceChildren(packageExtraVariantRow());
+        syncPackageExtraVariantRemoveButtons(variantList);
+    }
+    window.togglePackageExtraVariants('quickAddOption');
     window.setQuickAddOptionType(normalizedType);
+    window.togglePackageMenuReplacements('quickAddOption');
+    setPackageItemSettingsVisibility(normalizedType, 'create', packageContextActive);
+    if (typeSelect) typeSelect.value = normalizedType;
     const title = document.getElementById('quickAddOptionModalTitle');
     const subtitle = modal.querySelector('.quick-add-option-subtitle');
     if (title) {
@@ -3537,7 +4384,16 @@ window.openQuickAddOptionModal = function (type) {
             ? `Save this ${normalizedType === 'menu' ? 'menu item' : normalizedType} to your catalog to reuse in future packages.`
             : 'Choose an option type, then save it to your catalog to reuse in future packages.';
     }
+    modal.style.zIndex = '10020';
     safeOpenModal('quickAddOptionModal', true);
+    if (!modal.classList.contains('active')) {
+        modal.style.zIndex = '10020';
+        modal.style.display = 'flex';
+        requestAnimationFrame(() => modal.classList.add('active'));
+    }
+    if (normalizedType) {
+        requestAnimationFrame(() => document.getElementById('quickAddOptionName')?.focus());
+    }
 };
 
 window.openFixedQuickAddOptionModal = function () {
@@ -3562,7 +4418,7 @@ window.submitQuickAddOption = async function (e) {
     const type = document.getElementById('quickAddOptionType')?.value || '';
     const name = (document.getElementById('quickAddOptionName')?.value || '').trim();
     const categoryInput = document.getElementById('quickAddOptionCategory');
-    const category = (type === 'menu' ? categoryInput?.value : '')?.trim() || '';
+    const category = (type === 'menu' ? categoryInput?.value : document.getElementById('quickAddOptionCatalogCategory')?.value)?.trim() || '';
     const customCategory = (document.getElementById('quickAddOptionCustomCategory')?.value || '').trim();
     const unit = document.getElementById('quickAddOptionUnit')?.value || '';
     const priceInput = document.getElementById('quickAddOptionPrice');
@@ -3574,6 +4430,8 @@ window.submitQuickAddOption = async function (e) {
         alert('Please choose an option type.');
         return;
     }
+    const packageSettings = readPackageItemSettings(type, 'create');
+    if (packageSettings === false) return;
     if (!name) {
         alert('Please enter an item name.');
         return;
@@ -3596,10 +4454,32 @@ window.submitQuickAddOption = async function (e) {
         document.getElementById('quickAddOptionUpgradeFee')?.focus();
         return;
     }
-    if (type === 'service' && !window.validateQuickAddOptionPrice()) {
+    if ((type === 'service' || type === 'equipment') && !window.validateQuickAddOptionPrice()) {
         priceInput?.focus();
         return;
     }
+    const monetaryInputs = [
+        document.getElementById('quickAddOptionPrice'),
+        document.getElementById('quickAddOptionExtraDishPrice'),
+        document.getElementById('quickAddOptionUpgradeFee')
+    ];
+    if (monetaryInputs.some(input => {
+        if (!input || input.closest('[style*="display: none"]')) return false;
+        const raw = input.value.replace(/,/g, '').trim();
+        return raw !== '' && (!/^\d{1,8}(?:\.\d{1,2})?$/.test(raw) || !Number.isFinite(Number(raw)) || Number(raw) < 0);
+    })) {
+        window.showToast?.('Check the entered prices and costs. Use up to 2 decimal places.', 'error');
+        return;
+    }
+    const quantityInput = document.getElementById('quickAddOptionQuantity');
+    if ((type === 'service' || type === 'equipment') &&
+        (!Number.isInteger(Number(quantityInput?.value)) || Number(quantityInput.value) < 1)) {
+        quantityInput?.setCustomValidity('Enter an available quantity of at least 1.');
+        quantityInput?.reportValidity();
+        quantityInput?.focus();
+        return;
+    }
+    quantityInput?.setCustomValidity('');
 
     const btn = document.getElementById('btnQuickOptionSubmit');
     if (btn) {
@@ -3619,8 +4499,20 @@ window.submitQuickAddOption = async function (e) {
         if (type === 'menu' && upgradeFeeText) {
             formData.append('upgrade_fee', String(Number(upgradeFeeText.replace(/,/g, ''))));
         }
-        if (type === 'service' && priceText) formData.append('price', price);
+        if (type === 'menu') {
+            formData.append('addon_price', String(Number((document.getElementById('quickAddOptionExtraDishPrice')?.value || '0').replace(/,/g, '')) || 0));
+        }
+        if (type === 'service' || type === 'equipment') formData.append('price', priceText ? Number(priceText.replace(/,/g, '')) : 0);
         formData.append('unit_type', unit);
+        if (type === 'service' || type === 'equipment') {
+            formData.append('available_qty', quantityInput?.value || '1');
+        }
+        if (type === 'service') formData.append('minimum_hours', document.getElementById('quickAddOptionDuration')?.value || '1');
+        if (type === 'service' && unit === 'per_staff') {
+            formData.append('staff_to_pax_ratio', document.getElementById('quickAddOptionStaffRatio')?.value || '0');
+            formData.append('min_staff_required', document.getElementById('quickAddOptionMinStaff')?.value || '1');
+        }
+        formData.append('status', document.getElementById('quickAddOptionStatus')?.value || 'available');
         formData.append('description', desc);
         const fileInput = document.getElementById('quickAddOptionImage');
         if (fileInput && fileInput.files && fileInput.files[0]) {
@@ -3651,6 +4543,7 @@ window.submitQuickAddOption = async function (e) {
         if (type === 'menu') customizableMenuIds.add(newId);
         else if (type === 'service') customizableServiceIds.add(newId);
         else if (type === 'equipment') customizableEquipmentIds.add(newId);
+        applyPackageItemSettings(type, newId, packageSettings);
 
         // Update UI
         renderCustomizableCatalogs();
@@ -3689,9 +4582,18 @@ window.submitQuickAddOption = async function (e) {
             }
             const form = document.getElementById('quickAddOptionForm');
             form?.reset();
+            const variantList = document.querySelector('[data-variant-list="quickAddOption"]');
+            if (variantList) {
+                variantList.replaceChildren(packageExtraVariantRow());
+                syncPackageExtraVariantRemoveButtons(variantList);
+            }
             const typeSelect = document.getElementById('quickAddOptionType');
             if (typeSelect) typeSelect.value = type;
             window.setQuickAddOptionType(type);
+            const replacementList = document.querySelector('[data-replacement-list="quickAddOption"]');
+            if (replacementList) replacementList.replaceChildren();
+            window.togglePackageMenuReplacements('quickAddOption');
+            window.togglePackageExtraVariants('quickAddOption');
             const photoPreview = document.getElementById('quickAddOptionPhotoPreview');
             if (photoPreview) photoPreview.innerHTML = '';
             const photoHint = document.getElementById('quickAddOptionPhotoHint');
@@ -3818,13 +4720,74 @@ window.openQuickEditModal = function (type, id, event) {
         if (customCategoryField && categoryField?.value === 'Other') customCategoryField.value = currentCategory;
         const feeField = value('UpgradeFee');
         if (feeField) feeField.value = Number(item.upgrade_fee) > 0 ? String(item.upgrade_fee) : '';
+        const extraField = value('ExtraDishPrice');
+        if (extraField) extraField.value = Number(item.addon_price) > 0 ? String(item.addon_price) : '';
+        const unitField = value('Unit');
+        if (unitField) unitField.value = item.unit_type || item.pricing_unit || 'per_pax';
+        const statusField = value('Status');
+        if (statusField) statusField.value = item.status || 'available';
         window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError');
     } else if (type === 'service') {
+        const categoryField = value('Category');
+        if (categoryField) categoryField.value = item.category || 'Service';
         const feeField = value('Fee');
-        if (feeField) feeField.value = Number(item.price ?? item.selling_price) > 0 ? String(item.price ?? item.selling_price) : '';
+        const price = item.price ?? item.selling_price;
+        if (feeField) feeField.value = Number(price) > 0 ? String(price) : '';
+        const unitField = value('Unit');
+        if (unitField) unitField.value = item.unit_type || 'per_event';
+        const quantityField = value('Quantity');
+        if (quantityField) quantityField.value = String(item.max_available ?? item.available_qty ?? 1);
+        const durationField = value('Duration');
+        if (durationField) durationField.value = String(item.minimum_hours || 1);
+        const staffRatioField = value('StaffRatio');
+        if (staffRatioField) staffRatioField.value = String(item.staff_to_pax_ratio || 25);
+        const minStaffField = value('MinStaff');
+        if (minStaffField) minStaffField.value = String(item.min_staff_required || 1);
+        const statusField = value('Status');
+        if (statusField) statusField.value = item.status || 'available';
+        window.toggleCatalogEditStaffFields(unitField?.value || '');
         window.validateCatalogEditServiceFee();
+    } else if (type === 'equipment') {
+        const categoryField = value('Category');
+        if (categoryField) categoryField.value = item.category || 'Equipment';
+        const feeField = value('Fee');
+        const price = item.price ?? item.rental_price;
+        if (feeField) feeField.value = Number(price) > 0 ? String(price) : '';
+        const unitField = value('Unit');
+        if (unitField) unitField.value = item.unit_type || 'piece';
+        const quantityField = value('Quantity');
+        if (quantityField) quantityField.value = String(item.available_qty || 1);
+        const statusField = value('Status');
+        if (statusField) statusField.value = item.status || 'available';
     }
 
+    const packageContextActive = isCustomizablePackageStepActive();
+    setPackageItemSettingsVisibility(type, 'edit', packageContextActive);
+    if (packageContextActive && type === 'menu') {
+        const includeDefault = document.getElementById('editPackageIncludeMenu');
+        const offerExtra = document.getElementById('editPackageOfferExtra');
+        const configuredExtra = customizableMenuExtraOptions[Number(id)];
+        if (includeDefault) includeDefault.checked = customizableDefaultMenuIds.has(Number(id));
+        if (offerExtra) offerExtra.checked = Boolean(configuredExtra);
+        window.togglePackageMenuReplacements('editMenuItem', true);
+        const variantList = document.querySelector('[data-variant-list="editMenuItem"]');
+        if (variantList) {
+            const variants = Array.isArray(configuredExtra?.variants) && configuredExtra.variants.length
+                ? configuredExtra.variants
+                : [{ size: '', price: '' }];
+            variantList.replaceChildren(...variants.map(packageExtraVariantRow));
+            syncPackageExtraVariantRemoveButtons(variantList);
+        }
+        window.togglePackageExtraVariants('editMenuItem');
+    } else if (packageContextActive && type === 'service') {
+        const included = document.getElementById('editPackageIncludeService');
+        if (included) included.checked = customizableIncludedServiceIds.has(Number(id));
+    } else if (packageContextActive && type === 'equipment') {
+        const included = document.getElementById('editPackageIncludeEquipment');
+        if (included) included.checked = customizableIncludedEquipmentIds.has(Number(id));
+    }
+
+    modal.style.zIndex = '10020';
     safeOpenModal(modalId, true);
 };
 
@@ -3858,6 +4821,11 @@ window.validateCatalogEditServiceFee = function () {
     return !message;
 };
 
+window.toggleCatalogEditStaffFields = function (unit) {
+    const wrapper = document.getElementById('editServiceItemStaffingWrapper');
+    if (wrapper) wrapper.style.display = unit === 'per_staff' ? 'grid' : 'none';
+};
+
 window.closeCatalogEditModal = function (modalId) {
     const form = document.querySelector(`#${modalId} form`);
     if (form && !form.dataset.saving && form.dataset.dirty === 'true' &&
@@ -3889,8 +4857,20 @@ window.submitCatalogItemEdit = async function (event, type) {
         value('Fee')?.focus();
         return;
     }
+    const moneyField = type === 'equipment' ? value('Fee') : value('ExtraDishPrice');
+    if (moneyField && moneyField.value.trim() &&
+        (!/^\d{1,8}(?:\.\d{1,2})?$/.test(moneyField.value.trim()) ||
+            !Number.isFinite(Number(moneyField.value)) || Number(moneyField.value) < 0)) {
+        moneyField.setCustomValidity('Enter a valid non-negative amount with up to 2 decimal places.');
+        moneyField.reportValidity();
+        moneyField.focus();
+        return;
+    }
+    if (moneyField) moneyField.setCustomValidity('');
 
     const form = event.currentTarget;
+    const packageSettings = readPackageItemSettings(type, 'edit');
+    if (packageSettings === false) return;
     const submitButton = form.querySelector('button[type="submit"]');
     if (form) form.dataset.saving = 'true';
     if (submitButton) {
@@ -3909,8 +4889,24 @@ window.submitCatalogItemEdit = async function (event, type) {
             formData.append('category', category);
             formData.append('custom_category', customCategory);
             formData.append('upgrade_fee', fee ? String(Number(fee)) : '0');
+            formData.append('addon_price', value('ExtraDishPrice')?.value.trim() || '0');
+            formData.append('unit_type', value('Unit')?.value || 'per_pax');
+            formData.append('status', value('Status')?.value || 'available');
         } else if (type === 'service') {
-            formData.append('price', value('Fee')?.value.trim() || '');
+            formData.append('category', value('Category')?.value.trim() || 'Service');
+            formData.append('price', value('Fee')?.value.trim() || '0');
+            formData.append('unit_type', value('Unit')?.value || 'per_event');
+            formData.append('available_qty', value('Quantity')?.value || '1');
+            formData.append('minimum_hours', value('Duration')?.value || '1');
+            formData.append('staff_to_pax_ratio', value('StaffRatio')?.value || '0');
+            formData.append('min_staff_required', value('MinStaff')?.value || '1');
+            formData.append('status', value('Status')?.value || 'available');
+        } else if (type === 'equipment') {
+            formData.append('category', value('Category')?.value.trim() || 'Equipment');
+            formData.append('price', value('Fee')?.value.trim() || '0');
+            formData.append('unit_type', value('Unit')?.value || 'piece');
+            formData.append('available_qty', value('Quantity')?.value || '1');
+            formData.append('status', value('Status')?.value || 'available');
         }
         const image = value('Image')?.files?.[0];
         if (image) formData.append('image', image);
@@ -3930,6 +4926,7 @@ window.submitCatalogItemEdit = async function (event, type) {
         const catalogIndex = catalog.findIndex(entry => Number(entry.id) === Number(id));
         if (catalogIndex >= 0) catalog[catalogIndex] = { ...catalog[catalogIndex], ...updatedItem };
         window.inclusionsCatalog[type] = catalog;
+        applyPackageItemSettings(type, id, packageSettings);
         let packageChanged = false;
         packageInclusions = packageInclusions.map(inclusion => {
             if (Number(inclusion.item_id) !== Number(id) ||
@@ -3985,7 +4982,7 @@ window.previewCatalogEditPhoto = function (type, event) {
     reader.readAsDataURL(file);
 };
 
-window.quickDeleteCatalogItem = async function (type, id, event) {
+window.removeCatalogItemFromOptions = function (type, id, event) {
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -3993,59 +4990,17 @@ window.quickDeleteCatalogItem = async function (type, id, event) {
     type = String(type || '').toLowerCase();
     const list = window.inclusionsCatalog[type] || [];
     const item = list.find(i => Number(i.id) === Number(id));
-    const itemName = item ? item.name : 'this item';
-
-    if (!confirm(`Archive "${itemName}"? It will be removed from this package and moved to Archives, where you can restore it later.`)) {
+    if (!item || !['menu', 'service', 'equipment'].includes(type)) {
+        return false;
+    }
+    const itemName = item.name || 'this item';
+    if (!confirm(`Remove "${itemName}" from this package's options? The catalog item will remain available for your other packages.`)) {
         return false;
     }
 
-    try {
-        const res = await fetch(`/caterer/api/catalogs/quick-delete/${type}/${id}`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
-
-        const data = await res.json();
-        if (!res.ok || data.status !== 'success') {
-            throw new Error(extractErrorMessage(data, 'Failed to archive item'));
-        }
-
-        // Remove from local catalog
-        const idx = list.findIndex(i => Number(i.id) === Number(id));
-        if (idx !== -1) {
-            list.splice(idx, 1);
-        }
-
-        // Unselect if selected
-        const numId = Number(id);
-        if (type === 'menu') customizableMenuIds.delete(numId);
-        else if (type === 'service') customizableServiceIds.delete(numId);
-        else if (type === 'equipment') customizableEquipmentIds.delete(numId);
-
-        const previousInclusionCount = packageInclusions.length;
-        packageInclusions = packageInclusions.filter(inclusion =>
-            !(Number(inclusion.item_id) === numId && getPackageInclusionCatalogType(inclusion) === type)
-        );
-        if (packageInclusions.length !== previousInclusionCount) {
-            syncInclusionsHidden();
-            renderInclusionsList();
-            if (typeof renderCustInclusionsList === 'function') renderCustInclusionsList();
-        }
-
-        // Update UI
-        renderCustomizableCatalogs();
-        syncCustomizableSelectionRules();
-        renderReviewCustomizable();
-
-        if (window.showToast) {
-            window.showToast(`"${itemName}" archived. You can restore it from Archives.`, 'success');
-        }
-        return true;
-    } catch (err) {
-        console.error('quickDeleteCatalogItem error:', err);
-        alert(err.message || 'An error occurred while archiving.');
-        return false;
+    window.toggleCustomizableItem(type, Number(id), false);
+    if (window.showToast) {
+        window.showToast(`"${itemName}" was removed from this package's options. It remains in your catalog.`, 'success');
     }
+    return true;
 };

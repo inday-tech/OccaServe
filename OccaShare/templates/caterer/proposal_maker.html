@@ -273,7 +273,13 @@
         <p style="margin: .75rem 0 0; color: #64748b; font-size: .82rem;">Review the inclusions before pricing. The quotation total below is calculated as the base amount plus all named add-ons.</p>
     </section>
     
-    <form action="/caterer/bookings/{{ booking.id }}/proposal_maker{% if request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" method="POST" id="proposalForm">
+    <form action="/caterer/bookings/{{ booking.id }}/proposal_maker{% if revision_mode %}?revision=true{% if request.query_params.get('modal') == 'true' %}&amp;modal=true{% endif %}{% elif request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" method="POST" id="proposalForm">
+        {% if revision_mode %}
+        <div style="padding:1rem;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;margin-bottom:1rem;">
+            <strong>Quotation revision {{ (quotation.package_details.get('revision_number', 1) or 1) + 1 }}</strong>
+            <p style="margin:.35rem 0 0;color:#7c2d12;font-size:.85rem;">Saving this revision preserves the current quotation, clears earlier approvals/signatures, and asks the customer to review the new items and total before choosing a deposit again.</p>
+        </div>
+        {% endif %}
         <div style="background: #f8fafc; border-left: 4px solid #0f172a; padding: 1.25rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem; display: flex; gap: 1rem; align-items: flex-start;">
             <i class="fas fa-info-circle" style="color: #0f172a; font-size: 1.25rem; margin-top: 2px;"></i>
             <div>
@@ -289,10 +295,18 @@
             <label class="form-label">Base Package / Food Cost (total for {{ booking.guest_count }} guests)</label>
             <div style="position: relative;">
                 <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700;">₱</span>
-                <input type="text" inputmode="numeric" name="base_price" id="basePrice" class="form-input js-format-comma" style="padding-left: 2rem;" required oninput="calculateTotal()">
+                <input type="text" inputmode="numeric" name="base_price" id="basePrice" class="form-input js-format-comma" style="padding-left: 2rem;" value="{{ proposal_base_price if revision_mode else '' }}" required oninput="calculateTotal()">
             </div>
             <small style="color: #64748b; margin-top: 4px; display: block;">Enter the base total once for the full guest count. Do not multiply this amount by the number of guests again.</small>
         </div>
+
+        {% if revision_mode %}
+        <div class="form-group">
+            <label class="form-label" for="revisionItemChanges">Updated items / proposed alternatives <span style="color:#64748b;font-weight:400;">(Optional)</span></label>
+            <textarea id="revisionItemChanges" name="revision_item_changes" class="form-input" rows="4" maxlength="4000" placeholder="Describe any menu, service, or equipment changes the customer should review. Put related prices in the named line items below.">{{ revision_item_changes or '' }}</textarea>
+            <small style="color:#64748b;display:block;margin-top:4px;">These changes will appear in the revised quotation and agreement. Add any related charge or discount as a separate line item below.</small>
+        </div>
+        {% endif %}
         
         <div class="line-items-wrapper">
             <div class="line-items-header">
@@ -301,12 +315,27 @@
                 <div></div>
             </div>
             <div id="lineItemsContainer">
-                <!-- Javascript will populate items here -->
+                {% if revision_mode %}
+                {% for addon in proposal_addons %}
+                <div class="line-item-row">
+                    <input type="text" name="addon_names" class="form-input" value="{{ addon.name }}" required>
+                    <input type="text" inputmode="numeric" name="addon_prices" class="form-input addon-price js-format-comma" value="{{ addon.price }}" required oninput="calculateTotal()">
+                    <button type="button" class="btn-remove" onclick="this.parentElement.remove(); calculateTotal();"><i class="fas fa-times"></i></button>
+                </div>
+                {% endfor %}
+                {% endif %}
             </div>
             <button type="button" class="btn-add" onclick="addLineItem()">
-                <i class="fas fa-plus"></i> Add Custom Line Item (Decor, specific rental, etc.)
+                <i class="fas fa-plus"></i> Add Custom Line Item (item alternative, decor, rental, etc.)
             </button>
         </div>
+
+        {% if revision_mode %}
+        <div class="form-group" style="margin-top:1rem;">
+            <label class="form-label" for="revisionReason">Reason for revision <span style="color:#b91c1c;">*</span></label>
+            <textarea id="revisionReason" name="revision_reason" class="form-input" rows="3" minlength="3" maxlength="2000" required placeholder="Explain what changed and why. This note will be shown to the customer."></textarea>
+        </div>
+        {% endif %}
         
         <div class="totals-section">
             <div class="total-row">
@@ -331,7 +360,7 @@
         </p>
 
         <button type="submit" class="btn-submit">
-            <i class="fas fa-file-invoice"></i> Save Quotation &amp; Review Agreement
+            <i class="fas fa-file-invoice"></i> {% if revision_mode %}Save Revision &amp; Reset Approvals{% else %}Save Quotation &amp; Review Agreement{% endif %}
         </button>
     </form>
 </div>

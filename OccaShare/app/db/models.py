@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean, Date, Time, DECIMAL, ARRAY, event, text
+from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean, Date, Time, DECIMAL, ARRAY, UniqueConstraint, event, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -1334,6 +1334,39 @@ class Quotation(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     booking = relationship("Booking", back_populates="quotation")
+    revisions = relationship(
+        "QuotationRevision",
+        back_populates="quotation",
+        order_by="QuotationRevision.revision_number",
+        cascade="all, delete-orphan",
+    )
+
+
+class QuotationRevision(Base):
+    __tablename__ = "quotation_revisions"
+    __table_args__ = (
+        UniqueConstraint("quotation_id", "revision_number", name="uq_quotation_revision_number"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    quotation_id = Column(Integer, ForeignKey("quotations.id", ondelete="CASCADE"), nullable=False, index=True)
+    revision_number = Column(Integer, nullable=False)
+    package_details = Column(JSONB, nullable=False)
+    addons = Column(JSONB, nullable=False, default=list)
+    total_amount = Column(DECIMAL, nullable=False)
+    downpayment_percent = Column(Integer, nullable=False)
+    status = Column(String(20), nullable=False)
+    caterer_signature = Column(Text, nullable=True)
+    customer_signature = Column(Text, nullable=True)
+    caterer_signed_at = Column(DateTime(timezone=True), nullable=True)
+    customer_signed_at = Column(DateTime(timezone=True), nullable=True)
+    customer_approved_at = Column(DateTime(timezone=True), nullable=True)
+    contract_url = Column(String, nullable=True)
+    revision_reason = Column(Text, nullable=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    quotation = relationship("Quotation", back_populates="revisions")
 
 class FraudFlag(Base):
     __tablename__ = "fraud_flags"
