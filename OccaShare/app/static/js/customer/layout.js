@@ -31,11 +31,12 @@ function initSidebar() {
     const toggleBtn = document.getElementById('desktopToggleBtn');
     const html      = document.documentElement;
 
-    // A desktop collapsed preference must not make the mobile drawer icons-only.
-    if (window.innerWidth <= 1024) html.classList.remove('sidebar-icons-only');
-    else if (localStorage.getItem('customerSidebarCollapsed') === 'true') {
-        html.classList.add('sidebar-icons-only');
-    }
+    const syncSidebarMode = () => {
+        const collapsed = window.innerWidth > 1024 && localStorage.getItem('customerSidebarCollapsed') === 'true';
+        html.classList.toggle('sidebar-icons-only', collapsed);
+    };
+    syncSidebarMode();
+    window.addEventListener('resize', syncSidebarMode);
 
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {

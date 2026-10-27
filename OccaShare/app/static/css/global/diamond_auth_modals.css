@@ -32,6 +32,11 @@
     z-index: 1000;
     opacity: 0;
     transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+    box-sizing: border-box;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .auth-modal-overlay.active {
@@ -42,9 +47,10 @@
 
 .auth-modal-container {
     position: relative;
-    width: 100%;
+    width: min(560px, calc(100vw - 24px));
     max-width: 480px; 
-    max-height: 95vh;
+    max-height: calc(100dvh - 24px);
+    margin: auto;
     transform: scale(0.95) translateY(20px);
     transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     z-index: 1001;
@@ -63,7 +69,7 @@
     background: var(--auth-glass-bg);
     border-radius: 1.5rem;
     overflow-y: auto;
-    max-height: 90vh;
+    max-height: min(90vh, calc(100dvh - 24px));
     box-shadow: var(--auth-shadow);
     border: 1px solid var(--auth-slate-200);
     position: relative;
@@ -97,6 +103,17 @@
     transition: all 0.3s ease;
     z-index: 1002;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    box-sizing: border-box;
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+    aspect-ratio: 1 / 1;
+    flex: 0 0 42px;
+    padding: 0 !important;
+    line-height: 1;
 }
 
 .auth-modal-close:hover {
@@ -312,6 +329,36 @@
 
 .auth-modal-content .auth-footer a:hover {
     text-decoration: underline;
+}
+
+.auth-modal-content .btn-primary-action,
+.auth-modal-content .btn-luxury-submit {
+    display: flex !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: 52px !important;
+    margin: 0.5rem 0 0 !important;
+    box-sizing: border-box;
+    justify-content: center !important;
+}
+
+#authModalCaterer .caterer-nav-buttons {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+}
+
+#authModalCaterer .caterer-nav-buttons > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center !important;
+    flex: 1 1 0;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    box-sizing: border-box;
 }
 
 /* Choice Chip Checkboxes */
@@ -2010,8 +2057,20 @@ body.modal-open {
     }
 
     #catererNavButtonsContainer {
-        flex-direction: column-reverse !important;
-        align-items: stretch !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    #catererNavButtonsContainer > button {
+        flex: 1 1 0 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: 48px !important;
+        min-height: 48px !important;
+        max-height: none !important;
+        align-self: center !important;
     }
 
     /* Primary action button always full-width */

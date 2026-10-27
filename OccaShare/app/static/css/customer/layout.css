@@ -216,7 +216,7 @@ html, body {
 .header-dropdown-wrapper { position: relative; }
 
 /* SEARCH BAR */
-.command-search-wrap { position: relative; width: 380px; max-width: 100%; }
+.command-search-wrap { position: relative; flex: 1 1 380px; min-width: 0; width: min(380px, 100%); max-width: 100%; }
 .header-search {
     display: flex; align-items: center; gap: 0.75rem;
     background: #f1f5f9; border: 1.5px solid transparent;
@@ -230,7 +230,7 @@ html, body {
 .header-search input {
     border: none; background: transparent; outline: none;
     font-size: 0.9rem; font-weight: 500;
-    color: var(--text-dark); width: 100%;
+    color: var(--text-dark); width: 100%; min-width: 0;
     font-family: 'Poppins', sans-serif;
 }
 .header-search input::placeholder { color: var(--dm-slate-400); font-weight: 400; }

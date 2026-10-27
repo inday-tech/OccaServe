@@ -11,6 +11,13 @@
     const collapseBtn = document.getElementById('desktopToggleBtn');
     const htmlEl    = document.documentElement;
 
+    const syncSidebarMode = () => {
+        const collapsed = window.innerWidth > 1024 && localStorage.getItem('adminSidebarCollapsed') === 'true';
+        htmlEl.classList.toggle('sidebar-icons-only', collapsed);
+    };
+    syncSidebarMode();
+    window.addEventListener('resize', syncSidebarMode);
+
     // ─── Sidebar Scroll Persistence ───────────────────────────────────────────
     if (sidebar) {
         const nav = sidebar.querySelector('.sidebar-nav');
@@ -114,11 +121,6 @@
                 setTimeout(() => window.dispatchEvent(new Event('resize')), 320);
             }
         });
-    }
-
-    // Restore collapse state on load (already done inline, but enforce here too)
-    if (localStorage.getItem('adminSidebarCollapsed') === 'true') {
-        htmlEl.classList.add('sidebar-icons-only');
     }
 
     // ─── Logout Confirmation is handled by layout.html's confirmLogout() ──

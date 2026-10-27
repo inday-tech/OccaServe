@@ -145,6 +145,30 @@
         touch-action: manipulation;
     }
 
+    .portfolio-gallery-nav {
+        position: absolute !important;
+        top: 50% !important;
+        z-index: 20 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+        width: 44px !important;
+        min-width: 44px !important;
+        max-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        max-height: 44px !important;
+        flex: 0 0 44px !important;
+        padding: 0 !important;
+        border-radius: 50% !important;
+        transform: translateY(-50%) !important;
+        touch-action: manipulation;
+    }
+
+    #portfolio-prev-btn { left: clamp(8px, 2.5vw, 16px) !important; }
+    #portfolio-next-btn { right: clamp(8px, 2.5vw, 16px) !important; }
+
     .pkg-modal-close {
         width: 44px !important;
         min-width: 44px !important;
@@ -738,7 +762,7 @@
 
             
 <!-- Reviews Section -->
-            <section class="card-premium p-6">
+            <section class="card-premium p-6" id="profile-reviews">
                 <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
                     <span class="w-8 h-[1px] bg-slate-200"></span> Reviews
                     <span class="normal-case tracking-normal text-slate-500">({{ review_total }})</span>
@@ -751,9 +775,9 @@
                         {% if review_rating %} rated {{ review_rating }} star{% if review_rating != 1 %}s{% endif %}{% endif %}
                         {% endif %}
                     </p>
-                    <form method="get" action="{{ request.url.path }}" class="flex items-center gap-2">
+                    <form method="get" action="{{ request.url.path }}" class="flex items-center gap-2" data-review-filter-form>
                         <label for="review-rating-filter" class="text-xs font-bold text-slate-600 whitespace-nowrap">Filter rating</label>
-                        <select id="review-rating-filter" name="rating" onchange="this.form.submit()" class="min-h-[40px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                        <select id="review-rating-filter" name="rating" class="min-h-[40px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
                             <option value="" {% if review_rating is none %}selected{% endif %}>All ratings ({{ review_total }})</option>
                             {% for stars, count in review_rating_options %}
                             <option value="{{ stars }}" {% if review_rating == stars %}selected{% endif %}>{{ stars }} star{% if stars != 1 %}s{% endif %} ({{ count }})</option>
@@ -807,13 +831,13 @@
                 {% if review_total_pages > 1 %}
                 <nav aria-label="Review pages" class="mt-6 flex flex-wrap items-center justify-center gap-2">
                     {% if review_page > 1 %}
-                    <a href="{{ request.url.path }}?{% if review_rating %}rating={{ review_rating }}&amp;{% endif %}review_page={{ review_page - 1 }}" class="min-h-[40px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                    <a href="{{ request.url.path }}?{% if review_rating %}rating={{ review_rating }}&amp;{% endif %}review_page={{ review_page - 1 }}" data-review-page-link class="min-h-[40px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
                         <i class="fas fa-chevron-left"></i><span>Previous</span>
                     </a>
                     {% endif %}
                     <span class="px-2 text-xs font-bold text-slate-500">Page {{ review_page }} of {{ review_total_pages }}</span>
                     {% if review_page < review_total_pages %}
-                    <a href="{{ request.url.path }}?{% if review_rating %}rating={{ review_rating }}&amp;{% endif %}review_page={{ review_page + 1 }}" class="min-h-[40px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                    <a href="{{ request.url.path }}?{% if review_rating %}rating={{ review_rating }}&amp;{% endif %}review_page={{ review_page + 1 }}" data-review-page-link class="min-h-[40px] inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
                         <span>Next</span><i class="fas fa-chevron-right"></i>
                     </a>
                     {% endif %}
@@ -833,6 +857,61 @@
                 </div>
                 {% endif %}
             </section>
+            <script>
+                (() => {
+                    let activeRequest;
+
+                    async function updateReviewSection(targetUrl, addHistory = true) {
+                        if (targetUrl.origin !== window.location.origin) return;
+                        activeRequest?.abort();
+                        activeRequest = new AbortController();
+
+                        try {
+                            const response = await fetch(targetUrl.href, {
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                                signal: activeRequest.signal
+                            });
+                            if (!response.ok) throw new Error(`Review request failed: ${response.status}`);
+
+                            const html = await response.text();
+                            const nextSection = new DOMParser()
+                                .parseFromString(html, 'text/html')
+                                .querySelector('#profile-reviews');
+                            const currentSection = document.getElementById('profile-reviews');
+                            if (!nextSection || !currentSection) return;
+
+                            currentSection.replaceWith(nextSection);
+                            if (addHistory) {
+                                history.pushState({}, '', `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`);
+                            }
+                        } catch (error) {
+                            if (error.name !== 'AbortError') console.error('Unable to update reviews:', error);
+                        }
+                    }
+
+                    document.addEventListener('change', event => {
+                        const select = event.target.closest('[data-review-filter-form] select[name="rating"]');
+                        if (!select) return;
+                        event.preventDefault();
+                        const url = new URL(select.form.action, window.location.href);
+                        if (select.value) url.searchParams.set('rating', select.value);
+                        else url.searchParams.delete('rating');
+                        url.searchParams.delete('review_page');
+                        updateReviewSection(url);
+                    });
+
+                    document.addEventListener('click', event => {
+                        const link = event.target.closest('[data-review-page-link]');
+                        if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                        event.preventDefault();
+                        updateReviewSection(new URL(link.href, window.location.href));
+                    });
+
+                    window.addEventListener('popstate', () => {
+                        updateReviewSection(new URL(window.location.href), false);
+                    });
+                })();
+            </script>
 
             <!-- Business Details -->
             <section class="{% if caterer.glass_mode %}glass-card{% else %}card-premium{% endif %} p-6">
@@ -1072,10 +1151,10 @@
                     <img id="portfolio-main-img" src="" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-all duration-300">
                 </div>
                 <!-- Controls -->
-                <button id="portfolio-prev-btn" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black transition-colors" onclick="changePortfolioImage(-1)">
+                <button id="portfolio-prev-btn" class="portfolio-gallery-nav bg-black/50 text-white hover:bg-black transition-colors" aria-label="Previous photo" onclick="changePortfolioImage(-1)">
                     <i class="fas fa-chevron-left text-lg md:text-xl"></i>
                 </button>
-                <button id="portfolio-next-btn" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 md:w-12 md:h-12 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black transition-colors" onclick="changePortfolioImage(1)">
+                <button id="portfolio-next-btn" class="portfolio-gallery-nav bg-black/50 text-white hover:bg-black transition-colors" aria-label="Next photo" onclick="changePortfolioImage(1)">
                     <i class="fas fa-chevron-right text-lg md:text-xl"></i>
                 </button>
             </div>

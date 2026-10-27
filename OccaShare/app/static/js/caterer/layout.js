@@ -113,6 +113,11 @@
 
     // On resize: if switching to desktop, clean up mobile state
     window.addEventListener('resize', function () {
+        const isMobile = window.innerWidth <= 1024;
+        document.documentElement.classList.toggle(
+            'sidebar-is-mini',
+            !isMobile && localStorage.getItem('catererSidebarCollapsed') === 'true'
+        );
         if (window.innerWidth > 1024 && sidebar) {
             sidebar.classList.remove('sidebar-open');
             if (overlay) overlay.classList.remove('active');

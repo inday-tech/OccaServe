@@ -40,7 +40,7 @@
 <body class="no-transition">
     <script>
         (function () {
-            const isCollapsed = localStorage.getItem('adminSidebarCollapsed') === 'true';
+            const isCollapsed = window.innerWidth > 1024 && localStorage.getItem('adminSidebarCollapsed') === 'true';
             if (isCollapsed) document.documentElement.classList.toggle('sidebar-icons-only', isCollapsed);
             requestAnimationFrame(() => setTimeout(() => document.body.classList.remove('no-transition'), 100));
         })();

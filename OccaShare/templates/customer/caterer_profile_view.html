@@ -42,6 +42,44 @@
         box-sizing: border-box;
     }
 
+    #portfolio-gallery {
+        height: min(420px, 52dvh) !important;
+        min-height: 220px;
+        overflow: hidden;
+    }
+
+    #portfolio-gallery .portfolio-gallery-nav {
+        position: absolute !important;
+        top: 50% !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        width: 42px !important;
+        min-width: 42px !important;
+        max-width: 42px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        max-height: 42px !important;
+        flex: 0 0 42px;
+        padding: 0 !important;
+        border: 0;
+        border-radius: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #0f172a;
+        background: rgba(255,255,255,.9);
+        box-shadow: 0 4px 10px rgba(0,0,0,.2);
+        z-index: 2;
+    }
+
+    #portfolio-prev-btn { left: clamp(8px, 2.5vw, 16px) !important; }
+    #portfolio-next-btn { right: clamp(8px, 2.5vw, 16px) !important; }
+
+    @media (max-width: 480px) {
+        #portfolio-gallery { min-height: 200px; height: min(360px, 48dvh) !important; }
+    }
+
     /* ---- PREMIUM HERO BANNER ---- */
     .hub-hero {
         position: relative;
@@ -2692,11 +2730,26 @@
                 </div>
 
                 <div class="intel-card">
-                    <h2 class="section-title">Client Reviews</h2>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:.9rem;">
+                        <h2 class="section-title" style="margin:0;">Client Reviews</h2>
+                        {% if reviews %}
+                        <label for="hub-review-rating-filter" style="display:flex;align-items:center;gap:.5rem;color:var(--hub-slate-600);font-size:.75rem;font-weight:700;">
+                            Rating
+                            <select id="hub-review-rating-filter" style="min-height:40px;max-width:180px;padding:.4rem .65rem;border:1px solid var(--hub-slate-200);border-radius:9px;background:#fff;color:var(--hub-text-dark);font:inherit;">
+                                <option value="all">All ratings ({{ reviews|length }})</option>
+                                {% for stars in range(5, 0, -1) %}
+                                {% set rating_count = reviews|selectattr('rating', 'equalto', stars)|list|length %}
+                                {% if rating_count %}<option value="{{ stars }}">{{ stars }} star{% if stars != 1 %}s{% endif %} ({{ rating_count }})</option>{% endif %}
+                                {% endfor %}
+                            </select>
+                        </label>
+                        {% endif %}
+                    </div>
                     {% if reviews %}
-                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    <p id="hub-review-filter-count" aria-live="polite" style="margin:0 0 .75rem;color:var(--hub-slate-400);font-size:.75rem;">Showing {{ reviews|length }} reviews</p>
+                    <div id="hub-review-list" style="display: flex; flex-direction: column; gap: 1.25rem;">
                         {% for review in reviews %}
-                        <div
+                        <div data-hub-review data-rating="{{ review.rating }}"
                             style="background: var(--hub-slate-50); padding: 1.25rem; border-radius: 1.25rem; border: 1px solid var(--hub-slate-100);">
                             <div
                                 style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
@@ -2715,11 +2768,33 @@
                         </div>
                         {% endfor %}
                     </div>
+                    <p id="hub-review-filter-empty" hidden style="margin:1rem 0 0;color:var(--hub-slate-400);font-size:.85rem;text-align:center;">No reviews match this rating.</p>
                     {% else %}
                     <p style="color: var(--hub-slate-400); font-size: 0.9rem; text-align: center; padding: 1rem;">No
                         reviews yet.</p>
                     {% endif %}
                 </div>
+                <script>
+                    (() => {
+                        const filter = document.getElementById('hub-review-rating-filter');
+                        const cards = Array.from(document.querySelectorAll('[data-hub-review]'));
+                        const count = document.getElementById('hub-review-filter-count');
+                        const empty = document.getElementById('hub-review-filter-empty');
+                        if (!filter || !cards.length) return;
+
+                        filter.addEventListener('change', () => {
+                            const selectedRating = filter.value;
+                            let visibleCount = 0;
+                            cards.forEach(card => {
+                                const isVisible = selectedRating === 'all' || card.dataset.rating === selectedRating;
+                                card.hidden = !isVisible;
+                                if (isVisible) visibleCount += 1;
+                            });
+                            count.textContent = `Showing ${visibleCount} ${visibleCount === 1 ? 'review' : 'reviews'}`;
+                            empty.hidden = visibleCount > 0;
+                        });
+                    })();
+                </script>
             </div>
 
         </div>
@@ -3125,11 +3200,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 style="position: absolute; top: 1rem; right: 1rem; border: none; background: rgba(0,0,0,0.6); color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; z-index: 20; display: flex; align-items: center; justify-content: center; transition: background 0.2s;"><i
                     class="fas fa-times"></i></button>
             
-            <div id="portfolio-gallery" style="background: #0f172a; height: 420px; position: relative; display: flex; align-items: center; justify-content: center;">
+            <div id="portfolio-gallery" style="background: #0f172a; position: relative; display: flex; align-items: center; justify-content: center;">
                 <img id="portfolio-main-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
                 
-                <button type="button" id="portfolio-prev-btn" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.85); border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; color: #0f172a; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"><i class="fas fa-chevron-left"></i></button>
-                <button type="button" id="portfolio-next-btn" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.85); border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; color: #0f172a; box-shadow: 0 4px 10px rgba(0,0,0,0.2);"><i class="fas fa-chevron-right"></i></button>
+                <button type="button" id="portfolio-prev-btn" class="portfolio-gallery-nav" aria-label="Previous photo"><i class="fas fa-chevron-left"></i></button>
+                <button type="button" id="portfolio-next-btn" class="portfolio-gallery-nav" aria-label="Next photo"><i class="fas fa-chevron-right"></i></button>
                 
                 <div id="portfolio-photo-counter" style="position: absolute; bottom: 12px; right: 14px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">
                     <i class="far fa-image"></i> <span id="portfolio-counter-text">1 / 1</span>

@@ -241,8 +241,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .bk-modal-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:.55rem; }
 .bk-modal-foot .bk-btn { min-height:40px; padding:.6rem .9rem; }
 .bk-booking-chat { grid-column:1/-1; min-height:0; height:100%; display:flex; flex-direction:column; }
-.bk-chat-messages { flex:1 1 0; min-height:120px; max-height:none; overflow-y:auto; display:flex; flex-direction:column; gap:.55rem; padding:.25rem; }
-.bk-chat-message { max-width:min(88%, 460px); align-self:flex-start; padding:.6rem .75rem; border-radius:10px; background:#f1f5f9; color:#334155; overflow-wrap:anywhere; }
+.bk-chat-messages { flex:1 1 0; min-height:120px; max-height:none; overflow-y:auto; display:flex; flex-direction:column; justify-content:flex-end; gap:.55rem; padding:.65rem .25rem; }
+.bk-chat-message { max-width:min(88%, 460px); align-self:flex-start; padding:.6rem .75rem; border-radius:10px; background:#f1f5f9; color:#334155; font-size:.82rem; line-height:1.45; overflow-wrap:anywhere; }
 .bk-chat-message.is-mine { align-self:flex-end; background:#fff1e8; color:#7c2d12; }
 .bk-chat-message strong,.bk-chat-meta { display:block; font-size:.68rem; }
 .bk-chat-message strong { margin-bottom:.2rem; }
@@ -258,6 +258,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .bk-chat-tools .bk-btn { flex:0 0 auto; min-height:40px; padding:.45rem .75rem; }
 .bk-chat-file-name:not(:empty) { min-height:1em; }
 .bk-chat-error { color:#b91c1c; font-size:.75rem; }
+#bkPaneChat.is-active { display:flex; flex-direction:column; align-content:stretch; }
+#bkPaneChat .bk-booking-chat { flex:1 1 0; width:100%; height:auto; }
 @media(max-width:480px){ .bk-modal{width:100%;height:calc(100dvh - 1rem);min-height:0;max-height:calc(100dvh - 1rem);border-radius:14px}.bk-modal-tabs{display:flex;gap:.15rem;padding:0 .5rem;overflow-x:auto}.bk-modal-tab{flex:0 0 auto;min-width:0;padding:.65rem .45rem;font-size:.66rem;white-space:nowrap}.bk-modal-body,.bk-modal-body.is-active{grid-template-columns:1fr;gap:.35rem;padding:.85rem}.bk-detail-item.wide,.bk-detail-section-title,.bk-detail-list,.bk-detail-empty{grid-column:auto}.bk-modal-head{padding:.7rem .8rem}.bk-modal-title{font-size:.95rem}.bk-modal-meta{gap:.3rem .5rem}.bk-modal-subtitle{font-size:.7rem}.bk-modal-foot{align-items:center;padding:.6rem .8rem}.bk-modal-actions{flex:1;justify-content:flex-end}.bk-modal-foot .bk-btn{font-size:.7rem;padding:.55rem .65rem}.bk-chat-tools{gap:.35rem}.bk-chat-attach{flex-basis:36px;width:36px;height:40px}.bk-chat-tools .bk-btn{gap:.25rem;padding:.4rem .55rem;font-size:.68rem} }
 </style>
 {% endblock %}
