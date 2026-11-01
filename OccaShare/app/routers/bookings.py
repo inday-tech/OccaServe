@@ -23,6 +23,7 @@ from ..services.payment_verification import payment_verification_service
 from ..services.booking_validator import BookingValidator
 from ..services.payment_deadline import format_payment_deadline
 from ..services.package_pricing import PackagePricingError, load_and_calculate_customization
+from ..services.booking_duration import expected_same_day_end_time
 from ..core.utils import is_customer_profile_complete, is_valid_ph_coordinates
 from PIL import Image
 try:
@@ -2092,6 +2093,17 @@ async def step_details_submit(
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Valid+event+time+is+required", status_code=303)
     if not event_end_time_parsed or event_end_time_parsed <= event_time_parsed:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Egress+must+be+after+ingress.", status_code=303)
+    if package:
+        expected_end_time = expected_same_day_end_time(
+            event_date_parsed,
+            event_time_parsed,
+            int(package.service_duration or 4),
+        )
+        if expected_end_time is None or event_end_time_parsed != expected_end_time:
+            return RedirectResponse(
+                url=f"{redirect_base}?booking_error=Egress+must+match+the+selected+package+service+duration+and+finish+on+the+event+date.",
+                status_code=303,
+            )
     if not event_name_clean:
         print(f"[StepDetails REJECT] event_name_clean is empty! raw={event_name!r}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-name:Event+name+is+required", status_code=303)

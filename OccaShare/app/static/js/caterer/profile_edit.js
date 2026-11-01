@@ -9,7 +9,7 @@ const SECTION_META = {
     'location':         { title: 'Location & Contact',     subtitle: 'Set your business location and contact details so customers can find and reach you.' },
     'payment-methods':  { title: 'Payment Methods',        subtitle: 'Configure how customers can pay you and where you\'ll receive your earnings.' },
     'booking-policies': { title: 'Booking Policies',       subtitle: 'Set clear expectations for bookings, payments, and cancellations.' },
-    'availability':     { title: 'Availability', subtitle: 'Set your booking days, hours, and limits.' },
+    'availability': { title: 'Availability', subtitle: 'Set event days, start times, and booking limits.' },
     'brand':            { title: 'Branding',               subtitle: 'Manage your visual identity, logo, cover image, and theme styling.' },
     'verification':     { title: 'Verification Center',    subtitle: 'Upload the required identity and business documents.' },
     'account':          { title: 'Account & Security',     subtitle: 'Manage your personal info, notifications, and account preferences.' },
@@ -1033,8 +1033,229 @@ async function submitVerification() {
     }
 }
 
+window.sanitizeAvailabilityInteger = function(input, maxValue, errorId, message) {
+    input.value = input.value.replace(/\D/g, '').slice(0, 2);
+    const value = Number(input.value);
+    const isValid = /^\d{1,2}$/.test(input.value) && value >= 1 && value <= maxValue;
+    input.setCustomValidity(isValid ? '' : message);
+    const error = document.getElementById(errorId);
+    if (error) error.style.display = isValid ? 'none' : 'block';
+    return isValid;
+};
+
+window.validateStartingPrice = function(input) {
+    if (!input) return true;
+    if (typeof window.applyCommaFormatting === 'function') window.applyCommaFormatting(input);
+    const rawValue = input.value.replace(/,/g, '');
+    const valid = (rawValue === '' || /^\d{1,8}(?:\.\d{1,2})?$/.test(rawValue))
+        && Number(rawValue) <= 99999999.99
+        && input.dataset.formatOverflow !== 'true';
+    input.setCustomValidity(valid ? '' : 'Enter an amount from ₱0 to ₱99,999,999.99 with up to 2 decimal places.');
+    const error = document.getElementById('starting-price-error');
+    if (error) error.style.display = valid ? 'none' : 'block';
+    return valid;
+};
+
+window.sanitizeExperienceYears = function(input) {
+    if (!input) return true;
+    input.value = input.value.replace(/\D/g, '');
+    const dobInput = document.getElementById('catererDob');
+    let maximum = 42;
+    if (dobInput?.value) {
+        const dob = new Date(`${dobInput.value}T00:00:00`);
+        const now = new Date();
+        let age = now.getFullYear() - dob.getFullYear();
+        if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) age--;
+        maximum = Math.min(maximum, Math.max(0, age - 18));
+    }
+    input.max = String(maximum);
+    const valid = input.value === '' || (/^\d{1,2}$/.test(input.value) && Number(input.value) <= maximum);
+    const message = `Enter a whole number from 0 to ${maximum}, based on your age.`;
+    input.setCustomValidity(valid ? '' : message);
+    const error = document.getElementById('years-experience-error');
+    if (error) {
+        error.textContent = message;
+        error.style.display = valid ? 'none' : 'block';
+    }
+    return valid;
+};
+
+window.enablePersonalInfoEdit = function() {
+    const fields = document.getElementById('personalInfoFields');
+    if (!fields) return;
+    fields.querySelectorAll('input').forEach(input => {
+        if (!Object.prototype.hasOwnProperty.call(input.dataset, 'initialValue')) {
+            input.dataset.initialValue = input.value;
+        }
+    });
+    fields.disabled = false;
+    document.getElementById('editPersonalInfoButton').hidden = true;
+    document.getElementById('savePersonalInfoButton').hidden = false;
+    document.getElementById('cancelPersonalInfoButton').hidden = false;
+    document.getElementById('personalInfoStatus').textContent = 'Edit your details, then select Update Personal Information.';
+    fields.querySelector('[name="first_name"]')?.focus();
+};
+
+window.cancelPersonalInfoEdit = function() {
+    const fields = document.getElementById('personalInfoFields');
+    if (!fields) return;
+    fields.querySelectorAll('[data-initial-value]').forEach(input => {
+        input.value = input.dataset.initialValue;
+        input.setCustomValidity('');
+    });
+    fields.disabled = true;
+    document.getElementById('editPersonalInfoButton').hidden = false;
+    document.getElementById('savePersonalInfoButton').hidden = true;
+    document.getElementById('cancelPersonalInfoButton').hidden = true;
+    document.getElementById('personalInfoStatus').textContent = '';
+    document.getElementById('personalInfoStatus').style.color = '';
+};
+
+window.savePersonalInfo = async function() {
+    const fields = document.getElementById('personalInfoFields');
+    const status = document.getElementById('personalInfoStatus');
+    const firstName = fields?.querySelector('[name="first_name"]');
+    const lastName = fields?.querySelector('[name="last_name"]');
+    const dob = document.getElementById('catererDob');
+    if (!fields || !firstName || !lastName || !dob) return;
+
+    if (!firstName.value.trim() || !lastName.value.trim()) {
+        const invalid = !firstName.value.trim() ? firstName : lastName;
+        invalid.setCustomValidity('First name and last name are required.');
+        invalid.reportValidity();
+        invalid.focus();
+        return;
+    }
+    firstName.setCustomValidity('');
+    lastName.setCustomValidity('');
+
+    const dateOfBirth = dob.value ? new Date(`${dob.value}T00:00:00`) : null;
+    const now = new Date();
+    let age = dateOfBirth ? now.getFullYear() - dateOfBirth.getFullYear() : -1;
+    if (dateOfBirth && (now.getMonth() < dateOfBirth.getMonth() || (now.getMonth() === dateOfBirth.getMonth() && now.getDate() < dateOfBirth.getDate()))) age--;
+    if (!dateOfBirth || Number.isNaN(dateOfBirth.getTime()) || age < 18 || age > 60) {
+        dob.setCustomValidity('Date of birth must show an age from 18 to 60.');
+        dob.reportValidity();
+        dob.focus();
+        return;
+    }
+    dob.setCustomValidity('');
+
+    const button = document.getElementById('savePersonalInfoButton');
+    button.disabled = true;
+    status.textContent = 'Updating personal information...';
+    status.style.color = '';
+    try {
+        const body = new URLSearchParams();
+        body.set('first_name', firstName.value.trim());
+        body.set('last_name', lastName.value.trim());
+        body.set('middle_name', fields.querySelector('[name="middle_name"]').value.trim());
+        body.set('dob', dob.value);
+        const response = await fetch('/caterer/profile/personal-info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+            body
+        });
+        if (!(response.headers.get('content-type') || '').includes('application/json')) {
+            throw new Error(`The server returned an unexpected response (${response.status}). Please sign in again and retry.`);
+        }
+        const result = await response.json();
+        if (!response.ok || !result?.success) throw new Error(result?.message || result?.detail || `Update failed (${response.status}).`);
+
+        fields.querySelectorAll('input').forEach(input => {
+            input.dataset.initialValue = input.value;
+        });
+        fields.disabled = true;
+        document.getElementById('editPersonalInfoButton').hidden = false;
+        button.hidden = true;
+        document.getElementById('cancelPersonalInfoButton').hidden = true;
+        status.textContent = 'Personal information updated.';
+    } catch (error) {
+        status.textContent = error.message || 'Could not update personal information.';
+        status.style.color = '#b91c1c';
+    } finally {
+        button.disabled = false;
+    }
+};
+
+window.sanitizePaymentMobile = function(input) {
+    let digits = input.value.replace(/\D/g, '');
+    if (digits.startsWith('63')) digits = digits.slice(2);
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    input.value = digits.slice(0, 10);
+    const isValid = !input.value || /^9\d{9}$/.test(input.value);
+    input.setCustomValidity(isValid ? '' : 'Enter a valid Philippine mobile number: 10 digits after +63.');
+    return isValid;
+};
+
+window.validateCatererSettingsNumbers = function() {
+    const availabilityInputs = [
+        {
+            input: document.getElementById('package_min_duration'),
+            max: 23,
+            errorId: 'service-duration-error',
+            message: 'Enter a whole number from 1 to 23 hours.'
+        },
+        {
+            input: document.getElementById('max_events_per_day'),
+            max: 20,
+            errorId: 'max-events-error',
+            message: 'Enter a whole number from 1 to 20.'
+        }
+    ];
+
+    for (const item of availabilityInputs) {
+        if (item.input && !window.sanitizeAvailabilityInteger(item.input, item.max, item.errorId, item.message)) {
+            window.switchSettingsSection?.('availability');
+            item.input.focus();
+            item.input.reportValidity();
+            return false;
+        }
+    }
+    if (!window.validateStartingPrice(document.getElementById('startingPriceInput'))) {
+        window.switchSettingsSection?.('booking-policies');
+        const input = document.getElementById('startingPriceInput');
+        input?.focus();
+        input?.reportValidity();
+        return false;
+    }
+    const yearsInput = document.getElementById('yearsOfExperienceInput');
+    if (yearsInput && !window.sanitizeExperienceYears(yearsInput)) {
+        window.switchSettingsSection?.('general');
+        yearsInput.focus();
+        yearsInput.reportValidity();
+        return false;
+    }
+
+    const paymentFields = [
+        { input: document.getElementById('gcash_number'), pattern: /^$|^9\d{9}$/, message: 'Enter 10 digits after +63 for the GCash number.' },
+        { input: document.getElementById('maya_number'), pattern: /^$|^9\d{9}$/, message: 'Enter 10 digits after +63 for the Maya number.' },
+        { input: document.querySelector('[name="bank_account_number"]'), pattern: /^$|^\d{4,20}$/, message: 'Bank account number must contain 4 to 20 digits.' },
+        { input: document.querySelector('[name="card_number"]'), pattern: /^$|^(?:\d{4}|\d{12,19})$/, message: 'Enter the last 4 digits or a full 12 to 19 digit card number.' },
+        { input: document.getElementById('customPaymentNumber'), pattern: /^$|^\d{4,40}$/, message: 'Other payment number must contain 4 to 40 digits, or be left blank.' }
+    ];
+
+    for (const field of paymentFields) {
+        if (!field.input) continue;
+        const valid = field.pattern.test(field.input.value.trim());
+        field.input.setCustomValidity(valid ? '' : field.message);
+        if (!valid) {
+            window.switchSettingsSection?.('payment-methods');
+            field.input.focus();
+            field.input.reportValidity();
+            return false;
+        }
+    }
+    return true;
+};
+
 window.handleFormSubmitState = function(event) {
     const form = event.currentTarget;
+    if (!window.validateCatererSettingsNumbers()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+    }
     const sectionField = document.getElementById('returnSettingsSection');
     const currentSection = window.location.hash.replace(/^#/, '');
     if (sectionField && currentSection) sectionField.value = currentSection;
@@ -1050,7 +1271,8 @@ window.handleFormSubmitState = function(event) {
         return;
     }
     const dobInput = document.getElementById('catererDob');
-    if (dobInput) {
+    const personalInfoFields = document.getElementById('personalInfoFields');
+    if (dobInput && personalInfoFields && !personalInfoFields.disabled) {
         const dob = dobInput.value ? new Date(`${dobInput.value}T00:00:00`) : null;
         const now = new Date();
         let age = dob ? now.getFullYear() - dob.getFullYear() : -1;
@@ -1336,7 +1558,7 @@ window.submitVerificationDocs = async function(btn) {
     }
 };
 
-// ─── Booking Availability Toggle & Schedule ───
+// ─── Booking Acceptance Toggle ───
 window.handleAvailToggle = function(isChecked) {
     const statusInput = document.getElementById('availability_status_input');
     const label = document.getElementById('availToggleLabel');
@@ -1349,7 +1571,7 @@ window.handleAvailToggle = function(isChecked) {
     }
 
     if (label) {
-        label.innerHTML = isChecked ? '[ ON ] Accepting Bookings' : '[ OFF ] Bookings Paused';
+        label.innerHTML = isChecked ? '[ ON ] Accepting New Bookings' : '[ OFF ] New Bookings Paused';
         label.style.color = isChecked ? '#15803d' : '#b91c1c';
     }
 
@@ -1362,8 +1584,8 @@ window.handleAvailToggle = function(isChecked) {
 
     if (subtext) {
         subtext.innerText = isChecked 
-            ? 'Customers can submit bookings based on your availability rules.' 
-            : 'New bookings are temporarily paused.';
+            ? 'Customers can request events on your available days and within your event hours.'
+            : 'Customers cannot send new booking requests while this is paused.';
     }
 
     if (reasonContainer) {
@@ -1602,7 +1824,7 @@ window.updateAvailabilitySummary = function() {
     const toggleSwitch = document.getElementById('availToggleSwitch');
     if (statusEl) {
         const isAvail = toggleSwitch ? toggleSwitch.checked : true;
-        statusEl.textContent = isAvail ? 'Accepting Bookings' : 'Bookings Paused';
+        statusEl.textContent = isAvail ? 'Accepting New Bookings' : 'New Bookings Paused';
         statusEl.style.color = isAvail ? '#15803d' : '#b91c1c';
     }
 
@@ -1668,6 +1890,13 @@ window.updateAvailabilitySummary = function() {
         const capInput = document.getElementById('max_events_per_day');
         const cap = capInput && capInput.value ? capInput.value : '5';
         capEl.textContent = `${cap} events / day max`;
+    }
+
+    const durationEl = document.getElementById('summaryServiceDuration');
+    if (durationEl) {
+        const durationInput = document.getElementById('package_min_duration');
+        const duration = durationInput && durationInput.value ? durationInput.value : '4';
+        durationEl.textContent = `${duration} hour${Number(duration) === 1 ? '' : 's'}`;
     }
 };
 
@@ -1940,12 +2169,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Attach dirty listeners to entire form
     const form = document.getElementById('catererSettingsForm');
     if (form) {
+        ['gcash_number', 'maya_number'].forEach(name => {
+            const input = form.querySelector(`[name="${name}"]`);
+            if (input) window.sanitizePaymentMobile(input);
+        });
+        const customPaymentNumber = document.getElementById('customPaymentNumber');
+        if (customPaymentNumber) {
+            customPaymentNumber.value = customPaymentNumber.value.replace(/\D/g, '').slice(0, 40);
+        }
         form.addEventListener('input', function(e) {
-            if (e.target.matches('[name="base_delivery_fee"], [name="out_of_coverage_action"]')) return;
+            if (e.target.closest('#personalInfoFields') || e.target.matches('[name="base_delivery_fee"], [name="out_of_coverage_action"]')) return;
             triggerSettingsDirty();
         });
         form.addEventListener('change', function(e) {
-            if (e.target.matches('[name="base_delivery_fee"], [name="out_of_coverage_action"]')) return;
+            if (e.target.closest('#personalInfoFields') || e.target.matches('[name="base_delivery_fee"], [name="out_of_coverage_action"]')) return;
             triggerSettingsDirty();
         });
         form.addEventListener('submit', function() {

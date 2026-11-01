@@ -289,7 +289,9 @@ window.gm_authFailure = function() {
                         <div class="form-row-two-col" style="margin-top: 0.5rem;">
                             <div class="form-group">
                                 <label><i class="fas fa-clock"></i> Years of Experience</label>
-                                <input type="number" name="years_of_operation" value="{{ profile.years_of_operation or 0 }}" min="0" max="100" placeholder="e.g. 5" oninput="triggerSettingsDirty()">
+                                <input type="text" inputmode="numeric" pattern="[0-9]{1,2}" name="years_of_operation" id="yearsOfExperienceInput" value="{{ profile.years_of_operation or 0 }}" min="0" max="42" aria-describedby="years-experience-hint years-experience-error" placeholder="e.g. 5" oninput="sanitizeExperienceYears(this); triggerSettingsDirty()">
+                                <span id="years-experience-hint" class="field-hint">Up to 42 years, adjusted to your age. Maximum work experience assumes work started at age 18.</span>
+                                <span id="years-experience-error" role="alert" style="display:none;color:#b91c1c;font-size:.78rem;margin-top:4px;">Enter a whole number within your possible years of experience.</span>
                             </div>
                             {% set rules = profile.scheduling_rules or {} %}
                             {% set soc = rules.get('social_links', {}) %}
@@ -413,6 +415,7 @@ window.gm_authFailure = function() {
             <!-- Section: Account & Security -->
             <div class="settings-section" id="section-account">
 
+                    <fieldset id="personalInfoFields" disabled style="border: 0; padding: 0; margin: 0; min-width: 0;">
                     <div class="form-row-three-col" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                         <div class="form-group">
                             <label><i class="fas fa-user"></i> Last Name</label>
@@ -423,7 +426,7 @@ window.gm_authFailure = function() {
                             <input type="text" name="first_name" value="{{ user.first_name or '' }}" required>
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-user"></i> Middle Name</label>
+                            <label><i class="fas fa-user"></i> Middle Name <span class="optional-label">Optional</span></label>
                             <input type="text" name="middle_name" value="{{ user.middle_name or '' }}" placeholder="Middle Name">
                         </div>
                     </div>
@@ -431,7 +434,7 @@ window.gm_authFailure = function() {
                     <div class="form-row-two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                         <div class="form-group">
                             <label><i class="fas fa-calendar-alt"></i> Date of Birth</label>
-                            <input type="date" id="catererDob" name="dob" value="{{ user.dob or '' }}" min="1966-01-01" max="2008-12-31" required>
+                            <input type="date" id="catererDob" name="dob" value="{{ user.dob or '' }}" min="{{ birth_date_min }}" max="{{ birth_date_max }}" required>
                             <span class="field-hint">Required for KYC and Admin Verification.</span>
                         </div>
                         <div class="form-group">
@@ -439,6 +442,17 @@ window.gm_authFailure = function() {
                             <input type="email" value="{{ user.email }}" disabled style="background-color: #f1f5f9; cursor: not-allowed; opacity: 0.7;">
                             <span class="field-hint"><i class="fas fa-lock"></i> Email cannot be changed for security.</span>
                         </div>
+                    </div>
+                    </fieldset>
+                    <div class="personal-info-actions">
+                        <button type="button" class="btn-outline" id="editPersonalInfoButton" onclick="enablePersonalInfoEdit()">
+                            <i class="fas fa-pen"></i> Edit Personal Information
+                        </button>
+                        <button type="button" class="btn-primary" id="savePersonalInfoButton" onclick="savePersonalInfo()" hidden>
+                            <i class="fas fa-save"></i> Update Personal Information
+                        </button>
+                        <button type="button" class="btn-outline" id="cancelPersonalInfoButton" onclick="cancelPersonalInfoEdit()" hidden>Cancel</button>
+                        <span id="personalInfoStatus" class="personal-info-status" role="status" aria-live="polite"></span>
                     </div>
 
                     <!-- Business Permit upload moved to Verification Center -->
@@ -644,10 +658,12 @@ window.gm_authFailure = function() {
                                 </span>
                             </div>
                             <div class="form-group">
-                                <label>GCash Number</label>
-                                <input type="text" name="gcash_number" value="{{ profile.gcash_number or '' }}" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '');"
-                                    placeholder="09123456789" pattern="^(09|\+639)\d{9}$"
-                                    title="Must be a valid 11-digit mobile number starting with 09 or +6399">
+                                <label for="gcash_number">GCash Number</label>
+                                <div style="display: flex; align-items: stretch;">
+                                    <span aria-hidden="true" style="display: inline-flex; align-items: center; padding: 0 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-right: 0; border-radius: 8px 0 0 8px; color: #475569; font-weight: 700;">+63</span>
+                                    <input type="tel" id="gcash_number" name="gcash_number" value="{{ profile.gcash_number or '' }}" maxlength="10" inputmode="numeric" autocomplete="tel-national" placeholder="9XXXXXXXXX" aria-describedby="gcash-number-help" style="border-radius: 0 8px 8px 0;" oninput="sanitizePaymentMobile(this)">
+                                </div>
+                                <small id="gcash-number-help" style="display:block;margin-top:4px;color:#64748b;">Enter the 10 digits after +63. Leave blank if you use QR only.</small>
                             </div>
                             <div class="form-group" style="margin-top: 1rem;">
                                 <label>GCash QR Code</label>
@@ -687,10 +703,12 @@ window.gm_authFailure = function() {
                                 </span>
                             </div>
                             <div class="form-group">
-                                <label>Maya Number</label>
-                                <input type="text" name="maya_number" value="{{ profile.maya_number or '' }}" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '');"
-                                    placeholder="09123456789" pattern="^(09|\+639)\d{9}$"
-                                    title="Must be a valid 11-digit mobile number starting with 09 or +6399">
+                                <label for="maya_number">Maya Number</label>
+                                <div style="display: flex; align-items: stretch;">
+                                    <span aria-hidden="true" style="display: inline-flex; align-items: center; padding: 0 12px; background: #f1f5f9; border: 1px solid #cbd5e1; border-right: 0; border-radius: 8px 0 0 8px; color: #475569; font-weight: 700;">+63</span>
+                                    <input type="tel" id="maya_number" name="maya_number" value="{{ profile.maya_number or '' }}" maxlength="10" inputmode="numeric" autocomplete="tel-national" placeholder="9XXXXXXXXX" aria-describedby="maya-number-help" style="border-radius: 0 8px 8px 0;" oninput="sanitizePaymentMobile(this)">
+                                </div>
+                                <small id="maya-number-help" style="display:block;margin-top:4px;color:#64748b;">Enter the 10 digits after +63. Leave blank if you use QR only.</small>
                             </div>
                             <div class="form-group" style="margin-top: 1rem;">
                                 <label>Maya QR Code</label>
@@ -745,9 +763,9 @@ window.gm_authFailure = function() {
                                 </div>
                                 <div class="form-group">
                                     <label>Account Number</label>
-                                    <input type="text" name="bank_account_number" maxlength="20" oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+                                    <input type="text" name="bank_account_number" maxlength="20" inputmode="numeric" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 20);"
                                         value="{{ profile.bank_account_number or '' }}" placeholder="1234567890"
-                                        pattern="^\d{4,20}$"
+                                        pattern="[0-9]{4,20}"
                                         title="Must contain only digits (4 to 20 digits, no spaces)">
                                 </div>
                             </div>
@@ -796,8 +814,9 @@ window.gm_authFailure = function() {
                                 </div>
                                 <div class="form-group">
                                     <label>Card Number (Last 4 digits or Full)</label>
-                                    <input type="text" name="card_number" value="{{ profile.card_number or '' }}" maxlength="19" oninput="this.value = this.value.replace(/[^0-9]/g, '');"
-                                        placeholder="Enter card number">
+                                    <input type="text" name="card_number" value="{{ profile.card_number or '' }}" maxlength="19" inputmode="numeric" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 19);"
+                                        placeholder="Last 4 digits or full number" pattern="([0-9]{4}|[0-9]{12,19})"
+                                        title="Enter the last 4 digits or a full 12 to 19 digit card number.">
                                 </div>
                             </div>
                         </div>
@@ -821,7 +840,7 @@ window.gm_authFailure = function() {
                               </div>
                               <div class="form-group">
                                 <label for="customPaymentNumber">Account or payment number <span class="optional-label">Optional</span></label>
-                                <input type="tel" id="customPaymentNumber" name="custom_payment_number" value="{{ saved_custom_payment_details.get('number', '') }}" maxlength="40" placeholder="Enter a number if this method uses one" autocomplete="off">
+                                <input type="tel" id="customPaymentNumber" name="custom_payment_number" value="{{ saved_custom_payment_details.get('number', '') }}" maxlength="40" inputmode="numeric" placeholder="Digits only, 4 to 40 digits" autocomplete="off" pattern="[0-9]{4,40}" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 40);" title="Enter 4 to 40 digits only, or leave blank.">
                               </div>
                               <div class="form-group full-width custom-payment-qr-group">
                                 <label>Payment QR <span class="optional-label">Optional</span></label>
@@ -860,8 +879,9 @@ window.gm_authFailure = function() {
                     <div class="booking-policy-pricing-row" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; max-width: 720px;">
                         <div class="form-group">
                             <label><i class="fas fa-tags"></i> Starting Price (₱)</label>
-                            <input type="text" inputmode="numeric" name="starting_price" id="startingPriceInput" class="js-format-comma" min="0" value="{{ profile.starting_price or 0 }}">
-                            <span class="field-hint">Per-guest base rate. Used to calculate the included base total for fixed packages and the starting price for customizable packages.</span>
+                            <input type="text" inputmode="decimal" name="starting_price" id="startingPriceInput" class="js-format-comma" data-max-integer-digits="8" data-max-decimal-digits="2" value="{{ profile.starting_price or 0 }}" aria-describedby="starting-price-hint starting-price-error" oninput="validateStartingPrice(this)">
+                            <span id="starting-price-error" role="alert" style="display:none;color:#b91c1c;font-size:.78rem;margin-top:4px;">Enter a valid amount from ₱0 to ₱99,999,999.99, with up to 2 decimal places.</span>
+                            <span id="starting-price-hint" class="field-hint">Per-guest base rate. Maximum ₱99,999,999.99. Used to calculate the included base total for fixed packages and the starting price for customizable packages.</span>
                         </div>
                         <div class="form-group" id="minimum-guests">
                             <label for="businessMinPax">Minimum guests (pax)</label>
@@ -920,13 +940,13 @@ window.gm_authFailure = function() {
                 {% set max_events_val = event_avail.get('max_events_per_day', profile.max_bookings_per_day or 2) %}
                 {% set blocked_dates_val = event_avail.get('blocked_dates', []) %}
 
-                <!-- 1. Booking Status -->
+                <!-- 1. Booking Acceptance -->
                 <div class="avail-card">
                     <div class="avail-card-header">
                         <h4 class="avail-card-title">
-                            <i class="fas fa-power-off" style="color: var(--primary-color);"></i> Booking Status
+                            <i class="fas fa-power-off" style="color: var(--primary-color);"></i> Booking Acceptance
                         </h4>
-                        <p class="avail-card-desc">Toggle whether your business is currently open for incoming bookings.</p>
+                        <p class="avail-card-desc">Control whether customers can send new booking requests. This does not control your account login or service hours.</p>
                     </div>
 
                     <div class="avail-toggle-bar">
@@ -940,14 +960,14 @@ window.gm_authFailure = function() {
                             <div>
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <strong id="availToggleLabel" style="font-size: 1rem; font-weight: 800; color: {% if avail_status == 'Available' %}#15803d{% else %}#b91c1c{% endif %};">
-                                        {% if avail_status == 'Available' %}[ ON ] Accepting Bookings{% else %}[ OFF ] Bookings Paused{% endif %}
+                                        {% if avail_status == 'Available' %}[ ON ] Accepting New Bookings{% else %}[ OFF ] New Bookings Paused{% endif %}
                                     </strong>
                                     <span id="availStatusBadge" style="font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: {% if avail_status == 'Available' %}#dcfce7; color: #15803d; border: 1px solid #bbf7d0;{% else %}#fee2e2; color: #b91c1c; border: 1px solid #fecaca;{% endif %}">
-                                        {% if avail_status == 'Available' %}Accepting bookings{% else %}Bookings paused{% endif %}
+                                        {% if avail_status == 'Available' %}Accepting new bookings{% else %}New bookings paused{% endif %}
                                     </span>
                                 </div>
                                 <span id="availToggleSubtext" style="font-size: 0.82rem; color: #64748b; display: block; margin-top: 2px;">
-                                    {% if avail_status == 'Available' %}Customers can submit bookings based on your availability rules.{% else %}New bookings are temporarily paused.{% endif %}
+                                    {% if avail_status == 'Available' %}Customers can request events on your available days and within your event hours.{% else %}Customers cannot send new booking requests while this is paused.{% endif %}
                                 </span>
                             </div>
                         </div>
@@ -961,19 +981,19 @@ window.gm_authFailure = function() {
                     </div>
                 </div>
 
-                <!-- 2. Booking Schedule -->
+                <!-- 2. Event Availability -->
                 <div class="avail-card">
                     <div class="avail-card-header">
                         <h4 class="avail-card-title">
-                            <i class="fas fa-calendar-week" style="color: var(--primary-color);"></i> Booking Schedule
+                            <i class="fas fa-calendar-week" style="color: var(--primary-color);"></i> Event Availability
                         </h4>
-                        <p class="avail-card-desc">Choose the days and hours your catering business can be booked.</p>
+                        <p class="avail-card-desc">Choose which event dates and start times you can serve. These are booking limits, not your account's online hours.</p>
                     </div>
 
                     <!-- Available Booking Days -->
                     <div style="margin-bottom: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 0.75rem;">
-                            <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin: 0;">Available Booking Days</label>
+                            <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin: 0;">Days Available for Events</label>
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" class="btn-xs-helper" onclick="setOperatingDaysPreset('all')" style="padding: 3px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">Every Day</button>
                                 <button type="button" class="btn-xs-helper" onclick="setOperatingDaysPreset('weekdays')" style="padding: 3px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #475569; cursor: pointer;">Weekdays</button>
@@ -995,19 +1015,19 @@ window.gm_authFailure = function() {
 
                     <!-- Event Operating Hours -->
                     <div>
-                        <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 6px; display: block;">Booking &amp; Operating Hours</label>
+                        <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 6px; display: block;">Allowed Event Start Times</label>
                         <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; max-width: 440px;">
                             <div style="flex: 1; min-width: 140px;">
-                                <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px;">Opening Time</span>
+                                <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px;">Earliest Start</span>
                                 <input type="time" name="business_hours_open_time" id="business_hours_open_time" value="{{ open_time_val }}" onchange="updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.9rem;">
                             </div>
                             <span style="color: #94a3b8; font-weight: 800; font-size: 0.85rem; align-self: flex-end; margin-bottom: 8px;">—</span>
                             <div style="flex: 1; min-width: 140px;">
-                                <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px;">Closing Time</span>
+                                <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px;">Latest Start</span>
                                 <input type="time" name="business_hours_close_time" id="business_hours_close_time" value="{{ close_time_val }}" onchange="updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.9rem;">
                             </div>
                         </div>
-                        <span style="display: block; margin-top: 6px; font-size: 0.78rem; color: #64748b;">Customers cannot select event times outside these hours.</span>
+                        <span style="display: block; margin-top: 6px; font-size: 0.78rem; color: #64748b;">Customers can only choose an event Ingress time within this range. It does not mean your account is open or closed.</span>
                     </div>
                 </div>
 
@@ -1074,7 +1094,7 @@ window.gm_authFailure = function() {
                         <h4 class="avail-card-title">
                             <i class="fas fa-users-gear" style="color: var(--primary-color);"></i> Daily Booking Capacity
                         </h4>
-                        <p class="avail-card-desc">Maximum number of events your team can handle simultaneously on a single calendar day.</p>
+                        <p class="avail-card-desc">Maximum number of events your team can cater on one calendar day.</p>
                     </div>
 
                     <div>
@@ -1082,9 +1102,10 @@ window.gm_authFailure = function() {
                             Maximum Events Per Day
                         </label>
                         <div style="display: flex; gap: 8px; align-items: center; max-width: 240px;">
-                            <input type="number" name="max_events_per_day" id="max_events_per_day" value="{{ max_events_val }}" min="1" max="20" oninput="updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 0.95rem;">
+                            <input type="text" inputmode="numeric" pattern="[0-9]{1,2}" maxlength="2" name="max_events_per_day" id="max_events_per_day" value="{{ max_events_val }}" required aria-describedby="max-events-error" oninput="sanitizeAvailabilityInteger(this, 20, 'max-events-error', 'Enter a whole number from 1 to 20.'); updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 0.95rem;">
                             <span style="font-size: 0.88rem; font-weight: 600; color: #64748b; white-space: nowrap;">events / day</span>
                         </div>
+                        <span id="max-events-error" role="alert" style="display: none; margin-top: 6px; font-size: 0.78rem; color: #b91c1c;">Enter a whole number from 1 to 20.</span>
                         <span style="display: block; margin-top: 6px; font-size: 0.78rem; color: #64748b;">New bookings are automatically blocked once this daily capacity is reached.</span>
                     </div>
                 </div>
@@ -1149,54 +1170,23 @@ window.gm_authFailure = function() {
                     </div>
                 </div>
 
-                <!-- 7. Event Requirements -->
+                <!-- 7. Service Duration -->
                 <div class="avail-card">
                     <div class="avail-card-header">
                         <h4 class="avail-card-title">
-                            <i class="fas fa-clipboard-list" style="color: var(--primary-color);"></i> Event Requirements
+                            <i class="fas fa-clock" style="color: var(--primary-color);"></i> Service Duration
                         </h4>
-                        <p class="avail-card-desc">Define operational guest counts, duration, and logistics setup requirements.</p>
+                        <p class="avail-card-desc">Set the standard time from customer Ingress to Egress. This duration is applied to all packages when changed.</p>
                     </div>
 
-                    <!-- Hidden minimum event duration preserved for backend compatibility -->
-                    <input type="hidden" name="package_min_duration" value="{{ pr.min_event_duration or 2 }}">
-
-                    <div class="grid-two-col">
-                        <div>
-                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Maximum Event Duration</label>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" name="package_max_duration" id="req_max_duration" value="{{ pr.max_event_duration or 8 }}" min="1" max="24" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
-                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">Hours</span>
-                            </div>
-                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Maximum length of an event booking.</span>
+                    <div style="max-width: 320px;">
+                        <label for="package_min_duration" style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Default Service Duration</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="text" inputmode="numeric" pattern="[0-9]{1,2}" maxlength="2" name="package_min_duration" id="package_min_duration" value="{{ pr.min_event_duration or 4 }}" required aria-describedby="service-duration-error" oninput="sanitizeAvailabilityInteger(this, 23, 'service-duration-error', 'Enter a whole number from 1 to 23 hours.'); updateAvailabilitySummary()" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
+                            <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">Hours</span>
                         </div>
-
-                        <div>
-                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Setup Time</label>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" name="package_setup_time" id="req_setup_time" value="{{ pr.setup_time_hours or 2 }}" min="0" max="24" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
-                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600; white-space: nowrap;">Hours before</span>
-                            </div>
-                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Time needed on-site before guest arrival.</span>
-                        </div>
-
-                        <div>
-                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Cleanup Time</label>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" name="package_cleanup_time" id="req_cleanup_time" value="{{ pr.cleanup_time_hours or 1 }}" min="0" max="24" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
-                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600; white-space: nowrap;">Hours after</span>
-                            </div>
-                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Time needed after event conclusion.</span>
-                        </div>
-
-                        <div>
-                            <label style="font-weight: 700; font-size: 0.82rem; color: #334155; margin-bottom: 4px; display: block;">Turnaround Buffer</label>
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" name="package_turnover_time" id="req_turnover_time" value="{{ pr.get('turnover_time_hours', 2) }}" min="0" max="24" style="width: 100%; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 0.88rem;">
-                                <span style="font-size: 0.82rem; color: #64748b; font-weight: 600;">Hours</span>
-                            </div>
-                            <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Buffer between consecutive events.</span>
-                        </div>
+                        <span id="service-duration-error" role="alert" style="display: none; margin-top: 6px; font-size: 0.78rem; color: #b91c1c;">Enter a whole number from 1 to 23 hours.</span>
+                        <span style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">Changing this updates every package. Customer Egress is calculated from Ingress using that package's duration.</span>
                     </div>
                 </div>
 
@@ -1212,15 +1202,15 @@ window.gm_authFailure = function() {
                     
                     <div class="avail-summary-grid">
                         <div class="avail-summary-item">
-                            <span class="avail-summary-label">Status</span>
-                            <span class="avail-summary-value" id="summaryStatus">Accepting Bookings</span>
+                            <span class="avail-summary-label">Booking Acceptance</span>
+                            <span class="avail-summary-value" id="summaryStatus">Accepting New Bookings</span>
                         </div>
                         <div class="avail-summary-item">
                             <span class="avail-summary-label">Available Days</span>
                             <span class="avail-summary-value" id="summaryDays">Mon - Sun</span>
                         </div>
                         <div class="avail-summary-item">
-                            <span class="avail-summary-label">Operating Hours</span>
+                            <span class="avail-summary-label">Event Start Time Range</span>
                             <span class="avail-summary-value" id="summaryHours">08:00 AM - 08:00 PM</span>
                         </div>
                         <div class="avail-summary-item">
@@ -1234,6 +1224,10 @@ window.gm_authFailure = function() {
                         <div class="avail-summary-item">
                             <span class="avail-summary-label">Daily Capacity</span>
                             <span class="avail-summary-value" id="summaryCapacity">5 events / day max</span>
+                        </div>
+                        <div class="avail-summary-item">
+                            <span class="avail-summary-label">Default Service Duration</span>
+                            <span class="avail-summary-value" id="summaryServiceDuration">4 hours</span>
                         </div>
                     </div>
                 </div>

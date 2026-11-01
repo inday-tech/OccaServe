@@ -21,6 +21,12 @@ from ..services.payment_verification import payment_verification_service
 from ..services.notification import NotificationService, caterer_notification_destination
 from ..services.reminders import billing_period_due_date
 from ..services.payment_deadline import ALLOWED_PAYMENT_DEADLINE_HOURS, normalize_deadline_hours
+from ..services.payment_validation import (
+    normalize_ph_mobile_number,
+    validate_card_number,
+    validate_digit_number,
+)
+from ..services.profile_validation import parse_starting_price, validate_experience_years
 from ..services.commission import (
     build_commission_invoice_rows,
     calculate_booking_commission,
@@ -2526,6 +2532,9 @@ async def caterer_dashboard(
         "request": request,
         "user": user,
         "profile": profile,
+        "today_date": today_date,
+        "birth_date_min": years_ago(60),
+        "birth_date_max": years_ago(18),
         **stats,
         "accurate_active_bookings": accurate_active_bookings,
         "accurate_completed_events": accurate_completed_events,
@@ -6852,6 +6861,14 @@ async def edit_profile(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    today_date = date.today()
+
+    def years_ago(years: int) -> date:
+        try:
+            return today_date.replace(year=today_date.year - years)
+        except ValueError:
+            return today_date.replace(year=today_date.year - years, day=28)
+
     identity = db.query(models.IdentityVerification).filter(
         models.IdentityVerification.user_id == user.id,
         models.IdentityVerification.verification_type != "business_permit",
@@ -6873,6 +6890,9 @@ async def edit_profile(
         "request": request,
         "user": user,
         "profile": profile,
+        "today_date": today_date,
+        "birth_date_min": years_ago(60).isoformat(),
+        "birth_date_max": years_ago(18).isoformat(),
         "identity": identity,
         "verification_status_display": verification_status_display,
         "verification_next_step": _caterer_verification_next_step(
@@ -7310,8 +7330,8 @@ async def add_package(
         errors.append(f"Minimum guests cannot be lower than your global setting of {global_min_pax}.")
     if pricing_mode == "fixed" and base_pax < global_min_pax:
         errors.append(f"Package guest count cannot be lower than your global setting of {global_min_pax}.")
-    if not 1 <= service_duration <= 24:
-        errors.append("Service duration must be between 1 and 24 hours.")
+    if not 1 <= service_duration <= 23:
+        errors.append("Service duration must be between 1 and 23 hours so Egress can remain on the event date.")
     if not math.isfinite(additional_guest_price) or not 0 <= additional_guest_price <= 99_999_999.99:
         errors.append("Extra guest rate must be between ₱0 and ₱99,999,999.99.")
     elif round(additional_guest_price, 2) != additional_guest_price:
@@ -7750,10 +7770,6 @@ async def update_profile(
     service_min_duration: Optional[str] = Form("3"),
     service_max_duration: Optional[str] = Form("8"),
     package_min_duration: Optional[str] = Form("4"),
-    package_max_duration: Optional[str] = Form("6"),
-    package_setup_time: Optional[str] = Form("2"),
-    package_cleanup_time: Optional[str] = Form("1"),
-    package_turnover_time: Optional[str] = Form("6"),
     refund_policy: Optional[str] = Form(None),
     reschedule_policy: Optional[str] = Form(None),
     late_payment_policy: Optional[str] = Form(None),
@@ -7812,6 +7828,16 @@ async def update_profile(
         except (ValueError, TypeError):
             return default
 
+    try:
+        saved_starting_price = parse_starting_price(starting_price)
+        saved_experience_years = validate_experience_years(
+            years_of_operation,
+            user.dob,
+            date.today(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     def _to_float(val, default=0.0):
         if val is None: return default
         try:
@@ -7819,6 +7845,32 @@ async def update_profile(
             return float(s) if s else default
         except (ValueError, TypeError):
             return default
+
+    try:
+        gcash_number = normalize_ph_mobile_number(gcash_number, "GCash number")
+        maya_number = normalize_ph_mobile_number(maya_number, "Maya number")
+        bank_account_number = validate_digit_number(bank_account_number, "Bank account number", 4, 20)
+        card_number = validate_card_number(card_number)
+        custom_payment_number = validate_digit_number(custom_payment_number, "Other payment number", 4, 40)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    current_package_rules = (profile.scheduling_rules or {}).get("package_rules", {})
+    previous_package_duration = _to_int(current_package_rules.get("min_event_duration"), 4)
+    try:
+        saved_package_duration = int(str(package_min_duration if package_min_duration is not None else previous_package_duration).strip())
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Default service duration must be a whole number from 1 to 23 hours.")
+    if not 1 <= saved_package_duration <= 23:
+        raise HTTPException(status_code=400, detail="Default service duration must be between 1 and 23 hours so Egress can remain on the event date.")
+    try:
+        saved_max_events_per_day = int(str(max_events_per_day if max_events_per_day is not None else 1).strip())
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Maximum events per day must be a whole number from 1 to 20.")
+    if not 1 <= saved_max_events_per_day <= 20:
+        raise HTTPException(status_code=400, detail="Maximum events per day must be between 1 and 20.")
+    if availability_status not in {"Available", "Temporarily Unavailable"}:
+        raise HTTPException(status_code=400, detail="Choose whether new booking requests are accepted or paused.")
 
     saved_min_pax = _to_int(min_pax, profile.min_pax or 1)
     if not 1 <= saved_min_pax <= 99:
@@ -7903,11 +7955,11 @@ async def update_profile(
         "booking_lead_time": _to_int(booking_lead_time, 3),
         "max_advance_booking_days": _to_int(max_advance_booking_days, 180),
         "blocked_dates": parsed_blocked_dates,
-        "max_events_per_day": _to_int(max_events_per_day, 1)
+        "max_events_per_day": saved_max_events_per_day
     }
 
     profile.booking_lead_time = _to_int(booking_lead_time, 3)
-    profile.max_bookings_per_day = _to_int(max_events_per_day, 1)
+    profile.max_bookings_per_day = saved_max_events_per_day
 
     profile.scheduling_rules = {
         **existing_rules,
@@ -7932,9 +7984,8 @@ async def update_profile(
             "earliest_start": service_earliest_start or "08:00", "latest_end": service_latest_end or "22:00"
         },
         "package_rules": {
-            "min_event_duration": _to_int(package_min_duration, 4), "max_event_duration": _to_int(package_max_duration, 6), 
-            "setup_time_hours": _to_int(package_setup_time, 2), "cleanup_time_hours": _to_int(package_cleanup_time, 1),
-            "turnover_time_hours": _to_int(package_turnover_time, 6)
+            **(existing_rules.get("package_rules") or {}),
+            "min_event_duration": saved_package_duration,
         },
         "booking_rules": {
             "max_advance_booking_days": _to_int(max_advance_booking_days, 365),
@@ -7966,18 +8017,18 @@ async def update_profile(
     if middle_name is not None:
         user.middle_name = middle_name.strip() if middle_name.strip() else None
     
-    if not dob or not str(dob).strip():
-        raise HTTPException(status_code=400, detail="Date of birth is required.")
-    try:
-        from datetime import datetime as _dt
-        parsed_dob = _dt.strptime(str(dob).strip(), "%Y-%m-%d").date()
+    if dob is not None:
+        if not str(dob).strip():
+            raise HTTPException(status_code=400, detail="Date of birth is required.")
+        try:
+            parsed_dob = _dt.strptime(str(dob).strip(), "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Enter a valid date of birth.") from exc
         today = _dt.now().date()
         age = today.year - parsed_dob.year - ((today.month, today.day) < (parsed_dob.month, parsed_dob.day))
         if age < 18 or age > 60:
             raise HTTPException(status_code=400, detail="Date of birth must show an age from 18 to 60.")
         user.dob = parsed_dob
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Enter a valid date of birth.")
 
     if personal_address is not None:
         user.address = personal_address.strip() if personal_address.strip() else None
@@ -7989,8 +8040,8 @@ async def update_profile(
         profile.business_type = business_type.strip()
     if description is not None:
         profile.description = description.strip()
-    if years_of_operation is not None and str(years_of_operation).strip():
-        profile.years_of_operation = _to_int(years_of_operation, 0)
+    if years_of_operation is not None:
+        profile.years_of_operation = saved_experience_years
     if city is not None:
         profile.city = city.strip()
     if contact_address is not None:
@@ -8052,9 +8103,8 @@ async def update_profile(
     profile.card_number = card_number
     profile.cash_instructions = cash_instructions
     profile.booking_lead_time = _to_int(booking_lead_time, 7)
-    profile.equipment_turnover_hours = _to_int(package_turnover_time, 6)
     profile.min_pax = saved_min_pax
-    profile.starting_price = _to_float(starting_price, 0.0)
+    profile.starting_price = float(saved_starting_price)
     if default_excess_guest_price is not None:
         profile.default_excess_guest_price = _to_float(
             default_excess_guest_price.replace(",", ""),
@@ -8227,6 +8277,12 @@ async def update_profile(
                     print(f"[GALLERY UPLOAD ERROR] Failed: {str(e)}")
                     traceback.print_exc()
 
+    if saved_package_duration != previous_package_duration:
+        for caterer_package in db.query(models.CateringPackage).filter(
+            models.CateringPackage.caterer_id == profile.id
+        ).all():
+            caterer_package.service_duration = saved_package_duration
+
     db.commit()
     valid_settings_sections = {
         "general", "location", "payment-methods", "booking-policies", "availability",
@@ -8237,6 +8293,50 @@ async def update_profile(
         url=f"/caterer/profile?success_msg=Business+profile+updated+successfully#{redirect_section}",
         status_code=303
     )
+
+
+@router.post("/profile/personal-info")
+async def update_personal_info(
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    middle_name: Optional[str] = Form(None),
+    dob: str = Form(...),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(caterer_only),
+):
+    first_name = first_name.strip()
+    last_name = last_name.strip()
+    if not first_name or not last_name:
+        return JSONResponse(
+            {"success": False, "message": "First name and last name are required."},
+            status_code=400,
+        )
+
+    try:
+        parsed_dob = datetime.strptime(dob.strip(), "%Y-%m-%d").date()
+    except ValueError:
+        return JSONResponse(
+            {"success": False, "message": "Enter a valid date of birth."},
+            status_code=400,
+        )
+
+    today = date.today()
+    age = today.year - parsed_dob.year - (
+        (today.month, today.day) < (parsed_dob.month, parsed_dob.day)
+    )
+    if age < 18 or age > 60:
+        return JSONResponse(
+            {"success": False, "message": "Date of birth must show an age from 18 to 60."},
+            status_code=400,
+        )
+
+    user.first_name = first_name
+    user.last_name = last_name
+    user.middle_name = middle_name.strip() if middle_name and middle_name.strip() else None
+    user.dob = parsed_dob
+    db.commit()
+    return JSONResponse({"success": True, "message": "Personal information updated."})
+
 
 @router.get("/packages/{package_id}/details")
 async def get_package_details_api(
@@ -8445,8 +8545,8 @@ async def update_package(
         errors.append(f"Minimum guests cannot be lower than your global setting of {global_min_pax}.")
     if pricing_mode == "fixed" and base_pax < global_min_pax:
         errors.append(f"Package guest count cannot be lower than your global setting of {global_min_pax}.")
-    if not 1 <= service_duration <= 24:
-        errors.append("Service duration must be between 1 and 24 hours.")
+    if not 1 <= service_duration <= 23:
+        errors.append("Service duration must be between 1 and 23 hours so Egress can remain on the event date.")
     if not math.isfinite(additional_guest_price) or not 0 <= additional_guest_price <= 99_999_999.99:
         errors.append("Extra guest rate must be between ₱0 and ₱99,999,999.99.")
     elif round(additional_guest_price, 2) != additional_guest_price:

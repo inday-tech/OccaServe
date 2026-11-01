@@ -44,6 +44,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const guestDisplay = document.getElementById('guest_count_display');
         const dateInput = document.getElementById('event_date');
         const timeInput = document.getElementById('event_time');
+        const endTimeInput = document.getElementById('event_end_time');
+        const eventDurationHint = document.getElementById('event-duration-hint');
         const provinceSelect = document.getElementById('province_select');
         const citySelect = document.getElementById('city_select');
         const barangaySelect = document.getElementById('barangay_select');
@@ -191,11 +193,46 @@ document.addEventListener('DOMContentLoaded', function () {
         input.value = num.toLocaleString();
     };
 
+    const getExpectedEgress = () => {
+        const packageData = window.packagesMap && window.packagesMap[window.currentPackageId];
+        const duration = Number(packageData && packageData.service_duration);
+        const startMinutes = parseTimeStr(timeInput?.value || '');
+        if (!endTimeInput || !packageData || !Number.isInteger(duration) || duration < 1 || duration > 24 || startMinutes === null) {
+            return null;
+        }
+        const endMinutes = startMinutes + duration * 60;
+        if (endMinutes >= 24 * 60) return null;
+        return `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+    };
+
+    const updateEgressFromDuration = () => {
+        if (!endTimeInput) return null;
+        const packageData = window.packagesMap && window.packagesMap[window.currentPackageId];
+        const duration = Number(packageData && packageData.service_duration);
+        if (!packageData) {
+            if (eventDurationHint) eventDurationHint.textContent = 'Enter Egress after Ingress for this booking.';
+            return null;
+        }
+        const expectedEgress = getExpectedEgress();
+        endTimeInput.value = expectedEgress || '';
+        if (eventDurationHint) {
+            if (Number.isInteger(duration) && duration > 0) {
+                eventDurationHint.textContent = expectedEgress
+                    ? `Automatically calculated: ${duration} hour${duration === 1 ? '' : 's'} after Ingress.`
+                    : `Choose an Ingress time that allows the full ${duration}-hour package service to finish on the event date.`;
+            } else {
+                eventDurationHint.textContent = 'Select a package and Ingress time to calculate Egress.';
+            }
+        }
+        return expectedEgress;
+    };
+
     // --- 2. Dynamic Package Switching & Inclusions Rendering ---
     window.switchPackage = function (packageId) {
         if (!window.packagesMap || !window.packagesMap[packageId]) return;
         const pkg = window.packagesMap[packageId];
         window.currentPackageId = packageId;
+        updateEgressFromDuration();
 
         // 1. Update package_id form control & event_type
         const pkgSelect = document.getElementById('package_id_select');
@@ -1489,6 +1526,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     this.style.borderColor = 'var(--wiz-primary, #ff7b54)';
 
                     timeInput.value = valStr;
+                    updateEgressFromDuration();
                     if (triggerText) {
                         triggerText.innerText = labelStr;
                         triggerText.style.color = '#0f172a';
@@ -1508,11 +1546,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         timeInput.addEventListener('change', () => {
+            updateEgressFromDuration();
             validateEventTime();
             if (typeof window.checkAvailability === 'function') window.checkAvailability();
         });
+        timeInput.addEventListener('input', updateEgressFromDuration);
         timeInput.addEventListener('blur', validateEventTime);
     }
+    updateEgressFromDuration();
 
     // --- Real-time Location Validation ---
     const validateProvince = () => {
@@ -1642,8 +1683,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // 5. Event time
                 check('event_time', validateEventTime());
-                const endTime = document.getElementById('event_end_time');
-                const validEnd = !!(endTime?.value && timeInput?.value && endTime.value > timeInput.value);
+                const expectedEgress = updateEgressFromDuration();
+                const validEnd = expectedEgress
+                    ? endTimeInput?.value === expectedEgress
+                    : !!(endTimeInput?.value && timeInput?.value && endTimeInput.value > timeInput.value);
                 check('event_end_time', validEnd);
                 if (!validEnd) document.getElementById('err-end-time')?.classList.add('show');
 

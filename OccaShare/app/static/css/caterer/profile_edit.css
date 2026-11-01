@@ -3846,6 +3846,10 @@ input[type="checkbox"]:checked + .toggle-switch-track .toggle-switch-thumb {
 #section-account{min-width:0;max-width:100%;overflow-x:clip}
 #section-account .form-group,#section-account .notif-pref-info,#section-account .danger-action-row>div{min-width:0}
 #section-account .notif-pref-desc,#section-account .danger-action-row p{overflow-wrap:anywhere;line-height:1.45}
+#section-account .personal-info-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.55rem .65rem;margin-top:1rem;min-width:0}
+#section-account .personal-info-actions>button{box-sizing:border-box;display:inline-flex;flex:0 1 auto;align-items:center;justify-content:center;gap:.4rem;width:auto!important;min-width:0!important;max-width:100%;min-height:40px;height:auto!important;padding:.55rem .9rem!important;border-radius:8px;font-size:.82rem;line-height:1.25;text-align:center;white-space:normal!important;overflow-wrap:anywhere}
+#section-account .personal-info-actions>button[hidden]{display:none!important}
+#section-account .personal-info-status{flex:1 1 100%;min-width:0;color:#64748b;font-size:.8rem;line-height:1.4;overflow-wrap:anywhere}
 #section-account .btn-save-notifs{max-width:100%;white-space:normal}
 .req-item{display:flex;align-items:center;gap:.4rem;line-height:1.4}
 .req-item>i{flex:0 0 12px;margin-right:0!important}
@@ -3885,6 +3889,8 @@ input[type="checkbox"]:checked + .toggle-switch-track .toggle-switch-thumb {
 }
 @media(max-width:420px){
     #section-account{padding:.75rem!important}
+    #section-account .personal-info-actions{gap:.5rem}
+    #section-account .personal-info-actions>button{padding:.5rem .7rem!important;font-size:.78rem}
     #section-account .notif-pref-item{padding:.75rem}
     #section-account .btn-save-notifs{width:100%}
     #section-account .danger-action-row button{width:100%;justify-content:center}
