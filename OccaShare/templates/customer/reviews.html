@@ -3,182 +3,17 @@
 {% block title %}My Reviews - OccaServe Elite{% endblock %}
 
 {% block extra_css %}
-<style>
-    :root {
-        --up-slate-900: #0f172a;
-        --up-orange: #FF7B54;
-        --up-emerald: #10b981;
-        --dm-slate-50: #f8fafc;
-        --dm-slate-100: #f1f5f9;
-        --dm-slate-200: #e2e8f0;
-        --dm-slate-400: #94a3b8;
-    }
-
-    .reviews-container {
-        padding-bottom: 2rem;
-    }
-
-    /* ── PREMIUM STAT CARDS (Dashboard Sync) ── */
-    .premium-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    @media (min-width: 768px) {
-        .premium-stats-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
-    .premium-stat-card {
-        background: #fff; border-radius: 12px; padding: 1.25rem 1.5rem;
-        border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
-        display: flex; flex-direction: column; justify-content: center;
-        transition: all 0.2s ease;
-    }
-    .premium-stat-title { font-size: 0.75rem; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
-    .premium-stat-value { font-size: 1.4rem; font-weight: 900; line-height: 1.2; margin-bottom: 0.4rem; }
-    .premium-stat-subtitle { font-size: 0.8rem; font-weight: 500; color: #64748b; }
-
-    /* ── Review Cards ── */
-    .review-panel {
-        background: #fff;
-        border-radius: 1.25rem;
-        border: 1px solid var(--dm-slate-100);
-        overflow: hidden;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
-    }
-
-    .review-panel-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--dm-slate-50);
-        display: flex; justify-content: space-between; align-items: center;
-    }
-
-    .review-panel-header h3 {
-        font-size: 1rem; font-weight: 800;
-        color: var(--up-slate-900); margin: 0;
-    }
-
-    .review-list {
-        padding: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-    }
-
-    .review-card-elite {
-        background: #fff;
-        border: 1px solid var(--dm-slate-100);
-        border-radius: 1rem;
-        padding: 1.5rem;
-        transition: all 0.2s;
-        position: relative;
-    }
-
-    .review-card-elite:hover {
-        border-color: var(--up-orange);
-        box-shadow: 0 8px 15px -10px rgba(0,0,0,0.05);
-    }
-
-    .rv-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 1rem;
-    }
-
-    .rv-biz-name {
-        font-size: 1.1rem;
-        font-weight: 850;
-        color: var(--up-slate-900);
-        letter-spacing: -0.02em;
-    }
-
-    .rv-date {
-        font-size: 0.72rem;
-        font-weight: 700;
-        color: var(--dm-slate-400);
-        text-transform: uppercase;
-        margin-top: 2px;
-    }
-
-    .rv-stars {
-        color: var(--up-orange);
-        font-size: 0.9rem;
-        display: flex;
-        gap: 4px;
-    }
-
-    .rv-comment-box {
-        background: var(--dm-slate-50);
-        padding: 1rem 1.25rem;
-        border-radius: 12px;
-        border-left: 4px solid var(--up-orange);
-        font-size: 0.9rem;
-        color: var(--up-slate-900);
-        font-weight: 500;
-        line-height: 1.6;
-        font-style: italic;
-    }
-
-    .rv-reply {
-        margin-top: 1.25rem;
-        padding: 1.25rem;
-        background: #fff7ed;
-        border-radius: 12px;
-        border: 1px dashed rgba(255,123,84,0.2);
-    }
-
-    .reply-tag {
-        font-size: 0.62rem;
-        font-weight: 900;
-        color: var(--up-orange);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        margin-bottom: 6px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .reply-content {
-        font-size: 0.85rem;
-        color: var(--up-slate-900);
-        font-weight: 600;
-        line-height: 1.5;
-    }
-
-    /* ── PAGINATION (Matches Bookings UI) ── */
-    .bk-pagination {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 1.5rem; border-top: 1px solid var(--dm-slate-100); background: #fcfcfd;
-        gap: 1rem; text-align: center;
-    }
-    .bk-page-info { font-size: 0.85rem; font-weight: 700; color: var(--dm-slate-400); }
-    .bk-page-info span { color: var(--text-dark); font-weight: 800; }
-    .bk-page-btns { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
-    .btn-pg {
-        border: 1px solid var(--dm-slate-200); border-radius: 9px; padding: 6px 13px;
-        font-size: 0.75rem; font-weight: 800; cursor: pointer; background: #fff;
-        color: var(--dm-slate-400); transition: all 0.18s; display: inline-flex; align-items: center; gap: 5px;
-    }
-    .btn-pg:hover:not(:disabled) { background: var(--dm-slate-50); border-color: #cbd5e1; }
-    .btn-pg:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-pg-num { min-width: 34px; justify-content: center; }
-    .btn-pg-num.active { background: var(--text-dark); color: #fff; border-color: var(--text-dark); }
-
-    .page-header { margin-bottom: 1.25rem; }
-    .page-header h1 { font-size: 1.6rem; font-weight: 800; color: var(--up-slate-900); margin: 0; letter-spacing: -0.03em; }
-    .page-header p { font-size: 0.88rem; color: var(--dm-slate-400); font-weight: 500; margin: 4px 0 0; }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='/css/customer/reviews.css') }}?v={{ static_asset_version('css/customer/reviews.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="reviews-container">
-    <div class="page-header">
-        <h1>My Reviews</h1>
-        <p>Your honest feedback helps us maintain the Diamond Standard of service.</p>
+<div class="reviews-container customer-reviews-page">
+    <div class="reviews-page-header">
+        <div>
+            <h1>My Reviews</h1>
+            <p>See the reviews you have shared and how caterers responded.</p>
+        </div>
+        <div class="reviews-header-mark" aria-hidden="true"><i class="fas fa-star"></i></div>
     </div>
 
     <!-- Calculations -->
@@ -191,26 +26,52 @@
 
     <!-- Stat Cards (Matches Bookings UI) -->
     <div class="premium-stats-grid">
-        <a class="premium-stat-card" href="#reviewTimeline" aria-label="View your review timeline">
-            <div class="premium-stat-title">Average Rating Given</div>
-            <div class="premium-stat-value" style="color: #f59e0b;"><i class="fas fa-star" style="font-size: 1.1rem;"></i> {{ "{:.1f}".format(avg_rating.value) }}</div>
-            <div class="premium-stat-subtitle">Out of 5.0</div>
-        </a>
-        <a class="premium-stat-card" href="#reviewTimeline" aria-label="View your published reviews">
-            <div class="premium-stat-title">Total Shared</div>
-            <div class="premium-stat-value" style="color: #3b82f6;">{{ total_reviews }}</div>
-            <div class="premium-stat-subtitle">Reviews Published</div>
-        </a>
-        <a class="premium-stat-card" href="#reviewTimeline" aria-label="View your feedback">
-            <div class="premium-stat-title">Feedback Impact</div>
-            <div class="premium-stat-value" style="color: #10b981;"><i class="fas fa-check-circle" style="font-size: 1.1rem;"></i> Verified</div>
-            <div class="premium-stat-subtitle">Trusted by Community</div>
-        </a>
+        <div class="premium-stat-card stat-average">
+            <div class="premium-stat-title">Average rating given</div>
+            <div class="premium-stat-value">{{ "{:.1f}".format(avg_rating.value) }}<span>/ 5</span></div>
+            <div class="premium-stat-subtitle">Across your event reviews</div>
+        </div>
+        <div class="premium-stat-card stat-total">
+            <div class="premium-stat-title">Reviews shared</div>
+            <div class="premium-stat-value">{{ total_reviews }}</div>
+            <div class="premium-stat-subtitle">Event experiences published</div>
+        </div>
+        <div class="premium-stat-card stat-community">
+            <div class="premium-stat-title">Community impact</div>
+            <div class="premium-stat-value">Verified</div>
+            <div class="premium-stat-subtitle">Helping others choose with confidence</div>
+        </div>
     </div>
 
-    <div class="review-panel" id="reviewTimeline">
+    <section class="platform-review-strip" aria-label="OccaServe platform review">
+        <div class="platform-review-strip-icon"><i class="fas fa-comment-dots"></i></div>
+        <div class="platform-review-strip-copy">
+            <strong>Your OccaServe experience</strong>
+            <span>{% if platform_feedback %}Thanks for helping us improve the platform.{% else %}Have a moment? Tell us how we're doing.{% endif %}</span>
+        </div>
+        {% if platform_feedback %}
+        <div class="platform-review-strip-submitted">
+            <div class="platform-review-strip-rating" aria-label="{{ platform_feedback.rating }} out of 5 stars">
+                {% for _ in range(platform_feedback.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                {% for _ in range(5 - platform_feedback.rating) %}<i class="far fa-star"></i>{% endfor %}
+                <strong>{{ platform_feedback.rating }}/5</strong>
+            </div>
+            {% if platform_feedback.created_at %}<span class="platform-review-strip-date">{{ platform_feedback.created_at.strftime('%b %d, %Y') }}</span>{% endif %}
+        </div>
+        {% else %}
+        <button type="button" class="platform-review-cta" onclick="openPlatformFeedbackModal()">
+            <i class="fas fa-star"></i> Review OccaServe
+        </button>
+        {% endif %}
+    </section>
+
+    <section class="review-panel" id="reviewTimeline" aria-labelledby="reviewTimelineTitle">
         <div class="review-panel-header">
-            <h3>Feedback Timeline</h3>
+            <div>
+                <h3 id="reviewTimelineTitle">Your review history</h3>
+                <p>Reviews you shared for completed events.</p>
+            </div>
+            <span class="review-count-badge">{{ total_reviews }} {{ 'review' if total_reviews == 1 else 'reviews' }}</span>
         </div>
 
         {% if reviews %}
@@ -218,13 +79,17 @@
             {% for review in reviews %}
             <div class="review-card-elite">
                 <div class="rv-header">
-                    <div>
-                        <div class="rv-biz-name">{{ review.caterer.business_name }}</div>
-                        <div class="rv-date">Reviewed on {{ review.created_at.strftime('%B %d, %Y') }}</div>
+                    <div class="rv-business-meta">
+                        <div class="rv-business-icon"><i class="fas fa-store"></i></div>
+                        <div>
+                            <div class="rv-biz-name">{{ review.caterer.business_name }}</div>
+                            <div class="rv-date">Reviewed on {{ review.created_at.strftime('%B %d, %Y') }}</div>
+                        </div>
                     </div>
-                    <div class="rv-stars">
+                    <div class="rv-stars" aria-label="{{ review.rating }} out of 5 stars">
                         {% for _ in range(review.rating) %}<i class="fas fa-star"></i>{% endfor %}
                         {% for _ in range(5 - review.rating) %}<i class="far fa-star"></i>{% endfor %}
+                        <strong>{{ review.rating }}/5</strong>
                     </div>
                 </div>
 
@@ -253,14 +118,19 @@
         </div>
 
         {% else %}
-        <div style="padding: 5rem 2rem; text-align: center;">
-            <i class="fas fa-comment-slash" style="font-size: 3rem; color: var(--dm-slate-100); margin-bottom: 1.5rem; display: block;"></i>
-            <h3 style="font-weight: 800; color: var(--up-slate-900);">No Reviews Yet</h3>
-            <p style="color: var(--dm-slate-400); font-weight: 600; max-width: 320px; margin: 0 auto 1.5rem;">Share your experience after completing an event to help others find the best caterers.</p>
-            <a href="/customer/bookings" class="btn-action-primary" style="text-decoration: none; padding: 0.75rem 1.5rem;">Go to My Bookings</a>
+        <div class="reviews-empty-state">
+            <span class="reviews-empty-icon"><i class="fas fa-comment-slash"></i></span>
+            <h3>No reviews yet</h3>
+            <p>After a completed event, share your experience to help others find the right caterer.</p>
+            <a href="/customer/bookings" class="btn-action-primary">Go to My Bookings</a>
         </div>
         {% endif %}
-    </div>
+        <div class="reviews-empty-state reviews-search-empty" id="reviewSearchEmpty" hidden>
+            <span class="reviews-empty-icon"><i class="fas fa-search"></i></span>
+            <h3>No matching reviews</h3>
+            <p>Try a different search term in the header.</p>
+        </div>
+    </section>
 </div>
 
 <script>
@@ -299,10 +169,14 @@
 
         const start = (rvCurrentPage - 1) * RV_PER_PAGE;
         const end = Math.min(start + RV_PER_PAGE, total);
+        const searchEmpty = document.getElementById('reviewSearchEmpty');
+        const pagination = document.querySelector('.bk-pagination');
 
         document.querySelectorAll('.review-card-elite').forEach(r => r.style.display = 'none');
         rvFiltered.slice(start, end).forEach(r => r.style.display = 'block');
 
+        if (searchEmpty) searchEmpty.hidden = document.querySelectorAll('.review-card-elite').length === 0 || total > 0;
+        if (pagination) pagination.hidden = total === 0;
         const range = document.getElementById('rRange');
         if (range) range.innerHTML = total === 0 ? '0' : `${start + 1}–${end}`;
         const totalEl = document.getElementById('rTotal');

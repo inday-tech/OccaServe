@@ -119,7 +119,7 @@
             <button type="button" class="feedback-close" onclick="closeCustomerFeedbackModal()">&times;</button>
         </div>
 
-        <form method="POST" action="/customer/platform-feedback" id="customerFeedbackForm">
+        <form method="POST" action="{{ platform_feedback_action|default('/customer/platform-feedback') }}" id="customerFeedbackForm">
             <input type="hidden" name="rating" id="customerRatingInput" value="5">
 
             <div style="margin-bottom:1.5rem;">

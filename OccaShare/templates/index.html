@@ -904,7 +904,7 @@
                         <p class="testimonial-quote">"{{ review.comment }}"</p>
                         <div class="testimonial-author">
                             {% set reviewer = review.user %}
-                            {% set reviewer_name = (((reviewer.first_name or '') ~ ' ' ~ (reviewer.last_name or ''))|trim or 'OccaServe Customer') if reviewer else 'OccaServe Customer' %}
+                            {% set reviewer_name = (((reviewer.first_name or '') ~ ' ' ~ ((reviewer.middle_name ~ ' ') if reviewer.middle_name else '') ~ (reviewer.last_name or ''))|trim or 'OccaServe Customer') if reviewer else 'OccaServe Customer' %}
                             <img src="https://ui-avatars.com/api/?name={{ reviewer_name|urlencode }}&background=f97316&color=fff"
                                 class="testimonial-avatar" alt="{{ reviewer_name }}">
                             <div>

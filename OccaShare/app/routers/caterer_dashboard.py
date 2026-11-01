@@ -5868,7 +5868,11 @@ async def caterer_reviews(
     for r in all_reviews:
         if r.rating in rating_stats:
             rating_stats[r.rating] += 1
-            
+
+    platform_feedback = db.query(models.PlatformFeedback).filter_by(
+        user_id=user.id
+    ).order_by(models.PlatformFeedback.created_at.desc()).first()
+
     return templates.TemplateResponse("caterer/reviews.html", {
         "request": request,
         "user": user,
@@ -5876,6 +5880,7 @@ async def caterer_reviews(
         "avg_rating": round(float(avg_rating), 1),
         "total_reviews": total_reviews,
         "rating_stats": rating_stats,
+        "platform_feedback": platform_feedback,
         "active_page": "reviews"
     })
 @router.post("/reviews/{review_id}/reply")

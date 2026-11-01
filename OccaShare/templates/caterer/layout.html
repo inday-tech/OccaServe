@@ -1147,6 +1147,37 @@
             color: #fff;
         }
 
+        .platform-review-callout {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #c2410c;
+        }
+
+        .platform-review-callout:hover {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        .platform-review-callout .nav-icon {
+            position: relative;
+            color: #ea580c;
+        }
+
+        .platform-review-badge {
+            flex: 0 0 auto;
+            padding: 2px 6px;
+            border-radius: 999px;
+            background: #ea580c;
+            color: #fff;
+            font-size: 0.55rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+        }
+
+        .sidebar-is-mini .platform-review-badge {
+            display: none;
+        }
+
         .nav-icon {
             width: 20px;
             height: 20px;
@@ -1379,9 +1410,9 @@
    ========================================= */
         .command-search-wrap {
             position: relative;
-            flex: 1 1 420px;
+            flex: 0 1 300px;
             min-width: 0;
-            width: min(420px, 100%);
+            width: min(300px, 100%);
             max-width: 100%;
             display: flex;
             align-items: center;
@@ -1810,6 +1841,18 @@
 
             <!-- Navigation Hub -->
             <nav class="sidebar-nav">
+                {% if user and not user.platform_feedback %}
+                <span class="nav-section-label">OCCASERVE</span>
+                <ul class="nav-list">
+                    <li>
+                        <a href="#" class="nav-item platform-review-callout" aria-label="Review your experience using OccaServe" onclick="event.preventDefault(); closeSidebar(); openPlatformFeedbackModal();">
+                            <div class="nav-icon"><i class="fas fa-comment-dots"></i></div>
+                            <span class="nav-label">Review OccaServe</span>
+                            <span class="platform-review-badge">REVIEW</span>
+                        </a>
+                    </li>
+                </ul>
+                {% endif %}
                 <span class="nav-section-label">Core</span>
                 <ul class="nav-list">
                     <li>
@@ -2564,6 +2607,19 @@
         // Poll every 60s as fallback
         setInterval(_refreshChatBadge, 60000);
     })();
+    </script>
+    {% endif %}
+
+    {% if user and user.role == 'caterer' and not user.platform_feedback %}
+    {% set platform_feedback_action = '/caterer/platform-feedback' %}
+    {% include "customer/partials/feedback_modal.html" %}
+    <script>
+        window.openPlatformFeedbackModal = function() {
+            const modal = document.getElementById('platformFeedbackModal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        };
     </script>
     {% endif %}
 

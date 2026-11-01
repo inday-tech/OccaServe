@@ -40,20 +40,24 @@
     <div class="feedback-card-modern">
         <div class="feedback-hero">
             <div class="feedback-hero-icon"><i class="fas fa-comment-star"></i></div>
-            <h1>Service Rating</h1>
-            <p>Tell us about your experience with this caterer.</p>
+            <h1>Rate Your Event</h1>
+            <p>Share your experience with {{ booking.caterer.business_name }} for this completed event.</p>
+            <p style="margin-top:.55rem;color:#52627d;font-weight:700;">
+                {{ booking.event_name or booking.event_type or 'Booked event' }}
+                {% if booking.event_date %} · {{ booking.event_date.strftime('%B %d, %Y') }}{% endif %}
+            </p>
         </div>
 
-        <form action="/bookings/review" method="POST">
+        <form action="/bookings/review" method="POST" id="eventReviewForm">
             <input type="hidden" name="booking_id" value="{{ booking.id }}">
 
             <div class="rating-panel">
-                <div class="star-rating">
-                    <i class="fas fa-star" data-value="1" style="cursor: pointer;"></i>
-                    <i class="fas fa-star" data-value="2" style="cursor: pointer;"></i>
-                    <i class="fas fa-star" data-value="3" style="cursor: pointer;"></i>
-                    <i class="fas fa-star" data-value="4" style="cursor: pointer;"></i>
-                    <i class="fas fa-star" data-value="5" style="cursor: pointer;"></i>
+                <div class="star-rating" role="radiogroup" aria-label="Rate your event">
+                    <i class="fas fa-star" role="radio" aria-checked="false" aria-label="1 star" tabindex="0" data-value="1" style="cursor: pointer;"></i>
+                    <i class="fas fa-star" role="radio" aria-checked="false" aria-label="2 stars" tabindex="-1" data-value="2" style="cursor: pointer;"></i>
+                    <i class="fas fa-star" role="radio" aria-checked="false" aria-label="3 stars" tabindex="-1" data-value="3" style="cursor: pointer;"></i>
+                    <i class="fas fa-star" role="radio" aria-checked="false" aria-label="4 stars" tabindex="-1" data-value="4" style="cursor: pointer;"></i>
+                    <i class="fas fa-star" role="radio" aria-checked="false" aria-label="5 stars" tabindex="-1" data-value="5" style="cursor: pointer;"></i>
                 </div>
                 <input type="hidden" name="rating" id="rating-input" required>
                 <div class="rating-caption" id="rating-caption">Select a rating</div>
@@ -89,7 +93,17 @@
         star.addEventListener('click', function () {
             const val = this.getAttribute('data-value');
             document.getElementById('rating-input').value = val;
+            document.querySelectorAll('.star-rating i').forEach(option => {
+                option.setAttribute('aria-checked', option === this ? 'true' : 'false');
+                option.tabIndex = option === this ? 0 : -1;
+            });
             highlightStars(val, true);
+        });
+        star.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                this.click();
+            }
         });
     });
 
@@ -98,6 +112,21 @@
     const count = document.getElementById('comment-count');
     const ratingText = ['','1 out of 5 stars','2 out of 5 stars','3 out of 5 stars','4 out of 5 stars','5 out of 5 stars'];
     comment.addEventListener('input', () => count.textContent = comment.value.length);
+    document.getElementById('eventReviewForm').addEventListener('submit', event => {
+        const rating = document.getElementById('rating-input').value;
+        if (!rating) {
+            event.preventDefault();
+            ratingCaption.textContent = 'Please select a rating';
+            document.querySelector('.star-rating i').focus();
+            return;
+        }
+        if (!comment.value.trim()) {
+            event.preventDefault();
+            comment.setCustomValidity('Please enter your feedback.');
+            comment.reportValidity();
+            comment.addEventListener('input', () => comment.setCustomValidity(''), { once: true });
+        }
+    });
     document.querySelector('.star-rating').addEventListener('mouseleave', function () {
         const currentVal = document.getElementById('rating-input').value;
         highlightStars(currentVal || 0, currentVal > 0);

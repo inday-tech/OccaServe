@@ -817,10 +817,14 @@ async def customer_reviews(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    platform_feedback = db.query(models.PlatformFeedback).filter_by(
+        user_id=user.id
+    ).order_by(models.PlatformFeedback.created_at.desc()).first()
     return templates.TemplateResponse("customer/reviews.html", {
         "request": request,
         "user": user,
         "reviews": user.reviews,
+        "platform_feedback": platform_feedback,
         "active_page": "reviews"
     })
 

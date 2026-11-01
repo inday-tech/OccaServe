@@ -245,7 +245,7 @@ html, body {
 .header-right { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
 
 /* OMNI SEARCH */
-.command-search-wrap { position: relative; flex: 1 1 380px; min-width: 0; width: min(380px, 100%); }
+.command-search-wrap { position: relative; flex: 0 1 300px; min-width: 0; width: min(300px, 100%); }
 .header-search {
     display: flex; align-items: center; gap: 0.75rem;
     background: #f1f5f9;

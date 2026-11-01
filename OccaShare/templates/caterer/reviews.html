@@ -7,17 +7,36 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-premium">
-    <!-- Page Header (Dish Management Style) -->
+<div class="container-premium caterer-reviews-page">
     <div class="page-header animate-up">
         <div class="header-title-group">
             <h1>Reviews & Ratings</h1>
-            <p>Monitor your professional reputation and customer feedback.</p>
+            <p>See what customers think about their events and share your OccaServe experience.</p>
         </div>
-        <input type="hidden" id="reviewSearch">
     </div>
 
-    <!-- Stats Cards Row -->
+    <section class="platform-review-strip animate-up" aria-label="OccaServe platform review">
+        <div class="platform-review-strip-icon"><i class="fas fa-comment-dots"></i></div>
+        <div class="platform-review-strip-copy">
+            <strong>How is OccaServe working for your business?</strong>
+            <span>{% if platform_feedback %}Thanks for helping us improve the tools you use.{% else %}Tell us how the tools work for your business.{% endif %}</span>
+        </div>
+        {% if platform_feedback %}
+        <div class="platform-review-strip-status">
+            <span class="platform-review-strip-stars" aria-label="{{ platform_feedback.rating }} out of 5 stars">
+                {% for _ in range(platform_feedback.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                {% for _ in range(5 - platform_feedback.rating) %}<i class="far fa-star"></i>{% endfor %}
+            </span>
+            <strong>{{ platform_feedback.rating }}/5</strong>
+            {% if platform_feedback.created_at %}<span class="platform-review-strip-date">{{ platform_feedback.created_at.strftime('%b %d, %Y') }}</span>{% endif %}
+        </div>
+        {% else %}
+        <button type="button" class="platform-review-strip-button" onclick="openPlatformFeedbackModal()">
+            <i class="fas fa-star"></i> Review OccaServe
+        </button>
+        {% endif %}
+    </section>
+
     <div class="reviews-stats-grid">
         <div class="stat-card-premium animate-up delay-1">
             <div class="stat-label-dashboard">Average Rating</div>
@@ -29,13 +48,13 @@
                     {% for _ in range(5 - (avg_rating|round(0, 'floor')|int)) %}{% if not (avg_rating % 1 >= 0.5 and loop.first) %}<i class="far fa-star"></i>{% endif %}{% endfor %}
                 </div>
             </div>
-            <div class="stat-hint-dashboard">Lifetime reputation score</div>
+            <div class="stat-hint-dashboard">From completed event reviews</div>
         </div>
 
         <div class="stat-card-premium animate-up delay-2">
             <div class="stat-label-dashboard">Total Reviews</div>
             <div class="stat-value-dashboard">{{ total_reviews }}</div>
-            <div class="stat-hint-dashboard">Verified customer feedback</div>
+            <div class="stat-hint-dashboard">Reviews from your customers</div>
         </div>
 
         <div class="stat-card-premium rating-breakdown-card animate-up delay-3">
@@ -56,67 +75,64 @@
         </div>
     </div>
 
-    <!-- Reviews Table -->
-    <div class="reviews-table-wrapper animate-up delay-4">
-        <table class="table-premium" id="reviewsTable">
-            <thead>
-                <tr>
-                    <th>Customer Ref</th>
-                    <th>Rating Score</th>
-                    <th>Review Comment</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="reviewsList">
-                {% if reviews %}
-                    {% for r in reviews %}
-                    <tr class="review-row-pro animate-up" data-id="{{ r.id }}">
-                        <td>
-                            <div class="reviewer-meta">
-                                {% set reviewer_name = (((r.user.first_name or '') ~ ' ' ~ (r.user.last_name or ''))|trim or 'Customer') if r.user else 'Customer' %}
-                                <div class="reviewer-avatar-sm">{{ reviewer_name[:1]|upper }}</div>
-                                <div class="reviewer-info-text">
-                                    <h4 class="reviewer-name">{{ reviewer_name }}</h4>
-                                </div>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="stars-container-sm">
-                                {% for _ in range(r.rating) %}<i class="fas fa-star"></i>{% endfor %}
-                                {% for _ in range(5 - r.rating) %}<i class="far fa-star"></i>{% endfor %}
-                            </div>
-                            <span class="rating-score-text">{{ r.rating }}.0 / 5.0</span>
-                        </td>
-                        <td style="max-width: 400px;">
-                            <p class="review-comment-text-sm">"{{ r.comment }}"</p>
-                        </td>
-                        <td>
-                            <span class="review-date-badge">{{ r.created_at.strftime('%b %d, %Y') }}</span>
-                        </td>
-                        <td>
-                            <div class="verified-badge-sm">
-                                Verified
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="5">
-                            <div class="empty-state-card">
-                                <h3>No Reviews Yet</h3>
-                                <p>Build your reputation by completing bookings and inviting customers to share their experience.</p>
-                            </div>
-                        </td>
-                    </tr>
-                {% endif %}
-            </tbody>
-        </table>
-    </div>
+    <section class="customer-reviews-panel animate-up delay-4" aria-labelledby="customer-reviews-title">
+        <div class="customer-reviews-heading">
+            <div>
+                <h2 id="customer-reviews-title">Customer reviews</h2>
+                <p>Reviews from customers who booked your services.</p>
+            </div>
+        </div>
 
-    <!-- Pagination (KYC Style) -->
-    <div class="pagination-footer-pro animate-up delay-4">
+        <div class="review-list" id="reviewsList">
+            {% for r in reviews %}
+            <article class="review-row-pro review-card" data-id="{{ r.id }}">
+                {% set reviewer_name = (((r.user.first_name or '') ~ ' ' ~ ((r.user.middle_name ~ ' ') if r.user.middle_name else '') ~ (r.user.last_name or ''))|trim or 'Customer') if r.user else 'Customer' %}
+                <div class="review-card-header">
+                    <div class="reviewer-meta">
+                        <div class="reviewer-avatar-sm">{{ reviewer_name[:1]|upper }}</div>
+                        <div class="reviewer-info-text">
+                            <h3 class="reviewer-name">{{ reviewer_name }}</h3>
+                            <span class="review-date-badge">{{ r.created_at.strftime('%b %d, %Y') if r.created_at else '' }}</span>
+                        </div>
+                    </div>
+                    <div class="review-card-rating">
+                        <div class="stars-container-sm" aria-label="{{ r.rating }} out of 5 stars">
+                            {% for _ in range(r.rating) %}<i class="fas fa-star"></i>{% endfor %}
+                            {% for _ in range(5 - r.rating) %}<i class="far fa-star"></i>{% endfor %}
+                        </div>
+                        <span class="rating-score-text">{{ r.rating }} / 5</span>
+                    </div>
+                </div>
+                {% if r.booking %}
+                <div class="review-event-label">
+                    <i class="fas fa-calendar-check"></i>
+                    {{ r.booking.event_name or r.booking.event_type or 'Completed event' }}
+                    {% if r.booking.event_date %}<span>· {{ r.booking.event_date.strftime('%b %d, %Y') }}</span>{% endif %}
+                </div>
+                {% endif %}
+                <p class="review-comment-text-sm">{{ r.comment }}</p>
+                {% if r.caterer_reply %}
+                <div class="review-reply">
+                    <strong><i class="fas fa-reply"></i> Your reply</strong>
+                    <p>{{ r.caterer_reply }}</p>
+                </div>
+                {% endif %}
+            </article>
+            {% else %}
+            <div class="empty-state-card" id="noReviewsState">
+                <span class="empty-state-icon"><i class="fas fa-star"></i></span>
+                <h3>No customer reviews yet</h3>
+                <p>When customers review completed events, their feedback will appear here.</p>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="empty-state-card review-search-empty" id="reviewSearchEmpty" hidden>
+            <h3>No matching reviews</h3>
+            <p>Try a different search term in the header.</p>
+        </div>
+    </section>
+
+    <div class="pagination-footer-pro animate-up delay-4" id="reviewPagination" {% if not reviews %}hidden{% endif %}>
         <div class="pagination-info">
             Showing <span id="startRange">0</span>-<span id="endRange">0</span> of <span id="totalEntries">0</span> reviews
         </div>
@@ -138,7 +154,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const reviewsList = document.getElementById('reviewsList');
     const allItems = Array.from(reviewsList.querySelectorAll('.review-row-pro'));
-    const searchInput = document.getElementById('reviewSearch');
+    const searchEmpty = document.getElementById('reviewSearchEmpty');
+    const pagination = document.getElementById('reviewPagination');
+    let searchQuery = (window.catererPageSearchQuery || '').trim().toLowerCase();
     
     function updateDisplay() {
         const start = (currentPage - 1) * itemsPerPage;
@@ -148,12 +166,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const currentItems = filteredItems.slice(start, end);
         currentItems.forEach(item => {
-            item.style.display = 'table-row';
+            item.style.display = 'flex';
             item.classList.add('animate-up');
         });
         
         // Update Info
         const total = filteredItems.length;
+        searchEmpty.hidden = allItems.length === 0 || total !== 0;
+        pagination.hidden = total === 0;
         document.getElementById('startRange').textContent = total === 0 ? 0 : start + 1;
         document.getElementById('endRange').textContent = Math.min(end, total);
         document.getElementById('totalEntries').textContent = total;
@@ -179,13 +199,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     window.filterReviews = function() {
-        const query = searchInput.value.toLowerCase();
-        filteredItems = allItems.filter(item => {
-            const name = item.querySelector('.reviewer-name').textContent.toLowerCase();
-            const text = item.querySelector('.review-comment-text-sm').textContent.toLowerCase();
-            return name.includes(query) || text.includes(query);
-        });
-        
+        filteredItems = allItems.filter(item => item.textContent.toLowerCase().includes(searchQuery));
+
         currentPage = 1;
         updateDisplay();
     };
@@ -202,10 +217,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Listen to global header search
     window.addEventListener('globalSearch', function(e) {
-        if (searchInput) {
-            searchInput.value = e.detail.value;
-            window.filterReviews();
-        }
+        searchQuery = (e.detail && typeof e.detail.value === 'string' ? e.detail.value : '').trim().toLowerCase();
+        window.filterReviews();
     });
 });
 </script>

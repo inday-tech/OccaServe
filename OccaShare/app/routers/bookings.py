@@ -3798,6 +3798,13 @@ async def submit_review(
     if booking.review:
         return RedirectResponse(url="/customer/dashboard?error_msg=You+have+already+reviewed+this+booking.", status_code=303)
 
+    if rating < 1 or rating > 5:
+        return RedirectResponse(url="/customer/dashboard?error_msg=Please+select+a+rating+from+1+to+5.", status_code=303)
+
+    comment = comment.strip()
+    if not comment or len(comment) > 500:
+        return RedirectResponse(url="/customer/dashboard?error_msg=Review+must+be+between+1+and+500+characters.", status_code=303)
+
     new_review = models.Review(
         booking_id=booking_id,
         user_id=user.id,
