@@ -49,6 +49,21 @@ def _package_status_value(package: models.CateringPackage) -> str:
         return status_value
     return "active" if package.is_active else "inactive"
 
+
+def _normalize_package_status(value: Optional[str]) -> str:
+    status_value = (value or "").strip().casefold()
+    status_value = {
+        "published": "active",
+        "available": "active",
+        "hidden": "inactive",
+        "unavailable": "inactive",
+    }.get(status_value, status_value)
+    if not status_value:
+        return "active"
+    if status_value not in {"active", "seasonal", "inactive", "draft"}:
+        raise ValueError("Choose a valid package status.")
+    return status_value
+
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
 
@@ -7288,7 +7303,10 @@ async def add_package(
     user: models.User = Depends(caterer_only)
 ):
     errors = []
-    status = (status or "").strip().lower()
+    try:
+        status = _normalize_package_status(status)
+    except ValueError as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=400)
     name = name.strip()
     profile = user.caterer_profile
     global_min_pax = max(1, profile.min_pax or 1)
@@ -7362,14 +7380,6 @@ async def add_package(
     if existing_pkg:
         errors.append(f"A package named '{name}' already exists in your library.")
         
-    if errors:
-        error_msg = " | ".join(errors)
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
-        return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
-
-    if status not in {"active", "seasonal", "inactive", "draft"}:
-        errors.append("Choose a valid package status.")
     if errors:
         error_msg = " | ".join(errors)
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -8506,7 +8516,10 @@ async def update_package(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
-    status = (status or "").strip().lower()
+    try:
+        status = _normalize_package_status(status)
+    except ValueError as exc:
+        return JSONResponse({"status": "error", "message": str(exc)}, status_code=400)
     package = db.query(models.CateringPackage).filter(
         models.CateringPackage.id == package_id,
         models.CateringPackage.caterer_id == user.caterer_profile.id
@@ -8588,14 +8601,6 @@ async def update_package(
     if existing_pkg:
         errors.append(f"Another package named '{name}' already exists in your library.")
         
-    if errors:
-        error_msg = " | ".join(errors)
-        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-            return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
-        return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
-
-    if status not in {"active", "seasonal", "inactive", "draft"}:
-        errors.append("Choose a valid package status.")
     if errors:
         error_msg = " | ".join(errors)
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":

@@ -722,40 +722,6 @@
                     </label>
                 </section>
 
-                <div class="form-row-pro" id="quickAddOptionUnitWrapper" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
-                    <div class="form-group-pro">
-                        <label id="quickAddOptionUnitLabel" for="quickAddOptionUnit">Pricing unit</label>
-                        <select name="unit_type" id="quickAddOptionUnit" class="control-pro" onchange="window.toggleQuickAddStaffingFields(this.value)"></select>
-                    </div>
-                    <div class="form-group-pro" id="quickAddOptionQuantityWrapper">
-                        <label id="quickAddOptionQuantityLabel" for="quickAddOptionQuantity">Available quantity</label>
-                        <input type="number" min="1" max="999999" name="available_qty" id="quickAddOptionQuantity" class="control-pro" value="1" />
-                    </div>
-                </div>
-
-                <div class="form-group-pro" id="quickAddOptionDurationWrapper" style="display: none; margin-bottom: 1rem;">
-                    <label for="quickAddOptionDuration">Minimum duration (hours)</label>
-                    <input type="number" min="1" max="24" name="minimum_hours" id="quickAddOptionDuration" class="control-pro" value="1" />
-                </div>
-                <div class="form-row-pro" id="quickAddOptionStaffingWrapper" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
-                    <div class="form-group-pro">
-                        <label for="quickAddOptionStaffRatio">Staff per guests</label>
-                        <input type="number" min="1" max="999999" id="quickAddOptionStaffRatio" class="control-pro" value="25" />
-                    </div>
-                    <div class="form-group-pro">
-                        <label for="quickAddOptionMinStaff">Minimum staff</label>
-                        <input type="number" min="1" max="999999" id="quickAddOptionMinStaff" class="control-pro" value="1" />
-                    </div>
-                </div>
-
-                <div class="form-group-pro" id="quickAddOptionAvailabilityWrapper" style="display: none; margin-bottom: 1rem;">
-                    <label for="quickAddOptionStatus">Availability</label>
-                    <select name="status" id="quickAddOptionStatus" class="control-pro">
-                        <option value="available" selected>Available</option>
-                        <option value="unavailable">Unavailable</option>
-                    </select>
-                </div>
-
                 <div class="form-row-pro" id="quickAddOptionPriceRow" style="display: none; grid-template-columns: 1fr; gap: 10px; margin-bottom: 1rem;">
                     <div class="form-group-pro" id="quickAddOptionPriceWrapper">
                         <label id="quickAddOptionPriceLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">

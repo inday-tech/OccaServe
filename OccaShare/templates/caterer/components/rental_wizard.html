@@ -41,17 +41,7 @@
                         <input type="text" name="name" class="control-pro" placeholder="e.g. Round Table, Monoblock Chairs, Tent" required>
                     </div>
 
-                    <div class="form-row-pro" style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 1rem;">
-                        <div class="form-group-pro">
-                            <label>Pricing Unit *</label>
-                            <select name="unit_type" class="control-pro" required>
-                                <option value="Per Piece">Per Piece</option>
-                                <option value="Per Set">Per Set</option>
-                                <option value="Per Day">Per Day</option>
-                                <option value="Per Event">Per Event</option>
-                            </select>
-                        </div>
-                    </div>
+                    <input type="hidden" name="unit_type" value="Per Set">
 
                     <div class="form-group-pro" style="margin-bottom: 1rem;">
                         <label>Description <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span></label>

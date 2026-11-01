@@ -173,35 +173,14 @@
                             placeholder="e.g. Plastic Chair, Tent, Waiter" required minlength="2" maxlength="100">
                         <div class="invalid-feedback"></div>
                     </div>
-                    <div class="form-group-pro" id="modalUnitGroup">
-                        <label>Unit *</label>
-                        <select name="unit_type" id="modalPricingUnit" class="control-pro" required>
-                            <!-- Populated dynamically via JS -->
-                        </select>
-                    </div>
+                    <input type="hidden" name="unit_type" id="modalPricingUnit" value="Per Set">
                 </div>
 
-                <div class="form-row-pro">
-                    <div class="form-group-pro" id="qtyGroup">
-                        <label id="qtyLabel">Available Quantity *</label>
-                        <input type="number" name="available_qty" id="availableQtyInput" class="control-pro"
-                            placeholder="e.g. 100" min="1" required>
-                    </div>
-                    <div class="form-group-pro">
-                        <label>Status *</label>
-                        <select name="status" id="modalStatus" class="control-pro" required>
-                            <!-- Populated dynamically via JS -->
-                        </select>
-                    </div>
-                </div>
+                <input type="hidden" name="available_qty" id="availableQtyInput" value="1">
+                <input type="hidden" name="status" id="modalStatus" value="available">
 
+                <input type="hidden" name="base_duration_hours" id="baseDurationInput" value="3">
                 <div class="form-row-pro" id="serviceDurationGroup" style="display: none;">
-                    <div class="form-group-pro">
-                        <label>Service Duration (Hours) * <i class="fas fa-info-circle text-muted"
-                                title="Standard duration provided for the service"></i></label>
-                        <input type="number" name="base_duration_hours" id="baseDurationInput" class="control-pro"
-                            placeholder="e.g. 3" min="1" max="24" value="3">
-                    </div>
                     <div class="form-group-pro service-capacity-group" style="display: none;">
                         <label>Buffer/Travel Time (Hours) <i class="fas fa-info-circle text-muted"
                                 title="Extra time blocked before and after the event for travel/setup."></i></label>
@@ -403,8 +382,6 @@
     const photoDropzone = document.getElementById('photoDropzone');
     const typeSelect = document.getElementById('modalType');
     const unitSelect = document.getElementById('modalPricingUnit');
-    const equipmentUnits = ['Per Piece', 'Per Set', 'Per Bundle', 'Per Day', 'Per Event'];
-    const serviceUnits = ['Per Staff', 'Per Hour', 'Per Event', 'Per Package', 'Per Session'];
     const maxServicePrice = 99999999.99;
 
     window.validateServicePriceField = function () {
@@ -437,38 +414,20 @@
 
     function handleTypeChange() {
         const type = typeSelect.value;
-        const units = type === 'Equipment' ? equipmentUnits : serviceUnits;
-
-        unitSelect.innerHTML = '';
-        units.forEach(u => { const o = document.createElement('option'); o.value = u; o.innerText = u; unitSelect.appendChild(o); });
-
-        const qtyLabel = document.getElementById('qtyLabel');
         const qtyInput = document.getElementById('availableQtyInput');
-        const qtyGroup = document.getElementById('qtyGroup');
-        const unitGroup = document.getElementById('modalUnitGroup');
-        const qtyRow = qtyGroup?.parentElement;
-        const priceLabel = document.getElementById('priceLabel');
         const priceGroup = document.getElementById('serviceSellingPriceGroup');
         const statusSelect = document.getElementById('modalStatus');
         const durationGroup = document.getElementById('serviceDurationGroup');
-
-        statusSelect.innerHTML = '';
         const isService = type.startsWith('Service');
         const isStaff = type === 'Service_Staff';
-        const nameRow = unitGroup?.parentElement;
-        if (unitGroup) unitGroup.style.display = isService ? 'none' : '';
-        if (nameRow) nameRow.style.gridTemplateColumns = isService ? '1fr' : '1fr 1fr';
-        if (qtyRow) qtyRow.style.gridTemplateColumns = isService ? '1fr 1fr' : '1fr';
-        unitSelect.required = !isService;
-        if (isService) {
-            unitSelect.value = 'Per Event';
-        }
+        unitSelect.value = isService ? 'Per Event' : 'Per Set';
+        qtyInput.value = '1';
+        statusSelect.value = 'available';
+        document.getElementById('baseDurationInput').value = '3';
 
-        // Toggle Capacity Specific Groups
         document.querySelectorAll('.staff-capacity-group').forEach(el => el.style.display = isStaff ? 'flex' : 'none');
         document.querySelectorAll('.service-capacity-group').forEach(el => el.style.display = isService ? 'block' : 'none');
 
-        // Staff-based specifics
         if (isStaff) {
             document.getElementById('staffRatioInput').required = true;
             document.getElementById('minStaffInput').required = true;
@@ -478,20 +437,10 @@
         }
 
         if (isService) {
-            qtyLabel.innerText = isStaff ? 'Maximum Personnel Pool' : 'Available Units / Teams';
-            priceLabel.innerText = 'Service Fee (₱) (Optional)';
-            qtyInput.required = false;
-            qtyGroup.style.display = '';
-            statusSelect.innerHTML = '<option value="available">Available</option><option value="unavailable">Fully Booked</option><option value="maintenance">Temporarily Unavailable</option>';
             if (durationGroup) durationGroup.style.display = 'flex';
             if (priceGroup) priceGroup.style.display = '';
         } else {
-            qtyLabel.innerText = 'Available Quantity';
-            priceLabel.innerText = '';
-            qtyInput.required = false;
-            qtyGroup.style.display = 'none';
             if (priceGroup) priceGroup.style.display = 'none';
-            statusSelect.innerHTML = '<option value="available">Available</option><option value="unavailable">Unavailable</option><option value="maintenance">Under Maintenance</option>';
             if (durationGroup) durationGroup.style.display = 'none';
         }
         document.getElementById('servicePriceInput').required = false;
@@ -616,10 +565,7 @@
             if (nameInput) nameInput.value = item.name;
             form.description.value = item.description || '';
             form.price.value = item.type.startsWith('Service') && Number(item.price) <= 0 ? '' : (item.price || '');
-            if (!Array.from(unitSelect.options).map(o => o.value).includes(item.pricing_unit)) {
-                const opt = document.createElement('option'); opt.value = item.pricing_unit; opt.innerText = item.pricing_unit; unitSelect.appendChild(opt);
-            }
-            form.unit_type.value = item.pricing_unit || '';
+            form.unit_type.value = item.pricing_unit || (item.type.startsWith('Service') ? 'Per Event' : 'Per Set');
             form.available_qty.value = item.available_qty || 1;
             form.status.value = item.status || 'available';
             if (form.visibility) form.visibility.value = item.is_hidden === 'true' ? 'hidden' : 'public';
@@ -809,9 +755,11 @@
         data.delete('custom_category');
         if (type.startsWith('Service')) {
             data.delete('unit_type');
-            if (!data.get('available_qty')) data.delete('available_qty');
-        } else {
+        }
+        if (updateType || !type.startsWith('Service')) {
             data.delete('available_qty');
+        }
+        if (!type.startsWith('Service')) {
             data.delete('price');
         }
         data.set('cost_price', 0);

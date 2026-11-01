@@ -290,7 +290,7 @@ window.openAddPackageModal = async function () {
 
     const globalMinPax = Math.max(1, Number(window.CATERER_MIN_PAX) || 20);
     const startingPrice = Math.max(0, Number(window.CATERER_STARTING_PRICE) || 0);
-    const serviceDuration = Math.min(24, Math.max(1, Number(window.CATERER_SERVICE_DURATION) || 4));
+    const serviceDuration = Math.min(23, Math.max(1, Number(window.CATERER_SERVICE_DURATION) || 4));
     if (form.min_guests) {
         form.min_guests.value = String(globalMinPax);
         form.min_guests.min = String(globalMinPax);
@@ -421,7 +421,10 @@ window.editPackage = async function (pkgId) {
             form.base_pax.value = pkg.base_pax || globalMinPax;
             form.base_pax.min = String(globalMinPax);
         }
-        if (form.service_duration) form.service_duration.value = pkg.service_duration || window.CATERER_SERVICE_DURATION || 4;
+        if (form.service_duration) {
+            const duration = Number(pkg.service_duration || window.CATERER_SERVICE_DURATION || 4);
+            form.service_duration.value = String(Math.min(23, Math.max(1, duration)));
+        }
         if (form.additional_guest_price) {
             const rateFloor = Math.max(0, Number(window.CATERER_STARTING_PRICE) || 0);
             const savedExtraRate = Number(pkg.additional_guest_price ?? window.CATERER_DEFAULT_EXCESS_GUEST_PRICE) || 0;
@@ -1030,7 +1033,7 @@ function validateTab(tabName) {
         const globalMinPax = Math.max(1, Number(window.CATERER_MIN_PAX) || 20);
         const durationInput = form.elements.namedItem('service_duration');
         const duration = Number(durationInput?.value);
-        if (!Number.isInteger(duration) || duration < 1 || duration > 24) addError(durationInput, 'Enter a service duration from 1 to 24 hours.');
+        if (!Number.isInteger(duration) || duration < 1 || duration > 23) addError(durationInput, 'Enter a service duration from 1 to 23 hours.');
         if (mode === 'per_pax' || mode === 'customizable') {
             const minG = parseInt(form.min_guests.value);
             if (isNaN(minG) || minG < globalMinPax) addError(form.min_guests, `Minimum guests must be at least ${globalMinPax}.`);
@@ -4111,7 +4114,6 @@ window.setQuickAddOptionType = function (type) {
     const hiddenType = document.getElementById('quickAddOptionType');
     const typeWrapper = document.getElementById('quickAddOptionTypeWrapper');
     const nameWrapper = document.getElementById('quickAddOptionNameWrapper');
-    const unitWrapper = document.getElementById('quickAddOptionUnitWrapper');
     const descriptionWrapper = document.getElementById('quickAddOptionDescriptionWrapper');
     const photoWrapper = document.getElementById('quickAddOptionPhotoWrapper');
     const priceRow = document.getElementById('quickAddOptionPriceRow');
@@ -4121,8 +4123,6 @@ window.setQuickAddOptionType = function (type) {
     const priceError = document.getElementById('quickAddOptionPriceError');
     const nameLabel = document.getElementById('quickAddOptionNameLabel');
     const nameInput = document.getElementById('quickAddOptionName');
-    const unitLabel = document.getElementById('quickAddOptionUnitLabel');
-    const unitSelect = document.getElementById('quickAddOptionUnit');
     const categoryInput = document.getElementById('quickAddOptionCategory');
     const categoryWrapper = document.getElementById('quickAddOptionCategoryWrapper');
     const catalogCategoryWrapper = document.getElementById('quickAddOptionCatalogCategoryWrapper');
@@ -4133,17 +4133,9 @@ window.setQuickAddOptionType = function (type) {
     const upgradeFeeWrapper = document.getElementById('quickAddOptionUpgradeFeeWrapper');
     const upgradeFeeInput = document.getElementById('quickAddOptionUpgradeFee');
     const extraDishWrapper = document.getElementById('quickAddOptionExtraDishWrapper');
-    const availabilityWrapper = document.getElementById('quickAddOptionAvailabilityWrapper');
-    const durationWrapper = document.getElementById('quickAddOptionDurationWrapper');
-    const staffingWrapper = document.getElementById('quickAddOptionStaffingWrapper');
-    const quantityWrapper = document.getElementById('quickAddOptionQuantityWrapper');
     const extraDishInput = document.getElementById('quickAddOptionExtraDishPrice');
-    const durationInput = document.getElementById('quickAddOptionDuration');
-    const quantityLabel = document.getElementById('quickAddOptionQuantityLabel');
     const customCategoryWrapper = document.getElementById('quickAddOptionCustomCategoryWrapper');
     const customCategoryInput = document.getElementById('quickAddOptionCustomCategory');
-    const equipmentFlow = type === 'equipment';
-
     if (categoryInput?.tagName === 'INPUT' && categorySuggestions && !categoryInput.dataset.suggestionsBound) {
         categoryInput.addEventListener('input', window.renderQuickAddOptionCategorySuggestions);
         categoryInput.addEventListener('focus', window.renderQuickAddOptionCategorySuggestions);
@@ -4168,7 +4160,6 @@ window.setQuickAddOptionType = function (type) {
     if (typeWrapper) typeWrapper.style.display = 'block';
     if (footer) footer.style.setProperty('display', hasType ? 'flex' : 'none', 'important');
     if (nameWrapper) nameWrapper.style.display = hasType ? 'block' : 'none';
-    if (unitWrapper) unitWrapper.style.display = hasType ? 'grid' : 'none';
     if (priceWrapper) priceWrapper.style.display = type === 'service' || type === 'equipment' ? 'block' : 'none';
     if (descriptionWrapper) descriptionWrapper.style.display = hasType ? 'block' : 'none';
     if (photoWrapper) photoWrapper.style.display = hasType ? 'block' : 'none';
@@ -4181,15 +4172,10 @@ window.setQuickAddOptionType = function (type) {
     if (catalogCategoryLabel) catalogCategoryLabel.textContent = type === 'service' ? 'Service category' : 'Equipment category';
     if (upgradeFeeWrapper) upgradeFeeWrapper.style.display = type === 'menu' ? 'block' : 'none';
     if (extraDishWrapper) extraDishWrapper.style.display = type === 'menu' ? 'block' : 'none';
-    if (availabilityWrapper) availabilityWrapper.style.display = hasType ? 'block' : 'none';
-    if (quantityWrapper) quantityWrapper.style.display = type === 'menu' ? 'none' : 'block';
-    if (durationWrapper) durationWrapper.style.display = type === 'service' ? 'block' : 'none';
-    if (staffingWrapper) staffingWrapper.style.display = 'none';
     if (upgradeFeeInput && type !== 'menu') upgradeFeeInput.value = '';
     if (customCategoryWrapper) customCategoryWrapper.style.display = 'none';
     if (customCategoryInput) { customCategoryInput.required = false; customCategoryInput.value = ''; }
     if (nameInput) nameInput.required = hasType;
-    if (unitSelect) unitSelect.required = false;
     if (categoryInput) categoryInput.required = type === 'menu';
     if (categoryInput) categoryInput.setCustomValidity('');
     const upgradeFeeError = document.getElementById('quickAddOptionUpgradeFeeError');
@@ -4221,17 +4207,6 @@ window.setQuickAddOptionType = function (type) {
     if (type === 'menu') {
         if (nameLabel) nameLabel.innerHTML = 'Dish / Menu Item Name <span style="color: #ef4444;">*</span>';
         if (nameInput) nameInput.placeholder = 'e.g. Sweet & Sour Pork, Roast Beef, Lechon Belly';
-        if (unitLabel) unitLabel.innerHTML = 'Serving Unit <span style="color: #ef4444;">*</span>';
-        if (unitSelect) {
-            unitSelect.innerHTML = `
-                <option value="per_pax">Per Pax / Guest</option>
-                <option value="per_tray">Per Tray</option>
-                <option value="per_platter">Per Platter</option>
-                <option value="per_order">Per Order</option>
-            `;
-            unitSelect.value = 'per_pax';
-        }
-        if (unitLabel) unitLabel.textContent = 'Serving / pricing unit';
         if (priceLabel) priceLabel.innerHTML = 'Customer-facing catalog price (₱) <small>(Optional)</small>';
         if (categoryInput) categoryInput.value = '';
         if (categorySuggestions) {
@@ -4248,17 +4223,6 @@ window.setQuickAddOptionType = function (type) {
     } else if (type === 'service') {
         if (nameLabel) nameLabel.innerHTML = 'Service Name <span style="color: #ef4444;">*</span>';
         if (nameInput) nameInput.placeholder = 'e.g. Trained Waitstaff, Event Setup & Cleanup, Bartender';
-        if (unitSelect) {
-            unitSelect.innerHTML = `
-                <option value="per_event">Per Event (Flat Rate)</option>
-                <option value="per_pax">Per Person</option>
-                <option value="per_hour">Per Hour</option>
-                <option value="per_staff">Per Staff Member</option>
-            `;
-            unitSelect.value = 'per_event';
-        }
-        if (unitLabel) unitLabel.textContent = 'Pricing unit';
-        if (quantityLabel) quantityLabel.textContent = 'Maximum available units / staff';
         if (priceLabel) priceLabel.innerHTML = 'Default customer-facing price (₱) <small>(Optional · unpriced selections require review)</small>';
         if (categoryInput) categoryInput.value = 'Service';
         if (priceLabel) priceLabel.innerHTML = 'Service Fee (₱) <span style="font-weight: 400; color: #94a3b8; text-transform: none;">(Optional)</span>';
@@ -4266,25 +4230,10 @@ window.setQuickAddOptionType = function (type) {
             priceInput.value = '';
             priceInput.placeholder = '0.00';
         }
-        if (durationInput) durationInput.value = '1';
         if (description) description.placeholder = 'Details, inclusions, specifications or notes...';
     } else {
         if (nameLabel) nameLabel.innerHTML = 'Equipment / Item Name <span style="color: #ef4444;">*</span>';
         if (nameInput) nameInput.placeholder = 'e.g. Tiffany Chairs, Round Banquet Table, Chafing Dish';
-        if (unitLabel) unitLabel.innerText = 'Unit / Pricing';
-        if (unitSelect) {
-            unitSelect.innerHTML = `
-                <option value="piece">Per Piece</option>
-                <option value="set">Per Set</option>
-                <option value="pair">Per Pair</option>
-                <option value="lot">Per Lot / Package</option>
-                <option value="per_day">Per Day</option>
-                <option value="per_event">Per Event</option>
-            `;
-            unitSelect.value = 'piece';
-        }
-        if (unitLabel) unitLabel.textContent = 'Rental pricing unit';
-        if (quantityLabel) quantityLabel.textContent = 'Available quantity';
         if (priceLabel) priceLabel.innerHTML = 'Default rental price (₱) <small>(Optional · unpriced selections require review)</small>';
         if (categoryInput) categoryInput.value = 'Equipment';
         if (priceInput) priceInput.value = '';
@@ -4296,11 +4245,6 @@ window.setQuickAddOptionType = function (type) {
     const itemLabel = type === 'menu' ? 'menu item' : type;
     if (title) title.textContent = `Create ${itemLabel}`;
     if (subtitle) subtitle.textContent = `Save this ${itemLabel} to your catalog to reuse in future packages${window._pkgInclusionReturnState?.direct ? ' and add it to this package' : ''}.`;
-};
-
-window.toggleQuickAddStaffingFields = function (unit) {
-    const wrapper = document.getElementById('quickAddOptionStaffingWrapper');
-    if (wrapper) wrapper.style.display = unit === 'per_staff' ? 'grid' : 'none';
 };
 
 window.toggleQuickAddCustomCategory = function (category) {
@@ -4420,7 +4364,8 @@ window.submitQuickAddOption = async function (e) {
     const categoryInput = document.getElementById('quickAddOptionCategory');
     const category = (type === 'menu' ? categoryInput?.value : document.getElementById('quickAddOptionCatalogCategory')?.value)?.trim() || '';
     const customCategory = (document.getElementById('quickAddOptionCustomCategory')?.value || '').trim();
-    const unit = document.getElementById('quickAddOptionUnit')?.value || '';
+    const unitByType = { menu: 'per_pax', service: 'per_event', equipment: 'piece' };
+    const unit = unitByType[type] || '';
     const priceInput = document.getElementById('quickAddOptionPrice');
     const priceText = (priceInput?.value || '').trim();
     const price = type === 'menu' ? 0 : (Number(priceText.replace(/,/g, '')) || 0);
@@ -4471,16 +4416,6 @@ window.submitQuickAddOption = async function (e) {
         window.showToast?.('Check the entered prices and costs. Use up to 2 decimal places.', 'error');
         return;
     }
-    const quantityInput = document.getElementById('quickAddOptionQuantity');
-    if ((type === 'service' || type === 'equipment') &&
-        (!Number.isInteger(Number(quantityInput?.value)) || Number(quantityInput.value) < 1)) {
-        quantityInput?.setCustomValidity('Enter an available quantity of at least 1.');
-        quantityInput?.reportValidity();
-        quantityInput?.focus();
-        return;
-    }
-    quantityInput?.setCustomValidity('');
-
     const btn = document.getElementById('btnQuickOptionSubmit');
     if (btn) {
         btn.disabled = true;
@@ -4504,15 +4439,9 @@ window.submitQuickAddOption = async function (e) {
         }
         if (type === 'service' || type === 'equipment') formData.append('price', priceText ? Number(priceText.replace(/,/g, '')) : 0);
         formData.append('unit_type', unit);
-        if (type === 'service' || type === 'equipment') {
-            formData.append('available_qty', quantityInput?.value || '1');
-        }
-        if (type === 'service') formData.append('minimum_hours', document.getElementById('quickAddOptionDuration')?.value || '1');
-        if (type === 'service' && unit === 'per_staff') {
-            formData.append('staff_to_pax_ratio', document.getElementById('quickAddOptionStaffRatio')?.value || '0');
-            formData.append('min_staff_required', document.getElementById('quickAddOptionMinStaff')?.value || '1');
-        }
-        formData.append('status', document.getElementById('quickAddOptionStatus')?.value || 'available');
+        if (type === 'service' || type === 'equipment') formData.append('available_qty', '1');
+        if (type === 'service') formData.append('minimum_hours', '1');
+        formData.append('status', 'available');
         formData.append('description', desc);
         const fileInput = document.getElementById('quickAddOptionImage');
         if (fileInput && fileInput.files && fileInput.files[0]) {
