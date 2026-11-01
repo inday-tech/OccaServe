@@ -30,6 +30,7 @@
     <div class="packages-grid-pro animate-up delay-1">
         {% for package in packages %}
         <div class="package-card-pro" id="package-{{ package.id }}">
+            {% set pkg_status = package_statuses.get(package.id, 'inactive') %}
             <div class="package-media-pro"
                 style="position: relative; overflow: hidden; height: 200px; background: #f8fafc;">
                 {% set pkg_mode = (package.pricing_mode or 'fixed')|lower %}
@@ -76,10 +77,11 @@
                     <div class="pkg-status-indicator"
                         style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                         <div
-                            style="width: 8px; height: 8px; border-radius: 50%; background: {{ 'var(--accent-color)' if package.is_active else '#94a3b8' }};">
+                            style="width: 8px; height: 8px; border-radius: 50%; background: {{ 'var(--accent-color)' if pkg_status == 'active' else '#f59e0b' if pkg_status == 'seasonal' else '#94a3b8' }};">
                         </div>
-                        <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">{{
-                            'Active' if package.is_active else 'Hidden' }}</span>
+                        <span style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase;">
+                            {{ {'active': 'Published', 'seasonal': 'Seasonal', 'inactive': 'Hidden', 'draft': 'Draft', 'archived': 'Archived'}[pkg_status] }}
+                        </span>
                     </div>
                 </div>
                 <div class="package-stats-pro" style="display: flex; margin-bottom: 1rem;">

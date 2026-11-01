@@ -40,6 +40,14 @@ UPLOAD_DIR = "app/static/uploads/caterer"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 MAX_SERVICE_FEE = Decimal("99999999.99")
 MAX_DELIVERY_FEE = Decimal("999999.99")
+PACKAGE_STATUSES = {"active", "seasonal", "inactive", "draft", "archived"}
+
+
+def _package_status_value(package: models.CateringPackage) -> str:
+    status_value = (package.status or "").strip().lower()
+    if status_value in {"seasonal", "draft", "archived"}:
+        return status_value
+    return "active" if package.is_active else "inactive"
 
 # Standard dependency for caterer access
 caterer_only = auth.RoleChecker(["caterer"])
@@ -2532,9 +2540,6 @@ async def caterer_dashboard(
         "request": request,
         "user": user,
         "profile": profile,
-        "today_date": today_date,
-        "birth_date_min": years_ago(60),
-        "birth_date_max": years_ago(18),
         **stats,
         "accurate_active_bookings": accurate_active_bookings,
         "accurate_completed_events": accurate_completed_events,
@@ -6385,6 +6390,7 @@ async def manage_services(
 ):
     profile = user.caterer_profile
     active_packages = [p for p in profile.packages if p.status != 'archived']
+    package_statuses = {package.id: _package_status_value(package) for package in active_packages}
     equipment_items = [e for e in profile.equipment_items if not e.is_archived]
     service_items = [s for s in profile.service_items if not s.is_archived]
     
@@ -6462,6 +6468,7 @@ async def manage_services(
         "user": user,
         "items": items,
         "packages": active_packages,
+        "package_statuses": package_statuses,
         "caterer_min_pax": profile.min_pax or 1,
         "caterer_starting_price": profile.starting_price or 0,
         "caterer_default_excess_guest_price": profile.starting_price or 0,
@@ -7281,6 +7288,7 @@ async def add_package(
     user: models.User = Depends(caterer_only)
 ):
     errors = []
+    status = (status or "").strip().lower()
     name = name.strip()
     profile = user.caterer_profile
     global_min_pax = max(1, profile.min_pax or 1)
@@ -7354,6 +7362,14 @@ async def add_package(
     if existing_pkg:
         errors.append(f"A package named '{name}' already exists in your library.")
         
+    if errors:
+        error_msg = " | ".join(errors)
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
+        return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
+
+    if status not in {"active", "seasonal", "inactive", "draft"}:
+        errors.append("Choose a valid package status.")
     if errors:
         error_msg = " | ".join(errors)
         if request.headers.get("X-Requested-With") == "XMLHttpRequest":
@@ -7454,9 +7470,10 @@ async def toggle_package_status(
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
     
-    package.is_active = not package.is_active
+    package.is_active = _package_status_value(package) != "active"
+    package.status = "active" if package.is_active else "inactive"
     db.commit()
-    return {"status": "success", "is_active": package.is_active}
+    return {"status": "success", "is_active": package.is_active, "package_status": package.status}
 
 @router.post("/menu/add")
 async def add_menu_item(
@@ -8428,7 +8445,8 @@ async def get_package_details_api(
         "service_duration": package.service_duration,
         "image_url": package.image_url,
         "inclusions": inclusions_list,
-        "is_active": package.is_active,
+        "status": _package_status_value(package),
+        "is_active": _package_status_value(package) == "active",
         "pricing_mode": package.pricing_mode,
         "base_pax": package.base_pax,
         "labor_cost": package.labor_cost,
@@ -8488,6 +8506,7 @@ async def update_package(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    status = (status or "").strip().lower()
     package = db.query(models.CateringPackage).filter(
         models.CateringPackage.id == package_id,
         models.CateringPackage.caterer_id == user.caterer_profile.id
@@ -8575,6 +8594,14 @@ async def update_package(
             return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
         return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
 
+    if status not in {"active", "seasonal", "inactive", "draft"}:
+        errors.append("Choose a valid package status.")
+    if errors:
+        error_msg = " | ".join(errors)
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JSONResponse({"status": "error", "message": error_msg}, status_code=400)
+        return RedirectResponse(url=f"/caterer/services?tab=packages&error_msg={error_msg}", status_code=303)
+
     package_selection_rules = _validated_selection_rules(
         db, profile.id, selection_rules, pricing_mode
     )
@@ -8606,6 +8633,8 @@ async def update_package(
     package.reservation_fee_value = reservation_fee_value
     package.booking_lead_time = booking_lead_time
     package.selection_rules = package_selection_rules
+    package.status = status
+    package.is_active = status == "active"
     
     # Process inclusions: prefer inclusions_json (structured format) over legacy form list
     package.inclusions = _parse_inclusions(inclusions_json, inclusions)
@@ -8674,12 +8703,14 @@ async def toggle_package_status(
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
     
-    package.is_active = not package.is_active
+    package.is_active = _package_status_value(package) != "active"
+    package.status = "active" if package.is_active else "inactive"
     db.commit()
     
     return JSONResponse({
         "status": "success", 
         "is_active": package.is_active,
+        "package_status": package.status,
         "message": f"Package '{package.name}' is now {'active' if package.is_active else 'hidden'}."
     })
 
