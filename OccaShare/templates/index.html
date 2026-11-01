@@ -291,6 +291,20 @@
         gap: 1rem;
     }
 
+    .testimonial-author-details { min-width:0; }
+    .testimonial-reviewer-role {
+        display:inline-flex;
+        align-items:center;
+        margin-top:.3rem;
+        padding:.18rem .55rem;
+        border-radius:999px;
+        background:#fff7ed;
+        color:#c2410c;
+        font-size:.7rem;
+        font-weight:700;
+        line-height:1.3;
+    }
+
     .testimonial-avatar {
         width: 50px;
         height: 50px;
@@ -885,8 +899,8 @@
         style="background-color: var(--lp-bg-light); padding: 6rem 0;">
         <div class="container">
             <div class="section-header" style="text-align: center; margin-bottom: 3rem;">
-                <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--lp-secondary);">What Customers Say About OccaServe</h2>
-                <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Feedback from customers about their experience with our platform.</p>
+                <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--lp-secondary);">What Users Say About OccaServe</h2>
+                <p style="color: var(--lp-text-muted); font-size: 1.1rem;">Feedback from customers and caterers about their experience with our platform.</p>
             </div>
 
             <div class="testimonial-viewport">
@@ -907,10 +921,14 @@
                             {% set reviewer_name = (((reviewer.first_name or '') ~ ' ' ~ ((reviewer.middle_name ~ ' ') if reviewer.middle_name else '') ~ (reviewer.last_name or ''))|trim or 'OccaServe Customer') if reviewer else 'OccaServe Customer' %}
                             <img src="https://ui-avatars.com/api/?name={{ reviewer_name|urlencode }}&background=f97316&color=fff"
                                 class="testimonial-avatar" alt="{{ reviewer_name }}">
-                            <div>
+                                <div class="testimonial-author-details">
                                 <span style="display: block; font-weight: 700; color: var(--lp-secondary);">{{ reviewer_name }}</span>
-                                <span style="font-size: 0.85rem; color: var(--lp-text-muted);">OccaServe Platform Review</span>
-                            </div>
+                                    {% set reviewer_role = (review.role or (reviewer.role if reviewer else '') or '')|lower %}
+                                    <span class="testimonial-reviewer-role">
+                                        {% if reviewer_role == 'caterer' %}Caterer{% elif reviewer_role == 'customer' %}Customer{% else %}OccaServe user{% endif %}
+                                    </span>
+                                    <span style="font-size: 0.85rem; color: var(--lp-text-muted);">OccaServe Platform Review</span>
+                                </div>
                         </div>
                     </div>
                     {% endfor %}

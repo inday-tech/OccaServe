@@ -1259,7 +1259,7 @@ async def customer_marketplace(
     # Search filter (deep unified search across all fields)
     if q:
         search_filter = f"%{q}%"
-        from sqlalchemy import or_, distinct
+        from sqlalchemy import distinct
 
         # Subquery: caterer IDs matching via menu item names
         menu_match_sq = db.query(

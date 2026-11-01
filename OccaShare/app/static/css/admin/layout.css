@@ -1158,3 +1158,23 @@ html, body {
 .hdr-profile-links li a i { font-size: 0.95rem; width: 18px; text-align: center; }
 .hdr-profile-links li a.link-danger { color: #ef4444; }
 .hdr-profile-links li a.link-danger:hover { background: rgba(239,68,68,0.06); color: #ef4444; }
+
+/* Keep page titles clear without competing with the page content. */
+.admin-page-content .dashboard-header-clean h1,
+.admin-page-content .page-header-clean h1,
+.admin-page-content .page-header h1,
+.admin-page-content .admin-page-header h1 {
+    font-size: 1.35rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    letter-spacing: -0.02em;
+}
+
+@media (max-width: 768px) {
+    .admin-page-content .dashboard-header-clean h1,
+    .admin-page-content .page-header-clean h1,
+    .admin-page-content .page-header h1,
+    .admin-page-content .admin-page-header h1 {
+        font-size: 1.15rem !important;
+    }
+}

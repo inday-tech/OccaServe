@@ -68,9 +68,11 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
 
     try:
         highlighted_reviews = db.query(models.PlatformFeedback).filter(
-            models.PlatformFeedback.is_archived.is_(False),
-            models.PlatformFeedback.role == 'customer'
-        ).order_by(models.PlatformFeedback.created_at.desc()).limit(15).all()
+            or_(
+                models.PlatformFeedback.is_archived.is_(False),
+                models.PlatformFeedback.is_archived.is_(None),
+            )
+        ).order_by(models.PlatformFeedback.created_at.desc()).all()
     except Exception as e:
         print(f"[HOMEPAGE ERROR] Failed to load reviews: {e}")
         db.rollback()
@@ -91,8 +93,10 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
         ).scalar() or 0
 
         total_hosts = db.query(func.count(models.PlatformFeedback.id)).filter(
-            models.PlatformFeedback.is_archived.is_(False),
-            models.PlatformFeedback.role == 'customer'
+            or_(
+                models.PlatformFeedback.is_archived.is_(False),
+                models.PlatformFeedback.is_archived.is_(None),
+            )
         ).scalar() or 0
     except Exception as e:
         print(f"[STATS ERROR] Failed to load homepage stats: {e}")

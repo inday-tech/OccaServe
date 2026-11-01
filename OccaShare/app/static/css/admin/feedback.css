@@ -1,0 +1,242 @@
+.platform-reviews-header {
+    margin-bottom: 1rem;
+}
+
+.platform-review-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.platform-review-stats .kpi-card-clean {
+    min-height: 112px;
+    padding: 1rem;
+}
+
+.platform-review-stats .kpi-value {
+    margin-top: 0.2rem;
+    font-size: 1.4rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.platform-review-stats .kpi-value small {
+    color: #94a3b8;
+    font-size: 0.75rem;
+}
+
+.review-stat-caption {
+    display: block;
+    margin-top: 0.45rem;
+    color: #64748b;
+    font-size: 0.7rem;
+    line-height: 1.4;
+}
+
+.platform-review-panel {
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.platform-review-table-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.platform-review-table-heading h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.platform-review-table-heading p {
+    margin: 0.25rem 0 0;
+    color: #64748b;
+    font-size: 0.72rem;
+}
+
+.platform-review-table-scroll {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.platform-review-table {
+    width: 100%;
+    min-width: 820px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.platform-review-table th {
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.platform-review-table td {
+    padding: 0.85rem 1rem;
+    border-top: 1px solid #eef2f6;
+    color: #334155;
+    font-size: 0.76rem;
+    vertical-align: middle;
+}
+
+.platform-review-table tbody tr:hover {
+    background: #fcfcfd;
+}
+
+.platform-review-author {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 155px;
+}
+
+.reviewer-avatar {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    place-items: center;
+    border-radius: 50%;
+    background: #fff7ed;
+    color: #ea580c;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.reviewer-details {
+    display: block;
+    min-width: 0;
+}
+
+.reviewer-details strong,
+.reviewer-details small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reviewer-details strong {
+    max-width: 185px;
+    color: #0f172a;
+    font-size: 0.75rem;
+    font-weight: 750;
+}
+
+.reviewer-details small {
+    max-width: 185px;
+    margin-top: 0.15rem;
+    color: #94a3b8;
+    font-size: 0.65rem;
+}
+
+.review-role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.review-role-customer {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.review-role-caterer {
+    background: #f5f3ff;
+    color: #6d28d9;
+}
+
+.review-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #b45309;
+    font-size: 0.75rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.review-rating i {
+    color: #f59e0b;
+    font-size: 0.68rem;
+}
+
+.review-rating small {
+    color: #94a3b8;
+    font-size: 0.62rem;
+    font-weight: 600;
+}
+
+.platform-review-comment {
+    min-width: 220px;
+    max-width: 420px;
+    line-height: 1.5 !important;
+    overflow-wrap: anywhere;
+}
+
+.review-no-comment {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+.platform-review-date {
+    color: #64748b !important;
+    white-space: nowrap;
+}
+
+.platform-reviews-empty {
+    display: grid;
+    min-height: 220px;
+    place-content: center;
+    justify-items: center;
+    gap: 0.45rem;
+    color: #64748b;
+    text-align: center;
+}
+
+.platform-reviews-empty i {
+    margin-bottom: 0.25rem;
+    color: #cbd5e1;
+    font-size: 1.5rem;
+}
+
+.platform-reviews-empty strong {
+    color: #334155;
+    font-size: 0.85rem;
+}
+
+.platform-reviews-empty span {
+    font-size: 0.73rem;
+}
+
+@media (max-width: 720px) {
+    .platform-review-stats {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .platform-review-table-heading {
+        padding: 0.95rem;
+    }
+
+    .platform-review-table th,
+    .platform-review-table td {
+        padding-right: 0.75rem;
+        padding-left: 0.75rem;
+    }
+}

@@ -8,192 +8,287 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
-    /* Dashboard Specific Intelligence Extensions */
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/reports.css') }}?v={{ static_asset_version('css/admin/reports.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-header-clean">
+<div class="dashboard-header-clean reports-header">
     <div class="header-title-area">
-        <h1>Analytics & Reports</h1>
-        <p>Deep dive into platform performance, user growth, and engagement metrics.</p>
+        <h1>Analytics &amp; Reports</h1>
+        <p>Platform performance, bookings, feedback, and revenue.</p>
+        <span class="report-updated">Live database snapshot · Updated {{ report_date }}</span>
+    </div>
+    <div class="report-export-actions" aria-label="Export report">
+        <a class="report-export-button report-export-csv" href="/admin/reports/export?format=csv">
+            <i class="fas fa-file-csv" aria-hidden="true"></i> CSV
+        </a>
+        <a class="report-export-button report-export-pdf" href="/admin/reports/export?format=pdf">
+            <i class="fas fa-file-pdf" aria-hidden="true"></i> PDF
+        </a>
+        <a class="report-export-button report-export-word" href="/admin/reports/export?format=word">
+            <i class="fas fa-file-word" aria-hidden="true"></i> Word
+        </a>
     </div>
 </div>
 
-<!-- KPI Matrix (TOP) -->
-<div class="kpi-grid-clean" style="margin-bottom: 2rem;">
-    <!-- Growth Card -->
-    <div class="kpi-card-clean">
+<section class="kpi-grid-clean reports-kpi-grid" aria-label="Report summary">
+    <a class="kpi-card-clean report-kpi-card report-kpi-link" href="/admin/customers">
         <div class="kpi-info">
-            <h4>Monthly Growth</h4>
+            <h4>Monthly Account Growth</h4>
             <span class="kpi-value">
-                {% if monthly_growth_pct is defined %}
-                    {% if monthly_growth_pct >= 0 %}+{% endif %}{{ monthly_growth_pct }}%
-                {% else %}
-                    0%
-                {% endif %}
+                {% if monthly_growth_pct is not none %}{% if monthly_growth_pct >= 0 %}+{% endif %}{{ monthly_growth_pct }}%{% else %}N/A{% endif %}
             </span>
-            <span class="trend-badge {% if monthly_growth_pct >= 0 %}trend-up{% else %}trend-down{% endif %}">
-                <i class="fas fa-user-plus"></i> {{ new_users_this_month if new_users_this_month is defined else 0 }} new
+            <span class="trend-badge trend-neutral">
+                <i class="fas fa-user-plus" aria-hidden="true"></i>
+                {{ new_users_this_month }} new ·
+                {% if monthly_growth_pct is not none %}vs same period last month{% else %}no prior-period baseline{% endif %}
             </span>
         </div>
-    </div>
+    </a>
 
-    <!-- Satisfaction Card -->
-    <div class="kpi-card-clean">
+    <a class="kpi-card-clean report-kpi-card report-kpi-link" href="/admin/feedback">
         <div class="kpi-info">
-            <h4>User Satisfaction</h4>
-            <span class="kpi-value">{{ avg_rating if avg_rating is defined else '0.0' }} <span style="font-size: 1rem; color: #94a3b8;">/ 5</span></span>
-            <span class="trend-badge trend-up">
-                <i class="fas fa-star"></i> {{ total_reviews if total_reviews is defined else 0 }} reviews
+            <h4>OccaServe Rating</h4>
+            <span class="kpi-value">
+                {% if platform_avg_rating is not none %}{{ platform_avg_rating }} <small>/ 5</small>{% else %}N/A{% endif %}
+            </span>
+            <span class="trend-badge trend-neutral">
+                <i class="fas fa-star" aria-hidden="true"></i> {{ platform_feedback_count }} platform reviews
             </span>
         </div>
-    </div>
+    </a>
 
-    <!-- Total Bookings Card -->
-    <div class="kpi-card-clean">
+    <a class="kpi-card-clean report-kpi-card report-kpi-link" href="/admin/bookings">
         <div class="kpi-info">
             <h4>Total Bookings</h4>
-            <span class="kpi-value">{{ total_bookings if total_bookings is defined else 0 }}</span>
-            <span class="trend-badge trend-up">
-                <i class="fas fa-calendar-check"></i> {{ paid_bookings if paid_bookings is defined else 0 }} paid
-            </span>
+            <span class="kpi-value">{{ total_bookings }}</span>
+            <span class="trend-badge trend-neutral">{{ cancelled_bookings }} cancelled</span>
         </div>
-    </div>
+    </a>
 
-    <!-- Revenue Card -->
-    <div class="kpi-card-clean">
+    <a class="kpi-card-clean report-kpi-card report-kpi-link" href="#revenue-trend">
+        <div class="kpi-info">
+            <h4>Fully Paid Bookings</h4>
+            <span class="kpi-value">{{ paid_bookings }}</span>
+            <span class="trend-badge trend-neutral">of revenue-eligible bookings</span>
+        </div>
+    </a>
+
+    <a class="kpi-card-clean report-kpi-card report-kpi-link" href="#revenue-trend">
         <div class="kpi-info">
             <h4>Gross Booking Value</h4>
-            <span class="kpi-value">₱{{ "{:,.0f}".format(total_revenue if total_revenue is defined else 0) }}</span>
-            <span class="trend-badge trend-up">
-                <i class="fas fa-money-bill-wave"></i> Gross
-            </span>
+            <span class="kpi-value">₱{{ "{:,.2f}".format(total_revenue) }}</span>
+            <span class="trend-badge trend-neutral">Revenue-eligible booking amounts</span>
         </div>
-    </div>
+    </a>
 
-    <div class="kpi-card-clean">
+    <a class="kpi-card-clean report-kpi-card report-kpi-link" href="#revenue-trend">
         <div class="kpi-info">
             <h4>Cash Collected</h4>
-            <span class="kpi-value">₱{{ "{:,.0f}".format(total_collected if total_collected is defined else 0) }}</span>
-            <span class="trend-badge trend-up">
-                <i class="fas fa-wallet"></i> Received on live bookings
-            </span>
+            <span class="kpi-value">₱{{ "{:,.2f}".format(total_collected) }}</span>
+            <span class="trend-badge trend-neutral">Verified payments</span>
         </div>
-    </div>
+    </a>
 
-    <!-- Commissions Card -->
-    <div class="kpi-card-clean" style="border: 1px solid var(--adm-primary-soft); background: #f8fafc;">
+    <a class="kpi-card-clean report-kpi-card report-commission-card report-kpi-link" href="/admin/commissions">
         <div class="kpi-info">
-            <h4>Total Platform Commissions</h4>
-            <span class="kpi-value" style="color: var(--adm-primary);">₱{{ "{:,.2f}".format(total_commission if total_commission is defined else 0) }}</span>
-            <span class="trend-badge trend-up">
-                <i class="fas fa-piggy-bank"></i> Paid + outstanding
-            </span>
+            <h4>Platform Commissions</h4>
+            <span class="kpi-value">₱{{ "{:,.2f}".format(total_commission) }}</span>
+            <span class="trend-badge trend-neutral">Paid + outstanding</span>
         </div>
-    </div>
-</div>
+    </a>
+</section>
 
-<!-- Analytics Split (MIDDLE) -->
-<div class="analytics-split-clean">
-    <div class="card-clean" style="flex: 2;">
-        <div class="card-title-clean" style="margin-bottom:1rem; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-chart-bar" style="color: var(--adm-primary);"></i> 6-Month Booking Trend
+<section class="reports-charts-grid" aria-label="Platform analytics">
+    <article class="card-clean report-panel report-chart-panel">
+        <h2 class="card-title-clean"><i class="fas fa-chart-bar" aria-hidden="true"></i> Booking Trend</h2>
+        <p class="report-panel-caption">Non-archived bookings created each month, including cancelled bookings.</p>
+        <div class="chart-container-clean report-chart-container">
+            <canvas id="bookingTrendChart" aria-label="Bookings created over the last twelve months" role="img"></canvas>
         </div>
-        <div class="chart-container-clean" style="height: 320px; position: relative;">
-            <canvas id="bookingTrendChart"></canvas>
-        </div>
-    </div>
+    </article>
 
-    <div class="card-clean" style="flex: 1.2;">
-        <div class="card-title-clean" style="margin-bottom:1rem; display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-trophy" style="color: #f59e0b;"></i> Top Performing Caterers
+    <article class="card-clean report-panel report-chart-panel">
+        <h2 class="card-title-clean"><i class="fas fa-user-plus" aria-hidden="true"></i> Account Growth</h2>
+        <p class="report-panel-caption">Non-archived accounts created per month; the current month is month-to-date.</p>
+        <div class="chart-container-clean report-chart-container">
+            <canvas id="accountGrowthChart" aria-label="New accounts created by month" role="img"></canvas>
         </div>
+    </article>
+
+    <article class="card-clean report-panel report-chart-panel">
+        <h2 class="card-title-clean"><i class="fas fa-chart-pie" aria-hidden="true"></i> Booking Status</h2>
+        <p class="report-panel-caption">Current status of all non-archived bookings.</p>
+        <div class="chart-container-clean report-chart-container report-chart-container-compact">
+            <canvas id="bookingStatusChart" aria-label="Bookings grouped by status" role="img"></canvas>
+        </div>
+    </article>
+
+    <article class="card-clean report-panel report-chart-panel" id="revenue-trend">
+        <h2 class="card-title-clean"><i class="fas fa-coins" aria-hidden="true"></i> Booking Value &amp; Cash Collected by Booking Month</h2>
+        <p class="report-panel-caption">{{ revenue_definition }} Verified cash is grouped by booking creation month, not payment date, and excludes cancelled and expired bookings.</p>
+        <div class="chart-container-clean report-chart-container">
+            <canvas id="revenueTrendChart" aria-label="Monthly gross booking value and verified cash collected grouped by booking creation month" role="img"></canvas>
+        </div>
+    </article>
+
+    <article class="card-clean report-panel report-chart-panel" id="rating-distribution">
+        <h2 class="card-title-clean"><i class="fas fa-star" aria-hidden="true"></i> Platform Review Ratings</h2>
+        <p class="report-panel-caption">Distribution of valid 1–5 star ratings submitted by customers and caterers about OccaServe.</p>
+        <div class="chart-container-clean report-chart-container">
+            <canvas id="ratingDistributionChart" aria-label="Distribution of platform and event review ratings" role="img"></canvas>
+        </div>
+    </article>
+
+    <article class="card-clean report-panel report-caterers-panel">
+        <h2 class="card-title-clean"><i class="fas fa-trophy" aria-hidden="true"></i> Top Performing Caterers</h2>
+        <p class="report-panel-caption">Ranked by non-archived, revenue-eligible bookings.</p>
         {% if top_caterers %}
-        <table class="clean-table" style="margin-top: 10px;">
-            <thead>
-                <tr>
-                    <th style="width: 50px;">Rank</th>
-                    <th>Caterer</th>
-                    <th style="text-align: right;">Bookings</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in top_caterers %}
-                <tr>
-                    <td style="font-size: 1.1rem; text-align: center;">
-                        {% if loop.index0 == 0 %}<i class="fas fa-medal" style="color: #f59e0b;" title="1st Place"></i>
-                        {% elif loop.index0 == 1 %}<i class="fas fa-medal" style="color: #94a3b8;" title="2nd Place"></i>
-                        {% elif loop.index0 == 2 %}<i class="fas fa-medal" style="color: #b45309;" title="3rd Place"></i>
-                        {% else %}<span style="font-weight: 700; color: #64748b; font-size: 0.8rem;">#{{ loop.index }}</span>{% endif %}
-                    </td>
-                    <td><span style="font-weight: 700; color: var(--adm-navy);">{{ c.name }}</span></td>
-                    <td style="text-align: right; font-weight: 700; color: var(--adm-primary);">{{ c.bookings }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="report-table-scroll">
+            <table class="clean-table report-caterers-table">
+                <thead>
+                    <tr><th scope="col">Rank</th><th scope="col">Caterer</th><th scope="col">Bookings</th></tr>
+                </thead>
+                <tbody>
+                    {% for caterer in top_caterers %}
+                    <tr>
+                        <td class="report-rank-cell">
+                            {% if loop.index == 1 %}<i class="fas fa-medal report-medal-gold" title="1st place" aria-label="1st place"></i>
+                            {% elif loop.index == 2 %}<i class="fas fa-medal report-medal-silver" title="2nd place" aria-label="2nd place"></i>
+                            {% elif loop.index == 3 %}<i class="fas fa-medal report-medal-bronze" title="3rd place" aria-label="3rd place"></i>
+                            {% else %}{{ loop.index }}{% endif %}
+                        </td>
+                        <td class="report-caterer-name">{{ caterer.name }}</td>
+                        <td class="report-booking-count">{{ caterer.bookings }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-        <div style="text-align: center; padding: 3rem; color: var(--adm-muted);">
-            <i class="fas fa-box-open" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+        <div class="report-empty-state">
+            <i class="fas fa-box-open" aria-hidden="true"></i>
             <p>No booking data available yet.</p>
         </div>
         {% endif %}
-    </div>
-</div>
+    </article>
+</section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const ctx = document.getElementById('bookingTrendChart').getContext('2d');
-        const rawLabels = {{ monthly_labels | safe if monthly_labels is defined else '[]' }};
-        const rawData = {{ monthly_bookings | safe if monthly_bookings is defined else '[]' }};
-        
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: rawLabels,
-                datasets: [{
-                    label: 'Bookings Generated',
-                    data: rawData,
-                    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-                    hoverBackgroundColor: '#0f172a',
-                    borderWidth: 0,
-                    borderRadius: 6,
-                    barPercentage: 0.6
-                }]
+        if (typeof Chart === 'undefined') return;
+
+        const labels = {{ monthly_labels | tojson }};
+        const colors = ['#f97316', '#2563eb', '#16a34a', '#8b5cf6', '#e11d48', '#0891b2', '#ca8a04', '#64748b'];
+        const sharedOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 16 } },
+                tooltip: { backgroundColor: '#0f172a', padding: 10, cornerRadius: 8 }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleFont: { family: 'Poppins', size: 13, weight: 600 },
-                        bodyFont: { family: 'Poppins', size: 12 },
-                        padding: 12,
-                        cornerRadius: 8,
-                        displayColors: false,
-                        callbacks: {
-                            label: (context) => `${context.parsed.y} Booking(s)`
-                        }
-                    }
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 },
+                    grid: { color: '#f1f5f9', drawBorder: false }
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1, precision: 0, font: { family: 'Poppins', size: 11, color: '#64748b' } },
-                        grid: { color: '#f1f5f9', drawBorder: false }
-                    },
-                    x: {
-                        grid: { display: false, drawBorder: false },
-                        ticks: { font: { family: 'Poppins', size: 11, weight: 600, color: '#475569' } }
-                    }
+                x: { grid: { display: false, drawBorder: false } }
+            }
+        };
+        const makeBarChart = (id, chartLabels, datasets, options = {}) => {
+            const canvas = document.getElementById(id);
+            if (!canvas) return;
+            new Chart(canvas, {
+                type: 'bar',
+                data: { labels: chartLabels, datasets },
+                options: {
+                    ...sharedOptions,
+                    ...options,
+                    plugins: { ...sharedOptions.plugins, ...(options.plugins || {}) },
+                    scales: { ...sharedOptions.scales, ...(options.scales || {}) }
+                }
+            });
+        };
+
+        makeBarChart('bookingTrendChart', labels, [{
+            label: 'Bookings created',
+            data: {{ monthly_bookings | tojson }},
+            backgroundColor: 'rgba(249, 115, 22, 0.78)',
+            hoverBackgroundColor: '#ea580c',
+            borderRadius: 5,
+            barPercentage: 0.65
+        }], { plugins: { legend: { display: false } } });
+
+        makeBarChart('accountGrowthChart', labels, [{
+            label: 'New accounts',
+            data: {{ monthly_users | tojson }},
+            backgroundColor: 'rgba(37, 99, 235, 0.78)',
+            hoverBackgroundColor: '#1d4ed8',
+            borderRadius: 5,
+            barPercentage: 0.65
+        }], { plugins: { legend: { display: false } } });
+
+        const statusCanvas = document.getElementById('bookingStatusChart');
+        if (statusCanvas) {
+            new Chart(statusCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: {{ booking_status_labels | tojson }},
+                    datasets: [{
+                        data: {{ booking_status_values | tojson }},
+                        backgroundColor: {{ booking_status_values | tojson }}.map((_, index) => colors[index % colors.length]),
+                        borderColor: '#fff',
+                        borderWidth: 3
+                    }]
                 },
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 14 } },
+                        tooltip: { backgroundColor: '#0f172a', padding: 10, cornerRadius: 8 }
+                    }
+                }
+            });
+        }
+
+        makeBarChart('revenueTrendChart', labels, [
+            {
+                label: 'Gross booking value (₱)',
+                data: {{ monthly_booking_value | tojson }},
+                backgroundColor: 'rgba(249, 115, 22, 0.78)',
+                borderRadius: 5
+            },
+            {
+                label: 'Verified cash collected (₱)',
+                data: {{ monthly_cash_collected | tojson }},
+                backgroundColor: 'rgba(22, 163, 74, 0.78)',
+                borderRadius: 5
+            }
+        ], {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: (value) => `₱${Number(value).toLocaleString()}` },
+                    grid: { color: '#f1f5f9', drawBorder: false }
+                }
+            }
+        });
+
+        makeBarChart('ratingDistributionChart', {{ rating_labels | tojson }}, [{
+            label: 'Platform reviews',
+            data: {{ platform_rating_counts | tojson }},
+            backgroundColor: 'rgba(249, 115, 22, 0.78)',
+            borderRadius: 5
+        }], {
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: { label: (context) => `${context.parsed.y} platform review(s)` }
                 }
             }
         });

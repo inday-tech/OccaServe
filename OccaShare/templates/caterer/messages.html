@@ -158,6 +158,12 @@
         min-width: 18px;
         text-align: center;
     }
+    .peer-status-dot { display:inline-block;width:8px;height:8px;margin-right:5px;border-radius:50%;background:#94a3b8; }
+    .peer-status-dot.online { background:#22c55e; }
+    .peer-avatar-presence { position:relative;display:inline-flex;flex:0 0 48px;width:48px;height:48px;overflow:visible; }
+    .peer-online-dot { position:absolute;right:-4px;bottom:-3px;z-index:2;box-sizing:border-box;width:14px;height:14px;border:2px solid #fff;border-radius:50%;background:#22c55e; }
+    .active-peer-avatar-presence { flex-basis:48px; }
+    #activePeerStatus .peer-status-dot { display:none; }
 
     /* Chat Area */
     .chat-area {
@@ -338,6 +344,31 @@
         .chat-input-wrapper input { height:46px;padding:0 11px;font-size:.9rem; }
         .chat-input-wrapper .btn-chat-send { width:46px;height:46px;min-width:46px; }
     }
+    @media (min-width: 761px) {
+        body.embedded-caterer-messages .messages-container {
+            grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
+            height: calc(100dvh - 28px);
+            min-height: 0;
+        }
+        body.embedded-caterer-messages #conversationsSidebar,
+        body.embedded-caterer-messages #chatArea,
+        body.embedded-caterer-messages #conversationsSidebar.hidden {
+            display: flex;
+        }
+        body.embedded-caterer-messages .mobile-back {
+            display: none;
+        }
+    }
+    body.embedded-caterer-messages .messages-container { grid-template-columns:minmax(240px,32%) minmax(0,1fr); border-radius:12px; }
+    body.embedded-caterer-messages .sidebar-search { gap:8px;padding:14px; }
+    body.embedded-caterer-messages .conversation-item { gap:10px;padding:11px 12px; }
+    body.embedded-caterer-messages .conversation-header { align-items:flex-start;gap:6px; }
+    body.embedded-caterer-messages .peer-name { min-width:0;flex:1;white-space:normal;overflow-wrap:anywhere;font-size:.84rem; }
+    body.embedded-caterer-messages .last-time { flex:0 0 auto; }
+    body.embedded-caterer-messages .peer-avatar { width:42px;height:42px; }
+    body.embedded-caterer-messages .peer-avatar-presence { width:42px;height:42px;flex-basis:42px; }
+    body.embedded-caterer-messages .active-peer { min-width:0; }
+    body.embedded-caterer-messages #activePeerName { white-space:normal;overflow-wrap:anywhere; }
 </style>
 {% endblock %}
 
@@ -375,10 +406,10 @@
             <div class="chat-header">
                 <div class="active-peer">
                     <button type="button" class="mobile-back" onclick="showSidebar()" aria-label="Back to conversations" title="Back to conversations"><i class="fas fa-arrow-left"></i></button>
-                    <div class="peer-avatar" id="activePeerAvatar">?</div>
+                    <span class="peer-avatar-presence active-peer-avatar-presence"><div class="peer-avatar" id="activePeerAvatar">?</div><span class="peer-online-dot" id="activePeerOnlineDot" hidden></span></span>
                     <div>
                         <div class="peer-name" id="activePeerName">Customer Name</div>
-                        <div id="activePeerStatus" style="font-size: 0.75rem; color: #94a3b8;"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> Offline</div>
+                        <div id="activePeerStatus" style="font-size: 0.75rem; color: #94a3b8;"><span class="peer-status-dot"></span><span id="activePeerStatusText">Offline</span></div>
                     </div>
                 </div>
             </div>
@@ -389,7 +420,7 @@
 
             <div class="chat-input-area">
                 <form id="chatForm" class="chat-input-wrapper">
-                    <input type="file" id="mainChatFileInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.pdf,.docx,.txt,.webp">
+                    <input type="file" id="mainChatFileInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt,.webp,.mp4,.mov">
                     <button type="button" class="btn-secondary" id="mainAttachmentBtn" style="position:relative;padding: 0 1rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--border-radius, 0.5rem); height:100%; display:flex; align-items:center; gap:6px; font-size:0.9rem;" title="Attach file">
                         <i class="fas fa-paperclip"></i>
                         <span id="attachFileLabel" style="font-size:0.7rem;font-weight:700;display:none;color:var(--primary-color);max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
@@ -436,14 +467,14 @@
             },
             onPresenceUpdate: (data) => {
                 // If the current peer went online/offline, update the header
-                if (currentPeerId && data.user_id === currentPeerId) {
+                if (currentPeerId && Number(data.user_id) === Number(currentPeerId)) {
                     const statusText = document.getElementById('activePeerStatus');
                     if (statusText) {
                         const isOnline = data.status === 'online';
-                        statusText.innerHTML = isOnline 
-                            ? '<i class="fas fa-circle" style="font-size: 0.5rem; color: var(--accent-color);"></i> Online' 
-                            : '<i class="fas fa-circle" style="font-size: 0.5rem; color: #94a3b8;"></i> Offline';
-                        statusText.style.color = isOnline ? 'var(--accent-color)' : '#94a3b8';
+                        statusText.querySelector('.peer-status-dot')?.classList.toggle('online', isOnline);
+                        document.getElementById('activePeerStatusText').textContent = isOnline ? 'Online' : 'Offline';
+                        statusText.style.color = isOnline ? '#15803d' : '#94a3b8';
+                        document.getElementById('activePeerOnlineDot').hidden = !isOnline;
                     }
                 }
                 // Also refresh the list to update sidebar dots
@@ -491,6 +522,7 @@
         const mainAttachBtn = document.getElementById('mainAttachmentBtn');
         const attachFileLabel = document.getElementById('attachFileLabel');
         if (mainAttachBtn && mainFileIn) {
+            mainAttachBtn.title = `Attach image or file (maximum ${Math.max(1, Number(window.MAX_UPLOAD_SIZE_MB) || 5)} MB)`;
             mainAttachBtn.onclick = () => mainFileIn.click();
             mainFileIn.onchange = async (e) => {
                 const file = e.target.files[0];
@@ -513,29 +545,12 @@
                     return;
                 }
                 
-                // 5MB Limit
-                if (file.size > 5 * 1024 * 1024) {
-                    Swal.fire('File Too Large', 'File exceeds the 5MB limit. Please choose a smaller file.', 'warning');
-                    mainFileIn.value = '';
-                    if (attachFileLabel) attachFileLabel.style.display = 'none';
-                    mainAttachBtn.style.borderColor = '';
-                    mainAttachBtn.style.color = '#64748b';
-                    return;
-                }
-                
                 const originalHTML = mainAttachBtn.innerHTML;
                 mainAttachBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 mainAttachBtn.disabled = true;
 
                 try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    const uploadResp = await fetch('/api/chat/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    if (!uploadResp.ok) throw new Error('Upload failed');
-                    const fileData = await uploadResp.json();
+                    const fileData = await chatClient.uploadFile(file);
                     
                     const msg = await chatClient.sendMessage(currentPeerId, null, {
                         message_type: fileData.message_type,
@@ -546,9 +561,11 @@
                         appendMessage(msg, 'sent');
                         scrollToBottom();
                         refreshConversations();
+                    } else {
+                        throw new Error('The file uploaded but the message could not be sent.');
                     }
                 } catch (err) {
-                    Swal.fire('Upload Failed', err.message, 'error');
+                    Swal.fire('Upload Failed', err.message || 'Please try again.', 'error');
                 } finally {
                     mainAttachBtn.innerHTML = originalHTML;
                     mainAttachBtn.disabled = false;
@@ -585,9 +602,9 @@
 
         listDiv.innerHTML = conversationsToRender.map(conv => `
             <div class="conversation-item ${currentPeerId == conv.peer.id ? 'active' : ''}" onclick="selectConversation(${conv.peer.id}, '${conv.peer.name.replace(/'/g, "\\'")}', ${conv.peer.is_online})">
-                <div style="position: relative;">
+                <div class="peer-avatar-presence">
                     <div class="peer-avatar">${conv.peer.name.charAt(0)}</div>
-                    ${conv.peer.is_online ? '<div style="position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; background: var(--accent-color); border: 2px solid white; border-radius: 50%;"></div>' : ''}
+                    ${conv.peer.is_online ? '<div class="peer-online-dot"></div>' : ''}
                 </div>
                 <div class="conversation-info">
                     <div class="conversation-header">
@@ -626,10 +643,10 @@
         
         const statusText = document.getElementById('activePeerStatus');
         if (statusText) {
-            statusText.innerHTML = isOnline 
-                ? '<i class="fas fa-circle" style="font-size: 0.5rem; color: var(--accent-color);"></i> Online' 
-                : '<i class="fas fa-circle" style="font-size: 0.5rem; color: #94a3b8;"></i> Offline';
-            statusText.style.color = isOnline ? 'var(--accent-color)' : '#94a3b8';
+            statusText.querySelector('.peer-status-dot')?.classList.toggle('online', isOnline);
+            document.getElementById('activePeerStatusText').textContent = isOnline ? 'Online' : 'Offline';
+            statusText.style.color = isOnline ? '#15803d' : '#94a3b8';
+            document.getElementById('activePeerOnlineDot').hidden = !isOnline;
         }
         
         // Highlight active sidebar item

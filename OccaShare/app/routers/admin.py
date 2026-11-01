@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile, BackgroundTasks
 from typing import Optional
 from fastapi.requests import Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from ..core.templates import templates
 from sqlalchemy.orm import Session
 import os, secrets, string, logging
+import csv
+import io
 from ..db import database, models
 from ..core import security as auth
 from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address, is_valid_person_name, is_valid_business_name, is_valid_ph_coordinates
@@ -20,6 +22,7 @@ from ..services.commission import (
     is_pre_deployment_manual_booking,
 )
 from ..services.payment_service import PaymentService
+from ..services.audit_report import build_sectioned_report_docx, build_sectioned_report_pdf
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -108,6 +111,292 @@ def _get_darwin_profile(db: Session):
     return db.query(models.CatererProfile).filter(
         func.lower(func.trim(models.CatererProfile.business_name)) == "darwin's catering services"
     ).first()
+
+
+def _build_admin_report_data(db: Session) -> dict:
+    from sqlalchemy.orm import joinedload, selectinload
+
+    now = datetime.now(MANILA_TIMEZONE)
+    non_revenue_statuses = {
+        "cancelled", "canceled", "rejected", "inquiry", "pending", "pending_payment",
+        "awaiting_payment", "pending_review", "negotiating", "quoted",
+        "pending_quotation", "awaiting_customer", "awaiting_caterer", "draft", "expired",
+    }
+
+    this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
+    previous_period_end = last_month_start + (now - this_month_start)
+    new_users_this_month = db.query(models.User).filter(
+        _not_archived(models.User.is_archived),
+        models.User.created_at >= this_month_start,
+        models.User.created_at < now,
+    ).count()
+    new_users_previous_period = db.query(models.User).filter(
+        _not_archived(models.User.is_archived),
+        models.User.created_at >= last_month_start,
+        models.User.created_at < previous_period_end,
+    ).count()
+    monthly_growth_pct = (
+        round(((new_users_this_month - new_users_previous_period) / new_users_previous_period) * 100, 1)
+        if new_users_previous_period
+        else (0.0 if not new_users_this_month else None)
+    )
+
+    platform_feedback = db.query(
+        func.avg(models.PlatformFeedback.rating),
+        func.count(models.PlatformFeedback.id),
+    ).filter(
+        _not_archived(models.PlatformFeedback.is_archived),
+        models.PlatformFeedback.rating.between(1, 5),
+    ).one()
+    active_booking_filter = _not_archived(models.Booking.is_archived)
+    all_live_bookings = db.query(models.Booking).options(
+        selectinload(models.Booking.payment_records),
+        joinedload(models.Booking.quotation),
+    ).filter(active_booking_filter).all()
+
+    def normalized_status(booking):
+        return (booking.status or "").strip().lower().replace(" ", "_")
+
+    total_bookings = len(all_live_bookings)
+    cancelled_bookings = sum(
+        1 for booking in all_live_bookings
+        if normalized_status(booking) in {"cancelled", "canceled"}
+    )
+    revenue_bookings = [
+        booking for booking in all_live_bookings
+        if normalized_status(booking) not in non_revenue_statuses
+    ]
+    total_revenue = sum(_booking_total_amount(booking) for booking in revenue_bookings)
+    payment_summaries = {
+        booking.id: PaymentService.get_payment_summary(booking)
+        for booking in all_live_bookings
+    }
+    total_collected = sum(
+        payment_summaries[booking.id]["verified_paid"]
+        for booking in all_live_bookings
+        if normalized_status(booking) not in {"cancelled", "canceled", "expired"}
+    )
+    paid_bookings = sum(
+        1 for booking in revenue_bookings
+        if payment_summaries[booking.id].get("is_fully_paid")
+    )
+
+    month_starts = [this_month_start]
+    for _ in range(11):
+        previous_month = month_starts[-1] - timedelta(days=1)
+        month_starts.append(previous_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0))
+
+    month_starts.reverse()
+    month_keys = [(month.year, month.month) for month in month_starts]
+    month_index = {key: index for index, key in enumerate(month_keys)}
+    monthly_labels = [month.strftime("%b %Y") for month in month_starts]
+    monthly_bookings = [0] * len(month_keys)
+    monthly_users = [0] * len(month_keys)
+    monthly_booking_value = [0.0] * len(month_keys)
+    monthly_cash_collected = [0.0] * len(month_keys)
+    booking_status_counts = {}
+
+    for booking in all_live_bookings:
+        status = normalized_status(booking) or "unknown"
+        booking_status_counts[status] = booking_status_counts.get(status, 0) + 1
+        created_at = booking.created_at
+        if created_at is None:
+            continue
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        created_at = created_at.astimezone(MANILA_TIMEZONE)
+        if created_at >= now:
+            continue
+        index = month_index.get((created_at.year, created_at.month))
+        if index is None:
+            continue
+        monthly_bookings[index] += 1
+        if status not in non_revenue_statuses:
+            monthly_booking_value[index] += _booking_total_amount(booking)
+        if status not in {"cancelled", "canceled", "expired"}:
+            monthly_cash_collected[index] += payment_summaries[booking.id]["verified_paid"]
+
+    monthly_users_query = db.query(models.User.created_at).filter(
+        _not_archived(models.User.is_archived),
+        models.User.created_at >= month_starts[0],
+        models.User.created_at < now,
+    ).all()
+    for (created_at,) in monthly_users_query:
+        if created_at is None:
+            continue
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        created_at = created_at.astimezone(MANILA_TIMEZONE)
+        index = month_index.get((created_at.year, created_at.month))
+        if index is not None:
+            monthly_users[index] += 1
+
+    booking_status_labels = [
+        status.replace("_", " ").title()
+        for status, _ in sorted(booking_status_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+    booking_status_values = [
+        count
+        for _, count in sorted(booking_status_counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+    def rating_distribution(model, archived_column):
+        grouped_ratings = db.query(
+            model.rating,
+            func.count(model.id),
+        ).filter(
+            _not_archived(archived_column),
+            model.rating.between(1, 5),
+        ).group_by(model.rating).all()
+        counts = {int(rating): count for rating, count in grouped_ratings}
+        return [counts.get(rating, 0) for rating in range(1, 6)]
+
+    platform_rating_counts = rating_distribution(
+        models.PlatformFeedback,
+        models.PlatformFeedback.is_archived,
+    )
+    normalized_status_sql = func.replace(
+        func.lower(func.trim(func.coalesce(models.Booking.status, ""))),
+        " ",
+        "_",
+    )
+    top_caterers_raw = (
+        db.query(models.CatererProfile, func.count(models.Booking.id).label("booking_count"))
+        .join(models.Booking, models.Booking.caterer_id == models.CatererProfile.id)
+        .join(models.User, models.User.id == models.CatererProfile.user_id)
+        .filter(
+            _not_archived(models.User.is_archived),
+            active_booking_filter,
+            normalized_status_sql.notin_(non_revenue_statuses),
+        )
+        .group_by(models.CatererProfile.id)
+        .order_by(func.count(models.Booking.id).desc())
+        .limit(5)
+        .all()
+    )
+    top_caterers = [{"name": caterer.business_name, "bookings": count} for caterer, count in top_caterers_raw]
+
+    return {
+        "report_date": now.strftime("%Y-%m-%d %I:%M %p PHT"),
+        "monthly_growth_pct": monthly_growth_pct,
+        "new_users_this_month": new_users_this_month,
+        "platform_avg_rating": round(float(platform_feedback[0]), 1) if platform_feedback[0] is not None else None,
+        "platform_feedback_count": platform_feedback[1],
+        "total_bookings": total_bookings,
+        "cancelled_bookings": cancelled_bookings,
+        "paid_bookings": paid_bookings,
+        "total_revenue": total_revenue,
+        "total_collected": total_collected,
+        "total_commission": _tracked_platform_commissions(db),
+        "monthly_labels": monthly_labels,
+        "monthly_bookings": monthly_bookings,
+        "monthly_users": monthly_users,
+        "monthly_booking_value": [round(value, 2) for value in monthly_booking_value],
+        "monthly_cash_collected": [round(value, 2) for value in monthly_cash_collected],
+        "booking_status_labels": booking_status_labels,
+        "booking_status_values": booking_status_values,
+        "rating_labels": [f"{rating} star" if rating == 1 else f"{rating} stars" for rating in range(1, 6)],
+        "platform_rating_counts": platform_rating_counts,
+        "revenue_definition": (
+            "Gross amounts for non-archived bookings, excluding pending, inquiry, "
+            "rejected, cancelled, and expired statuses."
+        ),
+        "top_caterers": top_caterers,
+    }
+
+
+def _admin_report_export_sections(report: dict) -> list[tuple[str, list[str], list[list[str]]]]:
+    metrics = [
+        ["Monthly account growth vs same period last month", f'{report["monthly_growth_pct"]}%' if report["monthly_growth_pct"] is not None else "No prior-period baseline"],
+        ["New accounts this month", str(report["new_users_this_month"])],
+        ["OccaServe rating (1–5)", str(report["platform_avg_rating"]) if report["platform_avg_rating"] is not None else "No feedback"],
+        ["OccaServe feedback count", str(report["platform_feedback_count"])],
+        ["Total non-archived bookings", str(report["total_bookings"])],
+        ["Cancelled bookings", str(report["cancelled_bookings"])],
+        ["Fully paid revenue-eligible bookings", str(report["paid_bookings"])],
+        ["Gross booking value (PHP)", f'{report["total_revenue"]:.2f}'],
+        ["Verified cash collected (PHP)", f'{report["total_collected"]:.2f}'],
+        ["Platform commissions (PHP)", f'{report["total_commission"]:.2f}'],
+    ]
+    return [
+        ("Summary metrics", ["Metric", "Value"], metrics),
+        (
+            "Monthly account growth",
+            ["Month", "New accounts"],
+            [[label, str(count)] for label, count in zip(report["monthly_labels"], report["monthly_users"])],
+        ),
+        (
+            "Monthly booking trend",
+            ["Month", "Bookings created"],
+            [[label, str(count)] for label, count in zip(report["monthly_labels"], report["monthly_bookings"])],
+        ),
+        (
+            "Monthly booking value and collected cash by booking creation month",
+            ["Booking month", "Gross booking value (PHP)", "Verified cash collected (PHP)"],
+            [
+                [label, f"{value:.2f}", f"{collected:.2f}"]
+                for label, value, collected in zip(
+                    report["monthly_labels"],
+                    report["monthly_booking_value"],
+                    report["monthly_cash_collected"],
+                )
+            ],
+        ),
+        (
+            "Booking status breakdown",
+            ["Status", "Bookings"],
+            [[label, str(count)] for label, count in zip(report["booking_status_labels"], report["booking_status_values"])],
+        ),
+        (
+            "Platform review rating distribution",
+            ["Rating", "Platform reviews"],
+            [
+                [label, str(platform_count)]
+                for label, platform_count in zip(
+                    report["rating_labels"],
+                    report["platform_rating_counts"],
+                )
+            ],
+        ),
+        (
+            "Top performing caterers",
+            ["Rank", "Caterer", "Revenue-eligible bookings"],
+            [
+                [str(rank), caterer["name"], str(caterer["bookings"])]
+                for rank, caterer in enumerate(report["top_caterers"], start=1)
+            ],
+        ),
+    ]
+
+
+def _admin_report_csv(report: dict) -> bytes:
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(["OccaServe Analytics Report"])
+    writer.writerow(["Report date", report["report_date"]])
+    for section_title, headers, rows in _admin_report_export_sections(report):
+        writer.writerow([])
+        writer.writerow([section_title])
+        writer.writerow(headers)
+        writer.writerows(rows)
+    return output.getvalue().encode("utf-8-sig")
+
+
+def _admin_report_docx(report: dict) -> bytes:
+    return build_sectioned_report_docx(
+        "OccaServe Analytics Report",
+        report["report_date"],
+        _admin_report_export_sections(report),
+    )
+
+
+def _admin_report_pdf(report: dict) -> bytes:
+    return build_sectioned_report_pdf(
+        "OccaServe Analytics Report",
+        report["report_date"],
+        _admin_report_export_sections(report),
+    )
 
 
 @router.get("/api/omni-search")
@@ -494,42 +783,20 @@ async def admin_audit_logs(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    query = db.query(models.AuditLog)
-    q = q.strip()[:100] if q else ""
-    
-    # Apply Filters
-    if q:
-        search_pattern = _search_like_pattern(q)
-        query = query.outerjoin(models.User, models.AuditLog.user_id == models.User.id)
-        query = query.filter(
-            or_(
-                models.AuditLog.notes.ilike(search_pattern, escape="\\"),
-                models.AuditLog.action.ilike(search_pattern, escape="\\"),
-                models.AuditLog.ip_address.ilike(search_pattern, escape="\\"),
-                models.User.first_name.ilike(search_pattern, escape="\\"),
-                models.User.last_name.ilike(search_pattern, escape="\\"),
-                models.User.email.ilike(search_pattern, escape="\\"),
-            )
-        )
-    
-    if category:
-        query = query.filter(models.AuditLog.action == category)
-        
-    if date:
-        try:
-            target_date = datetime.strptime(date, '%Y-%m-%d').date()
-            query = query.filter(func.date(models.AuditLog.timestamp) == target_date)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="Date filter must use YYYY-MM-DD format.") from exc
+    query, q, category, date = _audit_log_query(db, q, category, date)
 
     # Pagination Logic
     per_page = 20
     total_count = query.count()
     total_pages = max(1, (total_count + per_page - 1) // per_page)
     page = min(max(page, 1), total_pages)
-    logs = query.order_by(models.AuditLog.timestamp.desc()).offset((page - 1) * per_page).limit(per_page).all()
+    logs = query.order_by(
+        models.AuditLog.timestamp.desc(),
+        models.AuditLog.id.desc(),
+    ).offset((page - 1) * per_page).limit(per_page).all()
     
     distinct_actions = [row[0] for row in db.query(models.AuditLog.action).distinct().all() if row[0]]
+    filter_summary = _audit_filter_summary(q, category, date)
 
     return templates.TemplateResponse("admin/audit_logs.html", {
         "request": request,
@@ -540,24 +807,19 @@ async def admin_audit_logs(
         "total_pages": total_pages,
         "current_page": page,
         "total_count": total_count,
-        "filters": {"q": q or "", "category": category or "", "date": date or ""},
-        "now": datetime.now()
+        "filters": {"q": q, "category": category, "date": date},
+        "filter_summary": filter_summary,
+        "now": datetime.now(MANILA_TIMEZONE),
     })
 
-@router.get("/api/audit-logs/export")
-async def export_audit_logs(
-    q: Optional[str] = None,
-    category: Optional[str] = None,
-    date: Optional[str] = None,
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(admin_only)
-):
-    import csv
-    from io import StringIO
-    from fastapi.responses import StreamingResponse
 
-    query = db.query(models.AuditLog)
+def _audit_log_query(db: Session, q: Optional[str], category: Optional[str], date: Optional[str]):
+    from sqlalchemy.orm import joinedload
+
     q = q.strip()[:100] if q else ""
+    category = category.strip() if category else ""
+    date = date.strip() if date else ""
+    query = db.query(models.AuditLog).options(joinedload(models.AuditLog.user))
     if q:
         search_pattern = _search_like_pattern(q)
         query = query.outerjoin(models.User, models.AuditLog.user_id == models.User.id).filter(
@@ -574,39 +836,107 @@ async def export_audit_logs(
         query = query.filter(models.AuditLog.action == category)
     if date:
         try:
-            target_date = datetime.strptime(date, '%Y-%m-%d').date()
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
         except ValueError as exc:
             raise HTTPException(status_code=400, detail="Date filter must use YYYY-MM-DD format.") from exc
         query = query.filter(func.date(models.AuditLog.timestamp) == target_date)
+    return query, q, category, date
 
-    logs = query.order_by(models.AuditLog.timestamp.desc()).all()
-    
-    def generate():
-        data = StringIO()
-        writer = csv.writer(data)
-        writer.writerow(['Timestamp', 'User', 'Action', 'Old Status', 'New Status', 'IP Address', 'Notes'])
-        yield data.getvalue()
-        data.seek(0)
-        data.truncate(0)
 
-        for log in logs:
-            user_name = f"{log.user.first_name} {log.user.last_name}" if log.user else "System"
-            writer.writerow([
-                log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                user_name,
-                log.action,
-                log.old_status or '',
-                log.new_status or '',
-                log.ip_address or '',
-                log.notes or ''
-            ])
-            yield data.getvalue()
-            data.seek(0)
-            data.truncate(0)
+def _audit_filter_summary(q: str, category: str, date: str) -> str:
+    active_filters = []
+    if q:
+        active_filters.append(f"Search: {q}")
+    if category:
+        active_filters.append(f"Action: {category.replace('_', ' ').title()}")
+    if date:
+        active_filters.append(f"Date: {date}")
+    return "; ".join(active_filters) if active_filters else "All audit logs"
 
-    response = StreamingResponse(generate(), media_type="text/csv")
-    response.headers["Content-Disposition"] = "attachment; filename=system_audit_logs.csv"
-    return response
+
+def _audit_log_module(action: Optional[str]) -> str:
+    action_lower = (action or "").lower()
+    if "login" in action_lower or "auth" in action_lower or "token" in action_lower:
+        return "Authentication"
+    if "caterer" in action_lower:
+        return "Caterers"
+    if "book" in action_lower:
+        return "Bookings"
+    if any(term in action_lower for term in ("investigation", "account", "suspend", "activate", "customer")):
+        return "Users"
+    return "System"
+
+
+def _audit_report_rows(logs) -> list[dict]:
+    report_rows = []
+    for log in logs:
+        actor = " ".join(
+            part for part in (
+                getattr(log.user, "first_name", None),
+                getattr(log.user, "last_name", None),
+            )
+            if part
+        ) if log.user else "System"
+        report_rows.append({
+            "id": log.id,
+            "timestamp": log.timestamp.isoformat(sep=" ", timespec="seconds") if log.timestamp else "",
+            "actor": actor or "System",
+            "role": (log.user.role or "").title() if log.user else "System",
+            "action": (log.action or "").replace("_", " ").title(),
+            "module": _audit_log_module(log.action),
+            "old_status": log.old_status or "",
+            "new_status": log.new_status or "",
+            "ip_address": log.ip_address or "",
+            "notes": log.notes or "",
+        })
+    return report_rows
+
+
+@router.get("/api/audit-logs/export")
+async def export_audit_logs(
+    format: str = "csv",
+    q: Optional[str] = None,
+    category: Optional[str] = None,
+    date: Optional[str] = None,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only)
+):
+    from ..services.audit_report import build_audit_csv, build_audit_docx, build_audit_pdf
+
+    file_format = format.strip().lower()
+    supported_formats = {"csv", "pdf", "word", "docx"}
+    if file_format not in supported_formats:
+        raise HTTPException(status_code=400, detail="Unsupported format. Choose csv, pdf, or word.")
+
+    query, q, category, date = _audit_log_query(db, q, category, date)
+    logs = query.order_by(
+        models.AuditLog.timestamp.desc(),
+        models.AuditLog.id.desc(),
+    ).all()
+    rows = _audit_report_rows(logs)
+    generated_on = datetime.now(MANILA_TIMEZONE).strftime("%b %d, %Y %I:%M %p PHT")
+    generated_by = " ".join(filter(None, [user.first_name, user.last_name])) or user.email or "Administrator"
+    filter_summary = _audit_filter_summary(q, category, date)
+    filename_date = datetime.now(MANILA_TIMEZONE).strftime("%Y%m%d")
+
+    if file_format == "csv":
+        content = build_audit_csv(rows, generated_on, generated_by, filter_summary)
+        media_type = "text/csv; charset=utf-8"
+        filename = f"system_audit_logs_{filename_date}.csv"
+    elif file_format == "pdf":
+        content = build_audit_pdf(rows, generated_on, generated_by, filter_summary)
+        media_type = "application/pdf"
+        filename = f"system_audit_logs_{filename_date}.pdf"
+    else:
+        content = build_audit_docx(rows, generated_on, generated_by, filter_summary)
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        filename = f"system_audit_logs_{filename_date}.docx"
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 
@@ -2730,22 +3060,26 @@ async def admin_feedback(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from sqlalchemy.orm import joinedload
+
     feedbacks = db.query(models.PlatformFeedback).filter(
-        models.PlatformFeedback.is_archived == False
+        _not_archived(models.PlatformFeedback.is_archived)
+    ).options(
+        joinedload(models.PlatformFeedback.user)
     ).order_by(models.PlatformFeedback.created_at.desc()).all()
 
     total_count = len(feedbacks)
-    highlighted_count = sum(1 for f in feedbacks if f.is_highlighted)
-    high_rated_count = sum(1 for f in feedbacks if f.rating and f.rating >= 4)
-    avg_rating = round(sum(f.rating for f in feedbacks if f.rating) / total_count, 1) if total_count else 0.0
+    valid_ratings = [f.rating for f in feedbacks if f.rating and 1 <= f.rating <= 5]
+    high_rated_count = sum(1 for rating in valid_ratings if rating >= 4)
+    avg_rating = round(sum(valid_ratings) / len(valid_ratings), 1) if valid_ratings else None
+    satisfaction = round((high_rated_count / len(valid_ratings)) * 100, 1) if valid_ratings else 0.0
 
     return templates.TemplateResponse("admin/feedback.html", {
         "request": request,
         "user": user,
         "feedbacks": feedbacks,
         "total_count": total_count,
-        "highlighted_count": highlighted_count,
-        "high_rated_count": high_rated_count,
+        "satisfaction": satisfaction,
         "avg_rating": avg_rating,
         "active_page": "feedback"
     })
@@ -2832,136 +3166,44 @@ async def admin_reports(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    from calendar import month_abbr
-    from sqlalchemy.orm import joinedload, selectinload
-    now = datetime.now(MANILA_TIMEZONE)
-
-    # ── Shared definitions (kept in sync with the rest of the admin panel) ──
-    # Bookings in these states never converted into platform revenue.
-    NON_REVENUE_STATUSES = [
-        'cancelled', 'canceled', 'rejected', 'inquiry', 'pending', 'pending_payment',
-        'awaiting_payment', 'pending_review', 'negotiating', 'quoted',
-        'pending_quotation', 'awaiting_customer', 'awaiting_caterer', 'draft', 'expired'
-    ]
-    # Bookings are "settled" when the flag says so, or when the amount collected
-    # already covers the contract value (identical rule to PaymentService).
-    # --- Monthly Growth (live platform accounts) ---
-    this_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
-
-    new_users_this_month = db.query(models.User).filter(
-        _not_archived(models.User.is_archived),
-        models.User.created_at >= this_month_start
-    ).count()
-    new_users_last_month = db.query(models.User).filter(
-        _not_archived(models.User.is_archived),
-        models.User.created_at >= last_month_start,
-        models.User.created_at < this_month_start
-    ).count()
-
-    if new_users_last_month > 0:
-        monthly_growth_pct = round(((new_users_this_month - new_users_last_month) / new_users_last_month) * 100, 1)
-    else:
-        monthly_growth_pct = 100.0 if new_users_this_month > 0 else 0.0
-
-    # --- User Satisfaction (Average Review Rating) ---
-    avg_rating_result = db.query(func.avg(models.Review.rating)).filter(
-        _not_archived(models.Review.is_archived)
-    ).scalar()
-    avg_rating = round(float(avg_rating_result), 1) if avg_rating_result else 0.0
-    total_reviews = db.query(models.Review).filter(_not_archived(models.Review.is_archived)).count()
-
-    # --- Booking Summary ---
-    # Count every active booking for volume; exclude archived rows, include NULL flags.
-    active_booking_filter = _not_archived(models.Booking.is_archived)
-    all_live_bookings = db.query(models.Booking).options(
-        selectinload(models.Booking.payment_records),
-        joinedload(models.Booking.quotation),
-    ).filter(active_booking_filter).all()
-    total_bookings = len(all_live_bookings)
-    normalized_status = lambda booking: (booking.status or "").strip().lower().replace(" ", "_")
-    cancelled_bookings = sum(1 for b in all_live_bookings if normalized_status(b) in {"cancelled", "canceled"})
-
-    # Revenue metrics ignore cancelled / never-converted bookings.
-    revenue_bookings = [b for b in all_live_bookings if normalized_status(b) not in NON_REVENUE_STATUSES]
-    # Match PaymentService's canonical total field (total_price, then total_amount).
-    total_revenue = sum(_booking_total_amount(b) for b in revenue_bookings)
-    payment_summaries = {
-        b.id: PaymentService.get_payment_summary(b)
-        for b in all_live_bookings
-    }
-    # PaymentService reconciles transaction rows with legacy amount_paid using
-    # verified_paid (max, never sum), excluding pending customer submissions.
-    # Pending/partially paid bookings still contribute verified cash. Exclude
-    # cancelled/expired bookings under the existing revenue treatment.
-    cash_eligible_statuses = {"cancelled", "canceled", "expired"}
-    total_collected = sum(
-        payment_summaries[b.id]["verified_paid"]
-        for b in all_live_bookings
-        if normalized_status(b) not in cash_eligible_statuses
-    )
-    paid_bookings = sum(
-        1 for b in revenue_bookings
-        if payment_summaries[b.id].get("is_fully_paid")
-    )
-
-    # --- Monthly Bookings Trend (last 6 months) ---
-    monthly_bookings = []
-    monthly_labels = []
-    month_starts = [now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)]
-    for _ in range(5):
-        previous_month = month_starts[-1] - timedelta(days=1)
-        month_starts.append(previous_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0))
-
-    for month_start in reversed(month_starts):
-        month_end = (month_start + timedelta(days=32)).replace(day=1)
-        count = db.query(models.Booking).filter(
-            active_booking_filter,
-            models.Booking.created_at >= month_start,
-            models.Booking.created_at < month_end
-        ).count()
-        monthly_bookings.append(count)
-        monthly_labels.append(month_abbr[month_start.month])
-    
-    # --- Top Caterers (by booking count) ---
-    top_caterers_raw = (
-        db.query(models.CatererProfile, func.count(models.Booking.id).label("booking_count"))
-        .join(models.Booking, models.Booking.caterer_id == models.CatererProfile.id)
-        .join(models.User, models.User.id == models.CatererProfile.user_id)
-        .filter(
-            _not_archived(models.User.is_archived),
-            active_booking_filter,
-            func.lower(func.trim(func.coalesce(models.Booking.status, ''))).notin_(NON_REVENUE_STATUSES)
-        )
-        .group_by(models.CatererProfile.id)
-        .order_by(func.count(models.Booking.id).desc())
-        .limit(5)
-        .all()
-    )
-    top_caterers = [{"name": c.business_name, "bookings": b} for c, b in top_caterers_raw]
-
-    # Existing invoice ledger is the source of assessed commission; a payout
-    # fee is included only where no booking invoice already accounts for it.
-    total_commission = _tracked_platform_commissions(db)
-
+    report = _build_admin_report_data(db)
     return templates.TemplateResponse("admin/reports.html", {
         "request": request,
         "user": user,
         "active_page": "reports",
-        "monthly_growth_pct": monthly_growth_pct,
-        "new_users_this_month": new_users_this_month,
-        "avg_rating": avg_rating,
-        "total_reviews": total_reviews,
-        "total_bookings": total_bookings,
-        "cancelled_bookings": cancelled_bookings,
-        "paid_bookings": paid_bookings,
-        "total_revenue": total_revenue,
-        "total_collected": total_collected,
-        "total_commission": total_commission,
-        "monthly_labels": json.dumps(monthly_labels),
-        "monthly_bookings": json.dumps(monthly_bookings),
-        "top_caterers": top_caterers,
+        **report,
     })
+
+
+@router.get("/reports/export")
+async def export_admin_report(
+    format: str = "csv",
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(admin_only),
+):
+    report = _build_admin_report_data(db)
+    report_date = datetime.now(MANILA_TIMEZONE).strftime("%Y%m%d")
+    file_format = format.strip().lower()
+    if file_format == "csv":
+        content = _admin_report_csv(report)
+        media_type = "text/csv; charset=utf-8"
+        filename = f"occaserve-report-{report_date}.csv"
+    elif file_format == "pdf":
+        content = _admin_report_pdf(report)
+        media_type = "application/pdf"
+        filename = f"occaserve-report-{report_date}.pdf"
+    elif file_format in {"word", "docx"}:
+        content = _admin_report_docx(report)
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        filename = f"occaserve-report-{report_date}.docx"
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported report format. Choose csv, pdf, or word.")
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 # --- ARCHIVE SYSTEM ---
 

@@ -618,7 +618,7 @@
             </div>
             <div class="chat-floating-footer">
                 <form id="floatingChatForm" class="floating-input-box" style="margin-bottom: 0;">
-                    <input type="file" id="chatFileInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.pdf,.docx,.txt,.webp">
+                    <input type="file" id="chatFileInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt,.webp,.mp4,.mov">
                     <button type="button" class="btn-attachment" id="attachmentBtn" title="Attach file">
                         <i class="fas fa-paperclip"></i>
                     </button>
@@ -974,18 +974,13 @@
     const attachmentBtn = document.getElementById('attachmentBtn');
     const fileInput = document.getElementById('chatFileInput');
 
+    attachmentBtn.title = `Attach image or file (maximum ${Math.max(1, Number(window.MAX_UPLOAD_SIZE_MB) || 5)} MB)`;
+    attachmentBtn.setAttribute('aria-label', attachmentBtn.title);
     attachmentBtn.onclick = () => fileInput.click();
 
     fileInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file || !currentFloatingPeerId) return;
-
-        if (file.size > 5 * 1024 * 1024) {
-            if (window.showError) window.showError('File exceeds 5MB limit.');
-            else alert('File exceeds 5MB limit.');
-            fileInput.value = '';
-            return;
-        }
 
         // Visual feedback
         const originalIcon = attachmentBtn.innerHTML;
@@ -993,16 +988,7 @@
         attachmentBtn.disabled = true;
 
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const uploadResp = await fetch('/api/chat/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!uploadResp.ok) throw new Error('Upload failed');
-            const fileData = await uploadResp.json();
+            const fileData = await floatingChatClient.uploadFile(file);
 
             // Send message with file info
             const msg = await floatingChatClient.sendMessage(currentFloatingPeerId, null, {
@@ -1014,6 +1000,8 @@
             if (msg) {
                 appendFloatingMessage(msg, 'sent');
                 scrollToFloatingBottom();
+            } else {
+                throw new Error('The file uploaded but the message could not be sent.');
             }
         } catch (err) {
             console.error(err);

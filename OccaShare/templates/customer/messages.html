@@ -165,16 +165,12 @@
 
     .active .avatar-wrapper { border-color: var(--up-orange); }
 
-    .online-indicator {
-        position: absolute;
-        bottom: -2px;
-        right: -2px;
-        width: 14px;
-        height: 14px;
-        background: var(--up-emerald);
-        border: 3px solid #fff;
-        border-radius: 50%;
-    }
+    .customer-avatar-presence { position:relative;display:inline-flex;flex:0 0 52px;width:52px;height:52px;overflow:visible; }
+    .online-indicator { position:absolute;right:-4px;bottom:-3px;z-index:2;box-sizing:border-box;width:14px;height:14px;background:#22c55e;border:2px solid #fff;border-radius:50%; }
+    .customer-peer-presence { display:flex;align-items:center;gap:6px;margin-top:3px;color:#64748b;font-size:.72rem; }
+    .customer-peer-presence-dot { width:8px;height:8px;border-radius:50%;background:#94a3b8; }
+    .customer-peer-presence.online { color:#15803d; }
+    .customer-peer-presence.online .customer-peer-presence-dot { background:#22c55e; }
 
     .conv-content { flex: 1; min-width: 0; }
 
@@ -464,6 +460,73 @@
         border-radius: 12px;
         grid-template-columns:minmax(240px, 32%) minmax(0, 1fr);
     }
+    body.embedded-customer-messages .conv-item { gap:10px;padding:11px 12px; }
+    body.embedded-customer-messages .conv-meta { align-items:flex-start;gap:6px; }
+    body.embedded-customer-messages .conv-name { flex:1;white-space:normal;overflow-wrap:anywhere;font-size:.84rem; }
+    body.embedded-customer-messages .conv-time { flex:0 0 auto; }
+    body.embedded-customer-messages .window-header .conv-name { max-width:none; }
+    body.embedded-customer-messages #activePeerName { white-space:normal;overflow-wrap:anywhere; }
+
+    body.embedded-customer-messages .messages-terminal {
+        height:calc(100dvh - 28px);
+        min-height:0;
+        margin:0;
+        border:1px solid #e2e8f0;
+        border-radius:12px;
+        box-shadow:0 8px 24px rgba(15,23,42,.06);
+        grid-template-columns:minmax(240px,32%) minmax(0,1fr);
+    }
+    body.embedded-customer-messages .chat-sidebar { background:#f8fafc;border-right:1px solid #e2e8f0; }
+    body.embedded-customer-messages .sidebar-header { padding:0;background:#f8fafc; }
+    body.embedded-customer-messages .sidebar-heading-row { display:none; }
+    body.embedded-customer-messages .search-wrapper { display:flex;align-items:center;gap:8px;padding:14px;border-bottom:1px solid #e2e8f0; }
+    body.embedded-customer-messages .search-wrapper i { display:none; }
+    body.embedded-customer-messages .search-wrapper input { min-width:0;height:40px;flex:1;padding:0 12px;border:1px solid #dbe3ed;border-radius:9px;background:#fff;font-size:.82rem;font-weight:400; }
+    body.embedded-customer-messages .customer-new-message-btn { min-height:40px;padding:0 13px;border-radius:9px;background:#f97316;font-size:.8rem; }
+    body.embedded-customer-messages .customer-new-message-btn:hover,
+    body.embedded-customer-messages .customer-new-message-btn:focus-visible { background:#ea580c;outline:3px solid rgba(249,115,22,.18); }
+    body.embedded-customer-messages .conversations-list { padding:0; }
+    body.embedded-customer-messages .conv-item { gap:9px;padding:11px 12px;margin:0;border-bottom:1px solid #edf1f5;border-radius:0;background:transparent; }
+    body.embedded-customer-messages .conv-item:hover,
+    body.embedded-customer-messages .conv-item.active { background:#fff7ed; }
+    body.embedded-customer-messages .conv-item.active::before { top:0;bottom:0;width:3px;background:#f97316; }
+    body.embedded-customer-messages .customer-avatar-presence { width:42px;height:42px;flex-basis:42px; }
+    body.embedded-customer-messages .avatar-wrapper { width:42px;height:42px;flex:0 0 42px;border:0;border-radius:50%;background:#334155;color:#fff; }
+    body.embedded-customer-messages .avatar-wrapper img { width:100%;height:100%;object-fit:cover; }
+    body.embedded-customer-messages .conv-meta { align-items:flex-start;gap:6px; }
+    body.embedded-customer-messages .conv-name { flex:1;color:#0f172a;font-size:.84rem;font-weight:800; }
+    body.embedded-customer-messages .conv-time { flex:0 0 auto;color:#94a3b8;font-size:.68rem; }
+    body.embedded-customer-messages .conv-last { color:#64748b;font-size:.72rem; }
+    body.embedded-customer-messages .chat-window { min-width:0;background:#fff; }
+    body.embedded-customer-messages .welcome-terminal { flex:1;display:grid;place-content:center;gap:10px;padding:20px;text-align:center;color:#94a3b8; }
+    body.embedded-customer-messages .terminal-icon { width:auto;height:auto;margin:0;background:transparent;color:#cbd5e1;font-size:2.8rem; }
+    body.embedded-customer-messages .terminal-title { margin:0;color:#0f172a;font-size:1rem;font-weight:800; }
+    body.embedded-customer-messages .terminal-text { max-width:none;margin:0;color:#64748b;font-size:.8rem;font-weight:400; }
+    body.embedded-customer-messages .window-header { min-height:58px;gap:10px;padding:10px 16px;border-bottom:1px solid #e2e8f0; }
+    body.embedded-customer-messages .window-header > div:first-child { min-width:0;flex:1;gap:10px !important; }
+    body.embedded-customer-messages .window-header .customer-avatar-presence { width:42px;height:42px;flex:0 0 42px; }
+    body.embedded-customer-messages .window-header .avatar-wrapper { width:42px !important;height:42px !important;flex:0 0 42px;margin:0 !important;border-radius:50%; }
+    body.embedded-customer-messages .window-header .conv-name { max-width:none;color:#0f172a;font-size:.92rem !important;font-weight:800; }
+    body.embedded-customer-messages .customer-peer-presence { margin-top:3px;font-size:.72rem; }
+    body.embedded-customer-messages .customer-peer-presence::before { display:none; }
+    body.embedded-customer-messages #viewPeerProfile { width:36px !important;height:36px !important;border-color:#e2e8f0 !important;border-radius:9px !important;background:#f1f5f9 !important;color:#475569 !important; }
+    body.embedded-customer-messages .messages-scroller { flex:1;min-height:0;gap:10px;padding:18px;background:#f8fafc; }
+    body.embedded-customer-messages .msg-bubble { max-width:min(72%,560px);padding:10px 13px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;color:#0f172a;font-size:.9rem;line-height:1.45; }
+    body.embedded-customer-messages .msg-sent { align-self:flex-end;border-color:#f97316;border-bottom-right-radius:4px;background:#f97316;color:#fff; }
+    body.embedded-customer-messages .msg-received { align-self:flex-start;border-color:#e2e8f0;border-bottom-left-radius:4px;background:#fff;color:#0f172a; }
+    body.embedded-customer-messages .input-terminal { padding:13px;border-top:1px solid #e2e8f0;background:#fff; }
+    body.embedded-customer-messages .input-box { height:auto;min-width:0;gap:9px;padding:0;border:0;border-radius:0;background:transparent; }
+    body.embedded-customer-messages .input-box #attachBtn { width:42px;height:42px;flex:0 0 42px;justify-content:center;margin:0 !important;padding:10px;border:0;border-radius:9px;background:#f1f5f9;color:#475569 !important; }
+    body.embedded-customer-messages .input-box #customerAttachLabel { display:none !important; }
+    body.embedded-customer-messages .input-box #messageInput { width:auto;min-width:0;flex:1;height:42px;padding:0 12px;border:1px solid #dbe3ed;border-radius:10px;background:#fff;color:#0f172a;font-size:.88rem; }
+    body.embedded-customer-messages .btn-send-elite { width:42px;height:42px;flex:0 0 42px;border-radius:9px;background:#f97316;color:#fff; }
+    body.embedded-customer-messages .btn-send-elite:hover { background:#ea580c; }
+    body.embedded-customer-messages .customer-contact-icon { background:#fff7ed;color:#ea580c; }
+    body.embedded-customer-messages .customer-contact-search:focus-within { border-color:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.1); }
+    body.embedded-customer-messages .customer-contact-option:hover,
+    body.embedded-customer-messages .customer-contact-option:focus-visible { background:#fff7ed; }
+    body.embedded-customer-messages .customer-contact-close:hover,
+    body.embedded-customer-messages .customer-contact-close:focus-visible { background:#fff7ed;color:#ea580c; }
 
     @media (max-width: 768px) {
         body.embedded-customer-messages .messages-terminal {
@@ -473,15 +536,39 @@
             border-radius: 12px;
             grid-template-columns:minmax(0, 1fr);
         }
+        body.embedded-customer-messages .chat-sidebar { display:flex; }
+        body.embedded-customer-messages .chat-window { display:none; }
+        body.embedded-customer-messages .messages-terminal.mobile-chat-active .chat-sidebar { display:none; }
+        body.embedded-customer-messages .messages-terminal.mobile-chat-active .chat-window { display:flex; }
+        body.embedded-customer-messages .window-header { gap:.45rem;padding:.65rem .7rem; }
+        body.embedded-customer-messages .window-header > div:first-child { gap:.35rem !important; }
+        body.embedded-customer-messages .window-header .customer-avatar-presence { width:36px;height:36px;flex-basis:36px; }
+        body.embedded-customer-messages .window-header .avatar-wrapper { width:36px !important;height:36px !important;flex:0 0 36px; }
+        body.embedded-customer-messages .window-header .conv-name { max-width:none; }
+        body.embedded-customer-messages .messages-scroller { padding:.7rem; }
+        body.embedded-customer-messages .msg-bubble { max-width:88%; }
+        body.embedded-customer-messages .input-terminal { padding:.55rem .65rem max(.55rem,env(safe-area-inset-bottom)); }
+        body.embedded-customer-messages .input-box { gap:.35rem; }
+        body.embedded-customer-messages .input-box #attachBtn { width:38px;height:38px;flex-basis:38px; }
+        body.embedded-customer-messages .input-box #messageInput { height:38px; }
+        body.embedded-customer-messages .btn-send-elite { width:38px;height:38px;flex-basis:38px; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="messages-terminal">
+<div class="messages-terminal admin-messages">
     <!-- ── SIDEBAR ── -->
-    <div class="chat-sidebar" id="conversationsSidebar">
+    <div class="chat-sidebar admin-conversations" id="conversationsSidebar">
         <div class="sidebar-header">
+            {% if embedded %}
+            <div class="search-wrapper admin-inbox-tools">
+                <input type="text" placeholder="Search conversations" id="searchConversations" aria-label="Search conversations">
+                <button type="button" class="customer-new-message-btn admin-new-message" onclick="openCustomerContactModal()">
+                    <i class="fas fa-pen-to-square"></i><span>New</span>
+                </button>
+            </div>
+            {% else %}
             <div class="sidebar-heading-row">
                 <h2>Messages</h2>
                 <button type="button" class="customer-new-message-btn" onclick="openCustomerContactModal()">
@@ -490,10 +577,11 @@
             </div>
             <div class="search-wrapper">
                 <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search for caterers..." id="searchConversations">
+                <input type="text" placeholder="Search for caterers..." id="searchConversations" aria-label="Search conversations">
             </div>
+            {% endif %}
         </div>
-        <div class="conversations-list" id="conversationsList">
+        <div class="conversations-list admin-contact-list" id="conversationsList">
             <!-- Loading -->
             <div style="padding: 4rem; text-align: center;">
                 <i class="fas fa-circle-notch fa-spin fa-2x" style="color: var(--up-orange);"></i>
@@ -502,26 +590,30 @@
     </div>
 
     <!-- ── CHAT AREA ── -->
-    <div class="chat-window" id="chatArea">
+    <div class="chat-window admin-chat-area" id="chatArea">
         <!-- Empty State -->
-        <div class="welcome-terminal" id="noChatSelected">
-            <div class="terminal-icon"><i class="fas fa-paper-plane"></i></div>
-            <h3 class="terminal-title">Your Messages</h3>
-            <p class="terminal-text">Select a conversation to start chatting with caterers.</p>
+        <div class="welcome-terminal admin-chat-empty" id="noChatSelected">
+            <div class="terminal-icon"><i class="fas {{ 'fa-comments' if embedded else 'fa-paper-plane' }}"></i></div>
+            <h3 class="terminal-title">{{ 'Select a conversation' if embedded else 'Your Messages' }}</h3>
+            <p class="terminal-text">{{ 'Or start a new message to a caterer.' if embedded else 'Select a conversation to start chatting with caterers.' }}</p>
         </div>
 
         <!-- Active Chat -->
-        <div id="activeChat" style="display: none; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: hidden;">
-            <div class="window-header">
+        <div id="activeChat" class="admin-chat-active" style="display: none; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: hidden;">
+            <div class="window-header admin-chat-head">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                     <button id="mobileBackBtn" class="mobile-back-btn" onclick="closeMobileChat()">
                         <i class="fas fa-arrow-left"></i>
                     </button>
-                    <div class="avatar-wrapper" id="activePeerAvatar" style="width: 48px; height: 48px; margin-right: 0.5rem;">
+                    <span class="customer-avatar-presence" id="activePeerAvatarPresence">
+                    <div class="avatar-wrapper admin-peer-avatar" id="activePeerAvatar" style="width: 48px; height: 48px; margin-right: 0.5rem;">
                         <i class="fas fa-store"></i>
                     </div>
+                    <span class="online-indicator" id="activePeerOnlineDot" hidden></span>
+                    </span>
                     <div>
                         <div class="conv-name" id="activePeerName" style="font-size: 1.05rem;">Caterer Name</div>
+                        <div class="customer-peer-presence admin-peer-presence" id="activePeerPresence"><span class="customer-peer-presence-dot"></span><span id="activePeerPresenceText">Offline</span></div>
                     </div>
                 </div>
                 <div style="display: flex; gap: 8px;">
@@ -548,17 +640,17 @@
                 </button>
             </div>
 
-            <div class="messages-scroller" id="chatHistory"></div>
+            <div class="messages-scroller admin-chat-history" id="chatHistory"></div>
 
             <div class="input-terminal">
-                <form id="chatForm" class="input-box">
-                    <input type="file" id="fileInput" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt">
-                    <button type="button" class="btn-icon" id="attachBtn" style="color: var(--dm-slate-400); font-size: 1.1rem; margin-right: 0.5rem; background: transparent; border: none; cursor: pointer; display:flex; align-items:center; gap:5px;">
+                <form id="chatForm" class="input-box admin-chat-compose">
+                    <input type="file" id="fileInput" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt,.webp,.mp4,.mov">
+                    <button type="button" class="btn-icon admin-chat-attach" id="attachBtn" title="Attach image or file" aria-label="Attach image or file" style="color: var(--dm-slate-400); font-size: 1.1rem; margin-right: 0.5rem; background: transparent; border: none; cursor: pointer; display:flex; align-items:center; gap:5px;">
                         <i class="fas fa-paperclip"></i>
                         <span id="customerAttachLabel" style="font-size:0.7rem;font-weight:700;display:none;color:var(--up-orange);max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
                     </button>
                     <input type="text" id="messageInput" placeholder="Type your message here..." autocomplete="off" maxlength="1000">
-                    <button type="submit" class="btn-send-elite"><i class="fas fa-paper-plane"></i></button>
+                    <button type="submit" class="btn-send-elite admin-chat-send"><i class="fas fa-paper-plane"></i></button>
                 </form>
             </div>
         </div>
@@ -604,6 +696,12 @@
                     scrollToBottom();
                 }
                 refreshConversations();
+            },
+            onPresenceUpdate: (data) => {
+                if (currentPeerId && Number(data.user_id) === Number(currentPeerId)) {
+                    setCustomerPeerPresence(data.status === 'online');
+                }
+                refreshConversations();
             }
         });
 
@@ -616,6 +714,7 @@
         const attachBtn = document.getElementById('attachBtn');
         const fileInput = document.getElementById('fileInput');
 
+        attachBtn.title = `Attach image or file (maximum ${Math.max(1, Number(window.MAX_UPLOAD_SIZE_MB) || 5)} MB)`;
         attachBtn.onclick = () => fileInput.click();
 
         fileInput.onchange = async (e) => {
@@ -631,6 +730,16 @@
             attachBtn.style.color = 'var(--up-orange)';
 
             if (!currentPeerId) {
+                Swal.fire('Select a conversation', 'Choose a caterer before sending an attachment.', 'info');
+                fileInput.value = '';
+                if (customerAttachLabel) customerAttachLabel.style.display = 'none';
+                attachBtn.style.color = 'var(--dm-slate-400)';
+                return;
+            }
+
+            const maxSizeMb = Math.max(1, Number(window.MAX_UPLOAD_SIZE_MB) || 5);
+            if (file.size > maxSizeMb * 1024 * 1024) {
+                Swal.fire('File Too Large', `Maximum allowed file size is ${maxSizeMb} MB. Please choose a smaller file.`, 'warning');
                 fileInput.value = '';
                 if (customerAttachLabel) customerAttachLabel.style.display = 'none';
                 attachBtn.style.color = 'var(--dm-slate-400)';
@@ -644,21 +753,20 @@
                 didOpen: () => Swal.showLoading()
             });
 
-            const uploadRes = await chatClient.uploadFile(file);
-            Swal.close();
-
-            if (uploadRes) {
+            try {
+                const uploadRes = await chatClient.uploadFile(file);
                 const msg = await chatClient.sendMessage(currentPeerId, "", uploadRes);
-                if (msg) {
-                    appendMessage(msg, 'sent');
-                    refreshConversations();
-                }
-            } else {
-                Swal.fire('Error', 'Failed to upload file. Please check file type and size.', 'error');
+                if (!msg) throw new Error('The file uploaded but the message could not be sent.');
+                appendMessage(msg, 'sent');
+                refreshConversations();
+                Swal.close();
+            } catch (error) {
+                Swal.fire('Upload Failed', error.message || 'Please check the file and try again.', 'error');
+            } finally {
+                fileInput.value = '';
+                if (customerAttachLabel) customerAttachLabel.style.display = 'none';
+                attachBtn.style.color = 'var(--dm-slate-400)';
             }
-            fileInput.value = ''; // Reset
-            if (customerAttachLabel) customerAttachLabel.style.display = 'none';
-            attachBtn.style.color = 'var(--dm-slate-400)';
         };
 
         // Check for caterer ID in URL
@@ -710,9 +818,11 @@
             const peer = conv.peer;
             const item = document.createElement('button');
             item.type = 'button';
-            item.className = `conv-item${currentPeerId === peer.id ? ' active' : ''}`;
-            item.addEventListener('click', () => selectConversation(peer.id, peer.name, peer.logo, peer.profile_id));
+            item.className = `conv-item admin-conversation${currentPeerId === peer.id ? ' active' : ''}`;
+            item.addEventListener('click', () => selectConversation(peer.id, peer.name, peer.logo, peer.profile_id, peer.is_online));
 
+            const avatarWrap = document.createElement('span');
+            avatarWrap.className = 'customer-avatar-presence';
             const avatar = document.createElement('div');
             avatar.className = 'avatar-wrapper';
             if (peer.logo) {
@@ -734,7 +844,7 @@
             if (peer.is_online) {
                 const online = document.createElement('span');
                 online.className = 'online-indicator';
-                avatar.appendChild(online);
+                avatarWrap.appendChild(online);
             }
 
             const info = document.createElement('div');
@@ -768,14 +878,24 @@
                 previewRow.appendChild(unread);
             }
             info.append(metadata, previewRow);
-            item.append(avatar, info);
+            avatarWrap.insertBefore(avatar, avatarWrap.firstChild);
+            item.append(avatarWrap, info);
             list.appendChild(item);
         });
     }
 
-    async function selectConversation(peerId, peerName, peerLogo = '', peerProfileId = null) {
+    function setCustomerPeerPresence(isOnline) {
+        const presence = document.getElementById('activePeerPresence');
+        presence.classList.toggle('online', isOnline);
+        document.getElementById('activePeerPresenceText').textContent = isOnline ? 'Online' : 'Offline';
+        document.getElementById('activePeerOnlineDot').hidden = !isOnline;
+    }
+
+    async function selectConversation(peerId, peerName, peerLogo = '', peerProfileId = null, isOnline) {
         currentPeerId = peerId;
         chatClient.peerId = peerId;
+        const knownPeer = customerConversations.find(conversation => Number(conversation.peer.id) === Number(peerId));
+        setCustomerPeerPresence(typeof isOnline === 'boolean' ? isOnline : Boolean(knownPeer?.peer.is_online));
 
         // UI Updates
         document.getElementById('noChatSelected').style.display = 'none';
@@ -909,7 +1029,7 @@
             button.append(avatar, copy, meta);
             button.addEventListener('click', () => {
                 closeCustomerContactModal();
-                selectConversation(contact.id, contact.name || 'Caterer', contact.logo, contact.profile_id);
+                selectConversation(contact.id, contact.name || 'Caterer', contact.logo, contact.profile_id, contact.is_online);
             });
             choices.appendChild(button);
         });

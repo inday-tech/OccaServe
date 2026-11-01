@@ -12,6 +12,37 @@ from datetime import datetime
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
+
+def _is_walk_in_booking(custom_requirements, booking_source) -> bool:
+    requirements = custom_requirements if isinstance(custom_requirements, dict) else {}
+    source = str(booking_source or "").strip().casefold().replace("-", "_").replace(" ", "_")
+    return bool(requirements.get("is_walk_in")) or source in {"walk_in", "walkin", "manual", "internal"}
+
+
+def _walk_in_only_customer_ids(db: Session, caterer_id: int, customer_ids) -> set[int]:
+    customer_ids = {int(customer_id) for customer_id in customer_ids if customer_id is not None}
+    if not customer_ids:
+        return set()
+
+    booking_rows = db.query(
+        models.Booking.user_id,
+        models.Booking.custom_requirements,
+        models.Booking.booking_source,
+    ).filter(
+        models.Booking.caterer_id == caterer_id,
+        models.Booking.user_id.in_(customer_ids),
+    ).all()
+
+    walk_in_ids = set()
+    non_walk_in_ids = set()
+    for customer_id, custom_requirements, booking_source in booking_rows:
+        if _is_walk_in_booking(custom_requirements, booking_source):
+            walk_in_ids.add(customer_id)
+        else:
+            non_walk_in_ids.add(customer_id)
+    return walk_in_ids - non_walk_in_ids
+
+
 @router.get("/contacts")
 async def get_message_contacts(
     db: Session = Depends(database.get_db),
@@ -51,7 +82,16 @@ async def get_message_contacts(
                     models.User.id.in_(inquiry_user_ids),
                     models.User.email.in_(inquiry_emails) if inquiry_emails else False,
                 ),
-            ).order_by(models.User.created_at.desc()).limit(250).all()
+            ).order_by(models.User.created_at.desc()).all()
+            walk_in_only_ids = _walk_in_only_customer_ids(
+                db,
+                profile.id,
+                [contact.id for contact in customer_contacts],
+            )
+            customer_contacts = [
+                contact for contact in customer_contacts
+                if contact.id not in walk_in_only_ids
+            ][:250]
             contacts.extend(customer_contacts)
     elif current_user.role == "customer":
         contacts = db.query(models.User).join(
@@ -74,10 +114,18 @@ async def get_message_contacts(
             name = contact.caterer_profile.business_name or name
         contact_group = "customers" if contact.role == "customer" else "admin" if contact.role == "admin" else "caterers"
         if current_user.role == "caterer" and contact.role == "customer" and current_user.caterer_profile:
-            booked = db.query(models.Booking.id).filter(
+            booked = db.query(
+                models.Booking.user_id,
+                models.Booking.custom_requirements,
+                models.Booking.booking_source,
+            ).filter(
                 models.Booking.caterer_id == current_user.caterer_profile.id,
                 models.Booking.user_id == contact.id,
-            ).first() is not None
+            ).all()
+            booked = any(
+                not _is_walk_in_booking(custom_requirements, booking_source)
+                for _, custom_requirements, booking_source in booked
+            )
             inquired = db.query(models.Inquiry.id).filter(
                 models.Inquiry.caterer_id == current_user.caterer_profile.id,
                 or_(models.Inquiry.user_id == contact.id, models.Inquiry.email == contact.email),
@@ -126,6 +174,18 @@ async def get_conversations(
     all_msgs = db.query(models.ChatMessage).filter(
         or_(models.ChatMessage.sender_id == current_user.id, models.ChatMessage.receiver_id == current_user.id)
     ).order_by(models.ChatMessage.created_at.desc()).all()
+
+    peer_ids = {
+        msg.receiver_id if msg.sender_id == current_user.id else msg.sender_id
+        for msg in all_msgs
+    }
+    walk_in_only_ids = set()
+    if current_user.role == "caterer" and current_user.caterer_profile:
+        walk_in_only_ids = _walk_in_only_customer_ids(
+            db,
+            current_user.caterer_profile.id,
+            peer_ids,
+        )
     
     conversations = {}
     for msg in all_msgs:
@@ -136,6 +196,8 @@ async def get_conversations(
         if peer_id not in conversations:
             peer = db.query(models.User).get(peer_id)
             if not peer: continue
+            if peer.role == "customer" and peer_id in walk_in_only_ids:
+                continue
             
             peer_info = {
                 "id": peer.id,
@@ -350,24 +412,39 @@ async def delete_message(
 @router.post("/upload")
 async def upload_chat_file(
     file: UploadFile = File(...),
-    current_user: models.User = Depends(auth.get_current_user)
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(auth.get_current_user),
 ):
-    """Upload a file to the chat directory."""
-    # Security: limit file types (Optional but recommended)
-    ext = os.path.splitext(file.filename)[1].lower()
-    allowed_exts = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.docx', '.txt', '.webp']
+    """Validate and upload an attachment using the configured per-file limit."""
+    config = db.query(models.WebsiteConfig).first()
+    max_size_mb = max(1, int(config.max_file_size_mb or 5)) if config else 5
+    max_size_bytes = max_size_mb * 1024 * 1024
+    filename = file.filename or ""
+    ext = os.path.splitext(filename)[1].lower()
+    allowed_exts = [
+        '.jpg', '.jpeg', '.png', '.gif', '.pdf', '.doc', '.docx',
+        '.txt', '.webp', '.mp4', '.mov',
+    ]
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="File type not allowed")
-    
+
+    content_bytes = await file.read(max_size_bytes + 1)
+    if len(content_bytes) > max_size_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File is too large. Maximum allowed size is {max_size_mb} MB.",
+        )
+    if not content_bytes:
+        raise HTTPException(status_code=400, detail="The selected file is empty.")
+
     from ..services.storage import upload_file_to_cloudinary
-    content_bytes = await file.read()
     data_url = upload_file_to_cloudinary(content_bytes, folder="chat_attachments")
     if not data_url:
         raise HTTPException(status_code=500, detail="Failed to upload file to Cloudinary")
     
     return {
         "file_url": data_url,
-        "file_name": file.filename,
+        "file_name": filename,
         "message_type": "image" if ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'] else "file"
     }
 

@@ -11,7 +11,10 @@
     <div class="print-metadata-grid">
         <div class="meta-node"><span>Report ID:</span> <strong>#AUD-{{ now.strftime('%Y%m%d') }}</strong></div>
         <div class="meta-node"><span>Operator:</span> <strong>{{ user.first_name }} {{ user.last_name }}</strong></div>
-        <div class="meta-node"><span>Generated On:</span> <strong>{{ now.strftime('%b %d, %Y %I:%M %p') }}</strong></div>
+        <div class="meta-node"><span>Generated On:</span> <strong>{{ now.strftime('%b %d, %Y %I:%M %p PHT') }}</strong></div>
+        <div class="meta-node"><span>Entries on this page:</span> <strong>{{ logs|length }}</strong></div>
+        <div class="meta-node"><span>Filters:</span> <strong>{{ filter_summary }}</strong></div>
+        <div class="meta-node"><span>Note:</span> <strong>Use Generate PDF Report to include all matching pages.</strong></div>
     </div>
 </div>
 
@@ -23,11 +26,14 @@
             <p>Monitor and review system activities and administrative actions.</p>
         </div>
         <div class="operational-actions-v2">
-            <button class="dm-btn-secondary" onclick="window.print()">
-                <i class="fas fa-print"></i> Generate Report
-            </button>
-            <a href="/admin/api/audit-logs/export?q={{ filters.q|urlencode }}&category={{ filters.category|urlencode }}&date={{ filters.date|urlencode }}" class="dm-btn-primary" id="auditExportLink">
-                <i class="fas fa-download"></i> Export CSV
+            <a href="/admin/api/audit-logs/export?format=pdf&q={{ filters.q|urlencode }}&category={{ filters.category|urlencode }}&date={{ filters.date|urlencode }}" class="dm-btn-primary">
+                <i class="fas fa-file-pdf" aria-hidden="true"></i> Generate PDF Report
+            </a>
+            <a href="/admin/api/audit-logs/export?format=csv&q={{ filters.q|urlencode }}&category={{ filters.category|urlencode }}&date={{ filters.date|urlencode }}" class="dm-btn-secondary" id="auditExportLink">
+                <i class="fas fa-file-csv audit-export-icon audit-export-csv-icon" aria-hidden="true"></i> Export CSV
+            </a>
+            <a href="/admin/api/audit-logs/export?format=word&q={{ filters.q|urlencode }}&category={{ filters.category|urlencode }}&date={{ filters.date|urlencode }}" class="dm-btn-secondary">
+                <i class="fas fa-file-word audit-export-icon audit-export-word-icon" aria-hidden="true"></i> Export Word
             </a>
         </div>
     </div>
@@ -39,7 +45,7 @@
         <div class="engine-header-v2">
             <div class="engine-badge-stack">
                 <span class="engine-label-text"><i class="fas fa-filter"></i> FILTERS</span>
-                <span class="engine-status-tag">{{ total_count }} log entries</span>
+                <span class="engine-status-tag">{{ total_count }} matching log entries</span>
             </div>
             <button type="button" class="btn-terminal-reset" onclick="window.location.href='/admin/audit-logs'">
                 <i class="fas fa-times-circle"></i> Clear Filters
@@ -72,7 +78,6 @@
                     <label class="dm-label-elite">Date Range</label>
                     <div class="dm-input-wrapper">
                         <input type="date" name="date" value="{{ filters.date }}" class="dm-input-elite">
-                        <i class="fas fa-calendar-day input-icon"></i>
                     </div>
                 </div>
             </div>
@@ -91,8 +96,8 @@
                     <th>Role</th>
                     <th>Action</th>
                     <th>Module</th>
-                    <th>Status</th>
-                    <th style="max-width: 200px;">Details</th>
+                    <th>Status Change</th>
+                    <th class="audit-details-heading">Details</th>
                     <th style="text-align: right; width: 60px; min-width: 60px;">Actions</th>
                 </tr>
             </thead>
@@ -101,36 +106,21 @@
                 
                 {% set action_lower = log.action.lower() if log.action else '' %}
                 {% set module = 'System' %}
-                {% if 'login' in action_lower or 'auth' in action_lower %}
+                {% if 'login' in action_lower or 'auth' in action_lower or 'token' in action_lower %}
                     {% set module = 'Authentication' %}
                 {% elif 'caterer' in action_lower %}
                     {% set module = 'Caterers' %}
                 {% elif 'book' in action_lower %}
                     {% set module = 'Bookings' %}
-                {% elif 'investigation' in action_lower or 'account' in action_lower or 'suspend' in action_lower or 'activate' in action_lower %}
+                {% elif 'investigation' in action_lower or 'account' in action_lower or 'suspend' in action_lower or 'activate' in action_lower or 'customer' in action_lower %}
                     {% set module = 'Users' %}
-                {% endif %}
-
-                {% set final_status = 'Success' %}
-                {% if log.new_status %}
-                    {% set ns_lower = log.new_status.lower() %}
-                    {% if 'suspend' in ns_lower or 'fail' in ns_lower or 'reject' in ns_lower %}
-                        {% set final_status = 'Failed' %}
-                    {% elif 'warn' in ns_lower or 'pending' in ns_lower %}
-                        {% set final_status = 'Warning' %}
-                    {% endif %}
-                {% endif %}
-
-                {% set display_ip = log.ip_address %}
-                {% if not display_ip or display_ip == '127.0.0.1' or display_ip == 'localhost' %}
-                    {% set display_ip = '112.198.' ~ ((log.id * 17) % 255) ~ '.' ~ ((log.id * 31) % 255) %}
                 {% endif %}
 
                 <tr class="dm-audit-row">
                     <td>
                         <div class="ts-cluster">
                             <span class="ts-main">{{ log.timestamp.strftime('%b %d, %Y') }}</span>
-                            <span class="ts-sub">{{ log.timestamp.strftime('%I:%M %p') }}</span>
+                            <span class="ts-sub">{{ log.timestamp.strftime('%I:%M:%S %p') }}</span>
                         </div>
                     </td>
                     <td>
@@ -148,21 +138,25 @@
                         <span class="module-text">{{ module }}</span>
                     </td>
                     <td>
-                        <span class="status-badge {{ final_status|lower }}">{{ final_status }}</span>
+                        {% if log.old_status or log.new_status %}
+                        <span class="status-change-text">{{ log.old_status or 'Not recorded' }} to {{ log.new_status or 'Not recorded' }}</span>
+                        {% else %}
+                        <span class="status-change-text status-change-empty">No status change recorded</span>
+                        {% endif %}
                     </td>
-                    <td style="max-width: 200px;">
-                        <p class="registry-narrative text-truncate" style="max-width: 100%;">{{ log.notes or 'Action completed successfully.' }}</p>
+                    <td class="audit-details-cell">
+                        <p class="registry-narrative">{{ log.notes or 'No additional details recorded.' }}</p>
                     </td>
                     <td style="text-align: right; width: 60px; min-width: 60px;">
                         <button type="button" class="btn-clean log-action-btn"
-                            data-timestamp="{{ log.timestamp.strftime('%b %d, %Y %I:%M %p') }}"
+                            data-timestamp="{{ log.timestamp.strftime('%b %d, %Y %I:%M:%S %p') }}"
                             data-user="{{ log.user.first_name ~ ' ' ~ log.user.last_name if log.user else 'System' }}"
                             data-role="{{ log.user.role|title if log.user else 'Admin' }}"
                             data-action="{{ log.action.replace('_', ' ')|title }}"
                             data-module="{{ module }}"
-                            data-status="{{ final_status }}"
-                            data-ip="{{ display_ip }}"
-                            data-notes="{{ log.notes|replace('\n', ' ')|replace('\r', '')|escape if log.notes else 'Action completed successfully.' }}"
+                            data-status="{{ log.old_status or 'Not recorded' }} to {{ log.new_status or 'Not recorded' }}"
+                            data-ip="{{ log.ip_address or 'Not recorded' }}"
+                            data-notes="{{ log.notes|replace('\n', ' ')|replace('\r', '')|escape if log.notes else 'No additional details recorded.' }}"
                             onclick="viewLogDetails(this)">
                             <i class="fas fa-eye" title="View Details"></i>
                         </button>
@@ -187,6 +181,11 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+
+    <div class="audit-result-summary no-print">
+        Showing {{ ((current_page - 1) * 20) + 1 if total_count else 0 }}–{{ [current_page * 20, total_count]|min }} of {{ total_count }} matching entries.
+        Downloads include every matching entry across all pages.
     </div>
 
     <!-- Pagination Hub V2 -->
@@ -250,8 +249,8 @@
                 <div class="log-detail-value" id="modalModule"></div>
             </div>
             <div class="log-detail-row">
-                <div class="log-detail-label">Status</div>
-                <div class="log-detail-value"><span id="modalStatus" class="status-badge"></span></div>
+                <div class="log-detail-label">Status Change</div>
+                <div class="log-detail-value" id="modalStatus"></div>
             </div>
             <div class="log-detail-row">
                 <div class="log-detail-label">IP Address</div>
@@ -270,6 +269,19 @@
 
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    .audit-export-icon {
+        font-size: 1rem;
+        flex: 0 0 auto;
+    }
+
+    .audit-export-csv-icon {
+        color: #16a34a;
+    }
+
+    .audit-export-word-icon {
+        color: #2563eb;
+    }
 
     :root {
         --dm-primary: #0f172a; /* Slate 900 for professional look */
@@ -325,6 +337,33 @@
             box-shadow: none;
         }
 
+        .registry-scroller {
+            overflow: visible;
+        }
+
+        .dm-intelligence-table {
+            width: 100%;
+            min-width: 0;
+            table-layout: auto;
+            font-size: 8pt;
+        }
+
+        .dm-intelligence-table th,
+        .dm-audit-row td {
+            padding: 5px;
+            white-space: normal;
+        }
+
+        .audit-details-cell {
+            min-width: 0;
+            max-width: none;
+        }
+
+        .dm-intelligence-table th:last-child,
+        .dm-audit-row td:last-child {
+            display: none;
+        }
+
         .dm-audit-row {
             page-break-inside: avoid;
         }
@@ -355,7 +394,8 @@
 
     .operational-actions-v2 {
         display: flex;
-        gap: 1rem;
+        flex-wrap: wrap;
+        gap: 0.6rem;
     }
 
     /* BUTTON REFINEMENT */
@@ -634,6 +674,38 @@
         font-size: 0.85rem;
         color: var(--dm-slate-600);
         margin: 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .audit-details-heading {
+        min-width: 260px;
+    }
+
+    .audit-details-cell {
+        min-width: 260px;
+        max-width: 480px;
+        white-space: normal !important;
+    }
+
+    .status-change-text {
+        display: inline-block;
+        max-width: 190px;
+        color: var(--dm-slate-600);
+        font-size: 0.78rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .status-change-empty {
+        color: var(--dm-slate-400);
+        font-style: italic;
+    }
+
+    .audit-result-summary {
+        padding: 0.8rem 1rem;
+        color: var(--dm-slate-600);
+        font-size: 0.8rem;
     }
     
     .text-truncate {
@@ -843,6 +915,13 @@
         font-weight: 600;
         color: var(--dm-secondary);
         text-align: right;
+        max-width: 72%;
+        overflow-wrap: anywhere;
+    }
+    .log-detail-desc .log-detail-value {
+        max-width: 100%;
+        text-align: left;
+        white-space: pre-wrap;
     }
     .log-modal-footer {
         padding: 1rem 1.5rem;
@@ -951,7 +1030,6 @@
         const status = btn.getAttribute('data-status');
         const statusEl = document.getElementById('modalStatus');
         statusEl.innerText = status;
-        statusEl.className = 'status-badge ' + status.toLowerCase();
         
         document.getElementById('modalIp').innerText = btn.getAttribute('data-ip');
         document.getElementById('modalDesc').innerText = btn.getAttribute('data-notes');

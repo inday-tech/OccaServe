@@ -1,210 +1,119 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Platform Feedback Terminal - OccaServe Admin{% endblock %}
+{% block title %}Platform Reviews - OccaServe Admin{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
-<style>
-    /* Trust Engine Specific Styling */
-    .sentiment-badge {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.65rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .sentiment-positive {
-        background: #ecfdf5;
-        color: #059669;
-    }
-
-    .sentiment-critical {
-        background: #fff7ed;
-        color: #9a3412;
-    }
-
-    .verified-badge {
-        font-size: 0.6rem;
-        font-weight: 800;
-        color: #3b82f6;
-        background: #eff6ff;
-        padding: 2px 8px;
-        border-radius: 4px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        margin-top: 4px;
-    }
-
-    /* Masonry Feedback Layout */
-    .trust-masonry {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .feedback-card-premium {
-        background: white;
-        border-radius: 20px;
-        border: 1px solid #f1f5f9;
-        padding: 1.5rem;
-        position: relative;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-    }
-
-    .feedback-card-premium:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.04);
-        border-color: var(--adm-primary-light);
-    }
-
-
-
-    .feedback-text {
-        font-size: 0.9rem;
-        color: var(--adm-navy);
-        line-height: 1.6;
-        font-weight: 500;
-        font-style: italic;
-        margin: 0;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', path='/css/admin/feedback.css') }}?v={{ static_asset_version('css/admin/feedback.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-header-clean">
+<div class="dashboard-header-clean platform-reviews-header">
     <div class="header-title-area">
         <h1>Platform Reviews</h1>
-        <p>View feedback and testimonials from users.</p>
+        <p>Feedback about OccaServe from customers and caterers.</p>
     </div>
 </div>
 
-<div class="kpi-grid-clean">
-    <div class="kpi-card-clean">
+<section class="kpi-grid-clean platform-review-stats" aria-label="Platform review summary">
+    <article class="kpi-card-clean">
         <div class="kpi-info">
             <h4>Total Reviews</h4>
             <span class="kpi-value">{{ total_count }}</span>
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">Platform-wide feedback</div>
+            <span class="review-stat-caption">All active platform reviews</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </article>
+    <article class="kpi-card-clean">
         <div class="kpi-info">
             <h4>Average Rating</h4>
-            <span class="kpi-value">{{ avg_rating }} / 5.0</span>
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">Overall sentiment score</div>
+            <span class="kpi-value">{% if avg_rating is not none %}{{ avg_rating }} <small>/ 5</small>{% else %}N/A{% endif %}</span>
+            <span class="review-stat-caption">From valid submitted ratings</span>
         </div>
-    </div>
-    <div class="kpi-card-clean">
+    </article>
+    <article class="kpi-card-clean">
         <div class="kpi-info">
-            <h4>High Ratings</h4>
-            {% set satisfaction = (high_rated_count / total_count * 100)|round(1) if total_count > 0 else 0 %}
-            <span class="kpi-value">{{ satisfaction }}%</span>
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--adm-muted); margin-top: 5px;">4 stars and above</div>
+            <h4>Positive Ratings</h4>
+            <span class="kpi-value">{{ satisfaction }}<small>%</small></span>
+            <span class="review-stat-caption">Of reviews with a valid rating, 4 or 5 stars</span>
+        </div>
+    </article>
+</section>
+
+<section class="card-clean platform-review-panel" aria-label="Platform review list">
+    <div class="platform-review-table-heading">
+        <div>
+            <h2>Customer &amp; Caterer Feedback</h2>
+            <p>{{ total_count }} review{% if total_count != 1 %}s{% endif %}</p>
         </div>
     </div>
-</div>
-
-<div class="trust-masonry">
-    {% for fb in feedbacks %}
-    <div class="feedback-card-premium">
-        <div style="display: flex; gap: 1rem; align-items: flex-start;">
-            <div
-                style="width: 44px; height: 44px; border-radius: 12px; background: #f1f5f9; overflow: hidden; flex-shrink: 0;">
-                {% if fb.user and fb.user.profile_image_url %}
-                <img src="{{ fb.user.profile_image_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+    <div class="platform-review-table-scroll">
+        <table class="platform-review-table">
+            <thead>
+                <tr>
+                    <th scope="col">Reviewer</th>
+                    <th scope="col">Account type</th>
+                    <th scope="col">Rating</th>
+                    <th scope="col">Review</th>
+                    <th scope="col">Date submitted</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fb in feedbacks %}
+                <tr>
+                    <td>
+                        <div class="platform-review-author">
+                            <span class="reviewer-avatar" aria-hidden="true">
+                                {% if fb.user %}
+                                    {{ (fb.user.first_name or fb.user.email or 'U')[0]|upper }}
+                                {% else %}
+                                    U
+                                {% endif %}
+                            </span>
+                            <span class="reviewer-details">
+                                <strong>
+                                    {% if fb.user %}
+                                        {{ ((fb.user.first_name or '') ~ ' ' ~ (fb.user.last_name or ''))|trim or fb.user.email or 'Platform user' }}
+                                    {% else %}
+                                        Unavailable account
+                                    {% endif %}
+                                </strong>
+                                {% if fb.user and fb.user.email %}
+                                <small>{{ fb.user.email }}</small>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="review-role-badge {{ 'review-role-caterer' if fb.role == 'caterer' else 'review-role-customer' }}">
+                            {% if fb.role == 'caterer' %}Caterer{% else %}Customer{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="review-rating" aria-label="{{ fb.rating or 0 }} out of 5 stars">
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            {{ fb.rating or 0 }}<small>/5</small>
+                        </span>
+                    </td>
+                    <td class="platform-review-comment">
+                        {% if fb.comment %}{{ fb.comment }}{% else %}<span class="review-no-comment">No written comment</span>{% endif %}
+                    </td>
+                    <td class="platform-review-date">
+                        {% if fb.created_at %}{{ fb.created_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}
+                    </td>
+                </tr>
                 {% else %}
-                <div
-                    style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #94a3b8;">
-                    {{ fb.user.first_name[0]|upper if fb.user else 'U' }}
-                </div>
-                {% endif %}
-            </div>
-            <div style="flex: 1;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="font-weight: 800; color: var(--adm-navy); font-size: 0.9rem;">
-                        {{ fb.user.first_name if fb.user else 'Anonymous' }} {{ fb.user.last_name if fb.user }}
-                    </div>
-                    <div class="rating-stars" style="color: #f59e0b; font-size: 0.7rem;">
-                        {% for i in range(fb.rating|int) %}<i class="fas fa-star"></i>{% endfor %}
-                        {% for i in range(5 - fb.rating|int) %}<i class="far fa-star"></i>{% endfor %}
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <span
-                        style="font-size: 0.65rem; font-weight: 800; color: var(--adm-muted); text-transform: uppercase;">
-                        {{ 'CATERER PARTNER' if fb.role == 'caterer' else 'CUSTOMER' }}
-                    </span>
-                    <span class="verified-badge">Verified User</span>
-                </div>
-            </div>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span
-                class="sentiment-badge {% if fb.rating >= 4 %}sentiment-positive{% else %}sentiment-critical{% endif %}">
-                {% if fb.rating >= 4 %}
-                Positive
-                {% else %}
-                Needs Improvement
-                {% endif %}
-            </span>
-            <div style="font-size: 0.7rem; color: var(--adm-muted); font-weight: 700;">
-                <i class="far fa-calendar-alt"></i> {{ fb.created_at.strftime('%b %d, %Y') }}
-            </div>
-        </div>
-
-        <p class="feedback-text">"{{ fb.comment }}"</p>
-
-        <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; gap: 6px;">
-                <span class="badge-clean" style="background: #f0fdf4; color: #16a34a; font-size: 0.6rem; border: 1px solid #dcfce7;">
-                    Verified Review
-                </span>
-            </div>
-        </div>
+                <tr>
+                    <td colspan="5">
+                        <div class="platform-reviews-empty">
+                            <i class="fas fa-comments" aria-hidden="true"></i>
+                            <strong>No platform reviews yet</strong>
+                            <span>Reviews submitted by customers and caterers will appear here.</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
-    {% else %}
-    <div style="grid-column: 1/-1; text-align: center; padding: 5rem;">
-        <i class="fas fa-comments-slash fa-4x" style="color: #f1f5f9; margin-bottom: 2rem;"></i>
-        <h2 style="color: var(--adm-navy);">No Reviews Found</h2>
-        <p style="color: var(--adm-muted);">User reviews will appear here once submitted.</p>
-    </div>
-    {% endfor %}
-</div>
-
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    function archiveItem(type, id) {
-        openConfirmModal('Archive Review?', 'This testimonial will be moved to archives for 30 days. You can restore it if needed.', () => {
-            Swal.fire({ title: 'Archiving...', didOpen: () => Swal.showLoading() });
-            fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
-                    else Swal.fire('Error', data.message, 'error');
-                })
-                .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
-        }, { variant: 'archive' });
-    }
-
-    window.addEventListener('system_update', (e) => {
-        if (e.detail.type === 'feedback_update' || e.detail.type === 'new_platform_feedback') {
-            setTimeout(() => {
-                if (window.softRefresh) window.softRefresh();
-                else window.location.reload();
-            }, 1000);
-        }
-    });
-</script>
+</section>
 {% endblock %}

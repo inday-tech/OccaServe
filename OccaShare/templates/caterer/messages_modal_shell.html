@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
+  {% set wconfig = website_config() %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Messages{% endblock %}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <script>window.MAX_UPLOAD_SIZE_MB = {{ wconfig.max_file_size_mb if wconfig and wconfig.max_file_size_mb else 5 }};</script>
   {% set caterer_primary = user.caterer_profile.primary_color if user and user.caterer_profile and user.caterer_profile.primary_color else '#FF7B54' %}
   {% set caterer_accent = user.caterer_profile.accent_color if user and user.caterer_profile and user.caterer_profile.accent_color else '#FFB26B' %}
   {% set caterer_secondary = user.caterer_profile.secondary_color if user and user.caterer_profile and user.caterer_profile.secondary_color else '#2D4059' %}

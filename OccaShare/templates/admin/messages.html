@@ -16,6 +16,15 @@
     .admin-conversation-copy { min-width:0; flex:1; }
     .admin-conversation-name,.admin-conversation-last { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
     .admin-conversation-name { font-size:.84rem; font-weight:800; color:#0f172a; }
+    .admin-peer-avatar-wrap { position:relative;display:inline-flex;flex:0 0 42px;width:42px;height:42px;overflow:visible; }
+    .admin-peer-avatar-wrap .admin-peer-avatar { width:42px;height:42px; }
+    .admin-presence-dot { position:absolute;right:-4px;bottom:-3px;z-index:2;box-sizing:border-box;width:14px;height:14px;border:2px solid #fff;border-radius:50%;background:#22c55e; }
+    .admin-peer-presence { display:flex;align-items:center;gap:6px; }
+    .admin-peer-presence::before { content:"";width:8px;height:8px;border-radius:50%;background:#94a3b8; }
+    .admin-peer-presence.online::before { background:#22c55e; }
+    .admin-chat-head .admin-peer-presence::before { display:none; }
+    .admin-contact-choice .admin-presence-dot { position:static;flex:0 0 8px;width:8px;height:8px;border:0; }
+    .admin-contact-choice .contact-presence { display:flex;align-items:center;gap:6px; }
     .admin-conversation-last { margin-top:4px; font-size:.72rem; color:#64748b; }
     .admin-unread { padding:2px 7px; border-radius:12px; color:#fff; background:#ef4444; font-size:.68rem; font-weight:800; }
     .admin-chat-area { min-width:0; display:flex; flex-direction:column; background:#fff; }
@@ -25,14 +34,22 @@
     .admin-chat-head { display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid #e2e8f0; }
     .admin-chat-head strong { color:#0f172a; }
     .admin-chat-head small { display:block; color:#64748b; margin-top:3px; }
+    body.embedded-admin-messages .admin-messages { grid-template-columns:minmax(240px,32%) minmax(0,1fr); border-radius:12px; }
+    body.embedded-admin-messages .admin-conversation { padding:11px 12px; gap:9px; }
+    body.embedded-admin-messages .admin-conversation-name { white-space:normal;overflow-wrap:anywhere; }
+    body.embedded-admin-messages .admin-chat-head strong { overflow-wrap:anywhere; }
     .admin-chat-history { flex:1; min-height:0; overflow:auto; padding:18px; display:flex; flex-direction:column; gap:10px; background:#f8fafc; }
     .admin-chat-bubble { max-width:min(72%,560px); padding:10px 13px; border-radius:14px; line-height:1.45; overflow-wrap:anywhere; white-space:pre-wrap; }
     .admin-chat-bubble.mine { align-self:flex-end; color:#fff; background:#f97316; border-bottom-right-radius:4px; }
     .admin-chat-bubble.theirs { align-self:flex-start; color:#0f172a; background:#fff; border:1px solid #e2e8f0; border-bottom-left-radius:4px; }
     .admin-chat-time { display:block; margin-top:5px; font-size:.63rem; opacity:.72; text-align:right; }
     .admin-chat-compose { display:flex; gap:9px; padding:13px; border-top:1px solid #e2e8f0; }
-    .admin-chat-compose input { min-width:0; flex:1; padding:12px; border:1px solid #dbe3ed; border-radius:10px; }
+    .admin-chat-compose input[type="text"] { min-width:0; flex:1; padding:12px; border:1px solid #dbe3ed; border-radius:10px; }
     .admin-chat-compose button,.admin-new-message { border:0; border-radius:9px; padding:10px 13px; color:#fff; background:#f97316; font-weight:800; cursor:pointer; }
+    .admin-chat-compose .admin-chat-attach { min-width:42px; display:grid; place-items:center; padding:10px; background:#f1f5f9; color:#475569; }
+    .admin-chat-compose .admin-chat-attach:hover { background:#e2e8f0; }
+    .admin-chat-upload-error { display:none; margin:0; padding:8px 13px; border-top:1px solid #fecaca; background:#fef2f2; color:#b91c1c; font-size:.74rem; }
+    .admin-chat-upload-error.visible { display:block; }
     .admin-mobile-back { display:none; border:0; background:transparent; font-size:1rem; color:#475569; }
     .admin-contact-modal { position:fixed; inset:0; z-index:1200; display:none; align-items:center; justify-content:center; padding:16px; background:rgba(15,23,42,.55); }
     .admin-contact-modal.open { display:flex; }
@@ -50,7 +67,7 @@
     .admin-contact-choice:last-child { border-bottom:0; }
     .admin-contact-choice:hover { background:#fff7ed; }
     .admin-contact-copy { min-width:0;flex:1; }
-    .admin-contact-copy strong,.admin-contact-copy small { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .admin-contact-copy strong,.admin-contact-copy small { display:block;overflow-wrap:anywhere; }
     .admin-contact-copy strong { color:#0f172a;font-size:.82rem; }
     .admin-contact-copy small { margin-top:3px;color:#64748b;font-size:.7rem; }
     .contact-presence { color:#64748b;font-size:.65rem;white-space:nowrap; }
@@ -83,9 +100,15 @@
   <main class="admin-chat-area" id="adminChatArea">
     <div class="admin-chat-empty" id="adminChatEmpty"><i class="fas fa-comments"></i><strong>Select a conversation</strong><span>Or start a new message to a caterer.</span></div>
     <div class="admin-chat-active" id="adminChatActive">
-      <header class="admin-chat-head"><button class="admin-mobile-back" type="button" aria-label="Back to conversations" onclick="showAdminConversationList()"><i class="fas fa-arrow-left"></i></button><span class="admin-peer-avatar" id="adminPeerAvatar">?</span><div><strong id="adminPeerName">Caterer</strong><small id="adminPeerPresence">Available on OccaServe</small></div></header>
+      <header class="admin-chat-head"><button class="admin-mobile-back" type="button" aria-label="Back to conversations" onclick="showAdminConversationList()"><i class="fas fa-arrow-left"></i></button><span class="admin-peer-avatar-wrap admin-active-peer-avatar-wrap"><span class="admin-peer-avatar" id="adminPeerAvatar">?</span><span class="admin-presence-dot" id="adminPeerOnlineDot" hidden></span></span><div><strong id="adminPeerName">Caterer</strong><small class="admin-peer-presence" id="adminPeerPresence">Available on OccaServe</small></div></header>
       <div id="adminChatHistory" class="admin-chat-history" aria-live="polite"></div>
-      <form id="adminChatForm" class="admin-chat-compose"><input id="adminMessageInput" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Write a message"><button type="submit" aria-label="Send message"><i class="fas fa-paper-plane"></i></button></form>
+      <p class="admin-chat-upload-error" id="adminChatUploadError" role="alert"></p>
+      <form id="adminChatForm" class="admin-chat-compose">
+        <input type="file" id="adminChatFileInput" hidden accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt,.webp,.mp4,.mov">
+        <button type="button" class="admin-chat-attach" id="adminChatAttachButton" title="Attach image or file" aria-label="Attach image or file"><i class="fas fa-paperclip" aria-hidden="true"></i></button>
+        <input type="text" id="adminMessageInput" maxlength="1000" autocomplete="off" placeholder="Write a message…" aria-label="Write a message">
+        <button type="submit" aria-label="Send message"><i class="fas fa-paper-plane"></i></button>
+      </form>
     </div>
   </main>
 </section>
@@ -98,19 +121,48 @@
 const ADMIN_CHAT_USER_ID = {{ user.id }};
 let adminChatClient = null, adminCurrentPeerId = null, adminCurrentPeerName = '', adminConversations = [], adminContacts = [];
 document.addEventListener('DOMContentLoaded', async () => {
-  adminChatClient = new OccaChat({userId:ADMIN_CHAT_USER_ID,userRole:'admin',websocketUrl:`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`,onMessageReceived:data=>{if(Number(data.sender_id)===Number(adminCurrentPeerId)) appendAdminMessage(data,false); refreshAdminConversations();},onPresenceUpdate:()=>refreshAdminConversations()});
+  adminChatClient = new OccaChat({userId:ADMIN_CHAT_USER_ID,userRole:'admin',websocketUrl:`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`,onMessageReceived:data=>{if(Number(data.sender_id)===Number(adminCurrentPeerId)) appendAdminMessage(data,false); refreshAdminConversations();},onPresenceUpdate:data=>{const online=data.status==='online';adminContacts=adminContacts.map(contact=>Number(contact.id)===Number(data.user_id)?{...contact,is_online:online}:contact);renderAdminContacts();if(Number(data.user_id)===Number(adminCurrentPeerId))setAdminPeerPresence(online);refreshAdminConversations();}});
   document.getElementById('adminChatForm').addEventListener('submit',sendAdminMessage);
+  const attachButton=document.getElementById('adminChatAttachButton'), fileInput=document.getElementById('adminChatFileInput');
+  attachButton.title=`Attach image or file (maximum ${Math.max(1,Number(window.MAX_UPLOAD_SIZE_MB)||5)} MB)`;
+  attachButton.addEventListener('click',()=>fileInput.click());
+  fileInput.addEventListener('change',sendAdminAttachment);
   document.getElementById('adminConversationSearch').addEventListener('input',renderAdminConversations);
   document.getElementById('adminContactSearch').addEventListener('input',renderAdminContacts);
   await Promise.all([refreshAdminConversations(),loadAdminContacts()]);
 });
+function showAdminChatUploadError(message){const error=document.getElementById('adminChatUploadError');error.textContent=message;error.classList.add('visible');}
+async function sendAdminAttachment(event){
+  const input=event.currentTarget, file=input.files&&input.files[0];
+  if(!file)return;
+  const maxSizeMb=Math.max(1,Number(window.MAX_UPLOAD_SIZE_MB)||5);
+  if(file.size>maxSizeMb*1024*1024){showAdminChatUploadError(`File is too large. Maximum allowed size is ${maxSizeMb} MB.`);input.value='';return;}
+  if(!adminCurrentPeerId){showAdminChatUploadError('Select a conversation before attaching a file.');input.value='';return;}
+  const button=document.getElementById('adminChatAttachButton'), error=document.getElementById('adminChatUploadError');
+  const originalIcon=button.innerHTML;
+  button.disabled=true;button.innerHTML='<i class="fas fa-spinner fa-spin" aria-hidden="true"></i>';error.classList.remove('visible');error.textContent='';
+  try{
+    const fileData=await adminChatClient.uploadFile(file);
+    const content=document.getElementById('adminMessageInput').value.trim();
+    const message=await adminChatClient.sendMessage(adminCurrentPeerId,content,fileData);
+    if(!message)throw new Error('The file uploaded but the message could not be sent.');
+    document.getElementById('adminMessageInput').value='';
+    appendAdminMessage(message,true);
+    refreshAdminConversations();
+  }catch(uploadError){
+    showAdminChatUploadError(uploadError.message||'File upload failed. Please try again.');
+  }finally{
+    button.disabled=false;button.innerHTML=originalIcon;input.value='';
+  }
+}
 async function refreshAdminConversations(){adminConversations=await loadConversations();renderAdminConversations();}
 async function loadAdminContacts(){try{const r=await fetch('/api/chat/contacts');adminContacts=r.ok?await r.json():[];}catch{adminContacts=[];}renderAdminContacts();}
-function renderAdminContacts(){const host=document.getElementById('adminContactChoices');const term=(document.getElementById('adminContactSearch')?.value||'').toLowerCase().trim();const contacts=adminContacts.filter(contact=>`${contact.name||''} ${contact.email||''}`.toLowerCase().includes(term));const count=document.getElementById('adminContactCount');if(count)count.textContent=adminContacts.length?`${contacts.length} available`:'';host.replaceChildren();if(!contacts.length){const empty=document.createElement('div');empty.className='contact-empty-state';const icon=document.createElement('i');icon.className='fas fa-user-slash';const text=document.createElement('span');text.textContent=adminContacts.length?'No caterers match your search.':'No caterers are available.';empty.append(icon,text);host.appendChild(empty);return;}contacts.forEach(contact=>{const button=document.createElement('button');button.type='button';button.className='admin-contact-choice';const avatar=document.createElement('span');avatar.className='admin-peer-avatar';avatar.textContent=(contact.name||'C').trim().charAt(0).toUpperCase();const copy=document.createElement('span');copy.className='admin-contact-copy';const name=document.createElement('strong');name.textContent=contact.name;const email=document.createElement('small');email.textContent=contact.email||'Caterer';copy.append(name,email);const presence=document.createElement('span');presence.className='contact-presence'+(contact.is_online?' online':'');presence.textContent=contact.is_online?'Online':'Available';button.append(avatar,copy,presence);button.onclick=()=>{closeAdminContactModal();selectAdminConversation(contact.id,contact.name,contact.is_online);};host.appendChild(button);});}
+function renderAdminContacts(){const host=document.getElementById('adminContactChoices');const term=(document.getElementById('adminContactSearch')?.value||'').toLowerCase().trim();const contacts=adminContacts.filter(contact=>`${contact.name||''} ${contact.email||''}`.toLowerCase().includes(term));const count=document.getElementById('adminContactCount');if(count)count.textContent=adminContacts.length?`${contacts.length} available`:'';host.replaceChildren();if(!contacts.length){const empty=document.createElement('div');empty.className='contact-empty-state';const icon=document.createElement('i');icon.className='fas fa-user-slash';const text=document.createElement('span');text.textContent=adminContacts.length?'No caterers match your search.':'No caterers are available.';empty.append(icon,text);host.appendChild(empty);return;}contacts.forEach(contact=>{const button=document.createElement('button');button.type='button';button.className='admin-contact-choice';const avatar=document.createElement('span');avatar.className='admin-peer-avatar';avatar.textContent=(contact.name||'C').trim().charAt(0).toUpperCase();const copy=document.createElement('span');copy.className='admin-contact-copy';const name=document.createElement('strong');name.textContent=contact.name;const email=document.createElement('small');email.textContent=contact.email||'Caterer';copy.append(name,email);const presence=document.createElement('span');presence.className='contact-presence'+(contact.is_online?' online':'');if(contact.is_online){const dot=document.createElement('span');dot.className='admin-presence-dot';presence.append(dot);}presence.append(document.createTextNode(contact.is_online?'Online':'Available'));button.append(avatar,copy,presence);button.onclick=()=>{closeAdminContactModal();selectAdminConversation(contact.id,contact.name,contact.is_online);};host.appendChild(button);});}
 function openAdminContactModal(){renderAdminContacts();document.getElementById('adminContactModal').classList.add('open');document.getElementById('adminContactSearch').focus();}
 function closeAdminContactModal(){document.getElementById('adminContactModal').classList.remove('open');}
-function renderAdminConversations(){const host=document.getElementById('adminConversationList');const term=document.getElementById('adminConversationSearch').value.toLowerCase().trim();const items=adminConversations.filter(c=>(c.peer.name||'').toLowerCase().includes(term));host.replaceChildren();if(!items.length){const empty=document.createElement('p');empty.style.cssText='padding:18px;color:#64748b;';empty.textContent=adminConversations.length?'No matching conversations yet.':'No conversations yet. Start a message to a caterer.';host.appendChild(empty);return;}items.forEach(conv=>{const button=document.createElement('button');button.type='button';button.className='admin-conversation'+(Number(conv.peer.id)===Number(adminCurrentPeerId)?' active':'');const avatar=document.createElement('span');avatar.className='admin-peer-avatar';avatar.textContent=(conv.peer.name||'C').charAt(0).toUpperCase();const copy=document.createElement('span');copy.className='admin-conversation-copy';const name=document.createElement('span');name.className='admin-conversation-name';name.textContent=conv.peer.name;const last=document.createElement('span');last.className='admin-conversation-last';last.textContent=(Number(conv.last_message.sender_id)===ADMIN_CHAT_USER_ID?'You: ':'')+(conv.last_message.content||'Attachment');copy.append(name,last);button.append(avatar,copy);if(conv.unread_count){const unread=document.createElement('span');unread.className='admin-unread';unread.textContent=conv.unread_count;button.append(unread);}button.onclick=()=>selectAdminConversation(conv.peer.id,conv.peer.name,conv.peer.is_online);host.appendChild(button);});}
-async function selectAdminConversation(id,name,isOnline=false){adminCurrentPeerId=Number(id);adminCurrentPeerName=name;adminChatClient.peerId=adminCurrentPeerId;document.getElementById('adminChatEmpty').style.display='none';document.getElementById('adminChatActive').style.display='flex';document.getElementById('adminPeerName').textContent=name;document.getElementById('adminPeerAvatar').textContent=(name||'C').charAt(0).toUpperCase();document.getElementById('adminPeerPresence').textContent=isOnline?'Online now':'Available on OccaServe';const history=document.getElementById('adminChatHistory');history.replaceChildren();const messages=await loadChatHistory(adminCurrentPeerId);messages.forEach(message=>appendAdminMessage(message,Number(message.sender_id)===ADMIN_CHAT_USER_ID));history.scrollTop=history.scrollHeight;await adminChatClient.markAllAsRead(adminCurrentPeerId);refreshAdminConversations();renderAdminConversations();if(innerWidth<=760){document.getElementById('adminConversations').classList.add('hidden');document.getElementById('adminChatArea').style.display='flex';}}
+function renderAdminConversations(){const host=document.getElementById('adminConversationList');const term=document.getElementById('adminConversationSearch').value.toLowerCase().trim();const items=adminConversations.filter(c=>(c.peer.name||'').toLowerCase().includes(term));host.replaceChildren();if(!items.length){const empty=document.createElement('p');empty.style.cssText='padding:18px;color:#64748b;';empty.textContent=adminConversations.length?'No matching conversations yet.':'No conversations yet. Start a message to a caterer.';host.appendChild(empty);return;}items.forEach(conv=>{const button=document.createElement('button');button.type='button';button.className='admin-conversation'+(Number(conv.peer.id)===Number(adminCurrentPeerId)?' active':'');const avatarWrap=document.createElement('span');avatarWrap.className='admin-peer-avatar-wrap';const avatar=document.createElement('span');avatar.className='admin-peer-avatar';avatar.textContent=(conv.peer.name||'C').charAt(0).toUpperCase();avatarWrap.append(avatar);if(conv.peer.is_online){const dot=document.createElement('span');dot.className='admin-presence-dot';avatarWrap.append(dot);}const copy=document.createElement('span');copy.className='admin-conversation-copy';const name=document.createElement('span');name.className='admin-conversation-name';name.textContent=conv.peer.name;const last=document.createElement('span');last.className='admin-conversation-last';last.textContent=(Number(conv.last_message.sender_id)===ADMIN_CHAT_USER_ID?'You: ':'')+(conv.last_message.content||'Attachment');copy.append(name,last);button.append(avatarWrap,copy);if(conv.unread_count){const unread=document.createElement('span');unread.className='admin-unread';unread.textContent=conv.unread_count;button.append(unread);}button.onclick=()=>selectAdminConversation(conv.peer.id,conv.peer.name,conv.peer.is_online);host.appendChild(button);});}
+function setAdminPeerPresence(isOnline){const presence=document.getElementById('adminPeerPresence');presence.classList.toggle('online',isOnline);presence.textContent=isOnline?'Online now':'Available on OccaServe';document.getElementById('adminPeerOnlineDot').hidden=!isOnline;}
+async function selectAdminConversation(id,name,isOnline=false){adminCurrentPeerId=Number(id);adminCurrentPeerName=name;adminChatClient.peerId=adminCurrentPeerId;document.getElementById('adminChatEmpty').style.display='none';document.getElementById('adminChatActive').style.display='flex';document.getElementById('adminPeerName').textContent=name;document.getElementById('adminPeerAvatar').textContent=(name||'C').charAt(0).toUpperCase();setAdminPeerPresence(isOnline);const history=document.getElementById('adminChatHistory');history.replaceChildren();const messages=await loadChatHistory(adminCurrentPeerId);messages.forEach(message=>appendAdminMessage(message,Number(message.sender_id)===ADMIN_CHAT_USER_ID));history.scrollTop=history.scrollHeight;await adminChatClient.markAllAsRead(adminCurrentPeerId);refreshAdminConversations();renderAdminConversations();if(innerWidth<=760){document.getElementById('adminConversations').classList.add('hidden');document.getElementById('adminChatArea').style.display='flex';}}
 function appendAdminMessage(message,mine){const history=document.getElementById('adminChatHistory');const bubble=document.createElement('div');bubble.className='admin-chat-bubble '+(mine?'mine':'theirs');if(message.is_deleted){bubble.textContent='This message was deleted';}else if(message.message_type==='image'&&message.file_url){const image=document.createElement('img');image.src=message.file_url;image.alt='Shared image';image.style.cssText='display:block;max-width:240px;max-height:240px;border-radius:8px;';bubble.appendChild(image);if(message.content){const caption=document.createElement('div');caption.textContent=message.content;bubble.appendChild(caption);}}else if(message.message_type==='file'&&message.file_url){const link=document.createElement('a');link.href=message.file_url;link.target='_blank';link.rel='noopener';link.textContent=message.file_name||'Open attachment';link.style.color='inherit';bubble.appendChild(link);}else{bubble.textContent=message.content||'Attachment';}const time=document.createElement('span');time.className='admin-chat-time';time.textContent=message.created_at?new Date(message.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Now';bubble.appendChild(time);history.appendChild(bubble);history.scrollTop=history.scrollHeight;}
 async function sendAdminMessage(event){event.preventDefault();const input=document.getElementById('adminMessageInput');const content=input.value.trim();if(!content||!adminCurrentPeerId)return;input.disabled=true;const message=await adminChatClient.sendMessage(adminCurrentPeerId,content);input.disabled=false;if(!message){window.showToast?.('Message could not be sent. Please try again.','error');return;}input.value='';appendAdminMessage(message,true);refreshAdminConversations();}
 function showAdminConversationList(){document.getElementById('adminConversations').classList.remove('hidden');document.getElementById('adminChatActive').style.display='none';document.getElementById('adminChatEmpty').style.display='grid';document.getElementById('adminChatArea').style.display='';}

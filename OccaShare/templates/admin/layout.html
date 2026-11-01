@@ -125,6 +125,13 @@
                     </a>
                 </li>
                 <li>
+                    <a href="/admin/feedback" class="nav-item {{ 'active' if active_page == 'feedback' }}"
+                        onclick="closeSidebar()">
+                        <div class="nav-icon"><i class="fas fa-star"></i></div>
+                        <span class="nav-label">Platform Reviews</span>
+                    </a>
+                </li>
+                <li>
                     <a href="/admin/commissions" class="nav-item {{ 'active' if active_page == 'commissions' }}"
                         onclick="closeSidebar()">
                         <div class="nav-icon"><i class="fas fa-money-bill-wave"></i></div>
@@ -298,7 +305,7 @@
             #adminMessagesButton.active { color:#ea580c; background:#fff7ed; border-color:#fed7aa; box-shadow:0 0 0 2px rgba(249,115,22,.12); }
             #adminMessagesModal { position:fixed; inset:0; z-index:5000; display:none; align-items:center; justify-content:center; padding:clamp(8px,2vw,24px); background:rgba(15,23,42,.56); backdrop-filter:blur(4px); }
             #adminMessagesModal.open { display:flex; }
-            #adminMessagesDialog { width:min(1120px,100%); height:min(820px,calc(100dvh - 32px)); overflow:hidden; display:flex; flex-direction:column; border-radius:18px; background:#f8fafc; box-shadow:0 24px 80px rgba(15,23,42,.35); }
+            #adminMessagesDialog { width:min(900px,100%); height:min(640px,calc(100dvh - 48px)); max-height:calc(100dvh - 48px); overflow:hidden; display:flex; flex-direction:column; border-radius:16px; background:#f8fafc; box-shadow:0 24px 80px rgba(15,23,42,.35); }
             #adminMessagesModalHeader { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; padding:13px 18px; border-bottom:1px solid #e2e8f0; background:#fff; }
             #adminMessagesModalHeader h2 { margin:0; color:#0f172a; font-size:.95rem; font-weight:800; }
             #adminMessagesModalHeader p { margin:3px 0 0; color:#64748b; font-size:.7rem; }

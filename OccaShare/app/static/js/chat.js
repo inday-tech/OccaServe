@@ -218,25 +218,30 @@ class OccaChat {
     }
 
     async uploadFile(file) {
+        const maxSizeMb = Math.max(1, Number(window.MAX_UPLOAD_SIZE_MB) || 5);
+        const maxSizeBytes = maxSizeMb * 1024 * 1024;
+        if (file.size > maxSizeBytes) {
+            throw new Error(`File is too large. Maximum allowed size is ${maxSizeMb} MB.`);
+        }
+
         const formData = new FormData();
         formData.append('file', file);
 
+        const response = await fetch('/api/chat/upload', {
+            method: 'POST',
+            body: formData
+        });
+        let result;
         try {
-            const response = await fetch('/api/chat/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.detail || "Upload failed");
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error("Upload Error:", error);
-            return null;
+            result = await response.json();
+        } catch {
+            if (!response.ok) throw new Error("Upload failed. Please try again.");
+            throw new Error("The server returned an invalid upload response.");
         }
+        if (!response.ok) {
+            throw new Error(result.detail || "Upload failed. Please try again.");
+        }
+        return result;
     }
 }
 
