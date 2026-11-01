@@ -3,7 +3,7 @@ from jose import JWTError, jwt
 from fastapi.responses import HTMLResponse
 from ..core.templates import templates
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from ..db import crud, schemas, database, models
 from ..core import security as auth, utils
 
@@ -51,7 +51,10 @@ async def read_root(request: Request, db: Session = Depends(database.get_db)):
                 func.avg(models.Review.rating)
             ).filter(
                 models.Review.caterer_id.in_([caterer.id for caterer in caterers]),
-                models.Review.is_archived.is_(False)
+                or_(
+                    models.Review.is_archived.is_(False),
+                    models.Review.is_archived.is_(None)
+                )
             ).group_by(models.Review.caterer_id).all()
             caterer_review_stats.update({
                 caterer_id: {"count": count, "rating": rating}

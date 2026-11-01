@@ -23,8 +23,8 @@
         </div>
 
         <div class="package-stats-minimal">
-            <span class="rating-pro"><i class="fas fa-star"></i> {{ "%.1f"|format(caterer.rating) if caterer.rating else 'New' }}</span>
-            <span class="bookings-count-pro">({{ caterer.review_count or 0 }} reviews)</span>
+            <span class="rating-pro"><i class="fas fa-star"></i> {{ "%.1f"|format(caterer.visible_review_rating) if caterer.visible_review_count else 'New' }}</span>
+            <span class="bookings-count-pro">({{ caterer.visible_review_count }} {{ 'review' if caterer.visible_review_count == 1 else 'reviews' }})</span>
         </div>
 
         <p class="card-description">

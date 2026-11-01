@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Optional
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 from ..core.templates import templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -13,13 +13,19 @@ router = APIRouter(prefix="/caterers", tags=["caterers"])
 def get_public_review_page(db: Session, caterer_id: int, page: int, rating: Optional[int]):
     review_query = db.query(models.Review).filter(
         models.Review.caterer_id == caterer_id,
-        models.Review.is_archived.is_(False),
+        or_(
+            models.Review.is_archived.is_(False),
+            models.Review.is_archived.is_(None)
+        ),
     )
     rating_counts = dict(
         db.query(models.Review.rating, func.count(models.Review.id))
         .filter(
             models.Review.caterer_id == caterer_id,
-            models.Review.is_archived.is_(False),
+            or_(
+                models.Review.is_archived.is_(False),
+                models.Review.is_archived.is_(None)
+            ),
         )
         .group_by(models.Review.rating)
         .all()
@@ -526,7 +532,10 @@ def unified_search_api(request: Request, q: str = "", lat: Optional[float] = Non
             func.avg(models.Review.rating)
         ).filter(
             models.Review.caterer_id.in_([caterer.id for caterer in caterers]),
-            models.Review.is_archived.is_(False)
+            or_(
+                models.Review.is_archived.is_(False),
+                models.Review.is_archived.is_(None)
+            )
         ).group_by(models.Review.caterer_id).all()
         caterer_review_stats.update({
             caterer_id: {"count": count, "rating": rating}

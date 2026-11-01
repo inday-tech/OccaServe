@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from typing import Optional
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import Session
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlencode
@@ -257,6 +257,29 @@ async def customer_dashboard(
         models.CatererProfile.verification_status == 'Verified',
         models.CatererProfile.account_status == 'Active'
     ).order_by(models.CatererProfile.rating.desc(), models.CatererProfile.review_count.desc()).limit(6).all()
+    featured_review_stats = {
+        profile.id: {"count": 0, "rating": None}
+        for profile in featured_caterers
+    }
+    if featured_review_stats:
+        featured_reviews = db.query(
+            models.Review.caterer_id,
+            func.count(models.Review.id),
+            func.avg(models.Review.rating)
+        ).filter(
+            models.Review.caterer_id.in_(list(featured_review_stats)),
+            or_(
+                models.Review.is_archived.is_(False),
+                models.Review.is_archived.is_(None)
+            )
+        ).group_by(models.Review.caterer_id).all()
+        featured_review_stats.update({
+            caterer_id: {"count": count, "rating": average}
+            for caterer_id, count, average in featured_reviews
+        })
+    for profile in featured_caterers:
+        profile.visible_review_count = featured_review_stats[profile.id]["count"]
+        profile.visible_review_rating = featured_review_stats[profile.id]["rating"]
     
     return templates.TemplateResponse("customer/dashboard.html", {
         "request": request,
@@ -1321,6 +1344,27 @@ async def customer_marketplace(
 
     # Execute
     results = query.all()
+
+    caterer_review_stats = {
+        profile.id: {"count": 0, "rating": None}
+        for profile, _, _ in results
+    }
+    if caterer_review_stats:
+        review_stats = db.query(
+            models.Review.caterer_id,
+            func.count(models.Review.id),
+            func.avg(models.Review.rating)
+        ).filter(
+            models.Review.caterer_id.in_(list(caterer_review_stats)),
+            or_(
+                models.Review.is_archived.is_(False),
+                models.Review.is_archived.is_(None)
+            )
+        ).group_by(models.Review.caterer_id).all()
+        caterer_review_stats.update({
+            caterer_id: {"count": count, "rating": average}
+            for caterer_id, count, average in review_stats
+        })
     
     import math
     def get_dist(lat1, lon1, lat2, lon2, pin_confirmed=True):
@@ -1339,6 +1383,8 @@ async def customer_marketplace(
         profile.min_package_price = min_p or profile.starting_price or 0
         profile.max_capacity = max_c or 0
         profile.distance_km = get_dist(lat, lon, profile.latitude, profile.longitude, profile.location_pin_confirmed)
+        profile.visible_review_count = caterer_review_stats[profile.id]["count"]
+        profile.visible_review_rating = caterer_review_stats[profile.id]["rating"]
         caterers.append(profile)
 
     # Dynamic filter options
@@ -1542,7 +1588,18 @@ async def caterer_detail(
         models.Booking.caterer_id == caterer.id,  
         models.Booking.status == 'completed'
     ).count()
-    visible_reviews = [review for review in (caterer.reviews or []) if not review.is_archived]
+    visible_reviews = db.query(models.Review).filter(
+        models.Review.caterer_id == caterer.id,
+        or_(
+            models.Review.is_archived.is_(False),
+            models.Review.is_archived.is_(None)
+        )
+    ).order_by(models.Review.created_at.desc()).all()
+    visible_review_count = len(visible_reviews)
+    visible_review_rating = (
+        sum(review.rating or 0 for review in visible_reviews) / visible_review_count
+        if visible_review_count else None
+    )
 
     response = templates.TemplateResponse("customer/caterer_profile_view.html", {
         "request": request, 
@@ -1556,7 +1613,8 @@ async def caterer_detail(
         "public_portfolios": public_portfolios,
         "completed_events_count": completed_events_count,
         "reviews": visible_reviews,
-        "visible_review_count": len(visible_reviews),
+        "visible_review_count": visible_review_count,
+        "visible_review_rating": visible_review_rating,
         "user": user,
         "has_previous_bookings": has_previous_bookings,
         "has_previous_communication": has_previous_communication,
