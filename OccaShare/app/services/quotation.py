@@ -82,6 +82,40 @@ def revise_quotation(
 
 class QuotationService:
     @staticmethod
+    def remove_legacy_automatic_transport_fee(
+        db: Session,
+        booking: models.Booking,
+        quotation: models.Quotation,
+    ) -> bool:
+        """Remove generated travel-fee line items from quotations that are still drafts."""
+        addons = quotation.addons or []
+        retained_addons = []
+        transport_total = Decimal("0")
+        for addon in addons:
+            if isinstance(addon, dict) and addon.get("id") == "travel_fee":
+                transport_total += Decimal(str(addon.get("price", 0) or 0))
+            else:
+                retained_addons.append(addon)
+
+        if transport_total <= 0:
+            return False
+
+        new_total = max(
+            Decimal("0"),
+            Decimal(str(quotation.total_amount or 0)) - transport_total,
+        )
+        quotation.addons = retained_addons
+        quotation.total_amount = float(new_total)
+        booking.total_amount = float(new_total)
+        booking.total_price = float(new_total)
+        deposit_percent = Decimal(str(quotation.downpayment_percent or 30))
+        booking.reservation_fee = float(
+            (new_total * deposit_percent / Decimal("100")).quantize(Decimal("0.01"))
+        )
+        db.commit()
+        return True
+
+    @staticmethod
     def _payment_terms_for_booking(booking: models.Booking) -> list[int]:
         raw_terms = getattr(booking.caterer, "accepted_payment_terms", None) or []
         terms = sorted({
@@ -295,18 +329,7 @@ class QuotationService:
         customized_subtotal = max(Decimal("0"), base_total + food_total + menu_extras_total + services_total + equipment_total - food_removal_credit)
 
         addons = []
-        travel_fee = Decimal(str(getattr(booking, 'travel_fee', 0) or 0))
-        if travel_fee > 0:
-            addons.append({
-                "id": "travel_fee",
-                "name": "Delivery & Travel Fee",
-                "price": float(travel_fee),
-                "unit_price": float(travel_fee),
-                "quantity": 1,
-                "category": "fee"
-            })
-
-        total_amount = customized_subtotal + travel_fee
+        total_amount = customized_subtotal
 
         # Accept whole 5% deposit steps from 20% through full payment.
         if downpayment_percent < 20 or downpayment_percent > 100 or downpayment_percent % 5:
@@ -456,17 +479,6 @@ class QuotationService:
                 "category": category
             })
             addon_total += price
-
-        if getattr(booking, 'travel_fee', 0) and booking.travel_fee > 0:
-            addons.append({
-                "id": "travel_fee",
-                "name": "Delivery & Travel Fee",
-                "price": float(booking.travel_fee),
-                "unit_price": float(booking.travel_fee),
-                "quantity": 1,
-                "category": "fee"
-            })
-            addon_total += Decimal(str(booking.travel_fee))
 
         total_amount = base_amount + addon_total
 

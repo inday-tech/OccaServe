@@ -11,8 +11,12 @@ function initSignatureWebSocket() {
         if (data.type === 'signature_update' && data.booking_id == window.bookingId) {
             console.log('[WS] Received signature update:', data);
             
-            // If it was signed by the other party, we need to refresh to show the button/signatures
+            // The caterer's signature alone means the customer must review and sign next.
             if (data.role === 'caterer') {
+                if (data.status !== 'signed') {
+                    window.location.reload();
+                    return;
+                }
                 const paymentUrl = `/bookings/step/payment/${window.bookingId}`;
                 if (window.showToast) {
                     window.showToast("The agreement is fully signed. Taking you to payment...", "success");
@@ -38,8 +42,8 @@ function initSignatureWebSocket() {
 
 document.addEventListener('DOMContentLoaded', function () {
     const canvas = document.getElementById('signature-pad');
+    if (window.agreementVisible) initSignatureWebSocket();
     if (canvas) {
-        initSignatureWebSocket();
         sigPad = new SignaturePad(canvas, {
             backgroundColor: 'rgba(255, 255, 255, 0)',
             penColor: 'rgb(15, 23, 42)'
@@ -182,13 +186,13 @@ window.setDPTier = async function (percent) {
 
     // Update the breakdown immediately so every supported percentage recalculates on selection.
     if (input) input.value = percent;
-    if (dpValEl) dpValEl.textContent = `\u20B1${formattedDeposit}`;
+    if (dpValEl) dpValEl.textContent = formattedDeposit;
     const tierLabel = document.getElementById('selected-tier-label');
-    if (tierLabel) tierLabel.textContent = percent === 100 ? '100% Full Payment' : `${percent}% Deposit`;
+    if (tierLabel) tierLabel.textContent = percent === 100 ? 'Due now · Full payment' : `Due now · ${percent}% deposit`;
     const balValEl = document.getElementById('remaining-balance-val');
-    if (balValEl) balValEl.textContent = `\u20B1${remainingBal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (balValEl) balValEl.textContent = remainingBal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     const balBox = document.getElementById('balance-box');
-    if (balBox) balBox.style.display = (percent === 100 || remainingBal <= 0) ? 'none' : 'flex';
+    if (balBox) balBox.hidden = (percent === 100 || remainingBal <= 0);
     const contractPct = document.getElementById('contract-dp-pct');
     const contractVal = document.getElementById('contract-dp-val');
     const contractBalanceVal = document.getElementById('contract-balance-val');
@@ -197,7 +201,9 @@ window.setDPTier = async function (percent) {
     if (contractBalanceVal) contractBalanceVal.innerText = remainingBal.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     const requestId = ++dpUpdateRequest;
+    const submitButton = document.getElementById('submit-deposit-choice');
     if (select) select.disabled = true;
+    if (submitButton) submitButton.disabled = true;
     try {
         const response = await fetch(`/api/bookings/${bookingId}/update-dp`, {
             method: 'POST',
@@ -220,11 +226,11 @@ window.setDPTier = async function (percent) {
         const savedBalance = Number(data.remaining_balance);
         if (Number.isFinite(Number(data.total_amount)) && totalInput) totalInput.value = String(data.total_amount);
         if (Number.isFinite(savedDeposit) && dpValEl) {
-            dpValEl.textContent = `\u20B1${savedDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            dpValEl.textContent = savedDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
         if (Number.isFinite(savedBalance) && balValEl) {
-            balValEl.textContent = `\u20B1${savedBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            if (balBox) balBox.style.display = (percent === 100 || savedBalance <= 0) ? 'none' : 'flex';
+            balValEl.textContent = savedBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (balBox) balBox.hidden = (percent === 100 || savedBalance <= 0);
         }
         if (Number.isFinite(savedBalance) && contractBalanceVal) {
             contractBalanceVal.textContent = savedBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -236,10 +242,10 @@ window.setDPTier = async function (percent) {
             if (select) select.value = String(previousPercent);
             const previousDeposit = Math.round((totalVal * previousPercent / 100 + Number.EPSILON) * 100) / 100;
             const previousBalance = Math.max(0, totalVal - previousDeposit);
-            if (dpValEl) dpValEl.textContent = `\u20B1${previousDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            if (tierLabel) tierLabel.textContent = previousPercent === 100 ? '100% Full Payment' : `${previousPercent}% Deposit`;
-            if (balValEl) balValEl.textContent = `\u20B1${previousBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            if (balBox) balBox.style.display = (previousPercent === 100 || previousBalance <= 0) ? 'none' : 'flex';
+            if (dpValEl) dpValEl.textContent = previousDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (tierLabel) tierLabel.textContent = previousPercent === 100 ? 'Due now · Full payment' : `Due now · ${previousPercent}% deposit`;
+            if (balValEl) balValEl.textContent = previousBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (balBox) balBox.hidden = (previousPercent === 100 || previousBalance <= 0);
             if (contractPct) contractPct.innerText = previousPercent;
             if (contractVal) contractVal.innerText = previousDeposit.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             if (contractBalanceVal) contractBalanceVal.innerText = previousBalance.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -247,6 +253,7 @@ window.setDPTier = async function (percent) {
         }
     } finally {
         if (select) select.disabled = isSigned;
+        if (submitButton) submitButton.disabled = isSigned;
     }
 };
 

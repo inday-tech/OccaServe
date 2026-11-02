@@ -1,4 +1,10 @@
-{% extends "caterer/layout.html" if not is_modal else "caterer/modal_layout.html" %}
+{% if user.role == 'customer' %}
+    {% extends "customer/layout.html" %}
+{% elif is_modal %}
+    {% extends "caterer/modal_layout.html" %}
+{% else %}
+    {% extends "caterer/layout.html" %}
+{% endif %}
 
 {% block title %}Contract for {{ booking.user.first_name }} {{ booking.user.last_name }}{% endblock %}
 
@@ -13,5 +19,5 @@
     </button>
 </div>
 
-{% include "shared/contract_content_partial.html" %}
+{% include "shared/contract_content_compact.html" %}
 {% endblock %}

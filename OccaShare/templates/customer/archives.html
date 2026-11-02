@@ -308,11 +308,14 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                     {% elif bs in ['pending_payment','awaiting_payment'] %}
                         <a href="/bookings/step/payment/{{ b.id }}" class="bk-btn btn-pay">Pay</a>
                         <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
-                    {% elif bs in ['pending_quotation', 'awaiting_customer'] %}
-                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-resume">Sign Contract</a>
+                    {% elif bs == 'pending_quotation' %}
+                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-resume">Review Quotation</a>
+                        <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
+                    {% elif bs == 'awaiting_customer' %}
+                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-resume">Sign Agreement</a>
                         <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
                     {% elif bs == 'awaiting_caterer' %}
-                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-manage">View Contract</a>
+                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-manage">View Agreement</a>
                         <a href="/customer/bookings/manage/{{ b.id }}" class="bk-btn btn-manage">Manage</a>
                     {% elif bs == 'draft' %}
                         <a href="/bookings/continue/{{ b.id }}" class="bk-btn btn-resume">Continue</a>
@@ -564,4 +567,3 @@ if (!_origWsPatched) {
 }
 </script>
 {% endblock %}
-

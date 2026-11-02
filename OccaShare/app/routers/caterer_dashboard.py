@@ -73,6 +73,47 @@ def _booking_status_key(booking: models.Booking) -> str:
     return (booking.status or "").strip().lower()
 
 
+def _booking_contract_display(booking: models.Booking, today: Optional[date] = None) -> Optional[dict]:
+    today = today or date.today()
+    is_past_event = bool(booking.event_date and booking.event_date < today)
+    if booking.contract:
+        contract = booking.contract
+        return {
+            "has_contract": True,
+            "id": contract.id,
+            "status": contract.status or "pending",
+            "customer_signed": bool(contract.customer_signed_at or contract.customer_signature),
+            "customer_signed_at": contract.customer_signed_at.strftime("%b %d, %Y at %I:%M %p") if contract.customer_signed_at else None,
+            "caterer_signed": bool(contract.caterer_signed_at or contract.caterer_signature),
+            "caterer_signed_at": contract.caterer_signed_at.strftime("%b %d, %Y at %I:%M %p") if contract.caterer_signed_at else None,
+            "expires_at": contract.expires_at.strftime("%b %d, %Y") if contract.expires_at else None,
+            "is_past_event": is_past_event,
+        }
+
+    quotation = booking.quotation
+    if not quotation:
+        return None
+    has_agreement = bool(
+        quotation.contract_url
+        or quotation.customer_signature
+        or quotation.caterer_signature
+        or (quotation.status or "").lower() in {"awaiting_caterer", "awaiting_customer", "signed"}
+    )
+    if not has_agreement:
+        return None
+    return {
+        "has_contract": True,
+        "id": None,
+        "status": quotation.status or "pending",
+        "customer_signed": bool(quotation.customer_signature or quotation.customer_signed_at),
+        "customer_signed_at": quotation.customer_signed_at.strftime("%b %d, %Y at %I:%M %p") if quotation.customer_signed_at else None,
+        "caterer_signed": bool(quotation.caterer_signature or quotation.caterer_signed_at),
+        "caterer_signed_at": quotation.caterer_signed_at.strftime("%b %d, %Y at %I:%M %p") if quotation.caterer_signed_at else None,
+        "expires_at": None,
+        "is_past_event": is_past_event,
+    }
+
+
 def _caterer_verification_label(profile: models.CatererProfile) -> str:
     """Use the reviewed caterer profile status as the single source of truth."""
     raw_status = (profile.verification_status or "Not Submitted").strip()
@@ -3016,15 +3057,14 @@ def build_booking_list_projection(booking, today):
     else:
         payment_label = f"₱{total:,.2f} • Unpaid"
 
-    status_labels = {
-        "inquiry": "Accepted - Quote Needed", "pending_review": "New Booking Request",
-        "pending_quotation": "Quotation Sent", "awaiting_customer": "Awaiting Customer",
-        "awaiting_caterer": "For Caterer Action", "pending": "Payment Pending", "confirmed": "Confirmed",
-        "preparing": "Preparing", "ready_for_delivery": "Ready for Delivery", "ready_for_pickup": "Ready for Pickup",
-        "on_the_way": "Out for Delivery", "arrived": "Arrived", "setup_ongoing": "Setup", "in_progress": "Ongoing",
-        "completed": "Completed", "cancelled": "Cancelled", "expired": "Expired"
-    }
-    status_label = status_labels.get(booking.status, (booking.status or "Unknown").replace("_", " ").title())
+    from app.services.booking_status import booking_status_display
+    status_display = booking_status_display(
+        booking.status,
+        payment_status,
+        booking.preparation_status,
+        pay_summary.get("is_under_review", False),
+    )
+    status_label = status_display["label"]
     attention = ""
     next_action = "No operational action"
     needs_action = False
@@ -3086,7 +3126,9 @@ def build_booking_list_projection(booking, today):
     display_item = booking.package.name if booking.package else (item_names[0] if item_names else (booking.event_name or "Custom booking"))
     return {
         "id": booking.id, "kind": booking_kind, "type_label": type_label, "type_icon": type_icon,
-        "status": booking.status or "unknown", "status_label": status_label, "payment_label": payment_label,
+        "status": booking.status or "unknown", "status_label": status_label,
+        "status_tone": status_display["tone"], "caterer_action": status_display["caterer_action"],
+        "payment_label": payment_label,
         "attention": attention, "next_action": next_action, "needs_action": needs_action,
         "customer_ref": _booking_customer_reference(booking),
         "event_type": booking.event_type or "Event", "item_name": display_item,
@@ -3145,6 +3187,16 @@ async def manage_bookings(
         b._action_label = PaymentService.display_booking_action_label(b, summary)
     
     booking_list = [build_booking_list_projection(b, today=date.today()) for b in all_bookings]
+    from app.services.booking_status import booking_status_display
+    booking_status_displays = {
+        booking.id: booking_status_display(
+            booking.status,
+            booking.payment_status,
+            booking.preparation_status,
+            booking._pay_is_under_review,
+        )
+        for booking in all_bookings
+    }
     total_bookings = len(all_bookings)
     
     # 4 Requested Summary Card Counts
@@ -3193,7 +3245,8 @@ async def manage_bookings(
         "active_page": "bookings",
         "today": today,
         "unread_chat_map": unread_chat_map,
-        "booking_list": booking_list
+        "booking_list": booking_list,
+        "booking_status_displays": booking_status_displays,
     })
 
 @router.get("/orders", response_class=HTMLResponse)
@@ -4373,7 +4426,7 @@ async def get_contract_content_caterer(
             '</div>'
         )
 
-    return templates.TemplateResponse("shared/contract_content_partial.html", {
+    return templates.TemplateResponse("shared/contract_content_compact.html", {
         "request": request,
         "booking": booking,
         "quotation": quotation,
@@ -4592,36 +4645,7 @@ async def get_booking_details_api(
     )
     event_location = clean_display_value(booking.event_location)
 
-    # Contract Info
-    contract_info = None
-    today_date = date.today()
-    is_past_event = bool(booking.event_date and booking.event_date < today_date)
-    if booking.contract:
-        c = booking.contract
-        contract_info = {
-            "has_contract": True,
-            "id": c.id,
-            "status": c.status or "pending",
-            "customer_signed": bool(c.customer_signed_at or c.customer_signature),
-            "customer_signed_at": c.customer_signed_at.strftime("%b %d, %Y at %I:%M %p") if c.customer_signed_at else None,
-            "caterer_signed": bool(c.caterer_signed_at or c.caterer_signature),
-            "caterer_signed_at": c.caterer_signed_at.strftime("%b %d, %Y at %I:%M %p") if c.caterer_signed_at else None,
-            "expires_at": c.expires_at.strftime("%b %d, %Y") if c.expires_at else None,
-            "is_past_event": is_past_event
-        }
-    elif booking.quotation and booking.quotation.contract_url:
-        q = booking.quotation
-        contract_info = {
-            "has_contract": True,
-            "id": None,
-            "status": "fully_signed" if q.customer_signed_at else "pending",
-            "customer_signed": bool(q.customer_signed_at),
-            "customer_signed_at": q.customer_signed_at.strftime("%b %d, %Y at %I:%M %p") if q.customer_signed_at else None,
-            "caterer_signed": True,
-            "caterer_signed_at": None,
-            "expires_at": None,
-            "is_past_event": is_past_event
-        }
+    contract_info = _booking_contract_display(booking)
 
     # Caterer Active Service Offerings
     caterer_services = []
@@ -4743,6 +4767,13 @@ async def get_booking_details_api(
                 return str(value).strip()
         return "\u2013"
 
+    from app.services.booking_status import booking_status_display
+    status_display = booking_status_display(
+        booking.status,
+        booking.payment_status,
+        booking.preparation_status,
+    )
+
     return {
         "id": booking.id,
         "booking_ref": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or f"BK-{booking.id:06d}",
@@ -4752,6 +4783,7 @@ async def get_booking_details_api(
         "has_registered_customer": bool(booking.user_id),
         "customer_is_verified": bool(booking.user and booking.user.is_verified),
         "status": booking.status,
+        "status_display": status_display,
         "event_name": booking.event_name,
         "event_type": clean_display_value(booking.event_type),
         "celebrant_name": celebrant_name,
@@ -5159,6 +5191,10 @@ async def view_booking_quotation(
         return templates.TemplateResponse("404.html", {"request": request}, status_code=404)
     
     quotation = booking.quotation
+    if quotation and quotation.status == "draft":
+        from ..services.quotation import quotation_service
+        quotation_service.remove_legacy_automatic_transport_fee(db, booking, quotation)
+
     if request.query_params.get("revise") == "true":
         revision_eligible = bool(
             quotation
@@ -5184,7 +5220,7 @@ async def view_booking_quotation(
             "revision_mode": True,
             "proposal_base_price": proposal_base_price,
             "proposal_addons": quotation.addons or [],
-            "revision_item_changes": details.get("revision_item_changes", ""),
+            "revision_item_changes": "",
             "package_inclusions": _normalize_inclusions_for_api(
                 booking.package.inclusions if booking.package else None
             ),
@@ -5256,8 +5292,10 @@ async def submit_proposal_maker(
             or booking.payment_deadline_at
         ):
             raise HTTPException(status_code=409, detail="This quotation can no longer be revised before payment.")
-        if len(revision_reason.strip()) < 3:
-            raise HTTPException(status_code=400, detail="Explain why the quotation is being revised.")
+        if len(revision_reason.strip()) < 10:
+            raise HTTPException(status_code=400, detail="Provide a clear reason for the quotation revision (at least 10 characters).")
+        if len(revision_item_changes.strip()) < 10:
+            raise HTTPException(status_code=400, detail="Describe the item scope for this revision (at least 10 characters).")
     else:
         if booking.status != "inquiry":
             raise HTTPException(status_code=400, detail="Accept the booking request before preparing a quotation.")
@@ -7512,10 +7550,9 @@ async def add_menu_item(
     price = 0.0
     serving_size = form_data.get("serving_size")
     if not (usage_type == "package_only") and pricing_mode == "single":
-        try:
-            price = float(form_data.get("price", "0").replace(",", ""))
-        except ValueError:
-            price = 0.0
+        price = parse_catalog_item_price(form_data.get("price"))
+        if price <= 0:
+            raise HTTPException(status_code=400, detail="Selling price must be greater than ₱0.")
 
     if not (usage_type == "package_only"):
         min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
@@ -7524,10 +7561,10 @@ async def add_menu_item(
     
     is_hidden = form_data.get("visibility") == "hidden"
     
-    try:
-        upgrade_fee = float(form_data.get("upgrade_fee", "0").replace(",", ""))
-    except ValueError:
-        upgrade_fee = 0.0
+    upgrade_fee_text = form_data.get("upgrade_fee", "")
+    upgrade_fee = parse_catalog_item_price(upgrade_fee_text)
+    if str(upgrade_fee_text).strip() and upgrade_fee <= 0:
+        raise HTTPException(status_code=400, detail="Dish swap fee must be greater than ₱0, or left blank.")
     
     is_addon = False
     addon_price = 0.0
@@ -7604,13 +7641,10 @@ async def add_menu_item(
 
         for i, name in enumerate(v_names):
             if name.strip():
-                try:
-                    import re
-                    price_str = v_prices[i] if i < len(v_prices) else "0"
-                    clean_price = re.sub(r'[^\d.]', '', price_str)
-                    v_price = float(clean_price) if clean_price else 0.0
-                except Exception as e:
-                    v_price = 0.0
+                price_str = v_prices[i] if i < len(v_prices) else ""
+                v_price = parse_catalog_item_price(price_str)
+                if v_price <= 0:
+                    raise HTTPException(status_code=400, detail="Each menu variant must have a selling price greater than ₱0.")
                 serving = v_servings[i].strip() if i < len(v_servings) else None
                 v_status = v_statuses[i] if i < len(v_statuses) else 'available'
                 
@@ -9059,9 +9093,9 @@ async def quick_add_catalog_item(
     name: str = Form(...),
     category: Optional[str] = Form(None),
     custom_category: Optional[str] = Form(None),
-    upgrade_fee: float = Form(0.0),
-    addon_price: float = Form(0.0),
-    cost_price: float = Form(0.0),
+    upgrade_fee: str = Form("0"),
+    addon_price: str = Form("0"),
+    cost_price: str = Form("0"),
     price: Optional[str] = Form(None),
     unit_type: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
@@ -9085,6 +9119,9 @@ async def quick_add_catalog_item(
 
     item_type = (item_type or "menu").lower()
     price = parse_catalog_item_price(price)
+    upgrade_fee = parse_catalog_item_price(upgrade_fee)
+    addon_price = parse_catalog_item_price(addon_price)
+    cost_price = parse_catalog_item_price(cost_price)
     monetary_values = [price, upgrade_fee, addon_price, cost_price]
     if any(not math.isfinite(value) or value < 0 or value > 99999999.99 for value in monetary_values):
         raise HTTPException(status_code=400, detail="Prices and costs must be between ₱0 and ₱99,999,999.99.")
@@ -9271,15 +9308,15 @@ async def quick_edit_catalog_item(
     name: str = Form(...),
     category: Optional[str] = Form(None),
     custom_category: Optional[str] = Form(None),
-    upgrade_fee: float = Form(0.0),
-    addon_price: Optional[float] = Form(None),
+    upgrade_fee: Optional[str] = Form(None),
+    addon_price: Optional[str] = Form(None),
     price: Optional[str] = Form(None),
     unit_type: Optional[str] = Form(None),
     available_qty: Optional[int] = Form(None),
-    minimum_hours: Optional[int] = Form(1),
+    minimum_hours: Optional[int] = Form(None),
     staff_to_pax_ratio: Optional[int] = Form(0),
     min_staff_required: Optional[int] = Form(1),
-    status: str = Form("available"),
+    status: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     db: Session = Depends(database.get_db),
@@ -9297,12 +9334,11 @@ async def quick_edit_catalog_item(
     if item_type not in {"menu", "service", "equipment"}:
         raise HTTPException(status_code=400, detail="Invalid item type.")
     price = parse_catalog_item_price(price) if price is not None else None
-    if any(not math.isfinite(value) or value < 0 or value > 99999999.99
-           for value in (upgrade_fee, *([addon_price] if addon_price is not None else []))):
-        raise HTTPException(status_code=400, detail="Menu fees must be between 0 and 99,999,999.99.")
+    upgrade_fee = parse_catalog_item_price(upgrade_fee) if upgrade_fee is not None else None
+    addon_price = parse_catalog_item_price(addon_price) if addon_price is not None else None
     if price is not None and (not math.isfinite(price) or price < 0 or price > 99999999.99):
         raise HTTPException(status_code=400, detail="Price must be between 0 and 99,999,999.99.")
-    if status not in {"available", "unavailable"}:
+    if status is not None and status not in {"available", "unavailable"}:
         raise HTTPException(status_code=400, detail="Choose a valid availability status.")
     allowed_units = {
         "menu": {"per_pax", "per_tray", "per_platter", "per_order"},
@@ -9351,10 +9387,12 @@ async def quick_edit_catalog_item(
             item.category = menu_category
         if price is not None:
             item.price = price
-        item.upgrade_fee = max(0.0, float(upgrade_fee or 0.0))
+        if upgrade_fee is not None:
+            item.upgrade_fee = upgrade_fee
         if addon_price is not None:
             item.addon_price = addon_price
-        item.status = status
+        if status is not None:
+            item.status = status
         if unit_type:
             item.pricing_unit = unit_type.strip()
         item.description = desc
@@ -9404,7 +9442,8 @@ async def quick_edit_catalog_item(
             svc.staff_to_pax_ratio = staff_to_pax_ratio
         if min_staff_required is not None:
             svc.min_staff_required = min_staff_required
-        svc.status = status
+        if status is not None:
+            svc.status = status
         svc.description = desc
         if image_url:
             svc.image_url = image_url
@@ -9448,7 +9487,8 @@ async def quick_edit_catalog_item(
             equipment.unit_type = unit_type.strip()
         if available_qty is not None:
             equipment.available_qty = available_qty
-        equipment.status = status
+        if status is not None:
+            equipment.status = status
         equipment.description = desc
         if image_url:
             equipment.image_url = image_url
@@ -9661,10 +9701,9 @@ async def update_menu_item(
     price = 0.0
     serving_size = form_data.get("serving_size")
     if not (usage_type == "package_only") and pricing_mode == "single":
-        try:
-            price = float(form_data.get("price", "0").replace(",", ""))
-        except ValueError:
-            price = 0.0
+        price = parse_catalog_item_price(form_data.get("price"))
+        if price <= 0:
+            raise HTTPException(status_code=400, detail="Selling price must be greater than ₱0.")
 
     if not (usage_type == "package_only"):
         min_order_qty = int(form_data.get("min_order_qty", "1") or "1")
@@ -9673,10 +9712,10 @@ async def update_menu_item(
     
     is_hidden = form_data.get("visibility") == "hidden"
     
-    try:
-        upgrade_fee = float(form_data.get("upgrade_fee", "0").replace(",", ""))
-    except ValueError:
-        upgrade_fee = 0.0
+    upgrade_fee_text = form_data.get("upgrade_fee", "")
+    upgrade_fee = parse_catalog_item_price(upgrade_fee_text)
+    if str(upgrade_fee_text).strip() and upgrade_fee <= 0:
+        raise HTTPException(status_code=400, detail="Dish swap fee must be greater than ₱0, or left blank.")
     
     is_addon = False
     addon_price = 0.0
@@ -9750,13 +9789,10 @@ async def update_menu_item(
 
         for i, name in enumerate(v_names):
             if name.strip():
-                try:
-                    import re
-                    price_str = v_prices[i] if i < len(v_prices) else "0"
-                    clean_price = re.sub(r'[^\d.]', '', price_str)
-                    v_price = float(clean_price) if clean_price else 0.0
-                except Exception as e:
-                    v_price = 0.0
+                price_str = v_prices[i] if i < len(v_prices) else ""
+                v_price = parse_catalog_item_price(price_str)
+                if v_price <= 0:
+                    raise HTTPException(status_code=400, detail="Each menu variant must have a selling price greater than ₱0.")
                 serving = v_servings[i].strip() if i < len(v_servings) else None
                 v_status = v_statuses[i] if i < len(v_statuses) else 'available'
                 

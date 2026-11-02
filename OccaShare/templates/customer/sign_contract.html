@@ -1,6 +1,6 @@
 {% extends "customer/layout.html" %}
 
-{% block title %}Sign Contract - OccaServe{% endblock %}
+{% block title %}Sign Agreement - OccaServe{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
@@ -104,13 +104,13 @@
 {% block content %}
 <div class="signing-container">
     <div class="text-center mb-5">
-        <h2 class="font-playfair" style="font-size: 2.25rem;">Review & Sign Contract</h2>
+        <h2 class="font-playfair" style="font-size: 2.25rem;">Review & Sign Agreement</h2>
         <p class="text-slate">Please review the final terms from <strong>{{ booking.caterer.business_name }}</strong>
             and sign below.</p>
     </div>
 
     <div class="contract-preview">
-        {% include "shared/contract_content_partial.html" %}
+        {% include "shared/contract_content_compact.html" %}
     </div>
 
     <div class="signature-area">

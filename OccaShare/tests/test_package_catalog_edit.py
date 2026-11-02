@@ -1,6 +1,9 @@
 import asyncio
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
+
 from app.db import models
 from app.routers.caterer_dashboard import get_catalogs_inclusions, quick_edit_catalog_item
 
@@ -61,7 +64,7 @@ def edit_catalog_item(item_type, item, **values):
         name=values.pop("name", item.name),
         category=values.pop("category", item.category),
         custom_category=values.pop("custom_category", None),
-        upgrade_fee=values.pop("upgrade_fee", 0),
+        upgrade_fee=values.pop("upgrade_fee", None),
         addon_price=values.pop("addon_price", None),
         price=values.pop("price", None),
         unit_type=values.pop("unit_type", None),
@@ -69,7 +72,7 @@ def edit_catalog_item(item_type, item, **values):
         minimum_hours=values.pop("minimum_hours", None),
         staff_to_pax_ratio=values.pop("staff_to_pax_ratio", None),
         min_staff_required=values.pop("min_staff_required", None),
-        status=values.pop("status", "available"),
+        status=values.pop("status", None),
         description=values.pop("description", item.description),
         image=None,
         db=CatalogDatabase(item),
@@ -234,3 +237,54 @@ def test_equipment_edit_preserves_catalog_addon_default_when_not_editable():
     assert result["item"]["available_qty"] == 10
     assert result["item"]["status"] == "unavailable"
     assert equipment.addon_price == 125
+
+
+def test_hidden_service_fields_are_preserved_when_quick_edit_omits_them():
+    service = SimpleNamespace(
+        id=15,
+        caterer_id=7,
+        name="Waitstaff",
+        category="Staffing",
+        selling_price=100,
+        unit_type="per_staff",
+        max_available=6,
+        minimum_hours=5,
+        capacity_type="staff_based",
+        staff_to_pax_ratio=20,
+        min_staff_required=2,
+        status="unavailable",
+        description="",
+        image_url=None,
+    )
+
+    result = edit_catalog_item("service", service, price="1,234.50")
+
+    assert result["item"]["price"] == 1234.5
+    assert result["item"]["unit_type"] == "per_staff"
+    assert result["item"]["max_available"] == 6
+    assert result["item"]["minimum_hours"] == 5
+    assert result["item"]["status"] == "unavailable"
+
+
+def test_quick_edit_rejects_catalog_amounts_above_supported_precision():
+    service = SimpleNamespace(
+        id=16,
+        caterer_id=7,
+        name="Waitstaff",
+        category="Staffing",
+        selling_price=100,
+        unit_type="per_event",
+        max_available=1,
+        minimum_hours=1,
+        capacity_type="unit_based",
+        staff_to_pax_ratio=0,
+        min_staff_required=1,
+        status="available",
+        description="",
+        image_url=None,
+    )
+
+    with pytest.raises(HTTPException) as error:
+        edit_catalog_item("service", service, price="123456789")
+
+    assert error.value.status_code == 400

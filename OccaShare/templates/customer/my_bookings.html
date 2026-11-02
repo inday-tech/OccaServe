@@ -74,9 +74,13 @@
                                 <td>
                                     <div style="display: flex; gap: 0.5rem;">
                                         <button class="btn-outline btn-details-small">View Details</button>
-                                        {% if booking.status != 'pending_quotation' %}
+                                        {% if booking.status == 'pending_quotation' %}
                                         <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-outline btn-details-small" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                                            <i class="fas fa-file-contract"></i> Contract
+                                            <i class="fas fa-file-invoice-dollar"></i> Review Quotation
+                                        </a>
+                                        {% elif booking.status in ['awaiting_caterer', 'awaiting_customer', 'awaiting_payment', 'pending_payment', 'confirmed', 'completed'] %}
+                                        <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-outline btn-details-small" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-file-contract"></i> Agreement
                                         </a>
                                         {% endif %}
                                     </div>

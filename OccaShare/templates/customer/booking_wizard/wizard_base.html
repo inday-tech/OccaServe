@@ -85,7 +85,7 @@
             </div>
             <div class="step-item-p {% if current_step >= 3 %}active{% if current_step > 3 %} completed{% endif %}{% endif %}">
                 <div class="step-icon-p">{% if current_step > 3 %}<i class="fas fa-check"></i>{% else %}3{% endif %}</div>
-                <div class="step-label-p">Contract</div>
+                <div class="step-label-p">{% if booking and booking.quotation and booking.quotation.status == 'quoted' %}Quotation{% else %}Agreement{% endif %}</div>
             </div>
             <div class="step-item-p {% if current_step >= 4 %}active{% if current_step > 4 %} completed{% endif %}{% endif %}">
                 <div class="step-icon-p">{% if current_step > 4 %}<i class="fas fa-check"></i>{% else %}4{% endif %}</div>

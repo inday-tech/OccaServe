@@ -206,6 +206,23 @@ async def customer_dashboard(
         booking.id: PaymentService.get_payment_summary(booking)
         for booking in bookings
     }
+    from ..services.booking_status import customer_booking_status_display
+    reviewed_booking_ids = {
+        row[0]
+        for row in db.query(models.Review.booking_id)
+        .filter(models.Review.booking_id.in_([booking.id for booking in bookings]))
+        .all()
+    } if bookings else set()
+    booking_status_displays = {
+        booking.id: customer_booking_status_display(
+            booking.status,
+            booking.payment_status,
+            booking.preparation_status,
+            has_review=booking.id in reviewed_booking_ids,
+            payment_under_review=payment_summaries[booking.id].get("is_under_review", False),
+        )
+        for booking in bookings
+    }
     total_spent = sum(
         payment_summaries[booking.id]["verified_paid"]
         + payment_summaries[booking.id]["pending_review"]
@@ -291,6 +308,7 @@ async def customer_dashboard(
         "total_spent": total_spent,
         "latest_booking": latest_booking,
         "dashboard_booking": dashboard_booking,
+        "booking_status_displays": booking_status_displays,
         "current_page": page,
         "total_pages": total_pages,
         "active_page": "overview",
@@ -436,9 +454,26 @@ async def customer_bookings(
     total_reservations = len(active_bookings)
     
     from ..services.payment_service import PaymentService
+    from ..services.booking_status import customer_booking_status_display
     payment_summaries = {
         b.id: PaymentService.get_payment_summary(b)
         for b in active_bookings
+    }
+    reviewed_booking_ids = {
+        row[0]
+        for row in db.query(models.Review.booking_id)
+        .filter(models.Review.booking_id.in_([booking.id for booking in active_bookings]))
+        .all()
+    } if active_bookings else set()
+    booking_status_displays = {
+        booking.id: customer_booking_status_display(
+            booking.status,
+            booking.payment_status,
+            booking.preparation_status,
+            has_review=booking.id in reviewed_booking_ids,
+            payment_under_review=payment_summaries[booking.id].get("is_under_review", False),
+        )
+        for booking in active_bookings
     }
 
     total_spent = sum(
@@ -463,6 +498,7 @@ async def customer_bookings(
         "user": user,
         "bookings": sorted(active_bookings, key=lambda x: x.id, reverse=True),
         "payment_summaries": payment_summaries,
+        "booking_status_displays": booking_status_displays,
         "upcoming_booking_ids": upcoming_booking_ids,
         "initial_stat_filter": view if view in {"upcoming", "paid", "balance", "action"} else "all",
         "stats": {
@@ -545,6 +581,11 @@ async def view_contract_customer(
     quotation = booking.quotation
     if not quotation:
         raise HTTPException(status_code=404, detail="Quotation not found for this booking")
+    if quotation.status not in {"awaiting_caterer", "awaiting_customer", "signed"}:
+        return RedirectResponse(
+            url=f"/bookings/step/quotation/{booking.id}",
+            status_code=303
+        )
 
     return templates.TemplateResponse("caterer/contract_view.html", {
         "request": request,

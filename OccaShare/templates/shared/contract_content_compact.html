@@ -1,0 +1,295 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+    integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+{% set details = quotation.package_details or {} %}
+{% set selected_percent = quotation.downpayment_percent|int if quotation.downpayment_percent else 30 %}
+{% set deposit_amount = (quotation.total_amount|float) * (selected_percent / 100) %}
+{% if details.get('agreement_terms') %}
+    {% set agreement_terms = details.get('agreement_terms') %}
+{% elif booking.document_type == 'rental_agreement' and booking.caterer.rental_policies %}
+    {% set agreement_terms = booking.caterer.rental_policies %}
+{% else %}
+    {% set agreement_terms = booking.caterer.general_terms or booking.caterer.terms_and_conditions or 'No additional terms have been provided for this booking.' %}
+{% endif %}
+{% set package_name = details.get('name') or (booking.package.name if booking.package else None) or booking.event_name or booking.event_type or 'Booking package' %}
+{% set is_customizable = details.get('package_type') == 'customizable' or (booking.package and booking.package.pricing_mode == 'customizable') %}
+{% set package_inclusions = details.get('inclusions') or (booking.package.inclusions if booking.package else []) or [] %}
+{% set doc_ref = 'ORD-' if booking.document_type == 'invoice' else ('RT-' if booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' else 'BK-') %}
+
+<div id="printable-contract-container">
+    {% if quotation.customer_signature and quotation.caterer_signature %}
+    <div class="pdf-action-bar no-print" style="display:flex;justify-content:flex-end;margin-bottom:.75rem;">
+        <button type="button" onclick="downloadContractPDF()" style="border:0;border-radius:8px;padding:.6rem .9rem;background:#059669;color:#fff;font-weight:700;cursor:pointer;">
+            <i class="fas fa-file-pdf"></i> Download agreement PDF
+        </button>
+    </div>
+    {% endif %}
+
+    <article id="printable-contract" class="contract-paper compact-agreement">
+        <header class="compact-agreement-header">
+            <div>
+                <p class="compact-eyebrow">OCCASERVE BOOKING AGREEMENT</p>
+                <h2>{{ package_name }}</h2>
+            </div>
+            <span class="compact-reference">{{ doc_ref }}{{ booking.id }}</span>
+        </header>
+
+        <section class="compact-parties">
+            <div>
+                <h3>Caterer</h3>
+                <strong>{{ (((booking.caterer.user.first_name or '') ~ ' ' ~ (booking.caterer.user.last_name or ''))|trim) or booking.caterer.business_name }}</strong>
+                <span>{{ booking.caterer.user.email or 'Email not provided' }}</span>
+                <span>{{ booking.caterer.contact_phone or booking.caterer.user.phone_number or 'Contact number not provided' }}</span>
+            </div>
+            <div>
+                <h3>Customer</h3>
+                <strong>{{ (((booking.user.first_name or '') ~ ' ' ~ (booking.user.last_name or ''))|trim) or 'Customer' }}</strong>
+                <span>{{ booking.user.email or 'Email not provided' }}</span>
+                <span>{{ booking.user.phone_number or 'Contact number not provided' }}</span>
+            </div>
+        </section>
+
+        <section class="compact-booking-details">
+            <h3>Package &amp; selected items</h3>
+            <p>
+                <strong>{{ package_name }}</strong>
+                {% if booking.event_date %} · {{ booking.event_date.strftime('%B %d, %Y') }}{% endif %}
+                {% if details.get('guest_count') or booking.guest_count %} · {{ details.get('guest_count') or booking.guest_count }} guests{% endif %}
+            </p>
+            {% if details.get('description') %}
+            <p class="compact-package-description">{{ details.get('description') }}</p>
+            {% endif %}
+            {% if is_customizable %}
+                {% set selection_groups = [
+                    ('Menu', details.get('selected_food') or []),
+                    ('Extra dishes', details.get('selected_menu_extras') or []),
+                    ('Services', details.get('selected_services') or []),
+                    ('Equipment', details.get('selected_equipment') or [])
+                ] %}
+                {% for group_name, selections in selection_groups %}
+                    {% if selections %}
+                    <div class="compact-scope-group">
+                        <h4>{{ group_name }}</h4>
+                        <ul class="compact-item-list">
+                            {% for item in selections %}
+                            <li>
+                                <span>
+                                    <strong>{{ item.get('name', 'Selected item') }}</strong>
+                                    {% if item.get('qty') or item.get('quantity') %}
+                                        <span class="compact-item-meta"> · Qty {{ item.get('qty') or item.get('quantity') }}{% if item.get('unit') %} {{ item.get('unit') }}{% endif %}</span>
+                                    {% endif %}
+                                    {% if item.get('replacement_for_name') %}
+                                        <span class="compact-item-meta"> · Replaces {{ item.get('replacement_for_name') }}</span>
+                                    {% endif %}
+                                </span>
+                                {% if item.get('included') or (item.get('subtotal') is not none and item.get('subtotal')|float == 0) %}
+                                <span class="compact-item-price">Included</span>
+                                {% elif item.get('subtotal') is not none %}
+                                <span class="compact-item-price">₱{{ "{:,.2f}".format(item.get('subtotal')|float) }}</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="compact-scope-group">
+                    <h4>Package inclusions</h4>
+                    {% if package_inclusions %}
+                    <ul class="compact-item-list">
+                        {% if package_inclusions is mapping %}
+                            {% for inclusion_name, is_included in package_inclusions.items() %}
+                                {% if is_included %}
+                                <li><span><strong>{{ inclusion_name }}</strong></span><span class="compact-item-price">Included</span></li>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            {% for inclusion in package_inclusions %}
+                                {% if inclusion is mapping %}
+                                <li>
+                                    <span>
+                                        <strong>{{ inclusion.get('name') or inclusion.get('description') or 'Included item' }}</strong>
+                                        {% if inclusion.get('category') %}<span class="compact-item-meta"> · {{ inclusion.get('category') }}</span>{% endif %}
+                                        {% if inclusion.get('quantity') %}<span class="compact-item-meta"> · Qty {{ inclusion.get('quantity') }}{% if inclusion.get('unit') %} {{ inclusion.get('unit') }}{% endif %}</span>{% endif %}
+                                    </span>
+                                    <span class="compact-item-price">Included</span>
+                                </li>
+                                {% elif inclusion %}
+                                <li><span><strong>{{ inclusion }}</strong></span><span class="compact-item-price">Included</span></li>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </ul>
+                    {% else %}
+                    <p class="compact-empty-note">No package inclusions were recorded in this quotation.</p>
+                    {% endif %}
+                </div>
+
+            {% endif %}
+            <div class="compact-scope-group">
+                <h4>Additional add-ons &amp; extras</h4>
+                {% if quotation.addons %}
+                <ul class="compact-item-list">
+                    {% for addon in quotation.addons %}
+                    <li>
+                        <span>
+                            <strong>{{ addon.get('name', 'Additional item') }}</strong>
+                            {% if addon.get('category') %}<span class="compact-item-meta"> · {{ addon.get('category')|title }}</span>{% endif %}
+                            {% if addon.get('quantity') %}<span class="compact-item-meta"> · Qty {{ addon.get('quantity') }}</span>{% endif %}
+                        </span>
+                        {% if addon.get('price') is not none %}
+                        <span class="compact-item-price">₱{{ "{:,.2f}".format(addon.get('price')|float) }}</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% elif not is_customizable or not details.get('selected_menu_extras') %}
+                <p class="compact-empty-note">No additional add-ons or extras were selected.</p>
+                {% else %}
+                <p class="compact-empty-note">Extra dishes are listed with the selected package items above.</p>
+                {% endif %}
+            </div>
+            {% if details.get('revision_number', 1)|int > 1 %}
+            <div class="compact-revision-summary">
+                <strong>Quotation revision · Version {{ details.get('revision_number') }}</strong>
+                <p><b>Reason:</b> {{ details.get('revision_note') or 'No reason recorded.' }}</p>
+                <p><b>Item scope:</b> {{ details.get('revision_item_changes') or 'No item scope was recorded for this version.' }}</p>
+            </div>
+            {% endif %}
+        </section>
+
+        <section class="compact-financials">
+            <div><span>Total amount</span><strong>₱{{ "{:,.2f}".format(quotation.total_amount|float) }}</strong></div>
+            <div><span>Downpayment ({{ selected_percent }}%)</span><strong>₱<span id="contract-dp-val">{{ "{:,.2f}".format(deposit_amount) }}</span></strong></div>
+            <div><span>Remaining balance</span><strong>₱<span id="contract-balance-val">{{ "{:,.2f}".format([((quotation.total_amount|float) - deposit_amount), 0]|max) }}</span></strong></div>
+        </section>
+        <span id="contract-dp-pct" hidden>{{ selected_percent }}</span>
+
+        <section class="compact-terms">
+            <h3>General terms</h3>
+            <p>{{ agreement_terms }}</p>
+        </section>
+
+        <p class="compact-acknowledgment">
+            By signing below, both parties confirm that they reviewed and agree to the booking details{% if details.get('revision_number', 1)|int > 1 %}, including the revision reason and item scope{% endif %}, total amount, payment amounts, and general terms shown above. Any further changes must be agreed to by both parties.
+        </p>
+
+        <section class="compact-signatures" aria-label="Agreement signatures">
+            <div>
+                <div class="compact-signature-image" id="caterer-sig-placeholder">
+                    {% if quotation.caterer_signature %}
+                    <img src="{{ quotation.caterer_signature }}" alt="Caterer signature">
+                    {% else %}<span>Awaiting caterer signature</span>{% endif %}
+                </div>
+                <strong class="compact-signature-name">{{ (((booking.caterer.user.first_name or '') ~ ' ' ~ (booking.caterer.user.last_name or ''))|trim) or booking.caterer.business_name }}</strong>
+                <span>Caterer</span>
+                <time id="caterer-sig-date">{{ quotation.caterer_signed_at.strftime('%Y-%m-%d %H:%M') if quotation.caterer_signed_at else '' }}</time>
+            </div>
+            <div>
+                <div class="compact-signature-image" id="customer-sig-placeholder">
+                    {% if quotation.customer_signature %}
+                    <img src="{{ quotation.customer_signature }}" alt="Customer signature">
+                    {% else %}<span>Awaiting customer signature</span>{% endif %}
+                </div>
+                <strong class="compact-signature-name">{{ (((booking.user.first_name or '') ~ ' ' ~ (booking.user.last_name or ''))|trim) or 'Customer' }}</strong>
+                <span>Customer</span>
+                <time id="customer-sig-date">{{ quotation.customer_signed_at.strftime('%Y-%m-%d %H:%M') if quotation.customer_signed_at else '' }}</time>
+            </div>
+        </section>
+        <footer class="compact-footer">Electronically signed and securely stored on OccaServe.</footer>
+    </article>
+</div>
+
+<style>
+    .compact-agreement {
+        max-width: 780px;
+        margin: 0 auto;
+        padding: clamp(1rem, 4vw, 2rem);
+        color: #172033;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font: 14px/1.55 Arial, sans-serif;
+    }
+    .compact-agreement h2, .compact-agreement h3, .compact-agreement p { margin-top: 0; }
+    .compact-agreement h2 { margin-bottom: 0; font-size: 1.35rem; }
+    .compact-agreement h3 { margin-bottom: .45rem; font-size: .9rem; }
+    .compact-agreement-header, .compact-parties, .compact-financials, .compact-signatures { display: grid; gap: .75rem; }
+    .compact-agreement-header { grid-template-columns: 1fr auto; align-items: start; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; }
+    .compact-eyebrow { margin-bottom: .2rem; color: #64748b; font-size: .68rem; font-weight: 800; letter-spacing: .08em; }
+    .compact-reference { color: #475569; font-size: .78rem; font-weight: 700; }
+    .compact-parties { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 1rem 0; }
+    .compact-parties > div { display: flex; flex-direction: column; min-width: 0; padding: .8rem; border: 1px solid #e2e8f0; border-radius: 9px; overflow-wrap: anywhere; }
+    .compact-parties span, .compact-signatures span, .compact-signatures time { color: #64748b; font-size: .78rem; }
+    .compact-booking-details { padding: .85rem 0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+    .compact-booking-details p { margin-bottom: .3rem; }
+    .compact-package-description, .compact-empty-note { color: #64748b; font-size: .8rem; }
+    .compact-scope-group { margin-top: .75rem; }
+    .compact-scope-group h4 { margin: 0 0 .35rem; color: #475569; font-size: .76rem; font-weight: 700; }
+    .compact-item-list { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+    .compact-item-list li { display: flex; justify-content: space-between; align-items: flex-start; gap: .8rem; padding: .42rem .55rem; background: #f8fafc; border-radius: 6px; min-width: 0; }
+    .compact-item-list li > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+    .compact-item-meta { color: #64748b; font-size: .75rem; }
+    .compact-item-price { flex: 0 0 auto; color: #334155; font-size: .78rem; font-weight: 700; white-space: nowrap; }
+    .compact-empty-note { margin: 0; }
+    .compact-revision-summary { margin-top:.7rem; padding:.7rem .8rem; border:1px solid #fed7aa; border-radius:8px; background:#fff7ed; color:#7c2d12; font-size:.8rem; }
+    .compact-revision-summary strong { color:#9a3412; }
+    .compact-revision-summary p { margin:.3rem 0 0; white-space:pre-line; overflow-wrap:anywhere; }
+    .compact-financials { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 1rem 0; }
+    .compact-financials div { display: flex; flex-direction: column; gap: .2rem; padding: .75rem; background: #f8fafc; border-radius: 8px; }
+    .compact-financials span { color: #64748b; font-size: .76rem; }
+    .compact-financials strong { font-size: .95rem; }
+    .compact-terms { padding-top: .85rem; margin-bottom: 1.25rem; }
+    .compact-terms p { margin: 0; color: #334155; font-size: .86rem; line-height: 1.6; text-align: justify; white-space: pre-line; overflow-wrap: anywhere; }
+    .compact-acknowledgment { margin: 0 0 1rem; padding: .8rem; border-left: 3px solid #059669; background: #f0fdf4; font-size: .82rem; line-height: 1.55; }
+    .compact-signatures { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 1.5rem; }
+    .compact-signatures > div { display: flex; flex-direction: column; align-items: center; min-width: 0; gap: .18rem; text-align: center; }
+    .compact-signature-image { display: flex; height: 64px; align-items: center; justify-content: center; margin-bottom: .35rem; border-bottom: 1px solid #94a3b8; }
+    .compact-signature-image img { max-width: 100%; max-height: 60px; object-fit: contain; }
+    .compact-signature-name { max-width: 100%; overflow-wrap: anywhere; text-align: center; }
+    .compact-footer { margin-top: 1rem; color: #94a3b8; font-size: .72rem; text-align: center; }
+    @media (max-width: 420px) {
+        .compact-item-list li { gap: .4rem; padding: .4rem; }
+        .compact-item-price { font-size: .72rem; }
+    }
+    @media (max-width: 600px) {
+        .compact-parties, .compact-signatures { grid-template-columns: 1fr; }
+        .compact-financials { grid-template-columns: 1fr; }
+        .compact-agreement-header { grid-template-columns: 1fr; }
+    }
+    @media print {
+        .no-print { display: none !important; }
+        .compact-agreement { max-width: none; border: 0; }
+    }
+</style>
+
+<script>
+    function downloadContractPDF() {
+        const agreement = document.getElementById('printable-contract');
+        const button = document.querySelector('.pdf-action-bar button');
+        if (!agreement || !button || typeof html2pdf === 'undefined') {
+            if (window.showError) window.showError('The agreement PDF could not be prepared. Please try again.');
+            return;
+        }
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing PDF…';
+        html2pdf().set({
+            margin: 0.35,
+            filename: 'OccaServe_{{ doc_ref }}{{ booking.id }}_Agreement.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        }).from(agreement).save().then(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }).catch(error => {
+            console.error('Agreement PDF generation failed:', error);
+            button.innerHTML = originalText;
+            button.disabled = false;
+            if (window.showError) window.showError('The agreement PDF could not be generated. Please try again.');
+        });
+    }
+</script>

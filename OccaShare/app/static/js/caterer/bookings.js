@@ -4,6 +4,24 @@ let currentPage = 1;
 const ROWS_PER_PAGE = 5;
 let filteredRows = [];
 let pendingNotificationTab = null;
+const CATERER_ACCEPTED_BOOKING_STATUSES = new Set([
+    'accepted', 'inquiry', 'quotation_phase', 'pending_quotation', 'quoted',
+    'awaiting_caterer', 'awaiting_customer', 'awaiting_payment', 'pending_payment',
+    'confirmed', 'preparing', 'in_progress', 'setup_ongoing', 'on_the_way',
+    'ready_for_delivery', 'ready_for_pickup', 'arrived'
+]);
+const PAYMENT_TAB_PAYMENT_STATUSES = new Set([
+    'proof_submitted', 'balance_proof_submitted', 'cash_payment_requested',
+    'cash_balance_requested', 'pending_verification', 'reupload_requested',
+    'balance_reupload_requested', 'deposit_paid', 'partially_paid',
+    'partial', 'partial_paid', 'downpayment_paid', 'paid', 'fully_paid',
+    'verified'
+]);
+const PAYMENT_TAB_BOOKING_STATUSES = new Set([
+    'awaiting_payment', 'confirmed', 'preparing', 'ready_for_delivery',
+    'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing',
+    'in_progress', 'completed', 'delivered'
+]);
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
 if (typeof window.showError === 'undefined') {
@@ -377,7 +395,9 @@ function toggleActionMenuBookings(id, event) {
             }
 
             // 7. Cancel Booking (Destructive - Status not completed, cancelled, or expired)
-            if (!['completed', 'cancelled', 'expired'].includes(status) && !hasPaymentRequiringReview) {
+            if (!['completed', 'cancelled', 'expired'].includes(status)
+                && !CATERER_ACCEPTED_BOOKING_STATUSES.has(status)
+                && !hasPaymentRequiringReview) {
                 addSeparator();
                 addAction('Cancel Booking', 'fa-times-circle', function() {
                     if (typeof window.confirmRejectBooking === 'function') {
@@ -544,20 +564,25 @@ document.addEventListener('DOMContentLoaded', function () {
         filteredRows = allRows;
         showPage(1);
 
-        // A contract notification may deep-link here. Open the regular booking
-        // details modal, where the caterer can choose the Sign Agreement action.
+        // A contract notification deep-links to the agreement tab after booking
+        // details finish hydrating, so it cannot be rejected as unavailable.
         const openBookingId = new URLSearchParams(window.location.search).get('open_booking');
         if (openBookingId && /^\d+$/.test(openBookingId)) {
             const bookingButton = document.querySelector(`.view-details[data-id="${openBookingId}"]`);
             if (bookingButton) {
                 const requestedTab = new URLSearchParams(window.location.search).get('open_tab');
                 const allowedTabs = ['overview', 'customer', 'services', 'chat', 'contract', 'payment', 'preparation', 'activity'];
-                if (allowedTabs.includes(requestedTab)) {
-                    pendingNotificationTab = { bookingId: String(openBookingId), tab: requestedTab };
-                }
+                pendingNotificationTab = {
+                    bookingId: String(openBookingId),
+                    tab: allowedTabs.includes(requestedTab) ? requestedTab : 'auto'
+                };
                 showBookingDetails(bookingButton);
-                if (allowedTabs.includes(requestedTab)) {
-                    switchBookingTab(requestedTab, document.querySelector(`#bookingDetailModal .mtab-btn-pro[data-tab="${requestedTab}"]`));
+                if (bookingButton.dataset.workspaceHydrated === 'true') {
+                    const targetTab = resolveNotificationTab(pendingNotificationTab.tab, bookingButton);
+                    if (targetTab) {
+                        switchBookingTab(targetTab, document.querySelector(`#bookingDetailModal .mtab-btn-pro[data-tab="${targetTab}"]`));
+                    }
+                    pendingNotificationTab = null;
                 }
                 const cleanUrl = new URL(window.location.href);
                 cleanUrl.searchParams.delete('open_booking');
@@ -1247,6 +1272,9 @@ function hydrateButtonDataset(btn, detail) {
     
     const fields = {
         status: detail.status || btn.dataset.status || '',
+        statusLabel: (detail.status_display && detail.status_display.label) || btn.dataset.statusLabel || '',
+        statusTone: (detail.status_display && detail.status_display.tone) || btn.dataset.statusTone || 'draft',
+        catererAction: (detail.status_display && detail.status_display.caterer_action) || btn.dataset.catererAction || '',
         paymentStatus: detail.payment_status || btn.dataset.paymentStatus || 'unpaid',
         computedPaymentStatus: detail.computed_payment_status || (detail.payment_summary && detail.payment_summary.computed_payment_status) || btn.dataset.computedPaymentStatus || '',
         source: detail.booking_source || (isManual ? 'MANUAL' : 'ONLINE'),
@@ -1418,7 +1446,9 @@ function _syncFooterButtons(cleanId, normStatus, hasPaymentRequiringReview) {
         declined: 1, expired: 1, archived: 1, void: 1, released: 1
     };
     var canArchive = !!CLOSED[s];
-    var canCancel = !canArchive && !hasPaymentRequiringReview;
+    var canCancel = !canArchive
+        && !CATERER_ACCEPTED_BOOKING_STATUSES.has(s)
+        && !hasPaymentRequiringReview;
 
     function setFooterBtnVisible(btn, visible) {
         if (!btn) return;
@@ -1611,8 +1641,11 @@ function showBookingDetails(btn) {
                 if (String(currentBookingId) === String(cleanId) && document.getElementById('bookingDetailModal')?.classList.contains('active')) {
                     showBookingDetails(btn);
                     if (pendingNotificationTab && pendingNotificationTab.bookingId === String(cleanId)) {
-                        const tabButton = document.querySelector(`#bookingDetailModal .mtab-btn-pro[data-tab="${pendingNotificationTab.tab}"]`);
-                        switchBookingTab(pendingNotificationTab.tab, tabButton);
+                        const targetTab = resolveNotificationTab(pendingNotificationTab.tab, btn);
+                        if (targetTab) {
+                            const tabButton = document.querySelector(`#bookingDetailModal .mtab-btn-pro[data-tab="${targetTab}"]`);
+                            switchBookingTab(targetTab, tabButton);
+                        }
                         pendingNotificationTab = null;
                     }
                 }
@@ -1665,43 +1698,33 @@ function showBookingDetails(btn) {
         }
     }
 
-    const statusLabels = {
-        pending_review: 'AWAITING REVIEW',
-        pending_quotation: 'QUOTATION SENT',
-        quoted: 'QUOTATION SENT',
-        awaiting_caterer: 'AWAITING CATERER SIGNATURE',
-        awaiting_customer: 'AWAITING CUSTOMER SIGNATURE',
-        awaiting_payment: 'AWAITING PAYMENT',
-        ready_for_delivery: 'READY FOR DELIVERY',
-        ready_for_pickup: 'READY FOR PICKUP',
-        on_the_way: 'ON THE WAY',
-        setup_ongoing: 'EVENT SETUP',
-        in_progress: 'IN PROGRESS',
-        no_show: 'NO SHOW'
-    };
-
     // Booking Status Badge
     var stBadge = document.getElementById('modalStatus');
     if (stBadge) {
-        var statusLabel = statusLabels[bookingStatus] || (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
+        var statusLabel = data.statusLabel || (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
         var stBg = '#f1f5f9', stColor = '#475569', stBorder = '#cbd5e1';
-        if (bookingStatus === 'confirmed') {
+        if (data.statusTone === 'confirmed') {
             stBg = '#dcfce7'; stColor = '#166534'; stBorder = '#bbf7d0';
-        } else if (bookingStatus === 'preparing') {
+        } else if (data.statusTone === 'preparing') {
             stBg = '#e0e7ff'; stColor = '#4338ca'; stBorder = '#c7d2fe';
-        } else if (bookingStatus === 'completed') {
+        } else if (data.statusTone === 'completed') {
             stBg = '#f0fdf4'; stColor = '#15803d'; stBorder = '#86efac';
-        } else if (bookingStatus === 'cancelled') {
+        } else if (data.statusTone === 'cancelled') {
             stBg = '#fee2e2'; stColor = '#b91c1c'; stBorder = '#fecaca';
-        } else if (bookingStatus === 'pending' || bookingStatus === 'pending_review' || bookingStatus === 'inquiry' || bookingStatus === 'awaiting_payment') {
+        } else if (data.statusTone === 'active') {
+            stBg = '#dbeafe'; stColor = '#1d4ed8'; stBorder = '#bfdbfe';
+        } else if (data.statusTone === 'reupload') {
+            stBg = '#fee2e2'; stColor = '#b91c1c'; stBorder = '#fecaca';
+        } else if (data.statusTone === 'pending' || data.statusTone === 'pay-now') {
             stBg = '#fef3c7'; stColor = '#92400e'; stBorder = '#fde68a';
-            if (bookingStatus === 'pending') statusLabel = 'PENDING REVIEW';
         }
         stBadge.innerText = statusLabel;
         stBadge.style.background = stBg;
         stBadge.style.color = stColor;
         stBadge.style.borderColor = stBorder;
     }
+    const statusAction = document.getElementById('modalStatusAction');
+    if (statusAction) statusAction.textContent = data.catererAction || '';
 
     // One payment state is shared by the header, Overview, and Payment tab.
     var payBadge = document.getElementById('modalPaymentStatusBadge');
@@ -1710,10 +1733,10 @@ function showBookingDetails(btn) {
         payBadge.style.background = canonicalPayment.background;
         payBadge.style.color = canonicalPayment.color;
         payBadge.style.borderColor = canonicalPayment.border;
-        payBadge.style.display = isPaymentStageAvailable(bookingStatus) ? 'inline-flex' : 'none';
+        payBadge.style.display = isPaymentStageAvailable(bookingStatus, data.paymentStatus, data.isUnderReview) ? 'inline-flex' : 'none';
     }
     const headerFinancials = document.querySelector('#bookingDetailModal .booking-header-financials');
-    if (headerFinancials) headerFinancials.style.display = isPaymentStageAvailable(bookingStatus) ? 'flex' : 'none';
+    if (headerFinancials) headerFinancials.style.display = isPaymentStageAvailable(bookingStatus, data.paymentStatus, data.isUnderReview) ? 'flex' : 'none';
 
     // Booking Channel & Added By & Created Date
     var channelEl = document.getElementById('modalBookingChannel');
@@ -1767,7 +1790,7 @@ function showBookingDetails(btn) {
     var contextObj = {
         isManual: isManual,
         hasKycRecord: data.hasKycRecord === 'true' || data.isVerified === 'true',
-        hasContractRecord: data.hasContractRecord === 'true' || Boolean(data.contractId)
+        hasContractRecord: data.hasContract === 'true' || data.hasContractRecord === 'true' || Boolean(data.contractId)
     };
     configureBookingTabs(data, contextObj);
 
@@ -1828,13 +1851,12 @@ function showBookingDetails(btn) {
     var ovCustRef = document.getElementById('ovCustomerRef'); if (ovCustRef) ovCustRef.innerText = data.customerRef || '—';
     var ovSt = document.getElementById('ovStatusText');
     if (ovSt) {
-        ovSt.innerText = statusLabels[bookingStatus] || (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
-        if (bookingStatus === 'pending') ovSt.innerText = 'PENDING REVIEW';
+        ovSt.innerText = data.statusLabel || (bookingStatus || 'pending').replace(/_/g, ' ').toUpperCase();
     }
 
     // Financial Overview Box
     const financialOverview = document.querySelector('#bookingDetailModal .financial-overview-card');
-    if (financialOverview) financialOverview.style.display = isPaymentStageAvailable(bookingStatus) ? 'flex' : 'none';
+    if (financialOverview) financialOverview.style.display = isPaymentStageAvailable(bookingStatus, data.paymentStatus, data.isUnderReview) ? 'flex' : 'none';
     var ovTot = document.getElementById('ovTotalDisplay'); if (ovTot) ovTot.innerText = formattedTotal;
     var ovBal = document.getElementById('ovBalanceDisplay'); if (ovBal) ovBal.innerText = formattedBalance;
     var ovPaySt = document.getElementById('ovPaymentStatusDisplay');
@@ -2690,12 +2712,20 @@ function switchBookingTab(tabId, targetEl) {
     }
 }
 
-function isPaymentStageAvailable(status) {
-    return new Set([
-        'awaiting_payment', 'confirmed', 'preparing', 'ready_for_delivery',
-        'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing',
-        'in_progress', 'completed', 'delivered'
-    ]).has(String(status || '').toLowerCase());
+function isPaymentStageAvailable(status, paymentStatus, isUnderReview) {
+    return String(isUnderReview || '').toLowerCase() === 'true'
+        || PAYMENT_TAB_PAYMENT_STATUSES.has(String(paymentStatus || '').toLowerCase())
+        || PAYMENT_TAB_BOOKING_STATUSES.has(String(status || '').toLowerCase());
+}
+
+function resolveNotificationTab(requestedTab, bookingButton) {
+    const status = String(bookingButton?.dataset?.status || '').toLowerCase();
+    if (status === 'awaiting_caterer' && ['auto', 'payment', 'overview'].includes(requestedTab)) {
+        return 'contract';
+    }
+    if (requestedTab === 'auto') return null;
+    const tabButton = document.querySelector(`#bookingDetailModal .mtab-btn-pro[data-tab="${requestedTab}"]`);
+    return tabButton && tabButton.style.display !== 'none' ? requestedTab : null;
 }
 
 function configureBookingTabs(data, context) {
@@ -2708,11 +2738,11 @@ function configureBookingTabs(data, context) {
     const hasKyc = (typeof context.hasKycRecord !== 'undefined')
         ? Boolean(context.hasKycRecord)
         : (data?.hasKycRecord === 'true' || data?.isVerified === 'true');
+    const status = String(data?.status || '').toLowerCase();
     const hasContract = (typeof context.hasContractRecord !== 'undefined')
         ? Boolean(context.hasContractRecord)
-        : (data?.hasContractRecord === 'true' || Boolean(data?.contractId));
-
-    const status = String(data?.status || '').toLowerCase();
+        : (data?.hasContractRecord === 'true' || data?.hasContract === 'true' || Boolean(data?.contractId));
+    const agreementStage = new Set(['awaiting_caterer', 'awaiting_customer', 'awaiting_payment']).has(status);
     const preparationVisibleStatuses = new Set([
         'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way',
         'arrived', 'setup_ongoing', 'in_progress', 'ready_for_event',
@@ -2725,8 +2755,8 @@ function configureBookingTabs(data, context) {
         services: true,
         chat: true,
         verification: !isManual && hasKyc,
-        contract: !isManual && hasContract && !['pending_review', 'inquiry', 'pending_quotation', 'quoted'].includes(status),
-        payment: isPaymentStageAvailable(status),
+        contract: agreementStage || (!isManual && hasContract && !['pending_review', 'inquiry', 'pending_quotation', 'quoted'].includes(status)),
+        payment: isPaymentStageAvailable(status, data?.paymentStatus, data?.isUnderReview),
         preparation: preparationVisibleStatuses.has(status) || (status === 'confirmed' && canStartPreparation),
         activity: true
     };
@@ -2747,7 +2777,8 @@ function configureBookingTabs(data, context) {
 }
 
 window.openQuotationWorkspace = function(bookingId) {
-    window.openIframeModal(`/caterer/bookings/${bookingId}/quotation?modal=true`, 'Booking Quotation');
+    const refreshToken = Date.now();
+    window.openIframeModal(`/caterer/bookings/${bookingId}/quotation?modal=true&_=${refreshToken}`, 'Booking Quotation');
 };
 
 window.openQuotationAgreement = function(bookingId) {
@@ -2894,9 +2925,9 @@ function renderOverviewWorkspace(data, context) {
             primaryBtnAction = `switchBookingTab('chat', document.getElementById('tabBtnChat'))`;
         } else if (status === 'awaiting_caterer') {
             primaryTitle = 'Customer Accepted Quotation';
-            primaryDesc = 'Sign the service agreement to finalize customer booking.';
-            primaryBtnText = 'Sign Agreement';
-            primaryBtnAction = `window.openIframeModal('/caterer/bookings/${cleanId}/sign?modal=true', 'Sign Service Agreement')`;
+            primaryDesc = 'Review the customer-selected downpayment and sign the service agreement.';
+            primaryBtnText = 'View & Sign Agreement';
+            primaryBtnAction = `window.openQuotationAgreement(${cleanId})`;
         } else if (status === 'awaiting_customer') {
             primaryTitle = 'Awaiting Customer Signature';
             primaryDesc = 'Customer needs to sign the agreement to proceed.';

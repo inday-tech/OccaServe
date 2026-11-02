@@ -58,6 +58,19 @@ def test_contract_sign_notification_opens_booking_contract_tab():
     ) == "/caterer/bookings?open_booking=42&open_tab=contract"
 
 
+def test_deposit_choice_notification_opens_agreement_not_payment():
+    assert caterer_notification_destination(
+        "/caterer/bookings?open_booking=42&open_tab=contract",
+        "Customer",
+        "Customer selected a deposit option",
+    ) == "/caterer/bookings?open_booking=42&open_tab=contract"
+    assert caterer_notification_destination(
+        "/caterer/bookings?open_booking=42",
+        "Customer",
+        "Customer selected a deposit option",
+    ) == "/caterer/bookings?open_booking=42&open_tab=contract"
+
+
 def test_caterer_notification_fallbacks_open_relevant_sections():
     assert caterer_notification_destination(None, "Message", "New Consultation Message") == (
         "/caterer/messages"

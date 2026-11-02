@@ -965,79 +965,20 @@
                             {% set signed_dt = booking.updated_at %}
                         {% endif %}
 
-                        {% set badge_class = 'badge-draft' %}
-                        {% set status_label = booking.status.replace('_', ' ').title() if booking.status else 'Unknown' %}
                         {% set is_under_review = booking._pay_is_under_review if booking._pay_is_under_review is defined else (booking.payment_status in ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested']) %}
-                        
-                        {% if is_under_review %}
-                            {% set badge_class = 'badge-payment pulse-update' %}
-                            {% if booking.payment_status in ['balance_proof_submitted', 'cash_balance_requested'] %}
-                                {% set status_label = 'Verify Balance' %}
-                            {% elif booking.payment_status == 'cash_payment_requested' %}
-                                {% set status_label = 'Confirm Cash' %}
-                            {% else %}
-                                {% set status_label = 'Verify Payment' %}
-                            {% endif %}
-                        {% elif booking.status == 'pending' %}
-                            {% set badge_class = 'badge-pending timer-overdue-check' %}
-                            {% set status_label = 'Pending Pay' %}
-                        {% elif booking.status == 'confirmed' %}
-                            {% set badge_class = 'badge-confirmed' %}
-                            {% set status_label = 'Confirmed' %}
-                        {% elif booking.status == 'pending_quotation' %}
-                            {% set badge_class = 'badge-draft' %}
-                            {% set status_label = 'Draft' %}
-                        {% elif booking.status in ['pending_review', 'under_review'] %}
-                            {% set badge_class = 'badge-pending pulse-update' %}
-                            {% set status_label = 'New Inquiry' %}
-                        {% elif booking.status == 'quotation_phase' %}
-                            {% set badge_class = 'badge-draft' %}
-                            {% set status_label = 'Quoted' %}
-                        {% elif booking.status == 'awaiting_caterer' %}
-                            {% set badge_class = 'badge-pending' %}
-                            {% set status_label = 'To Sign' %}
-                        {% elif booking.status in ['awaiting_payment', 'pending_payment'] %}
-                            {% set badge_class = 'badge-payment timer-overdue-check' %}
-                            {% set status_label = 'Awaiting Pay' %}
-                        {% elif booking.status == 'preparing' %}
-                            {% set badge_class = 'badge-preparing' %}
-                            {% set status_label = 'Preparing' %}
-                        {% elif booking.status in ['on_the_way', 'ready_for_delivery', 'ready_for_pickup', 'arrived'] %}
-                            {% set badge_class = 'badge-active' %}
-                            {% set status_label = booking.status.replace('_', ' ').title() %}
-                        {% elif booking.status in ['in_progress', 'setup_ongoing'] %}
-                            {% set badge_class = 'badge-in_progress' %}
-                            {% set status_label = 'In Progress' %}
-                        {% elif (booking.status or '')|lower in ['completed', 'delivered'] %}
-                            {% set badge_class = 'badge-completed' %}
-                            {% set status_label = 'Completed' %}
-                        {% elif booking.status == 'cancelled' %}
-                            {% set badge_class = 'badge-cancelled' %}
-                            {% set status_label = 'Cancelled' %}
-                        {% endif %}
-
-                        {# Preparation is the customer-facing progress source for catering events. #}
-                        {% if not is_under_review and booking.preparation_status == 'preparing' %}
-                            {% set badge_class = 'badge-preparing' %}
-                            {% set status_label = 'Preparing' %}
-                        {% elif not is_under_review and booking.preparation_status == 'ready_for_delivery' %}
-                            {% set badge_class = 'badge-active' %}
-                            {% set status_label = 'Preparation Complete' %}
-                        {% elif not is_under_review and booking.preparation_status == 'setup_in_progress' %}
-                            {% set badge_class = 'badge-in_progress' %}
-                            {% set status_label = 'Setup in Progress' %}
-                        {% elif not is_under_review and booking.preparation_status == 'ready_for_event' %}
-                            {% set badge_class = 'badge-active' %}
-                            {% set status_label = 'Ready for Event' %}
-                        {% elif not is_under_review and booking.preparation_status == 'completed' %}
-                            {% set badge_class = 'badge-completed' %}
-                            {% set status_label = 'Completed' %}
-                        {% endif %}
-
-                        {% if booking.payment_status in ['reupload_requested', 'balance_reupload_requested'] %}
-                            {% set badge_class = 'badge-reupload' %}
-                            {% set status_label = 'Re-upload' %}
-                        {% endif %}
+                        {% set status_display = booking_status_displays.get(booking.id, {'label': booking.status.replace('_', ' ').title() if booking.status else 'Unknown', 'tone': 'draft', 'caterer_action': 'Review the booking details'}) %}
+                        {% set status_label = status_display.label %}
+                        {% set badge_class = {
+                            'draft': 'badge-draft',
+                            'pending': 'badge-pending',
+                            'pay-now': 'badge-payment',
+                            'confirmed': 'badge-confirmed',
+                            'preparing': 'badge-preparing',
+                            'active': 'badge-active',
+                            'completed': 'badge-completed',
+                            'cancelled': 'badge-cancelled',
+                            'reupload': 'badge-reupload'
+                        }.get(status_display.tone, 'badge-draft') %}
 
                         {% set pay = booking.payment_status or 'no_payment' %}
                         {% set total_val = booking.total_price or booking.total_amount or 0 %}
@@ -1070,13 +1011,14 @@
                             {% set paid_val = total_val if total_val > 0 else paid_val %}
                             {% set balance_val = 0 %}
                         {% endif %}
-                        
+
                         <div style="display: flex; flex-direction: column; gap: 4px;">
                             <!-- Status badges row -->
                             <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
                                 <span class="badge-status {{ badge_class }}" data-deadline="{{ booking.payment_deadline_at.isoformat() if booking.payment_deadline_at else '' }}" style="padding: 2px 7px; font-size: 0.7rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em;">{{ status_label }}</span>
                                 <span class="badge-status {{ pay_class }}" style="padding: 2px 7px; font-size: 0.7rem; font-weight: 700; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.02em;">{{ pay_label }}</span>
                             </div>
+                            <small style="color: #64748b; font-size: 0.68rem; line-height: 1.25;">{{ status_display.caterer_action }}</small>
                             
                             <!-- Financial values row -->
                             <div style="display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: #64748b; flex-wrap: wrap; line-height: 1.3;">
@@ -1101,6 +1043,9 @@
                             data-id="{{ booking.id }}"
                             data-booking-ref="{{ booking_ref }}"
                             data-status="{{ booking.status or '' }}"
+                            data-status-label="{{ booking_status_displays.get(booking.id, {}).get('label', '')|e }}"
+                            data-status-tone="{{ booking_status_displays.get(booking.id, {}).get('tone', 'draft')|e }}"
+                            data-caterer-action="{{ booking_status_displays.get(booking.id, {}).get('caterer_action', '')|e }}"
                             data-payment-status="{{ booking.payment_status or 'no_payment' }}"
                             data-computed-payment-status="{{ booking._pay_summary.computed_payment_status if booking._pay_summary is defined else 'unpaid' }}"
                             data-pending-amount="{{ pending_val }}"
@@ -2421,6 +2366,7 @@
                         
                         <!-- STATUS BADGE -->
                         <span id="modalStatus" class="badge-status badge-confirmed" style="padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">CONFIRMED</span>
+                        <small id="modalStatusAction" style="color: #64748b; font-size: 0.72rem;"></small>
                         
                         <!-- PAYMENT BADGE -->
                         <span id="modalPaymentStatusBadge" class="badge-status" style="padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">UNPAID</span>

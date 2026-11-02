@@ -947,7 +947,9 @@ async def alacarte_checkout_submit(
                                 booking.travel_fee_status = "calculated"
                                 booking.travel_fee = zone.fee
                         else:
-                            if caterer.out_of_coverage_action == "manual":
+                            if caterer.out_of_coverage_action == "manual" or (
+                                package and package.pricing_mode == "fixed" and caterer.out_of_coverage_action == "reject"
+                            ):
                                 booking.travel_fee_status = "manual_quote"
                                 booking.travel_fee = 0.0
                             else:
@@ -2602,6 +2604,9 @@ async def step_details_submit(
         ))
 
     db.commit()
+
+    if user.is_verified and user.is_kyc_complete:
+        await NotificationService.notify_new_booking(db, booking)
 
     # Update session
     sess_update = {

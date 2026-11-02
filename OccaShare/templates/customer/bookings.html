@@ -426,6 +426,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                 data-balance="{{ 'true' if has_balance_due else 'false' }}"
                 data-upcoming="{{ 'true' if b.id in upcoming_booking_ids else 'false' }}"
                 data-payment-status="{{ ps|e }}"
+                data-status-action="{{ booking_status_displays.get(b.id, {}).get('customer_action', '')|e }}"
+                data-payment-under-review="{{ 'true' if modal_payment_summary.get('is_under_review') else 'false' }}"
                 data-has-review="{{ 'true' if b.review else 'false' }}"
                 data-booking-id="{{ b.id }}"
                 data-title="{{ (display_title or 'Booking')|e }}"
@@ -486,43 +488,11 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                     <div class="cell-sub">{{ b.guest_count }} guests</div>
                 </td>
                 <td data-label="Status">
-                    {% if ps in ['reupload_requested','balance_reupload_requested'] %}
-                        <span class="bk-badge badge-reupload badge-pulse">⚠ Re-upload Proof</span>
-                    {% elif ps in ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'] %}
-                        <span class="bk-badge badge-pending">Payment review</span>
-                    {% elif bs in ['pending_payment','awaiting_payment'] and payment_already_submitted %}
-                        <span class="bk-badge badge-confirmed">Payment received</span>
-                    {% elif bs in ['pending_payment','awaiting_payment'] %}
-                        <span class="bk-badge badge-pay-now badge-pulse">Pay Now</span>
-                    {% elif bs == 'pending_review' %}
-                        <span class="bk-badge badge-pending">Waiting for Caterer Review</span>
-                    {% elif bs == 'inquiry' %}
-                        <span class="bk-badge badge-pending">Preparing Quotation</span>
-                    {% elif bs == 'awaiting_customer' %}
-                        <span class="bk-badge badge-pending">Quotation Ready</span>
-                    {% elif bs == 'confirmed' %}
-                        <span class="bk-badge badge-confirmed">Confirmed</span>
-                    {% elif bs == 'completed' %}
-                        <span class="bk-badge badge-completed">Completed</span>
-                    {% elif bs == 'pending' and payment_already_submitted %}
-                        <span class="bk-badge badge-confirmed">Payment received</span>
-                    {% elif bs == 'pending' %}
-                        <span class="bk-badge badge-pay-now">Awaiting Payment</span>
-                    {% elif bs in ['cancelled', 'expired'] %}
-                        <span class="bk-badge badge-cancelled">{{ 'Overdue / Expired' if bs == 'expired' else 'Cancelled' }}</span>
-                    {% elif bs == 'draft' %}
-                        <span class="bk-badge badge-draft">Draft</span>
-                    {% elif bs == 'preparing' %}
-                        <span class="bk-badge badge-preparing">Preparing</span>
-                    {% elif bs == 'ready_for_delivery' %}
-                        <span class="bk-badge badge-active">Preparation Complete</span>
-                    {% elif bs in ['on_the_way','ready_for_delivery','arrived'] %}
-                        <span class="bk-badge badge-active">On the Way</span>
-                    {% elif bs in ['in_progress','setup_ongoing'] %}
-                        <span class="bk-badge badge-active">Ongoing</span>
-                    {% else %}
-                        <span class="bk-badge badge-draft">{{ bs|replace('_',' ')|title }}</span>
-                    {% endif %}
+                    {% set status_display = booking_status_displays.get(b.id, {'label': bs|replace('_',' ')|title, 'tone': 'draft'}) %}
+                    <span class="bk-badge badge-{{ status_display.tone }}{{ ' badge-pulse' if status_display.tone in ['reupload', 'pay-now'] else '' }}">
+                        {{ '⚠ ' if status_display.tone == 'reupload' else '' }}{{ status_display.label }}
+                    </span>
+                    <div class="cell-sub">{{ status_display.customer_action }}</div>
                 </td>
                 <td data-label="Actions" style="text-align:right;">
             <div style="display:inline-flex;gap:8px;flex-wrap:nowrap;justify-content:flex-end;">
@@ -531,10 +501,12 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                         <a href="/customer/bookings?open_detail={{ b.id }}&amp;open_reupload=1" class="bk-btn btn-settle">Upload Proof</a>
                     {% elif bs in ['pending_payment','awaiting_payment'] %}
                         <a href="/bookings/step/payment/{{ b.id }}" class="bk-btn btn-pay">Pay</a>
-                    {% elif bs in ['pending_quotation', 'awaiting_customer'] %}
-                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-resume">Sign Contract</a>
+                    {% elif bs == 'pending_quotation' %}
+                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-resume">Review Quotation</a>
+                    {% elif bs == 'awaiting_customer' %}
+                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-resume">Sign Agreement</a>
                     {% elif bs == 'awaiting_caterer' %}
-                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-manage">View Contract</a>
+                        <a href="/bookings/step/quotation/{{ b.id }}" class="bk-btn btn-manage">View Agreement</a>
                     {% elif bs == 'draft' %}
                         <a href="/bookings/continue/{{ b.id }}" class="bk-btn btn-resume">Continue</a>
                         <button type="button" onclick="removeBooking({{ b.id }})" class="bk-btn btn-del bk-btn-icon" title="Delete draft" aria-label="Delete draft booking {{ display_title|e }}"><i class="fas fa-trash-can" aria-hidden="true"></i></button>
@@ -1132,7 +1104,8 @@ function openBookingDetails(button, openPane = 'overview') {
         reuploadForm.action = `/bookings/reupload-proof/${id}`;
     }
 
-    const paymentUnderReview = ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(paymentStatus);
+    const paymentUnderReview = row.dataset.paymentUnderReview === 'true'
+        || ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(paymentStatus);
     const guidance = document.getElementById('bkModalGuidance');
     const guidanceText = {
         draft: 'Continue the booking to finish your event details and submit the request.',
@@ -1150,9 +1123,10 @@ function openBookingDetails(button, openPane = 'overview') {
         expired: 'This booking has expired. Its details remain available here for reference.'
     };
     if (guidance) {
-        guidance.textContent = paymentUnderReview
-            ? 'Your payment proof is waiting for the caterer to review. It is shown separately from verified payments.'
-            : guidanceText[status] || 'Review your event details here. The caterer will update the booking status as it progresses.';
+        guidance.textContent = row.dataset.statusAction
+            || (paymentUnderReview
+                ? 'Your payment proof is waiting for the caterer to review. It is shown separately from verified payments.'
+                : guidanceText[status] || 'Review your event details here. The caterer will update the booking status as it progresses.');
     }
 
     const nextAction = document.getElementById('bkModalNextAction');
@@ -1180,19 +1154,32 @@ function openBookingDetails(button, openPane = 'overview') {
         } else if (paymentUnderReview) {
             label = '';
             showAction = false;
-        } else if (['pending_payment', 'awaiting_payment'].includes(status)) {
+        } else if (['pending', 'pending_payment', 'awaiting_payment'].includes(status)
+            && ['deposit_paid', 'partially_paid', 'partial', 'partial_paid', 'downpayment_paid'].includes(paymentStatus)) {
+            if (Number(row.dataset.balanceAmount) > 0) {
+                href = `/bookings/step/payment/${id}?balance=true`;
+                label = 'Review remaining payment';
+                showAction = true;
+            }
+        } else if (['pending', 'pending_payment', 'awaiting_payment'].includes(status)
+            && ['paid', 'fully_paid', 'verified', 'confirmed'].includes(paymentStatus)) {
+            label = '';
+            showAction = false;
+        } else if (['pending', 'pending_payment', 'awaiting_payment'].includes(status)) {
             href = `/bookings/step/payment/${id}`;
             label = 'Make payment';
             showAction = true;
         } else if (['pending_quotation', 'awaiting_customer', 'awaiting_caterer'].includes(status)) {
             href = `/bookings/step/quotation/${id}`;
-            label = status === 'awaiting_caterer' ? 'View contract' : 'Review contract';
+            label = status === 'pending_quotation'
+                ? 'Review quotation'
+                : (status === 'awaiting_caterer' ? 'View agreement' : 'Sign agreement');
             showAction = true;
         } else if (['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress'].includes(status) && Number(row.dataset.balanceAmount) > 0) {
             href = `/bookings/step/payment/${id}?balance=true`;
             label = 'Review payment options';
             showAction = true;
-        } else if (status === 'completed' && row.dataset.hasReview !== 'true') {
+        } else if (['completed', 'delivered'].includes(status) && row.dataset.hasReview !== 'true') {
             href = `/customer/feedback/${id}`;
             label = 'Rate your caterer';
             showAction = true;

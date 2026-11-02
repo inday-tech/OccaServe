@@ -15,17 +15,24 @@
     }
 
     {% if request.query_params.get('modal') == 'true' %}
-    html, body { width:100%; height:auto; min-height:100%; overflow-x:hidden; overflow-y:auto; background:#f8fafc !important; }
+    html, body { width:100%; height:auto !important; min-height:0 !important; margin:0 !important; padding:0 !important; overflow-x:hidden; overflow-y:auto; background:#f8fafc !important; }
     .sidebar, .dashboard-header, .sidebar-overlay, .caterer-page-history,
     #toast-container, .dashboard-wrapper > .sidebar-overlay { display:none !important; }
-    .dashboard-wrapper, .content-wrapper { display:block !important; width:100% !important; height:auto !important; min-height:100% !important; margin:0 !important; padding:0 !important; }
-    .main-content { display:flex !important; align-items:flex-start !important; justify-content:center !important; width:100% !important; height:auto !important; max-height:none !important; min-height:100% !important; overflow:visible !important; box-sizing:border-box !important; margin:0 !important; margin-top:0 !important; padding:.5rem .75rem !important; }
+    body.iframe-document-modal .dashboard-wrapper,
+    body.iframe-document-modal .dashboard-wrapper .content-wrapper { display:block !important; width:100% !important; height:auto !important; min-height:0 !important; margin:0 !important; padding:0 !important; }
+    body.iframe-document-modal .dashboard-wrapper .content-wrapper > main.main-content { display:flex !important; flex:0 0 auto !important; align-items:flex-start !important; justify-content:center !important; width:100% !important; height:auto !important; max-height:none !important; min-height:0 !important; overflow:visible !important; box-sizing:border-box !important; margin:0 !important; padding:.15rem .5rem 0 !important; }
     .invoice-container { width:min(100%, 680px); max-width:680px; margin:0 auto; padding:1.1rem; box-shadow:none; }
-    .quotation-send-action { margin:0 0 .85rem; padding:.7rem .85rem; display:flex; align-items:center; justify-content:space-between; gap:.75rem; border:1px solid #bfdbfe; border-radius:9px; background:#eff6ff; }
+    .invoice-header { margin-bottom:.65rem; padding-bottom:.65rem; }
+    .quotation-send-action { margin:0 0 1rem; padding:.7rem .85rem; display:flex; align-items:center; justify-content:space-between; gap:.75rem; border:1px solid #bfdbfe; border-radius:9px; background:#eff6ff; }
     .quotation-send-action p { margin:0; color:#1e3a8a; font-size:.82rem; line-height:1.4; }
     .quotation-send-button { display:inline-flex; align-items:center; gap:.4rem; flex:0 0 auto; border:0; border-radius:8px; padding:.65rem .95rem; background:var(--primary-color,#1d4ed8); color:#fff; font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; text-decoration:none; }
     .quotation-send-button:disabled { opacity:.65; cursor:wait; }
     .quotation-sent-status { color:#166534; font-size:.8rem; font-weight:700; }
+    .quotation-revision-summary { margin:0 0 1rem; padding:.9rem 1rem; border:1px solid #fed7aa; border-radius:10px; background:#fff7ed; color:#7c2d12; }
+    .quotation-revision-summary h3 { margin:0; color:#9a3412; font-size:.9rem; }
+    .quotation-revision-summary p { margin:.35rem 0 0; font-size:.82rem; line-height:1.5; white-space:pre-line; }
+    .item-table { margin-bottom:.75rem; }
+    .item-table-wrap { margin-bottom:.85rem; }
     .print-btn { display:none !important; }
     {% endif %}
 
@@ -97,6 +104,7 @@
         width: 100%;
         border-collapse: collapse;
         margin-bottom: var(--space-2xl);
+        table-layout: fixed;
     }
 
     .item-table th {
@@ -112,10 +120,27 @@
     }
 
     .item-table td {
-        padding: var(--space-lg) var(--space-md);
+        padding: .7rem .55rem;
         border-bottom: 1px solid var(--color-neutral-50);
         font-size: var(--text-sm);
         color: var(--color-neutral-900);
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    .item-table th:first-child,
+    .item-table td:first-child { width: 46%; }
+    .item-table th:nth-child(2),
+    .item-table td:nth-child(2) { width: 10%; text-align: center; }
+    .item-table th:nth-child(3),
+    .item-table td:nth-child(3) { width: 21%; }
+    .item-table th:nth-child(4),
+    .item-table td:nth-child(4) { width: 23%; }
+    .item-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        margin-bottom: var(--space-2xl);
+        -webkit-overflow-scrolling: touch;
     }
 
     .item-name {
@@ -160,6 +185,21 @@
         font-weight: 600;
     }
 
+    @media (max-width: 540px) {
+        .info-grid { grid-template-columns: 1fr; gap: 1rem; }
+        .item-table th,
+        .item-table td { padding: .55rem .4rem; font-size: .72rem; }
+        .item-table th { font-size: .62rem; }
+        .item-table th:first-child,
+        .item-table td:first-child { width: 42%; }
+        .item-table th:nth-child(2),
+        .item-table td:nth-child(2) { width: 12%; }
+        .item-table th:nth-child(3),
+        .item-table td:nth-child(3) { width: 23%; }
+        .item-table th:nth-child(4),
+        .item-table td:nth-child(4) { width: 23%; }
+    }
+
     .print-btn {
         position: fixed;
         bottom: var(--space-xl);
@@ -197,6 +237,45 @@
 {% endblock %}
 
 {% block content %}
+{% if request.query_params.get('modal') == 'true' %}
+<style>
+    body.iframe-document-modal,
+    body.iframe-document-modal .dashboard-wrapper,
+    body.iframe-document-modal .content-wrapper {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    body.iframe-document-modal .content-wrapper {
+        display: block !important;
+    }
+
+    body.iframe-document-modal .content-wrapper > main.main-content {
+        display: block !important;
+        flex: none !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    body.iframe-document-modal .invoice-container {
+        width: calc(100% - 1rem) !important;
+        max-width: 680px !important;
+        margin: 0 auto !important;
+    }
+
+    body.iframe-document-modal .invoice-header {
+        margin-bottom: .65rem !important;
+        padding-bottom: .65rem !important;
+    }
+</style>
+{% endif %}
 <div class="invoice-container">
     <div class="invoice-header">
         <div class="brand-section">
@@ -289,9 +368,20 @@
         </div>
     </div>
 
+    {% if quotation and quotation.package_details and quotation.package_details.get('revision_number', 1)|int > 1 %}
+    <section class="quotation-revision-summary" aria-label="Current quotation revision">
+        <h3>Revision summary · Version {{ quotation.package_details.get('revision_number') }}</h3>
+        {% if quotation.package_details.get('revision_note') %}
+        <p><strong>Reason:</strong> {{ quotation.package_details.get('revision_note') }}</p>
+        {% endif %}
+        <p><strong>Item scope:</strong> {{ quotation.package_details.get('revision_item_changes') or 'No item scope was recorded for this version.' }}</p>
+        <p>The package selections and inclusions below show the original booking selection. Apply the update summary above when reviewing this version.</p>
+    </section>
+    {% endif %}
+
     {% set displayed_inclusions = package_inclusions %}
     <section style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
-            <h3 style="margin: 0 0 .35rem; color: #0f172a; font-size: 1rem;">Package and inclusions</h3>
+            <h3 style="margin: 0 0 .35rem; color: #0f172a; font-size: 1rem;">{% if quotation and quotation.package_details and quotation.package_details.get('revision_number', 1)|int > 1 %}Original package selection and inclusions{% else %}Package and inclusions{% endif %}</h3>
             <p style="margin: 0; color: #0f172a; font-weight: 700;">
                 {{ (quotation.package_details.get('name') if quotation and quotation.package_details else None) or (booking.package.name if booking.package else (booking.event_name or booking.event_type or 'Custom Catering Service')) }}
             </p>
@@ -326,6 +416,11 @@
             {% endif %}
     </section>
 
+    {% set quotation_details = quotation.package_details if quotation and quotation.package_details else {} %}
+    {% set is_cust_inv = quotation_details.get('package_type') == 'customizable' or (booking.package and booking.package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
+    {% set has_item_rows = (is_cust_inv and (quotation_details.get('selected_food') or quotation_details.get('selected_menu_extras') or quotation_details.get('selected_services') or quotation_details.get('selected_equipment'))) or (not is_cust_inv and ((quotation_details.get('base_amount', 0)|float > 0) or (quotation and quotation.addons))) or (quotation_details.get('revision_number', 1)|int > 1) or not quotation %}
+    {% if has_item_rows %}
+    <div class="item-table-wrap">
     <table class="item-table">
         <thead>
             <tr>
@@ -336,8 +431,7 @@
             </tr>
         </thead>
         <tbody>
-            {% set is_cust_inv = (quotation.package_details and quotation.package_details.get('package_type') == 'customizable') or (booking.package and booking.package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
-            {% if is_cust_inv %}
+            {% if is_cust_inv and quotation_details.get('revision_number', 1)|int <= 1 %}
                 <!-- CUSTOMIZABLE PACKAGE INVOICE ITEMS -->
                 {% set c_food = quotation.package_details.selected_food if quotation.package_details and quotation.package_details.selected_food else [] %}
                 {% for f in c_food %}
@@ -403,17 +497,7 @@
                 </tr>
                 {% endfor %}
 
-                {% if booking.travel_fee and booking.travel_fee|float > 0 %}
-                <tr>
-                    <td>
-                        <div class="item-name">Delivery &amp; Travel Fee</div>
-                        <div class="item-desc">Venue logistics and transportation</div>
-                    </td>
-                    <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">1</td>
-                    <td style="text-align: right; color: var(--color-neutral-600);">₱{{ "{:,.2f}".format(booking.travel_fee|float) }}</td>
-                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(booking.travel_fee|float) }}</td>
-                </tr>
-                {% endif %}
+
             {% else %}
                 <!-- FIXED PACKAGE INVOICE ITEMS -->
                 {% if quotation and quotation.package_details and quotation.package_details.get('base_amount', 0)|float > 0 %}
@@ -421,17 +505,21 @@
                     <td>
                         <div class="item-name">{{ quotation.package_details.get('name', 'Catering Package') }}</div>
                         <div class="item-desc">
+                            {% if quotation_details.get('revision_number', 1)|int > 1 %}
+                            Revised package amount. See the revision summary and original selections above.
+                            {% else %}
                             {{ quotation.package_details.get('description') or 'Core service package.' }}
                             {% if quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}
                             · Fixed rate for {{ quotation.package_details.get('guest_count') or booking.guest_count or 1 }} guests
                             {% endif %}
+                            {% endif %}
                         </div>
                     </td>
                     <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
-                        {% if quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}1{% else %}{{ quotation.package_details.get('guest_count') or booking.guest_count or 1 }}{% endif %}
+                        {% if quotation_details.get('revision_number', 1)|int > 1 %}1{% elif quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}1{% else %}{{ quotation.package_details.get('guest_count') or booking.guest_count or 1 }}{% endif %}
                     </td>
                     <td style="text-align: right; color: var(--color-neutral-600);">
-                        {% if quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}
+                        {% if quotation_details.get('revision_number', 1)|int > 1 or quotation.package_details.get('pricing_mode') == 'fixed' or quotation.package_details.get('price_unit', 'per_guest') != 'per_guest' %}
                         ₱{{ "{:,.2f}".format(quotation.package_details.get('base_amount', 0)|float) }}
                         {% else %}
                         ₱{{ "{:,.2f}".format(quotation.package_details.get('unit_price', 0)|float) }}
@@ -478,6 +566,8 @@
             {% endif %}
         </tbody>
     </table>
+    </div>
+    {% endif %}
 
     <div class="totals-section">
         <div class="total-row">

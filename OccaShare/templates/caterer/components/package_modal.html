@@ -96,7 +96,7 @@
                                         <div class="pkg-currency-field">
                                             <span class="pkg-currency-prefix">₱</span>
                                             <input class="control-pro" id="pkgExtraGuestRate" name="additional_guest_price"
-                                                placeholder="0.00" type="text" inputmode="decimal" maxlength="11" oninput="window.sanitizeMoneyInput(this)" value="{{ caterer_starting_price or '' }}" />
+                                                placeholder="0.00" type="text" inputmode="decimal" maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2" oninput="window.sanitizeMoneyInput(this)" value="{{ caterer_starting_price or '' }}" />
                                             <span
                                                 class="pkg-currency-suffix">/
                                                 guest</span>
@@ -116,7 +116,7 @@
                                             <span
                                                 style="position: absolute; left: 12px; color: #64748b; font-weight: 700;">₱</span>
                                             <input class="control-pro js-format-comma" id="pkgManualPriceInput"
-                                                maxlength="11" name="price_per_head" placeholder="0.00" oninput="window.sanitizeMoneyInput(this)" readonly required=""
+                                                maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2" name="price_per_head" placeholder="0.00" oninput="window.sanitizeMoneyInput(this)" readonly required=""
                                                 style="padding-left: 28px; font-weight: 700;" type="text" />
                                         </div>
                                         <small class="pkg-inline-hint" id="pkgPriceUnitHint">Calculated from included guests × starting price per guest.</small>
@@ -678,14 +678,15 @@
 
                 <div class="form-group-pro" id="quickAddOptionUpgradeFeeWrapper" style="display: none; margin-bottom: 1rem;">
                     <label for="quickAddOptionUpgradeFee">Dish swap fee per guest (₱) <small>(Optional)</small></label>
-                    <input type="text" inputmode="decimal" name="upgrade_fee" id="quickAddOptionUpgradeFee" class="control-pro" maxlength="11" placeholder="Optional" oninput="window.sanitizeMoneyInput(this); window.validateSwapFee('quickAddOptionUpgradeFee', 'quickAddOptionUpgradeFeeError')" />
+                    <input type="text" inputmode="decimal" name="upgrade_fee" id="quickAddOptionUpgradeFee" class="control-pro" maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Optional" oninput="window.sanitizeMoneyInput(this); window.validateSwapFee('quickAddOptionUpgradeFee', 'quickAddOptionUpgradeFeeError')" />
                     <small style="display: block; margin-top: 0.3rem; color: #64748b; font-size: 0.76rem;">Charged when a customer chooses this dish as a swap.</small>
                     <small id="quickAddOptionUpgradeFeeError" class="swap-fee-error" aria-live="polite"></small>
                 </div>
 
                 <div class="form-group-pro" id="quickAddOptionExtraDishWrapper" style="display: none; margin-bottom: 1rem;">
                     <label for="quickAddOptionExtraDishPrice">Default extra-dish price (₱) <small>(Optional)</small></label>
-                    <input type="text" inputmode="decimal" name="addon_price" id="quickAddOptionExtraDishPrice" class="control-pro" maxlength="12" placeholder="Optional" oninput="window.sanitizeMoneyInput(this)" />
+                    <input type="text" inputmode="decimal" name="addon_price" id="quickAddOptionExtraDishPrice" class="control-pro" maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Optional" oninput="window.sanitizeMoneyInput(this); window.validateCatalogAmount('quickAddOptionExtraDishPrice', 'quickAddOptionExtraDishPriceError')" />
+                    <small id="quickAddOptionExtraDishPriceError" aria-live="polite"></small>
                     <small style="display:block;margin-top:.3rem;color:#64748b;font-size:.76rem;">Kept separate from the swap fee; used when this dish is added as an extra.</small>
                 </div>
                 <section class="package-item-settings" id="quickAddPackageMenuSettings" hidden>
@@ -727,8 +728,8 @@
                         <label id="quickAddOptionPriceLabel" style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">
                             Customer-facing price (₱)
                         </label>
-                        <input type="text" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2"
-                            name="price" id="quickAddOptionPrice" class="control-pro" value="0.00"
+                        <input type="text" inputmode="decimal" maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2"
+                            name="price" id="quickAddOptionPrice" class="control-pro" value=""
                             oninput="window.validateQuickAddOptionPrice()"
                             style="width: 100%; height: 42px; padding: 0.5rem 0.85rem; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; font-weight: 700; color: #0f172a;" />
                         <small id="quickAddOptionPriceError" aria-live="polite" style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
@@ -806,12 +807,13 @@
                 </div>
                 <div class="form-group-pro">
                     <label for="editMenuItemUpgradeFee">Dish swap fee per guest (₱) <small>(Optional)</small></label>
-                    <input type="text" id="editMenuItemUpgradeFee" class="control-pro" inputmode="decimal" maxlength="11" placeholder="Amount" oninput="window.sanitizeMoneyInput(this); window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError')">
+                    <input type="text" id="editMenuItemUpgradeFee" class="control-pro" inputmode="decimal" maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Amount" oninput="window.sanitizeMoneyInput(this); window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError')">
                     <small id="editMenuItemUpgradeFeeError" class="swap-fee-error" aria-live="polite"></small>
                 </div>
                 <div class="form-group-pro">
                     <label for="editMenuItemExtraDishPrice">Default extra-dish price (₱) <small>(Optional)</small></label>
-                    <input type="text" id="editMenuItemExtraDishPrice" class="control-pro" inputmode="decimal" maxlength="12" placeholder="Optional" oninput="window.sanitizeMoneyInput(this)">
+                    <input type="text" id="editMenuItemExtraDishPrice" class="control-pro" inputmode="decimal" maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Optional" oninput="window.sanitizeMoneyInput(this); window.validateCatalogAmount('editMenuItemExtraDishPrice', 'editMenuItemExtraDishPriceError')">
+                    <small id="editMenuItemExtraDishPriceError" aria-live="polite"></small>
                     <small>Separate from the swap fee; used when this dish is added as an extra.</small>
                 </div>
                 <section class="package-item-settings" id="editPackageMenuSettings" hidden>
@@ -833,22 +835,6 @@
                         <button type="button" class="btn-secondary-pro package-extra-add" onclick="window.addPackageExtraVariant('editMenuItem')">Add another tray size</button>
                     </div>
                 </section>
-                <div class="form-group-pro">
-                    <label for="editMenuItemUnit">Serving / pricing unit</label>
-                    <select id="editMenuItemUnit" class="control-pro">
-                        <option value="per_pax">Per Pax / Guest</option>
-                        <option value="per_tray">Per Tray</option>
-                        <option value="per_platter">Per Platter</option>
-                        <option value="per_order">Per Order</option>
-                    </select>
-                </div>
-                <div class="form-group-pro">
-                    <label for="editMenuItemStatus">Availability</label>
-                    <select id="editMenuItemStatus" class="control-pro">
-                        <option value="available">Available</option>
-                        <option value="unavailable">Unavailable</option>
-                    </select>
-                </div>
                 <div class="form-group-pro">
                     <label for="editMenuItemDescription">Description <small>(Optional)</small></label>
                     <textarea id="editMenuItemDescription" class="control-pro" rows="2" placeholder="Details, ingredients, specifications or notes..."></textarea>
@@ -892,7 +878,7 @@
                 </div>
                 <div class="form-group-pro">
                     <label for="editServiceItemFee">Service Fee (₱) <small>(Optional)</small></label>
-                    <input type="text" id="editServiceItemFee" class="control-pro" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Optional" oninput="window.validateCatalogEditServiceFee()">
+                    <input type="text" id="editServiceItemFee" class="control-pro" inputmode="decimal" maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Optional" oninput="window.validateCatalogEditServiceFee()">
                     <small id="editServiceItemFeeError" aria-live="polite"></small>
                 </div>
                 <section class="package-item-settings" id="editPackageServiceSettings" hidden>
@@ -902,23 +888,6 @@
                         Include in the base package
                     </label>
                 </section>
-                <div class="form-group-pro">
-                    <label for="editServiceItemUnit">Pricing unit</label>
-                    <select id="editServiceItemUnit" class="control-pro" onchange="window.toggleCatalogEditStaffFields(this.value)">
-                        <option value="per_event">Per Event (Flat Rate)</option>
-                        <option value="per_pax">Per Person</option>
-                        <option value="per_hour">Per Hour</option>
-                        <option value="per_staff">Per Staff Member</option>
-                    </select>
-                </div>
-                <div class="form-group-pro">
-                    <label for="editServiceItemQuantity">Maximum available units / staff</label>
-                    <input type="number" id="editServiceItemQuantity" class="control-pro" min="1" max="999999">
-                </div>
-                <div class="form-group-pro" id="editServiceItemDurationWrapper">
-                    <label for="editServiceItemDuration">Minimum duration (hours)</label>
-                    <input type="number" id="editServiceItemDuration" class="control-pro" min="1" max="24">
-                </div>
                 <div class="form-row-pro" id="editServiceItemStaffingWrapper" style="display:none;grid-template-columns:1fr 1fr;gap:10px;">
                     <div class="form-group-pro">
                         <label for="editServiceItemStaffRatio">Staff per guests</label>
@@ -928,13 +897,6 @@
                         <label for="editServiceItemMinStaff">Minimum staff</label>
                         <input type="number" id="editServiceItemMinStaff" class="control-pro" min="1" max="999999">
                     </div>
-                </div>
-                <div class="form-group-pro">
-                    <label for="editServiceItemStatus">Availability</label>
-                    <select id="editServiceItemStatus" class="control-pro">
-                        <option value="available">Available</option>
-                        <option value="unavailable">Unavailable</option>
-                    </select>
                 </div>
                 <div class="form-group-pro">
                     <label for="editServiceItemDescription">Description <small>(Optional)</small></label>
@@ -979,7 +941,8 @@
                 </div>
                 <div class="form-group-pro">
                     <label for="editEquipmentItemFee">Default rental price (₱)</label>
-                    <input type="text" id="editEquipmentItemFee" class="control-pro" inputmode="decimal" maxlength="12" placeholder="Optional" oninput="window.sanitizeMoneyInput(this)">
+                    <input type="text" id="editEquipmentItemFee" class="control-pro js-format-comma" inputmode="decimal" maxlength="13" data-max-integer-digits="8" data-max-decimal-digits="2" placeholder="Optional" oninput="window.sanitizeMoneyInput(this); window.validateCatalogAmount('editEquipmentItemFee', 'editEquipmentItemFeeError')">
+                    <small id="editEquipmentItemFeeError" aria-live="polite"></small>
                 </div>
                 <section class="package-item-settings" id="editPackageEquipmentSettings" hidden>
                     <h4>For this customizable package</h4>

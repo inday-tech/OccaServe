@@ -2358,3 +2358,364 @@
         font-variant-numeric: tabular-nums;
     }
 }
+
+/* Customer quotation summary and deposit choice */
+.quotation-step .quotation-summary-body {
+    display: grid;
+    gap: 1rem;
+    padding: clamp(.85rem, 2.5vw, 1.25rem);
+}
+
+.quotation-step .quotation-package-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    padding-bottom: .85rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.quotation-step .quotation-summary-eyebrow {
+    display: block;
+    margin-bottom: .2rem;
+    color: #64748b;
+    font-size: .68rem;
+    font-weight: 750;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.quotation-step .quotation-package-heading h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.12rem;
+    font-weight: 800;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.quotation-step .quotation-event-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem 1rem;
+    margin-top: .45rem;
+    color: #64748b;
+    font-size: .79rem;
+}
+
+.quotation-step .quotation-event-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.quotation-step .quotation-version-badge {
+    flex: 0 0 auto;
+    padding: .35rem .6rem;
+    border: 1px solid #fed7aa;
+    border-radius: 999px;
+    background: #fff7ed;
+    color: #9a3412;
+    font-size: .7rem;
+    font-weight: 750;
+}
+
+.quotation-step .quotation-revision-note {
+    padding: .8rem .9rem;
+    border: 1px solid #fed7aa;
+    border-radius: 10px;
+    background: #fff7ed;
+    color: #7c2d12;
+    font-size: .8rem;
+    line-height: 1.5;
+}
+
+.quotation-step .quotation-revision-note > strong {
+    display: block;
+    color: #9a3412;
+    font-size: .83rem;
+}
+
+.quotation-step .quotation-revision-note p {
+    margin: .35rem 0 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.quotation-step .quotation-revision-note small {
+    display: block;
+    margin-top: .45rem;
+    color: #9a3412;
+}
+
+.quotation-step .quotation-selections {
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.quotation-step .quotation-selections summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    min-height: 44px;
+    padding: .65rem .8rem;
+    color: #334155;
+    font-size: .81rem;
+    font-weight: 750;
+    cursor: pointer;
+    list-style: none;
+}
+
+.quotation-step .quotation-selections summary::-webkit-details-marker { display: none; }
+.quotation-step .quotation-selections summary > span { display: inline-flex; gap: .45rem; align-items: center; }
+.quotation-step .quotation-selections-chevron { transition: transform .18s ease; }
+.quotation-step .quotation-selections[open] .quotation-selections-chevron { transform: rotate(180deg); }
+
+.quotation-step .quotation-selections-content {
+    padding: .15rem .8rem .8rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.quotation-step .quotation-selection-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .7rem;
+    padding-top: .7rem;
+}
+
+.quotation-step .quotation-selection-group {
+    min-width: 0;
+    padding: .65rem;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.quotation-step .quotation-selection-group > strong {
+    color: #475569;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.quotation-step .quotation-selection-group ul,
+.quotation-step .quotation-inclusion-list {
+    display: grid;
+    gap: .35rem;
+    margin: .4rem 0 0;
+    padding: 0;
+    color: #334155;
+    font-size: .78rem;
+    list-style: none;
+}
+
+.quotation-step .quotation-selection-group li,
+.quotation-step .quotation-inclusion-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: .6rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.quotation-step .quotation-selection-group li span,
+.quotation-step .quotation-inclusion-list li span {
+    flex: 0 0 auto;
+    color: #64748b;
+    font-weight: 650;
+}
+
+.quotation-step .quotation-cost-breakdown {
+    display: grid;
+    gap: .45rem;
+    padding: .85rem 0 0;
+    color: #475569;
+    font-size: .82rem;
+}
+
+.quotation-step .quotation-cost-breakdown h3 {
+    margin: 0 0 .1rem;
+    color: #64748b;
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.quotation-step .quotation-cost-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    min-width: 0;
+    line-height: 1.45;
+}
+
+.quotation-step .quotation-cost-row > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.quotation-step .quotation-cost-row > strong {
+    flex: 0 0 auto;
+    color: #334155;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.quotation-step .quotation-cost-row.quotation-credit-row > strong { color: #15803d; }
+
+.quotation-step .quotation-total-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .9rem 0;
+    border-top: 1px solid #cbd5e1;
+    color: #0f172a;
+}
+
+.quotation-step .quotation-total-row > span {
+    font-size: .84rem;
+    font-weight: 750;
+}
+
+.quotation-step .quotation-total-row > strong {
+    font-size: clamp(1.2rem, 3vw, 1.5rem);
+    font-weight: 850;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.quotation-step .quotation-payment-breakdown {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .65rem;
+}
+
+.quotation-step .quotation-payment-card {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    min-width: 0;
+    padding: .8rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+    background: #f8fafc;
+}
+
+.quotation-step .quotation-payment-card[hidden] { display: none !important; }
+.quotation-step .quotation-payment-card small { color: #64748b; font-size: .73rem; font-weight: 650; }
+.quotation-step .quotation-payment-card strong { color: #0f172a; font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.quotation-step .quotation-deposit-card { border-color: #bbf7d0; background: #f0fdf4; }
+.quotation-step .quotation-deposit-card strong { color: #166534; }
+
+.quotation-step .quotation-deposit-choice {
+    display: grid;
+    gap: .7rem;
+    padding: .9rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.quotation-step .quotation-deposit-choice-heading h3,
+.quotation-step .quotation-choice-confirmed h3 {
+    margin: 0;
+    color: #0f172a;
+    font-size: .9rem;
+    font-weight: 800;
+}
+
+.quotation-step .quotation-deposit-choice-heading p,
+.quotation-step .quotation-choice-confirmed p {
+    margin: .25rem 0 0;
+    color: #64748b;
+    font-size: .77rem;
+    line-height: 1.45;
+}
+
+.quotation-step .quotation-deposit-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .6rem;
+    align-items: center;
+}
+
+.quotation-step .quotation-deposit-controls .dp-percent-select {
+    width: 100%;
+    min-height: 44px;
+    padding: .65rem 2.5rem .65rem .75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: #0f172a;
+    font: inherit;
+    font-size: .84rem;
+    font-weight: 700;
+}
+
+.quotation-step .quotation-deposit-controls .btn-wizard-next {
+    min-height: 44px;
+    padding: .65rem .9rem;
+    white-space: nowrap;
+}
+
+.quotation-step .quotation-deposit-hint {
+    color: #64748b;
+    font-size: .7rem;
+    line-height: 1.4;
+}
+
+.quotation-step .quotation-deposit-hint i { margin-right: .25rem; color: #15803d; }
+.quotation-step .quotation-choice-confirmed { border-color: #bae6fd; background: #f0f9ff; }
+.quotation-step .quotation-choice-confirmed h3 { color: #075985; }
+
+.quotation-step .quotation-history {
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.quotation-step .quotation-history > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    min-height: 44px;
+    padding: .65rem .8rem;
+    color: #475569;
+    font-size: .78rem;
+    font-weight: 750;
+    cursor: pointer;
+    list-style: none;
+}
+
+.quotation-step .quotation-history > summary::-webkit-details-marker { display: none; }
+.quotation-step .quotation-history > summary span { color: #64748b; font-weight: 600; }
+.quotation-step .quotation-history-list { border-top: 1px solid #f1f5f9; padding: .25rem .8rem .7rem; }
+.quotation-step .quotation-history-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: .2rem .75rem;
+    padding: .55rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    color: #475569;
+    font-size: .76rem;
+}
+.quotation-step .quotation-history-row:last-child { border-bottom: 0; }
+.quotation-step .quotation-history-row strong { color: #334155; }
+.quotation-step .quotation-history-row > span { color: #334155; font-weight: 700; font-variant-numeric: tabular-nums; }
+.quotation-step .quotation-history-row time { color: #64748b; }
+.quotation-step .quotation-history-row p { grid-column: 1 / -1; margin: .15rem 0 0; color: #64748b; overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+    .quotation-step .quotation-summary-body { gap: .8rem; padding: .85rem; }
+    .quotation-step .quotation-package-heading { flex-direction: column; }
+    .quotation-step .quotation-selection-groups { grid-template-columns: 1fr; }
+    .quotation-step .quotation-payment-breakdown { grid-template-columns: 1fr 1fr; }
+    .quotation-step .quotation-deposit-controls { grid-template-columns: 1fr; }
+    .quotation-step .quotation-deposit-controls .btn-wizard-next { width: 100%; }
+}

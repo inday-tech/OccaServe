@@ -398,6 +398,23 @@
         background: rgba(59, 130, 246, 0.1);
         color: #3b82f6;
     }
+    .tag-pay-now, .tag-reupload, .tag-cancelled, .tag-draft {
+        background: rgba(249, 115, 22, 0.1);
+        color: #c2410c;
+    }
+    .tag-active, .tag-preparing {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563eb;
+    }
+    .spotlight-status {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 0.9rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 8px;
+    }
 
     .empty-panel {
         padding: 2.5rem 1.5rem;
@@ -923,6 +940,11 @@
                 <div class="sm-item"><i class="fas fa-location-dot"></i> <span>{{ latest_booking.venue_address or 'Venue
                         TBD' }}</span></div>
             </div>
+            {% set spotlight_status = booking_status_displays.get(latest_booking.id, {'label': latest_booking.status|replace('_', ' ')|title, 'tone': 'draft'}) %}
+            <span class="spotlight-status tag-{{ spotlight_status.tone }}">
+                {{ '⚠ ' if spotlight_status.tone == 'reupload' else '' }}{{ spotlight_status.label }}
+            </span>
+            <div class="booking-sub" style="margin-top: 0.35rem;">{{ spotlight_status.customer_action }}</div>
             <div style="margin-top: 1.25rem;">
                 <a href="/customer/bookings?open_detail={{ latest_booking.id }}" class="btn-action-primary spotlight-manage-btn"
                     style="text-decoration: none;">Manage Booking</a>
@@ -1009,11 +1031,12 @@
                             </div>
                         </td>
                         <td>
-                            {% set sc = b.status %}
+                            {% set recent_status = booking_status_displays.get(b.id, {'label': b.status|replace('_', ' ')|title, 'tone': 'draft'}) %}
                             <span
-                                class="status-tag {{ 'tag-confirmed' if sc == 'confirmed' else ('tag-completed' if sc == 'completed' else 'tag-pending') }}">
-                                {{ b.status.replace('_',' ') }}
+                                class="status-tag tag-{{ recent_status.tone }}">
+                                {{ recent_status.label }}
                             </span>
+                            <div class="booking-sub">{{ recent_status.customer_action }}</div>
                         </td>
                         <td style="text-align: right; color: var(--dm-slate-300);">
                             <i class="fas fa-chevron-right"></i>

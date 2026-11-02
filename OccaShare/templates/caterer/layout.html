@@ -1789,7 +1789,7 @@
     </script>
 </head>
 
-<body>
+<body class="{{ 'iframe-document-modal' if request.query_params.get('modal') == 'true' else '' }}">
     <!-- Sidebar Overlay -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 

@@ -4,42 +4,92 @@
 
 {% block extra_css %}
 <style>
+    * { box-sizing: border-box; }
+
     .proposal-container {
-        max-width: 900px;
-        margin: 2rem auto !important;
-        padding: 2.5rem;
+        width: min(100% - 2rem, 900px);
+        margin: 1rem auto !important;
+        padding: clamp(1rem, 3vw, 2rem);
         background: #fff;
         border-radius: var(--border-radius, 16px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        box-shadow: 0 8px 26px rgba(15, 23, 42, .07);
         border: 1px solid #e2e8f0;
     }
-    
+
     .proposal-header {
-        margin-bottom: 2rem;
-        padding-bottom: 1rem;
-        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1.1rem;
+        border-bottom: 1px solid #e2e8f0;
     }
-    
+
     .proposal-title {
-        font-size: 1.5rem;
+        margin: .15rem 0 0;
+        font-size: clamp(1.25rem, 2.5vw, 1.65rem);
         font-weight: 800;
         color: #0f172a;
+        letter-spacing: -.025em;
     }
-    
+
+    .proposal-kicker {
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+    }
+
+    .proposal-subtitle {
+        margin: .35rem 0 0;
+        color: #64748b;
+        font-size: .88rem;
+        line-height: 1.5;
+    }
+
+    .revision-status {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        flex: 0 0 auto;
+        padding: .45rem .7rem;
+        border: 1px solid #fed7aa;
+        border-radius: 999px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: .75rem;
+        font-weight: 750;
+        white-space: nowrap;
+    }
+
     .customer-reqs {
         background: #f8fafc;
-        padding: 1.5rem;
+        padding: 1rem;
         border-radius: var(--border-radius, 12px);
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
         border: 1px solid #e2e8f0;
     }
+
+    .customer-reqs-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .75rem;
+        margin-bottom: .85rem;
+        color: #334155;
+        font-size: .87rem;
+    }
+
+    .customer-reqs-grid > div { min-width: 0; overflow-wrap: anywhere; }
+    .customer-reqs-grid strong { color: #64748b; font-weight: 650; }
 
     .quote-package-summary {
         background: #fff;
         border: 1px solid #e2e8f0;
         border-radius: var(--border-radius, 12px);
         padding: 1rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
 
     .quote-inclusions {
@@ -64,6 +114,120 @@
         letter-spacing: .04em;
     }
 
+    .revision-current-card {
+        margin: 1rem 0;
+        padding: 1rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+
+    .revision-current-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: .75rem;
+        margin-bottom: .75rem;
+    }
+
+    .revision-current-heading h2 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 1rem;
+    }
+
+    .revision-current-heading p {
+        margin: .25rem 0 0;
+        color: #64748b;
+        font-size: .8rem;
+    }
+
+    .revision-current-total {
+        flex: 0 0 auto;
+        color: #0f172a;
+        font-size: 1.1rem;
+        font-weight: 800;
+        text-align: right;
+    }
+
+    .revision-current-lines {
+        display: grid;
+        gap: .4rem;
+        padding-top: .7rem;
+        border-top: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: .82rem;
+    }
+
+    .revision-current-line {
+        display: flex;
+        justify-content: space-between;
+        gap: .75rem;
+    }
+
+    .revision-current-line span:first-child { overflow-wrap: anywhere; }
+    .revision-current-line span:last-child { flex: 0 0 auto; color: #0f172a; font-weight: 650; }
+
+    .revision-process {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: .55rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .revision-process-step {
+        padding: .7rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        background: #fff;
+        color: #64748b;
+        font-size: .75rem;
+        line-height: 1.4;
+    }
+
+    .revision-process-step strong {
+        display: block;
+        margin-bottom: .15rem;
+        color: #334155;
+        font-size: .78rem;
+    }
+
+    .revision-process-step.is-current {
+        border-color: #93c5fd;
+        background: #eff6ff;
+        color: #1e3a8a;
+    }
+
+    .revision-process-step.is-current strong { color: #1d4ed8; }
+
+    .revision-notice {
+        margin-bottom: 1rem;
+        padding: .9rem 1rem;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        background: #fff7ed;
+        color: #7c2d12;
+        font-size: .84rem;
+        line-height: 1.55;
+    }
+
+    .revision-notice strong { display: block; margin-bottom: .2rem; }
+    .revision-notice p { margin: 0; }
+
+    .editor-section-title {
+        margin: 0 0 .25rem;
+        color: #0f172a;
+        font-size: 1.05rem;
+        font-weight: 800;
+    }
+
+    .editor-section-help {
+        margin: 0 0 1rem;
+        color: #64748b;
+        font-size: .82rem;
+        line-height: 1.5;
+    }
+
     .quote-math-note {
         padding: .75rem .9rem;
         border-radius: 8px;
@@ -74,9 +238,19 @@
     }
 
     @media (max-width: 640px) {
-        .proposal-container { margin: .75rem auto !important; padding: 1rem; }
-        .customer-reqs { padding: 1rem; }
-        .line-items-header, .line-item-row { grid-template-columns: minmax(0, 1fr) minmax(90px, .6fr) 36px; gap: .5rem; }
+        .proposal-container { width: calc(100% - 1rem); margin: .5rem auto !important; padding: 1rem; }
+        .proposal-header { flex-direction: column; }
+        .customer-reqs-grid { grid-template-columns: 1fr; gap: .5rem; }
+        .line-items-header, .line-item-row { grid-template-columns: minmax(0, 1fr) minmax(80px, .6fr) 36px; gap: .45rem; }
+        .line-items-header { font-size: .68rem; padding: .75rem; }
+        .line-item-row { padding: .7rem; }
+        .line-item-row .form-input { min-width: 0; padding: .65rem .5rem; font-size: .85rem; }
+        .revision-current-heading { flex-direction: column; }
+        .revision-current-total { text-align: left; }
+        .revision-process { grid-template-columns: 1fr; }
+        .totals-section { padding: 1.1rem; }
+        .total-row { font-size: .92rem; }
+        .total-row.grand { font-size: 1.15rem; }
     }
 
     {% if request.query_params.get('modal') == 'true' %}
@@ -85,7 +259,7 @@
     #toast-container, .dashboard-wrapper > .sidebar-overlay { display:none !important; }
     .dashboard-wrapper, .content-wrapper { display:block !important; width:100% !important; height:100% !important; min-height:0 !important; margin:0 !important; padding:0 !important; }
     .main-content { display:flex !important; align-items:flex-start !important; justify-content:center !important; width:100% !important; height:100% !important; max-height:100% !important; min-height:0 !important; overflow-y:auto !important; box-sizing:border-box !important; margin:0 !important; padding:.75rem !important; }
-    .proposal-container { width:min(100%, 680px); max-width:680px; margin:0 auto !important; padding:1.25rem; box-shadow:none; }
+    .proposal-container { width:min(100% - 1rem, 760px); max-width:760px; margin:0 auto !important; padding:clamp(1rem, 3vw, 1.5rem); box-shadow:none; }
     {% endif %}
     
     .form-group {
@@ -223,21 +397,33 @@
 {% block content %}
 <div class="proposal-container">
     <div class="proposal-header">
-        <h1 class="proposal-title">Proposal Maker</h1>
-        <p style="color: #64748b; margin-top: 0.5rem;">Create a custom quotation for Booking #{{ booking.id }}</p>
+        <div>
+            <span class="proposal-kicker">Booking #{{ booking.id }} · Quotation workspace</span>
+            <h1 class="proposal-title">{% if revision_mode %}Revise quotation{% else %}Prepare quotation{% endif %}</h1>
+            <p class="proposal-subtitle">
+                {% if revision_mode %}
+                Prepare Version {{ (quotation.package_details.get('revision_number', 1) or 1) + 1 }} for customer review.
+                {% else %}
+                Review the request and prepare a clear, itemized proposal.
+                {% endif %}
+            </p>
+        </div>
+        {% if revision_mode %}
+        <span class="revision-status"><i class="fas fa-rotate"></i> Revision draft</span>
+        {% endif %}
     </div>
     
     <div class="customer-reqs">
-        <h3 style="font-weight: 800; margin-bottom: 1rem; color: #0f172a;"><i class="fas fa-clipboard-list"></i> Customer Requirements</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-            <div><strong>Event:</strong> {{ booking.event_name or booking.event_type }}</div>
-            <div><strong>Date & Time:</strong> {{ booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD' }} @ {{ booking.event_time.strftime('%I:%M %p') if booking.event_time else 'TBD' }}</div>
-            <div><strong>Guest Count:</strong> {{ booking.guest_count }} pax</div>
-            <div><strong>Budget:</strong> ₱{{ "{:,.2f}".format(booking.custom_requirements.get('budget', 0)) if booking.custom_requirements else "N/A" }}</div>
+        <h3 style="font-weight: 800; margin: 0 0 .8rem; color: #0f172a;"><i class="fas fa-clipboard-list"></i> Customer requirements</h3>
+        <div class="customer-reqs-grid">
+            <div><strong>Event</strong><br>{{ booking.event_name or booking.event_type }}</div>
+            <div><strong>Date &amp; time</strong><br>{{ booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD' }}{% if booking.event_time %} · {{ booking.event_time.strftime('%I:%M %p') }}{% endif %}</div>
+            <div><strong>Guest count</strong><br>{{ booking.guest_count or 'Not specified' }}{% if booking.guest_count %} pax{% endif %}</div>
+            <div><strong>Budget</strong><br>{% if booking.custom_requirements and booking.custom_requirements.get('budget') %}₱{{ "{:,.2f}".format(booking.custom_requirements.get('budget')|float) }}{% else %}Not specified{% endif %}</div>
         </div>
         <div>
-            <strong>Theme & Notes:</strong>
-            <p style="background: white; padding: 1rem; border-radius: var(--border-radius, 8px); margin-top: 0.5rem; border: 1px solid #e2e8f0;">
+            <strong style="color:#64748b;font-size:.82rem;">Theme &amp; notes</strong>
+            <p style="background: white; padding: .8rem; border-radius: var(--border-radius, 8px); margin: .35rem 0 0; border: 1px solid #e2e8f0; color:#334155; font-size:.87rem; line-height:1.5;">
                 {{ booking.custom_requirements.get('theme_description', 'No additional details provided.') if booking.custom_requirements else 'No additional details provided.' }}
             </p>
         </div>
@@ -272,46 +458,76 @@
         {% endif %}
         <p style="margin: .75rem 0 0; color: #64748b; font-size: .82rem;">Review the inclusions before pricing. The quotation total below is calculated as the base amount plus all named add-ons.</p>
     </section>
+
+    {% if revision_mode %}
+    <section class="revision-current-card" aria-labelledby="currentQuotationTitle">
+        <div class="revision-current-heading">
+            <div>
+                <h2 id="currentQuotationTitle">Current quotation · Version {{ quotation.package_details.get('revision_number', 1) or 1 }}</h2>
+                <p>Reference snapshot only. The previous version will remain in the revision history.</p>
+            </div>
+            <div class="revision-current-total">₱{{ "{:,.2f}".format(quotation.total_amount|float) }}<small style="display:block;color:#64748b;font-size:.7rem;font-weight:650;">Current total</small></div>
+        </div>
+        <div class="revision-current-lines">
+            <div class="revision-current-line"><span>Base package total</span><span>₱{{ "{:,.2f}".format(proposal_base_price|float) }}</span></div>
+            {% for addon in proposal_addons %}
+            <div class="revision-current-line"><span>{{ addon.get('name') or 'Additional item' }}</span><span>₱{{ "{:,.2f}".format(addon.get('price', 0)|float) }}</span></div>
+            {% endfor %}
+            {% if not proposal_addons %}
+            <div class="revision-current-line"><span>Add-ons</span><span>₱0.00</span></div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
     
     <form action="/caterer/bookings/{{ booking.id }}/proposal_maker{% if revision_mode %}?revision=true{% if request.query_params.get('modal') == 'true' %}&amp;modal=true{% endif %}{% elif request.query_params.get('modal') == 'true' %}?modal=true{% endif %}" method="POST" id="proposalForm">
         {% if revision_mode %}
-        <div style="padding:1rem;border:1px solid #fdba74;background:#fff7ed;border-radius:10px;margin-bottom:1rem;">
-            <strong>Quotation revision {{ (quotation.package_details.get('revision_number', 1) or 1) + 1 }}</strong>
-            <p style="margin:.35rem 0 0;color:#7c2d12;font-size:.85rem;">Saving this revision preserves the current quotation, clears earlier approvals/signatures, and asks the customer to review the new items and total before choosing a deposit again.</p>
+        <div class="revision-process" aria-label="Quotation revision steps">
+            <div class="revision-process-step is-current"><strong>1 · Update</strong>Enter the new amount and explain the changes.</div>
+            <div class="revision-process-step"><strong>2 · Review &amp; send</strong>Check the revised document, then send it to the customer.</div>
+            <div class="revision-process-step"><strong>3 · Customer confirms</strong>The customer reviews the new total and chooses a deposit again.</div>
+        </div>
+        <div class="revision-notice">
+            <strong><i class="fas fa-shield-alt"></i> Previous approval is not carried forward</strong>
+            <p>Saving creates a new version and archives the current one. Existing signatures and approval are cleared. This saves a draft only; the customer is notified after you review and send the revised quotation.</p>
         </div>
         {% endif %}
-        <div style="background: #f8fafc; border-left: 4px solid #0f172a; padding: 1.25rem; border-radius: 0 8px 8px 0; margin-bottom: 2rem; display: flex; gap: 1rem; align-items: flex-start;">
+        <section style="margin-bottom:1.25rem;">
+        <h2 class="editor-section-title">{% if revision_mode %}Set the revised amount{% else %}Set quotation amount{% endif %}</h2>
+        <p class="editor-section-help">Use one base total for the full guest count, then list each separate charge below. The displayed total is recalculated and validated by the server.</p>
+        <div style="background: #f8fafc; border-left: 4px solid #0f172a; padding: 1rem; border-radius: 0 8px 8px 0; margin-bottom: 1.25rem; display: flex; gap: .75rem; align-items: flex-start;">
             <i class="fas fa-info-circle" style="color: #0f172a; font-size: 1.25rem; margin-top: 2px;"></i>
             <div>
-                <strong style="color: #0f172a; font-size: 0.95rem;">Minimum Constraints</strong>
-                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #475569; line-height: 1.5;">To ensure service quality, proposals must cover baseline fees of ₱150/head (equipment) and 1 waiter per 20 guests (₱800/waiter).</p>
-                <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #0f172a; font-weight: 700;">
-                    Absolute Minimum Required for this event: ₱<span id="absoluteMin"></span>
+                <strong style="color: #0f172a; font-size: .88rem;">Platform minimum for this event</strong>
+                <p style="margin: .25rem 0 0; font-size: .8rem; color: #475569; line-height: 1.5;">The current minimum rule is ₱150 per guest for equipment plus ₱800 per waiter (one waiter per 20 guests, minimum one).</p>
+                <div style="margin-top: .35rem; font-size: .82rem; color: #0f172a; font-weight: 750;">
+                    Minimum total: ₱<span id="absoluteMin"></span>
                 </div>
             </div>
         </div>
         
         <div class="form-group">
-            <label class="form-label">Base Package / Food Cost (total for {{ booking.guest_count }} guests)</label>
+            <label class="form-label" for="basePrice">Base package total <span style="font-weight:500;color:#64748b;">(all {{ booking.guest_count or 0 }} guests)</span></label>
             <div style="position: relative;">
                 <span style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); font-weight: 700;">₱</span>
-                <input type="text" inputmode="numeric" name="base_price" id="basePrice" class="form-input js-format-comma" style="padding-left: 2rem;" value="{{ proposal_base_price if revision_mode else '' }}" required oninput="calculateTotal()">
+                <input type="text" inputmode="decimal" name="base_price" id="basePrice" class="form-input js-format-comma" style="padding-left: 2rem;" value="{{ proposal_base_price if revision_mode else '' }}" required oninput="calculateTotal()" autocomplete="off">
             </div>
-            <small style="color: #64748b; margin-top: 4px; display: block;">Enter the base total once for the full guest count. Do not multiply this amount by the number of guests again.</small>
+            <small style="color: #64748b; margin-top: 4px; display: block;">Enter the full base amount once. Do not multiply it by the guest count again.</small>
         </div>
+        </section>
 
         {% if revision_mode %}
         <div class="form-group">
-            <label class="form-label" for="revisionItemChanges">Updated items / proposed alternatives <span style="color:#64748b;font-weight:400;">(Optional)</span></label>
-            <textarea id="revisionItemChanges" name="revision_item_changes" class="form-input" rows="4" maxlength="4000" placeholder="Describe any menu, service, or equipment changes the customer should review. Put related prices in the named line items below.">{{ revision_item_changes or '' }}</textarea>
-            <small style="color:#64748b;display:block;margin-top:4px;">These changes will appear in the revised quotation and agreement. Add any related charge or discount as a separate line item below.</small>
+            <label class="form-label" for="revisionItemChanges">Item scope for this revision <span style="color:#b91c1c;">*</span></label>
+            <textarea id="revisionItemChanges" name="revision_item_changes" class="form-input" rows="4" minlength="10" maxlength="4000" required placeholder="Describe what is being replaced, added, or removed. If items are unchanged, state that this revision is price-only."></textarea>
+            <small style="color:#64748b;display:block;margin-top:4px;">This customer-visible summary appears beside the revised quotation. State “Price-only; package items unchanged” when applicable. Put every related charge in the itemized add-ons below; this note does not change the price.</small>
         </div>
         {% endif %}
         
         <div class="line-items-wrapper">
             <div class="line-items-header">
-                <div>Add-on description</div>
-                <div>Total amount (₱)</div>
+                    <div>Additional charge</div>
+                <div>Amount (₱)</div>
                 <div></div>
             </div>
             <div id="lineItemsContainer">
@@ -333,7 +549,8 @@
         {% if revision_mode %}
         <div class="form-group" style="margin-top:1rem;">
             <label class="form-label" for="revisionReason">Reason for revision <span style="color:#b91c1c;">*</span></label>
-            <textarea id="revisionReason" name="revision_reason" class="form-input" rows="3" minlength="3" maxlength="2000" required placeholder="Explain what changed and why. This note will be shown to the customer."></textarea>
+            <textarea id="revisionReason" name="revision_reason" class="form-input" rows="3" minlength="10" maxlength="2000" required placeholder="Explain clearly what changed and why. This note will be shown to the customer."></textarea>
+            <small style="color:#64748b;display:block;margin-top:4px;">Write a specific, factual reason (at least 10 characters) so both parties can identify why this version changed.</small>
         </div>
         {% endif %}
         
@@ -347,7 +564,7 @@
                 <span id="displayAddons">₱0.00</span>
             </div>
             <div class="total-row grand">
-                <span>Quotation total:</span>
+                <span>Revised quotation total:</span>
                 <span id="displayGrandTotal">₱0.00</span>
             </div>
             
@@ -356,11 +573,11 @@
         
         <p class="quote-math-note">
             <strong>Computation:</strong> base package total + each add-on total = quotation total.
-            The server recalculates and validates the total when you save it. You will review and sign the agreement before sending it to the customer.
+            The server recalculates and validates the total when you save it. Saving creates a draft; review and send the quotation to the customer, who must choose a deposit option before the agreement is prepared for signatures.
         </p>
 
-        <button type="submit" class="btn-submit">
-            <i class="fas fa-file-invoice"></i> {% if revision_mode %}Save Revision &amp; Reset Approvals{% else %}Save Quotation &amp; Review Agreement{% endif %}
+        <button type="submit" class="btn-submit" id="proposalSubmitButton">
+            <i class="fas fa-file-invoice"></i> {% if revision_mode %}Save revised draft{% else %}Save quotation draft{% endif %}
         </button>
     </form>
 </div>
@@ -369,6 +586,7 @@
 {% block extra_js %}
 <script>
     const GUEST_COUNT = {{ booking.guest_count or 0 }};
+    const IS_REVISION = {{ 'true' if revision_mode else 'false' }};
     const MIN_EQUIP_FEE = GUEST_COUNT * 150.0;
     const WAITERS_NEEDED = Math.max(1, Math.ceil(GUEST_COUNT / 20));
     const MIN_STAFF_FEE = WAITERS_NEEDED * 800.0;
@@ -416,17 +634,19 @@
         document.getElementById('hiddenTotalAmount').value = grandTotal.toFixed(2);
         
         const submitBtn = document.querySelector('.btn-submit');
-        if (grandTotal > 0 && grandTotal < ABSOLUTE_MIN) {
+        if (grandTotal < ABSOLUTE_MIN) {
             submitBtn.disabled = true;
             submitBtn.style.background = '#cbd5e1';
             submitBtn.style.color = '#64748b';
-            submitBtn.innerHTML = '<i class="fas fa-ban"></i> Below Absolute Minimum';
+            submitBtn.innerHTML = '<i class="fas fa-ban"></i> Below Platform Minimum';
             submitBtn.style.boxShadow = 'none';
         } else {
             submitBtn.disabled = false;
             submitBtn.style.background = '#0f172a';
             submitBtn.style.color = 'white';
-            submitBtn.innerHTML = '<i class="fas fa-file-invoice"></i> Save Quotation &amp; Review Agreement';
+            submitBtn.innerHTML = IS_REVISION
+                ? '<i class="fas fa-file-invoice"></i> Save revised draft'
+                : '<i class="fas fa-file-invoice"></i> Save quotation draft';
             submitBtn.style.boxShadow = '0 4px 12px rgba(15,23,42,0.2)';
         }
     }

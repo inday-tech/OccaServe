@@ -381,13 +381,17 @@
                     <button onclick="openReuploadProofModal()" class="btn-action-elite btn-primary-orange" style="background: #ef4444; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);">
                         Re-upload Proof of Payment <i class="fas fa-file-upload"></i>
                     </button>
-                {% elif booking.status in ['pending_quotation', 'awaiting_customer'] %}
+                {% elif booking.status == 'pending_quotation' %}
                     <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
-                        Sign Contract <i class="fas fa-file-signature"></i>
+                        Review Quotation <i class="fas fa-file-invoice-dollar"></i>
+                    </a>
+                {% elif booking.status == 'awaiting_customer' %}
+                    <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
+                        Review &amp; Sign Agreement <i class="fas fa-file-signature"></i>
                     </a>
                 {% elif booking.status == 'awaiting_caterer' %}
                     <a href="/bookings/step/quotation/{{ booking.id }}" class="btn-action-elite btn-outline-slate">
-                        View Contract <i class="fas fa-file-contract"></i>
+                        View Agreement <i class="fas fa-file-contract"></i>
                     </a>
                 {% elif booking.status in ['pending_payment', 'awaiting_payment'] and booking.payment_status not in ['proof_submitted', 'reupload_requested'] %}
                     <a href="/bookings/step/payment/{{ booking.id }}" class="btn-action-elite btn-primary-orange">
@@ -425,7 +429,11 @@
                 <h3>Your Documents</h3>
             </div>
             <div class="panel-body">
-                <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')" 
+                {% if booking.quotation and booking.quotation.status == 'quoted' %}
+                <a href="/bookings/step/quotation/{{ booking.id }}"
+                {% else %}
+                <a href="javascript:void(0)" onclick="openContractModal('{{ booking.id }}')"
+                {% endif %}
                    style="display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 0.85rem; background: var(--dm-slate-50); border-radius: 12px; transition: all 0.2s; border: 1px solid transparent;"
                    onmouseover="this.style.borderColor='var(--up-orange)'; this.style.background='#fff';" 
                    onmouseout="this.style.borderColor='transparent'; this.style.background='var(--dm-slate-50)';">
@@ -433,8 +441,8 @@
                         <i class="fas fa-file-contract"></i>
                     </div>
                     <div style="flex: 1;">
-                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">Service Agreement</b>
-                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">View Service Agreement</span>
+                        <b style="font-size: 0.85rem; color: var(--up-slate-900); display: block;">{% if booking.quotation and booking.quotation.status == 'quoted' %}Quotation{% else %}Booking Agreement{% endif %}</b>
+                        <span style="font-size: 0.7rem; color: var(--dm-slate-400); font-weight: 600;">{% if booking.quotation and booking.quotation.status == 'quoted' %}Review quotation and choose a downpayment{% else %}View booking agreement{% endif %}</span>
                     </div>
                     <i class="fas fa-chevron-right" style="font-size: 0.75rem; color: var(--dm-slate-400);"></i>
                 </a>

@@ -1,25 +1,37 @@
 {% extends "customer/booking_wizard/wizard_base.html" %}
 
 {% block wizard_title %}
-    {% if booking.document_type == 'service_agreement' %}Service Agreement
+    {% if quotation.status == 'quoted' %}Review Quotation
+    {% elif booking.document_type == 'service_agreement' %}Service Agreement
     {% elif booking.document_type == 'rental_agreement' %}Rental Agreement
     {% else %}Booking Agreement{% endif %}
 {% endblock %}
 
 {% block wizard_content %}
+{% set show_agreement = quotation.status in ['awaiting_caterer', 'awaiting_customer', 'signed'] or quotation.customer_signature or quotation.caterer_signature %}
+{% set quotation_details = quotation.package_details or {} %}
+{% set saved_dp_options = quotation_details.get('accepted_payment_terms') if quotation_details else None %}
+{% set dp_options = (saved_dp_options or booking.caterer.accepted_payment_terms or [30])|map('int')|list %}
+{% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent in dp_options else dp_options[0] %}
+{% set quoted_package_name = quotation_details.get('name') or (booking.package.name if booking.package else None) or booking.event_name or booking.event_type or 'Booking package' %}
+{% set total_amount = quotation.total_amount|float %}
+{% set deposit_amount = total_amount * (initial_term|float / 100) %}
 <div class="quotation-step animate-up">
     <!-- Header Section -->
     <header class="q-page-header">
         <div class="header-main">
-            {% if booking.document_type == 'service_agreement' %}
+            {% if not show_agreement %}
+            <h1 class="q-title">Your Quotation</h1>
+            <p class="q-subtitle">Review your package and total, then choose the downpayment option that works for you.</p>
+            {% elif booking.document_type == 'service_agreement' %}
             <h1 class="q-title">Service Agreement</h1>
-            <p class="q-subtitle">Review and sign the agreement to secure your service booking.</p>
+            <p class="q-subtitle">Your downpayment choice is confirmed. Review the agreement while the caterer checks and signs it.</p>
             {% elif booking.document_type == 'rental_agreement' %}
             <h1 class="q-title">Rental Agreement</h1>
-            <p class="q-subtitle">Review and sign the agreement to secure your equipment rental.</p>
+            <p class="q-subtitle">Your downpayment choice is confirmed. Review the agreement while the caterer checks and signs it.</p>
             {% else %}
             <h1 class="q-title">Booking Agreement</h1>
-            <p class="q-subtitle">Review the price and deposit, then sign to confirm your booking.</p>
+            <p class="q-subtitle">Your downpayment choice is confirmed. Review the agreement and sign when the caterer has countersigned.</p>
             {% endif %}
         </div>
         <div class="header-badges">
@@ -30,62 +42,177 @@
     <div class="quote-main-content-centered">
         <!-- Main Document Flow -->
         <div class="q-document-flow">
-            {% if quotation.package_details and quotation.package_details.get('revision_number', 1)|int > 1 %}
-            <section style="margin-bottom:1rem;padding:1rem;border:1px solid #fed7aa;border-radius:10px;background:#fff7ed;">
-                <strong style="color:#9a3412;">Revised quotation · Version {{ quotation.package_details.get('revision_number') }}</strong>
-                {% if quotation.package_details.get('revision_note') %}
-                <p style="margin:.35rem 0 0;color:#7c2d12;font-size:.85rem;">{{ quotation.package_details.get('revision_note') }}</p>
-                {% endif %}
-                {% if quotation.package_details.get('revision_item_changes') %}
-                <div style="margin-top:.65rem;padding:.65rem .75rem;border-radius:8px;background:#fff;">
-                    <strong style="display:block;color:#7c2d12;font-size:.8rem;">Updated items / proposed alternatives</strong>
-                    <p style="margin:.3rem 0 0;color:#7c2d12;font-size:.85rem;white-space:pre-line;">{{ quotation.package_details.get('revision_item_changes') }}</p>
+            <section class="up-card quotation-summary-card" aria-labelledby="quotation-summary-title">
+                <div class="card-glass-header">
+                    <h2 id="quotation-summary-title" class="inv-section-title">Quotation summary</h2>
                 </div>
-                {% endif %}
-                <p style="margin:.35rem 0 0;color:#7c2d12;font-size:.8rem;">Please review the updated items, charges, total, and deposit choice. Earlier approvals and signatures no longer apply to this version.</p>
+                <div class="quotation-summary-body">
+                    <div class="quotation-package-heading">
+                        <div>
+                            <span class="quotation-summary-eyebrow">Selected package</span>
+                            <h3>{{ quoted_package_name }}</h3>
+                            <div class="quotation-event-meta">
+                                {% if booking.event_date %}<span><i class="far fa-calendar"></i> {{ booking.event_date.strftime('%B %d, %Y') }}</span>{% endif %}
+                                {% if booking.guest_count %}<span><i class="fas fa-user-group"></i> {{ quotation_details.get('guest_count') or booking.guest_count }} guests</span>{% endif %}
+                            </div>
+                        </div>
+                        {% if quotation_details.get('revision_number', 1)|int > 1 %}
+                        <span class="quotation-version-badge">Updated · v{{ quotation_details.get('revision_number') }}</span>
+                        {% endif %}
+                    </div>
+                    {% if quotation.package_details and quotation.package_details.get('revision_number', 1)|int > 1 %}
+                    <div class="quotation-revision-note">
+                        <strong><i class="fas fa-rotate"></i> What changed in this version</strong>
+                        {% if quotation.package_details.get('revision_note') %}
+                        <p><b>Reason:</b> {{ quotation.package_details.get('revision_note') }}</p>
+                        {% endif %}
+                        <p><b>Items:</b> {{ quotation.package_details.get('revision_item_changes') or 'No item scope was recorded for this version.' }}</p>
+                        <small>Earlier approvals and signatures do not apply to this updated quotation.</small>
+                    </div>
+                    {% endif %}
+
+                    {% set has_package_selections = quotation_details.get('package_type') == 'customizable' and (quotation_details.get('selected_food') or quotation_details.get('selected_menu_extras') or quotation_details.get('selected_services') or quotation_details.get('selected_equipment')) %}
+                    {% set has_package_inclusions = quotation_details.get('inclusions') %}
+                    {% if has_package_selections or has_package_inclusions %}
+                    <details class="quotation-selections" {% if quotation_details.get('revision_number', 1)|int > 1 %}open{% endif %}>
+                        <summary>
+                            <span><i class="fas fa-list-check"></i> {% if quotation_details.get('revision_number', 1)|int > 1 %}Original package selections{% else %}Package selections &amp; inclusions{% endif %}</span>
+                            <i class="fas fa-chevron-down quotation-selections-chevron"></i>
+                        </summary>
+                        <div class="quotation-selections-content">
+                    {% if quotation_details.get('package_type') == 'customizable' %}
+                    {% set selected_groups = [
+                        ('Menu', quotation_details.get('selected_food') or []),
+                        ('Extra dishes', quotation_details.get('selected_menu_extras') or []),
+                        ('Services', quotation_details.get('selected_services') or []),
+                        ('Equipment', quotation_details.get('selected_equipment') or [])
+                    ] %}
+                    <div class="quotation-selection-groups">
+                        {% for group_name, selections in selected_groups %}
+                            {% if selections %}
+                            <div class="quotation-selection-group">
+                                <strong>{{ group_name }}</strong>
+                                <ul>
+                                {% for item in selections %}
+                                    <li>{{ item.get('name', 'Selected item') }}{% if item.get('qty') or item.get('quantity') %}<span>× {{ item.get('qty') or item.get('quantity') }}</span>{% endif %}</li>
+                                {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% elif quotation_details.get('inclusions') %}
+                    <ul class="quotation-inclusion-list">
+                        {% for inclusion in quotation_details.get('inclusions') or [] %}
+                        <li>
+                            {% if inclusion is mapping %}
+                                {{ inclusion.get('name') or inclusion.get('label') or 'Package item' }}
+                                {% if inclusion.get('quantity') %}<span>× {{ inclusion.get('quantity') }}</span>{% endif %}
+                            {% else %}{{ inclusion }}{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                        </div>
+                    </details>
+                    {% endif %}
+
+                    <div class="quotation-cost-breakdown" aria-label="Price breakdown">
+                        <h3>Price breakdown</h3>
+                        {% if quotation.package_details and quotation.package_details.get('revision_number', 1)|int > 1 %}
+                        <div class="quotation-cost-row"><span>Revised package amount</span><strong>₱{{ "{:,.2f}".format(quotation_details.get('base_amount', 0)|float) }}</strong></div>
+                        {% elif quotation_details.get('package_type') == 'customizable' %}
+                            {% set cost_rows = [
+                                ('Base package', quotation_details.get('base_package_total')),
+                                ('Menu upgrades', quotation_details.get('food_total')),
+                                ('Extra dishes', quotation_details.get('menu_extras_total')),
+                                ('Services', quotation_details.get('services_total')),
+                                ('Equipment', quotation_details.get('equipment_total'))
+                            ] %}
+                            {% for label, amount in cost_rows %}
+                                {% if amount is not none and amount|float != 0 %}
+                                <div class="quotation-cost-row"><span>{{ label }}</span><strong>₱{{ "{:,.2f}".format(amount|float) }}</strong></div>
+                                {% endif %}
+                            {% endfor %}
+                            {% set removal_credit = quotation_details.get('food_removal_credit') or 0 %}
+                            {% if removal_credit|float > 0 %}
+                            <div class="quotation-cost-row quotation-credit-row"><span>Food removal credit</span><strong>−₱{{ "{:,.2f}".format(removal_credit|float) }}</strong></div>
+                            {% endif %}
+                        {% elif quotation_details.get('base_amount') is not none %}
+                        <div class="quotation-cost-row"><span>Package amount</span><strong>₱{{ "{:,.2f}".format(quotation_details.get('base_amount')|float) }}</strong></div>
+                        {% endif %}
+                        {% for addon in quotation.addons or [] %}
+                        <div class="quotation-cost-row"><span>{{ addon.get('name', 'Additional item') }}</span><strong>₱{{ "{:,.2f}".format(addon.get('price', 0)|float) }}</strong></div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="quotation-total-row">
+                        <span>Total quotation amount</span>
+                        <strong>₱{{ "{:,.2f}".format(total_amount) }}</strong>
+                    </div>
+                    <div class="quotation-payment-breakdown" aria-live="polite">
+                        <div class="quotation-payment-card quotation-deposit-card">
+                            <small id="selected-tier-label">{% if initial_term == 100 %}Due now · Full payment{% else %}Due now · {{ initial_term }}% deposit{% endif %}</small>
+                            <strong>₱<span id="deposit-val">{{ "{:,.2f}".format(deposit_amount) }}</span></strong>
+                        </div>
+                        <div id="balance-box" class="quotation-payment-card" {% if initial_term == 100 %}hidden{% endif %}>
+                            <small>Remaining balance</small>
+                            <strong>₱<span id="remaining-balance-val">{{ "{:,.2f}".format([total_amount - deposit_amount, 0]|max) }}</span></strong>
+                        </div>
+                    </div>
+
+                    {% if quotation.status == 'quoted' and not quotation.customer_signature and not quotation.caterer_signature %}
+                    <section class="quotation-deposit-choice" aria-label="Choose a deposit option">
+                        <div class="quotation-deposit-choice-heading">
+                            <h3>Choose your payment option</h3>
+                            <p>Select an option offered by your caterer. The amounts above update automatically.</p>
+                        </div>
+                        <div class="quotation-deposit-controls">
+                            <label class="sr-only" for="dp-percent-select">Deposit payment option</label>
+                            <select id="dp-percent-select" class="control-pro dp-percent-select" onchange="setDPTier(parseInt(this.value, 10))">
+                                {% for term in dp_options %}
+                                <option value="{{ term }}" {% if initial_term|int == term %}selected{% endif %}>{% if term == 100 %}100% · Pay in full{% else %}{{ term }}% · Pay deposit{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" id="submit-deposit-choice" class="btn-wizard-next" onclick="submitDepositChoice(this)">
+                                Confirm &amp; send to caterer
+                            </button>
+                        </div>
+                        <small class="quotation-deposit-hint"><i class="fas fa-lock"></i> This confirms your selected payment option; it does not process a payment now.</small>
+                    </section>
+                    {% elif quotation.status in ['awaiting_caterer', 'awaiting_customer', 'signed'] %}
+                    <section class="quotation-deposit-choice quotation-choice-confirmed" aria-label="Selected deposit option">
+                        <div>
+                            <h3><i class="fas fa-circle-check"></i> {% if quotation.status == 'awaiting_caterer' %}Payment option sent{% else %}Payment option confirmed{% endif %}</h3>
+                            <p>Your {{ initial_term }}% option is recorded. {% if quotation.status == 'awaiting_caterer' %}The caterer is reviewing the agreement.{% elif quotation.status == 'awaiting_customer' %}Review and sign the agreement below when ready.{% else %}The agreement is signed. Continue to payment when ready.{% endif %}</p>
+                        </div>
+                    </section>
+                    {% endif %}
+                    <input type="hidden" id="dp-percent-input" value="{{ initial_term }}">
+                    <input type="hidden" id="signed-input" value="{{ 'true' if quotation.customer_signature or quotation.caterer_signature else 'false' }}">
+                    <input type="hidden" id="total-amount-input" value="{{ quotation.total_amount }}">
+                </div>
             </section>
-            {% endif %}
+
             {% if quotation.revisions %}
-            <details style="margin-bottom:1rem;padding:.85rem 1rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                <summary style="cursor:pointer;color:#334155;font-weight:750;">Earlier quotation versions ({{ quotation.revisions|length }})</summary>
-                <div style="margin-top:.6rem;">
+            <details class="quotation-history">
+                <summary>View previous quotation versions <span>{{ quotation.revisions|length }}</span></summary>
+                <div class="quotation-history-list">
                     {% for revision in quotation.revisions %}
-                    <p style="margin:.45rem 0;color:#64748b;font-size:.8rem;">
-                        Version {{ revision.revision_number }} · ₱{{ "{:,.2f}".format(revision.total_amount|float) }}
-                        {% if revision.created_at %}· {{ revision.created_at.strftime('%b %d, %Y') }}{% endif %}
-                        {% if revision.revision_reason %}<br>{{ revision.revision_reason }}{% endif %}
-                    </p>
+                    <div class="quotation-history-row">
+                        <strong>Version {{ revision.revision_number }}</strong>
+                        <span>₱{{ "{:,.2f}".format(revision.total_amount|float) }}</span>
+                        {% if revision.created_at %}<time>{{ revision.created_at.strftime('%b %d, %Y') }}</time>{% endif %}
+                        {% if revision.revision_reason %}<p>{{ revision.revision_reason }}</p>{% endif %}
+                    </div>
                     {% endfor %}
                 </div>
             </details>
             {% endif %}
-            {% set saved_dp_options = quotation.package_details.get('accepted_payment_terms') if quotation.package_details else None %}
-            {% set dp_options = (saved_dp_options or booking.caterer.accepted_payment_terms or [30])|map('int')|list %}
-            {% set initial_term = quotation.downpayment_percent if quotation.downpayment_percent in dp_options else dp_options[0] %}
-            <section class="payment-choice-compact" aria-label="Deposit option" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:0.85rem 1rem;margin-bottom:1rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                <div>
-                    <label for="dp-percent-select" style="display:block;margin-bottom:.2rem;color:#0f172a;font-size:.85rem;font-weight:750;">Deposit option</label>
-                    <small style="color:#64748b;font-size:.76rem;">The agreement below shows the total and selected amount.</small>
-                </div>
-                {% if quotation.status == 'quoted' and not quotation.customer_signature and not quotation.caterer_signature %}
-                <select id="dp-percent-select" class="control-pro dp-percent-select" onchange="setDPTier(parseInt(this.value, 10))" style="width:min(100%,300px);min-height:42px;">
-                    {% for term in dp_options %}
-                    <option value="{{ term }}" {% if initial_term|int == term %}selected{% endif %}>{% if term == 100 %}100% - Full payment{% else %}{{ term }}% downpayment{% endif %}</option>
-                    {% endfor %}
-                </select>
-                <button type="button" id="submit-deposit-choice" class="btn-wizard-next" onclick="submitDepositChoice(this)" style="min-height:42px;padding:.65rem 1rem;">Confirm &amp; send to caterer</button>
-                {% else %}
-                <strong style="color:#0f172a;">{{ initial_term }}%{% if quotation.status == 'awaiting_caterer' %} selected{% else %} deposit{% endif %}</strong>
-                {% if quotation.status == 'awaiting_caterer' %}<small style="flex-basis:100%;color:#64748b;">Your choice was sent. The caterer will review and sign the agreement.</small>{% endif %}
-                {% endif %}
-                <input type="hidden" id="dp-percent-input" value="{{ initial_term }}">
-                <input type="hidden" id="signed-input" value="{{ 'true' if quotation.customer_signature or quotation.caterer_signature else 'false' }}">
-                <input type="hidden" id="total-amount-input" value="{{ quotation.total_amount }}">
-            </section>
-
+            {% if show_agreement %}
             <section class="up-card contract-portrait animate-up" style="animation-delay: 0.4s;">
                 <div class="contract-doc-content" style="margin-bottom: .85rem;">
-                    {% include "shared/contract_content_partial.html" %}
+                    {% include "shared/contract_content_compact.html" %}
                 </div>
 
                 <div class="sig-section-up">
@@ -161,6 +288,12 @@
                     </div>
                 </div>
             </section>
+            {% else %}
+            <section class="up-card" style="padding:1rem;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">
+                <h2 style="margin:0 0 .35rem;font-size:.95rem;color:#0f172a;">Agreement comes next</h2>
+                <p style="margin:0;color:#64748b;font-size:.84rem;">After you confirm your downpayment choice, the agreement will appear here for review. The caterer will sign it before you are asked to sign.</p>
+            </section>
+            {% endif %}
 
             <!-- SECTION 3: FINAL ACTIONS -->
             <div class="wizard-actions animate-up" style="animation-delay: 0.5s; border-top: none;">
@@ -251,6 +384,7 @@
     window.bookingId = "{{ quotation.booking_id }}";
     window.userId = "{{ user.id }}";
     window.addonTotal = "{{ quotation.addons | sum(attribute='price') if quotation.addons else 0 }}";
+    window.agreementVisible = {{ 'true' if show_agreement else 'false' }};
 </script>
 <script src="{{ url_for('static', path='/js/signature_pad.js') }}?v={{ static_asset_version('js/signature_pad.js') }}"></script>
 <script src="{{ url_for('static', path='/js/customer/booking_wizard/step_quotation.js') }}?v={{ static_asset_version('js/customer/booking_wizard/step_quotation.js') }}"></script>

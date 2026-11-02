@@ -11,6 +11,30 @@ from app.routers import quotations
 from app.services.quotation import quotation_service, revise_quotation
 
 
+def test_caterer_contract_projection_includes_pending_quotation_agreement():
+    quotation = SimpleNamespace(
+        status="awaiting_caterer",
+        contract_url=None,
+        customer_signature="customer-signature",
+        customer_signed_at=None,
+        caterer_signature=None,
+        caterer_signed_at=None,
+    )
+    booking = SimpleNamespace(
+        status="awaiting_caterer",
+        event_date=None,
+        contract=None,
+        quotation=quotation,
+    )
+
+    display = caterer_dashboard._booking_contract_display(booking)
+
+    assert display["has_contract"] is True
+    assert display["status"] == "awaiting_caterer"
+    assert display["customer_signed"] is True
+    assert display["caterer_signed"] is False
+
+
 class QuotationQuery:
     def __init__(self, quotation):
         self.quotation = quotation
@@ -32,6 +56,29 @@ class QuotationDatabase:
     def query(self, model):
         assert model is models.Quotation
         return QuotationQuery(self.quotation)
+
+
+class BookingContentQuery:
+    def __init__(self, booking):
+        self.booking = booking
+
+    def get(self, _booking_id):
+        return self.booking
+
+
+class BookingContentDatabase:
+    def __init__(self, booking):
+        self.booking = booking
+
+    def query(self, model):
+        assert model is models.Booking
+        return BookingContentQuery(self.booking)
+
+    def commit(self):
+        pass
+
+    def add(self, _item):
+        pass
 
 
 def test_customer_cannot_sign_before_caterer(monkeypatch):
@@ -67,9 +114,114 @@ def test_customer_cannot_sign_before_caterer(monkeypatch):
     assert "caterer must sign" in error.value.detail.lower()
 
 
+def test_customer_cannot_view_agreement_before_confirming_deposit(monkeypatch):
+    customer = SimpleNamespace(id=12, role="customer")
+    booking = SimpleNamespace(
+        id=34,
+        user_id=customer.id,
+        quotation=SimpleNamespace(status="quoted"),
+    )
+    monkeypatch.setattr(quotations, "get_session_user", lambda _request, _db: customer)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(quotations.get_contract_content(
+            booking_id=booking.id,
+            request=object(),
+            db=BookingContentDatabase(booking),
+        ))
+
+    assert error.value.status_code == 409
+    assert "downpayment choice" in error.value.detail.lower()
+
+
+def test_customer_can_view_agreement_after_submitting_deposit_choice(monkeypatch):
+    customer = SimpleNamespace(id=12, role="customer")
+    booking = SimpleNamespace(
+        id=34,
+        user_id=customer.id,
+        quotation=SimpleNamespace(status="awaiting_caterer"),
+    )
+    rendered = {}
+    monkeypatch.setattr(quotations, "get_session_user", lambda _request, _db: customer)
+    monkeypatch.setattr(
+        quotations.templates,
+        "TemplateResponse",
+        lambda template, context: rendered.update(template=template, context=context),
+    )
+
+    result = asyncio.run(quotations.get_contract_content(
+        booking_id=booking.id,
+        request=object(),
+        db=BookingContentDatabase(booking),
+    ))
+
+    assert result is None
+    assert rendered["template"] == "shared/contract_content_compact.html"
+    assert rendered["context"]["quotation"] is booking.quotation
+
+
+def test_deposit_choice_only_releases_agreement_after_customer_confirms(monkeypatch):
+    customer = SimpleNamespace(id=12, role="customer")
+    quotation = SimpleNamespace(
+        status="quoted",
+        package_details={"accepted_payment_terms": [25, 50, 100]},
+        downpayment_percent=25,
+        total_amount=1234.56,
+    )
+    booking = SimpleNamespace(
+        id=34,
+        user_id=customer.id,
+        status="pending_quotation",
+        quotation=quotation,
+        caterer=SimpleNamespace(user_id=56),
+        event_name="Birthday",
+    )
+    notifications = []
+
+    async def notify_status_update(*args):
+        notifications.append(args)
+
+    async def broadcast_to_user(*_args):
+        pass
+
+    monkeypatch.setattr(quotations, "get_session_user", lambda _request, _db: customer)
+    monkeypatch.setattr(quotations.NotificationService, "notify_status_update", notify_status_update)
+    monkeypatch.setattr(quotations.manager, "broadcast_to_user", broadcast_to_user)
+    db = BookingContentDatabase(booking)
+
+    asyncio.run(quotations.update_dp(
+        booking_id=booking.id,
+        request=object(),
+        payload={"percent": 50},
+        db=db,
+    ))
+    assert quotation.downpayment_percent == 50
+    assert quotation.status == "quoted"
+    assert booking.status == "pending_quotation"
+
+    result = asyncio.run(quotations.update_dp(
+        booking_id=booking.id,
+        request=object(),
+        payload={"percent": 50, "confirm": True},
+        db=db,
+    ))
+
+    assert result["submitted"] is True
+    assert result["status"] == "awaiting_caterer"
+    assert result["new_deposit"] == 617.28
+    assert quotation.status == "awaiting_caterer"
+    assert booking.status == "awaiting_caterer"
+    assert len(notifications) == 1
+    assert f"/caterer/bookings?open_booking={booking.id}&open_tab=contract" in notifications[0]
+
+
 class QuotationWriteDatabase:
     def __init__(self):
         self.added = []
+
+    def query(self, model):
+        assert model is models.BookingMenuItem
+        return BookingMenuItemQuery()
 
     def add(self, item):
         self.added.append(item)
@@ -82,6 +234,14 @@ class QuotationWriteDatabase:
 
     def refresh(self, _item):
         pass
+
+
+class BookingMenuItemQuery:
+    def filter(self, *_criteria):
+        return self
+
+    def all(self):
+        return []
 
 
 class BookingQuery:
@@ -137,6 +297,78 @@ def test_caterer_cannot_revise_after_payment_request_activation():
         ))
 
     assert error.value.status_code == 409
+    assert booking.quotation.status == "quoted"
+    assert db.added == []
+
+
+def test_caterer_revision_requires_a_clear_reason():
+    profile = SimpleNamespace(id=9)
+    booking = SimpleNamespace(
+        id=43,
+        caterer_id=profile.id,
+        status="pending_quotation",
+        payment_request_activated_at=None,
+        payment_deadline_at=None,
+        quotation=SimpleNamespace(
+            status="quoted",
+            caterer_signature=None,
+            customer_signature=None,
+        ),
+    )
+    db = BookingWriteDatabase(booking)
+    user = SimpleNamespace(id=7, caterer_profile=profile)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(caterer_dashboard.submit_proposal_maker(
+            booking_id=str(booking.id),
+            request=SimpleNamespace(query_params={"revision": "true"}),
+            base_price=Decimal("3000"),
+            addon_names=[],
+            addon_prices=[],
+            revision_reason="Changed",
+            revision_item_changes="",
+            db=db,
+            user=user,
+        ))
+
+    assert error.value.status_code == 400
+    assert "at least 10 characters" in error.value.detail
+    assert booking.quotation.status == "quoted"
+    assert db.added == []
+
+
+def test_caterer_revision_requires_an_item_scope_summary():
+    profile = SimpleNamespace(id=9)
+    booking = SimpleNamespace(
+        id=44,
+        caterer_id=profile.id,
+        status="pending_quotation",
+        payment_request_activated_at=None,
+        payment_deadline_at=None,
+        quotation=SimpleNamespace(
+            status="quoted",
+            caterer_signature=None,
+            customer_signature=None,
+        ),
+    )
+    db = BookingWriteDatabase(booking)
+    user = SimpleNamespace(id=7, caterer_profile=profile)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(caterer_dashboard.submit_proposal_maker(
+            booking_id=str(booking.id),
+            request=SimpleNamespace(query_params={"revision": "true"}),
+            base_price=Decimal("3000"),
+            addon_names=[],
+            addon_prices=[],
+            revision_reason="The venue requirements have changed",
+            revision_item_changes="",
+            db=db,
+            user=user,
+        ))
+
+    assert error.value.status_code == 400
+    assert "item scope" in error.value.detail.lower()
     assert booking.quotation.status == "quoted"
     assert db.added == []
 
@@ -261,7 +493,7 @@ def test_customizable_quotation_preserves_and_charges_package_extra_dishes():
         id=42,
         guest_count=10,
         status="draft",
-        travel_fee=0,
+        travel_fee=300,
         document_type=None,
         reservation_fee=0,
         total_amount=0,
@@ -327,3 +559,91 @@ def test_customizable_quotation_preserves_and_charges_package_extra_dishes():
     assert quotation.package_details["selected_food"][0]["replacement_for_name"] == "Chicken"
     assert quotation.package_details["selected_services"][0]["included"] is True
     assert quotation.package_details["selected_equipment"][0]["included"] is True
+    assert all(addon.get("id") != "travel_fee" for addon in quotation.addons)
+
+
+def test_fixed_quotation_does_not_add_booking_travel_fee_automatically():
+    booking = SimpleNamespace(
+        id=43,
+        guest_count=10,
+        status="inquiry",
+        travel_fee=450,
+        document_type=None,
+        reservation_fee=0,
+        total_amount=0,
+        caterer=SimpleNamespace(
+            accepted_payment_terms=[30],
+            rental_policies=None,
+            general_terms="",
+            terms_and_conditions="",
+        ),
+        package=SimpleNamespace(
+            name="Fixed Package",
+            pricing_mode="per_pax",
+            price_unit="per_guest",
+            price_per_head=100,
+            price=100,
+            min_guests=10,
+            additional_guest_price=0,
+            description="",
+            inclusions=[],
+        ),
+        custom_requirements=None,
+    )
+
+    quotation = quotation_service._create_fixed_quotation(
+        QuotationWriteDatabase(), booking, 30
+    )
+
+    assert quotation.total_amount == 1000
+    assert quotation.addons == []
+
+
+def test_draft_quotation_removes_legacy_automatic_transport_fee():
+    quotation = SimpleNamespace(
+        addons=[
+            {"id": "menu-1", "name": "Chicken", "price": 200},
+            {"id": "travel_fee", "name": "Delivery & Travel Fee", "price": 450},
+        ],
+        total_amount=1450,
+        downpayment_percent=30,
+    )
+    booking = SimpleNamespace(
+        total_amount=1450,
+        total_price=1450,
+        reservation_fee=435,
+    )
+    db = QuotationWriteDatabase()
+
+    changed = quotation_service.remove_legacy_automatic_transport_fee(
+        db, booking, quotation
+    )
+
+    assert changed is True
+    assert quotation.addons == [{"id": "menu-1", "name": "Chicken", "price": 200}]
+    assert quotation.total_amount == 1000
+    assert booking.total_amount == 1000
+    assert booking.total_price == 1000
+    assert booking.reservation_fee == 300
+
+
+def test_draft_quotation_preserves_caterer_entered_transportation_addons():
+    manual_transport_addon = {
+        "id": "caterer-transport",
+        "name": "Transportation",
+        "price": 450,
+    }
+    quotation = SimpleNamespace(
+        addons=[manual_transport_addon],
+        total_amount=1450,
+        downpayment_percent=30,
+    )
+    booking = SimpleNamespace(total_amount=1450, total_price=1450, reservation_fee=435)
+
+    changed = quotation_service.remove_legacy_automatic_transport_fee(
+        QuotationWriteDatabase(), booking, quotation
+    )
+
+    assert changed is False
+    assert quotation.addons == [manual_transport_addon]
+    assert quotation.total_amount == 1450

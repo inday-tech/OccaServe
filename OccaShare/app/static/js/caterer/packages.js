@@ -29,6 +29,21 @@ window.scrollToInclusionSection = function (sectionId, btn) {
     }
 };
 
+function populateQuickAddMenuCategories() {
+    const select = document.getElementById('quickAddOptionCategory');
+    if (!select) return;
+    const existing = new Set(Array.from(select.options, option => option.value.toLocaleLowerCase()));
+    Array.from(new Set((window.inclusionsCatalog?.menu || [])
+        .map(item => String(item.category || '').trim())
+        .filter(category => category && category.toLocaleLowerCase() !== 'other')))
+        .sort((a, b) => a.localeCompare(b))
+        .forEach(category => {
+            if (existing.has(category.toLocaleLowerCase())) return;
+            select.add(new Option(category, category));
+            existing.add(category.toLocaleLowerCase());
+        });
+}
+
 window.toggleFoodMode = function (mode) {
     let rulesContainer = document.getElementById('selectionRulesWrapper');
     if (rulesContainer) {
@@ -2905,7 +2920,9 @@ window.setCustomizableMenuExtra = function (id, index, field, value) {
     const option = customizableMenuExtraOptions[Number(id)];
     const variant = option?.variants?.[Number(index)];
     if (!variant || !['size', 'price'].includes(field)) return;
-    variant[field] = field === 'size' ? String(value) : (value === '' ? '' : Number(value));
+    variant[field] = field === 'size'
+        ? String(value)
+        : (value === '' ? '' : Number(String(value).replace(/,/g, '')));
     syncCustomizableSelectionRules();
     renderReviewCustomizable();
     updatePackageWizardControls();
@@ -2922,7 +2939,7 @@ window.setCustomizableAddonSetting = function (type, id, field, value) {
         if (value) includedIds.add(itemId);
         else includedIds.delete(itemId);
     } else if (field === 'price') {
-        prices[itemId] = value === '' ? '' : Number(value);
+        prices[itemId] = value === '' ? '' : Number(String(value).replace(/,/g, ''));
     } else if (field === 'max_quantity' && !isService) {
         quantityLimits[itemId] = value === '' ? '' : Number(value);
     } else {
@@ -3101,7 +3118,11 @@ function renderCustomizableEquipment(query = '') {
         const id = Number(item.id);
         const selected = customizableEquipmentIds.has(id);
         const included = customizableIncludedEquipmentIds.has(id);
-        const price = Number(customizableEquipmentPrices[id] ?? item.addon_price ?? item.rental_price ?? item.price) || 0;
+        const configuredPrice = customizableEquipmentPrices[id] ?? item.addon_price ?? item.rental_price ?? item.price ?? '';
+        const price = Number(configuredPrice) || 0;
+        const priceInputValue = String(configuredPrice).trim() && Number.isFinite(Number(configuredPrice))
+            ? Number(configuredPrice).toLocaleString('en-PH', { maximumFractionDigits: 2 })
+            : '';
         const maxQuantity = Number(customizableEquipmentQuantityLimits[id] ?? item.available_qty) || 0;
         const unit = String(item.unit_type || 'piece').replace(/^per_/, '').replace(/_/g, ' ');
         return `<article class="catalog-option-card catalog-equipment-card${selected ? ' is-selected' : ''}">
@@ -3126,8 +3147,9 @@ function renderCustomizableEquipment(query = '') {
                 <label class="catalog-setting-choice"><input type="checkbox" ${included ? 'checked' : ''}
                     onchange="window.setCustomizableAddonSetting('equipment', ${id}, 'included', this.checked)"> Include in base package</label>
                 ${included ? '' : `<label class="catalog-setting-field">Rental price per ${escapeHtml(unit)}
-                    <input type="number" min="0.01" max="99999999.99" step="0.01" value="${escapeHtml(String(customizableEquipmentPrices[id] ?? item.addon_price ?? item.rental_price ?? item.price ?? ''))}"
-                    oninput="window.setCustomizableAddonSetting('equipment', ${id}, 'price', this.value)"></label>
+                    <input type="text" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2"
+                    value="${escapeHtml(priceInputValue)}"
+                    oninput="window.sanitizeMoneyInput(this); window.setCustomizableAddonSetting('equipment', ${id}, 'price', this.value)"></label>
                     <label class="catalog-setting-field">Maximum quantity
                     <input type="number" min="1" max="${Math.max(1, Number(item.available_qty) || 1)}" step="1" value="${escapeHtml(String(customizableEquipmentQuantityLimits[id] ?? item.available_qty ?? ''))}"
                     oninput="window.setCustomizableAddonSetting('equipment', ${id}, 'max_quantity', this.value)"></label>`}
@@ -3274,7 +3296,11 @@ function renderCustomizableServices(query = '') {
         const id = Number(item.id);
         const isChecked = customizableServiceIds.has(id);
         const included = customizableIncludedServiceIds.has(id);
-        const price = Number(customizableServicePrices[id] ?? item.price ?? item.selling_price) || 0;
+        const configuredPrice = customizableServicePrices[id] ?? item.price ?? item.selling_price ?? '';
+        const price = Number(configuredPrice) || 0;
+        const priceInputValue = String(configuredPrice).trim() && Number.isFinite(Number(configuredPrice))
+            ? Number(configuredPrice).toLocaleString('en-PH', { maximumFractionDigits: 2 })
+            : '';
         let unitText = item.unit_type || 'service';
         if (unitText.startsWith('per_')) unitText = unitText.replace('per_', '');
         const unit = unitText.replace(/^per_/, '').replace(/_/g, ' ');
@@ -3302,8 +3328,9 @@ function renderCustomizableServices(query = '') {
                     <label class="catalog-setting-choice"><input type="checkbox" ${included ? 'checked' : ''}
                         onchange="window.setCustomizableAddonSetting('service', ${id}, 'included', this.checked)"> Include in base package</label>
                     ${included ? '' : `<label class="catalog-setting-field">Package price
-                        <input type="number" min="0.01" max="99999999.99" step="0.01" value="${escapeHtml(String(customizableServicePrices[id] ?? item.price ?? item.selling_price ?? ''))}"
-                            oninput="window.setCustomizableAddonSetting('service', ${id}, 'price', this.value)"></label>`}
+                        <input type="text" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2"
+                            value="${escapeHtml(priceInputValue)}"
+                            oninput="window.sanitizeMoneyInput(this); window.setCustomizableAddonSetting('service', ${id}, 'price', this.value)"></label>`}
                 </div>` : ''}
             </article>
         `;
@@ -3752,10 +3779,10 @@ window.validateQuickAddOptionPrice = function () {
     const rawValue = input.value.replace(/,/g, '').trim();
     const amount = Number(rawValue);
     let message = '';
-    if (type === 'service' && rawValue) {
-        if (input.dataset.formatOverflow === 'true') {
+    if ((type === 'service' || type === 'equipment') && rawValue) {
+        if (input.dataset.formatOverflow === 'true' || !/^\d{1,8}(?:\.\d{1,2})?$/.test(rawValue)) {
             message = 'Use up to 8 whole-number digits and 2 decimal places.';
-        } else if (!/^\d+(?:\.\d{1,2})?$/.test(rawValue) || !Number.isFinite(amount)) {
+        } else if (!Number.isFinite(amount)) {
             message = 'Enter a valid service fee with no more than 2 decimal places.';
         } else if (amount <= 0) {
             message = 'Service fee must be greater than zero.';
@@ -3772,31 +3799,52 @@ window.validateQuickAddOptionPrice = function () {
     return !message;
 };
 
+window.validateCatalogAmount = function (inputId, errorId) {
+    const input = document.getElementById(inputId);
+    const error = document.getElementById(errorId);
+    if (!input) return false;
+    window.sanitizeMoneyInput(input);
+    const raw = input.value.replace(/,/g, '').trim();
+    let message = '';
+    if (raw && (
+        input.dataset.formatOverflow === 'true'
+        || !/^\d{1,8}(?:\.\d{1,2})?$/.test(raw)
+        || !Number.isFinite(Number(raw))
+        || Number(raw) <= 0
+        || Number(raw) > 99999999.99
+    )) {
+        message = 'Enter an amount greater than ₱0, up to 8 whole-number digits and 2 decimal places, or leave it blank.';
+    }
+    input.setCustomValidity(message);
+    if (error) {
+        error.textContent = message;
+        error.style.display = message ? 'block' : 'none';
+    }
+    return !message;
+};
+
 window.sanitizeMoneyInput = function (input) {
     if (!input || input.readOnly) return;
-    const original = input.value;
-    let cleaned = original.replace(/[^\d.]/g, '');
+    let cleaned = input.value.replace(/,/g, '').replace(/[^\d.]/g, '');
     const decimalIndex = cleaned.indexOf('.');
     if (decimalIndex >= 0) {
         cleaned = cleaned.slice(0, decimalIndex + 1)
             + cleaned.slice(decimalIndex + 1).replace(/\./g, '').slice(0, 2);
     }
-    const [whole = '', fraction] = cleaned.split('.');
-    cleaned = whole.slice(0, 8) + (fraction !== undefined ? `.${fraction}` : '');
-    if (input.value !== cleaned) {
-        const cursor = input.selectionStart;
-        input.value = cleaned;
-        if (cursor !== null) input.setSelectionRange(Math.min(cursor, cleaned.length), Math.min(cursor, cleaned.length));
-    }
+    input.dataset.maxIntegerDigits = input.dataset.maxIntegerDigits || '8';
+    input.dataset.maxDecimalDigits = input.dataset.maxDecimalDigits || '2';
+    input.value = cleaned;
+    if (window.applyCommaFormatting) window.applyCommaFormatting(input);
 };
 
 window.validateSwapFee = function (inputId, errorId) {
     const input = document.getElementById(inputId);
     const error = document.getElementById(errorId);
     if (!input) return false;
-    const value = input.value.trim();
+    window.sanitizeMoneyInput(input);
+    const value = input.value.replace(/,/g, '').trim();
     let message = '';
-    if (value && !/^\d{1,8}(?:\.\d{1,2})?$/.test(value)) {
+    if (value && (input.dataset.formatOverflow === 'true' || !/^\d{1,8}(?:\.\d{1,2})?$/.test(value))) {
         message = 'Use up to 8 whole-number digits and 2 decimal places; fee cannot exceed ₱99,999,999.99.';
     } else if (value && Number(value) <= 0) {
         message = 'Enter an amount greater than ₱0, or leave this field blank.';
@@ -3887,12 +3935,15 @@ function packageExtraVariantRow(variant = {}) {
                 placeholder="e.g. Half tray (serves 10)" value="${escapeHtml(String(variant.size || ''))}">
         </label>
         <label>Price per tray (₱)
-            <input type="number" class="control-pro package-extra-price" min="0.01" max="99999999.99"
-                step="0.01" placeholder="e.g. 850" value="${escapeHtml(String(variant.price ?? ''))}">
+            <input type="text" inputmode="decimal" maxlength="12" data-max-integer-digits="8" data-max-decimal-digits="2"
+                class="control-pro package-extra-price" placeholder="e.g. 850" oninput="window.sanitizeMoneyInput(this)"
+                value="${escapeHtml(String(variant.price ?? ''))}">
         </label>
         <button type="button" class="package-extra-remove" aria-label="Remove tray size"
             onclick="window.removePackageExtraVariant(this)">Remove</button>
     `;
+    const priceInput = row.querySelector('.package-extra-price');
+    if (priceInput) window.sanitizeMoneyInput(priceInput);
     return row;
 }
 
@@ -3960,7 +4011,7 @@ function renderPackageMenuReplacementOptions(prefix, sourceId, force = false) {
         const initialFee = enabled ? fee : (Number.isFinite(catalogFee) && catalogFee >= 0 ? catalogFee : '');
         return `<label class="package-menu-replacement-option">
             <span><input type="checkbox" data-replacement-id="${id}" ${enabled ? 'checked' : ''}> ${escapeHtml(item.name || 'Menu item')}</span>
-            <span>Upgrade fee / guest (₱; 0 = free)
+            <span>Upgrade fee / guest (₱0 = free)
                 <input type="number" min="0" max="99999999.99" step="0.01" data-replacement-fee="${id}"
                     value="${escapeHtml(String(initialFee))}" ${enabled ? '' : 'disabled'} aria-label="Upgrade fee per guest for ${escapeHtml(item.name || 'menu item')}">
             </span>
@@ -4027,9 +4078,12 @@ function readPackageItemSettings(type, mode) {
             const sizes = new Set();
             for (const row of rows) {
                 const size = row.querySelector('.package-extra-size')?.value.trim() || '';
-                const rawPrice = row.querySelector('.package-extra-price')?.value.trim() || '';
+                const priceInput = row.querySelector('.package-extra-price');
+                const rawPrice = priceInput?.value.replace(/,/g, '').trim() || '';
                 const price = Number(rawPrice);
-                if (!size || size.length > 80 || !rawPrice || !Number.isFinite(price) || price <= 0 || price > 99999999.99) {
+                if (!size || size.length > 80 || !rawPrice || priceInput?.dataset.formatOverflow === 'true'
+                    || !/^\d{1,8}(?:\.\d{1,2})?$/.test(rawPrice)
+                    || !Number.isFinite(price) || price <= 0 || price > 99999999.99) {
                     window.showToast?.('Enter a tray size and a valid price greater than ₱0 for each extra-dish size.', 'error');
                     row.querySelector(!size ? '.package-extra-size' : '.package-extra-price')?.focus();
                     return false;
@@ -4149,6 +4203,7 @@ window.setQuickAddOptionType = function (type) {
     }
 
     if (hiddenType) hiddenType.value = type;
+    if (type === 'menu') populateQuickAddMenuCategories();
 
     const hasType = Boolean(type);
     if (hiddenType) hiddenType.required = true;
@@ -4411,7 +4466,13 @@ window.submitQuickAddOption = async function (e) {
     if (monetaryInputs.some(input => {
         if (!input || input.closest('[style*="display: none"]')) return false;
         const raw = input.value.replace(/,/g, '').trim();
-        return raw !== '' && (!/^\d{1,8}(?:\.\d{1,2})?$/.test(raw) || !Number.isFinite(Number(raw)) || Number(raw) < 0);
+        return raw !== '' && (
+            input.dataset.formatOverflow === 'true'
+            || !/^\d{1,8}(?:\.\d{1,2})?$/.test(raw)
+            || !Number.isFinite(Number(raw))
+            || Number(raw) <= 0
+            || Number(raw) > 99999999.99
+        );
     })) {
         window.showToast?.('Check the entered prices and costs. Use up to 2 decimal places.', 'error');
         return;
@@ -4641,47 +4702,51 @@ window.openQuickEditModal = function (type, id, event) {
         const categoryField = value('Category');
         const customCategoryField = value('CustomCategory');
         const currentCategory = String(item.category || '');
-        const isPreset = categoryField && Array.from(categoryField.options).some(option => option.value === currentCategory);
+        const categoryOptions = categoryField ? Array.from(categoryField.options) : [];
+        let isPreset = categoryOptions.some(option => option.value === currentCategory);
+        if (categoryField && currentCategory && currentCategory !== 'Other' && !isPreset) {
+            categoryField.add(new Option(currentCategory, currentCategory));
+            isPreset = true;
+        }
         if (categoryField) {
             categoryField.value = isPreset ? currentCategory : 'Other';
             window.toggleCatalogEditCustomCategory('menu', categoryField.value);
         }
         if (customCategoryField && categoryField?.value === 'Other') customCategoryField.value = currentCategory;
         const feeField = value('UpgradeFee');
-        if (feeField) feeField.value = Number(item.upgrade_fee) > 0 ? String(item.upgrade_fee) : '';
+        if (feeField) {
+            feeField.value = Number(item.upgrade_fee) > 0 ? String(item.upgrade_fee) : '';
+            window.sanitizeMoneyInput(feeField);
+        }
         const extraField = value('ExtraDishPrice');
-        if (extraField) extraField.value = Number(item.addon_price) > 0 ? String(item.addon_price) : '';
-        const unitField = value('Unit');
-        if (unitField) unitField.value = item.unit_type || item.pricing_unit || 'per_pax';
-        const statusField = value('Status');
-        if (statusField) statusField.value = item.status || 'available';
+        if (extraField) {
+            extraField.value = Number(item.addon_price) > 0 ? String(item.addon_price) : '';
+            window.sanitizeMoneyInput(extraField);
+        }
         window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError');
     } else if (type === 'service') {
         const categoryField = value('Category');
         if (categoryField) categoryField.value = item.category || 'Service';
         const feeField = value('Fee');
         const price = item.price ?? item.selling_price;
-        if (feeField) feeField.value = Number(price) > 0 ? String(price) : '';
-        const unitField = value('Unit');
-        if (unitField) unitField.value = item.unit_type || 'per_event';
-        const quantityField = value('Quantity');
-        if (quantityField) quantityField.value = String(item.max_available ?? item.available_qty ?? 1);
-        const durationField = value('Duration');
-        if (durationField) durationField.value = String(item.minimum_hours || 1);
+        if (feeField) {
+            feeField.value = Number(price) > 0 ? String(price) : '';
+            window.sanitizeMoneyInput(feeField);
+        }
         const staffRatioField = value('StaffRatio');
         if (staffRatioField) staffRatioField.value = String(item.staff_to_pax_ratio || 25);
         const minStaffField = value('MinStaff');
         if (minStaffField) minStaffField.value = String(item.min_staff_required || 1);
-        const statusField = value('Status');
-        if (statusField) statusField.value = item.status || 'available';
-        window.toggleCatalogEditStaffFields(unitField?.value || '');
         window.validateCatalogEditServiceFee();
     } else if (type === 'equipment') {
         const categoryField = value('Category');
         if (categoryField) categoryField.value = item.category || 'Equipment';
         const feeField = value('Fee');
         const price = item.price ?? item.rental_price;
-        if (feeField) feeField.value = Number(price) > 0 ? String(price) : '';
+        if (feeField) {
+            feeField.value = Number(price) > 0 ? String(price) : '';
+            window.sanitizeMoneyInput(feeField);
+        }
         const unitField = value('Unit');
         if (unitField) unitField.value = item.unit_type || 'piece';
         const quantityField = value('Quantity');
@@ -4737,9 +4802,9 @@ window.validateCatalogEditServiceFee = function () {
     const error = document.getElementById('editServiceItemFeeError');
     if (!input) return false;
     window.sanitizeMoneyInput(input);
-    const raw = input.value.trim();
+    const raw = input.value.replace(/,/g, '').trim();
     let message = '';
-    if (raw && (!/^\d{1,8}(?:\.\d{1,2})?$/.test(raw) || Number(raw) <= 0 || Number(raw) > 99999999.99)) {
+    if (raw && (input.dataset.formatOverflow === 'true' || !/^\d{1,8}(?:\.\d{1,2})?$/.test(raw) || Number(raw) <= 0 || Number(raw) > 99999999.99)) {
         message = 'Enter a fee greater than 0, up to 8 whole-number digits and 2 decimal places, or leave it blank.';
     }
     input.setCustomValidity(message);
@@ -4786,16 +4851,25 @@ window.submitCatalogItemEdit = async function (event, type) {
         value('Fee')?.focus();
         return;
     }
-    const moneyField = type === 'equipment' ? value('Fee') : value('ExtraDishPrice');
-    if (moneyField && moneyField.value.trim() &&
-        (!/^\d{1,8}(?:\.\d{1,2})?$/.test(moneyField.value.trim()) ||
-            !Number.isFinite(Number(moneyField.value)) || Number(moneyField.value) < 0)) {
-        moneyField.setCustomValidity('Enter a valid non-negative amount with up to 2 decimal places.');
+    const moneyFields = type === 'menu'
+        ? [value('ExtraDishPrice')]
+        : type === 'equipment' ? [value('Fee')] : [];
+    if (moneyFields.some(moneyField => {
+        const raw = moneyField?.value.replace(/,/g, '').trim() || '';
+        if (!raw) return false;
+        if (moneyField.dataset.formatOverflow !== 'true'
+            && /^\d{1,8}(?:\.\d{1,2})?$/.test(raw)
+            && Number.isFinite(Number(raw)) && Number(raw) > 0 && Number(raw) <= 99999999.99) {
+            moneyField.setCustomValidity('');
+            return false;
+        }
+        moneyField.setCustomValidity('Enter a valid amount up to ₱99,999,999.99 with no more than 2 decimal places.');
         moneyField.reportValidity();
         moneyField.focus();
+        return true;
+    })) {
         return;
     }
-    if (moneyField) moneyField.setCustomValidity('');
 
     const form = event.currentTarget;
     const packageSettings = readPackageItemSettings(type, 'edit');
@@ -4817,22 +4891,16 @@ window.submitCatalogItemEdit = async function (event, type) {
             const fee = value('UpgradeFee')?.value.trim() || '';
             formData.append('category', category);
             formData.append('custom_category', customCategory);
-            formData.append('upgrade_fee', fee ? String(Number(fee)) : '0');
-            formData.append('addon_price', value('ExtraDishPrice')?.value.trim() || '0');
-            formData.append('unit_type', value('Unit')?.value || 'per_pax');
-            formData.append('status', value('Status')?.value || 'available');
+            formData.append('upgrade_fee', fee ? String(Number(fee.replace(/,/g, ''))) : '0');
+            formData.append('addon_price', String(Number((value('ExtraDishPrice')?.value || '0').replace(/,/g, '')) || 0));
         } else if (type === 'service') {
             formData.append('category', value('Category')?.value.trim() || 'Service');
-            formData.append('price', value('Fee')?.value.trim() || '0');
-            formData.append('unit_type', value('Unit')?.value || 'per_event');
-            formData.append('available_qty', value('Quantity')?.value || '1');
-            formData.append('minimum_hours', value('Duration')?.value || '1');
+            formData.append('price', String(Number((value('Fee')?.value || '0').replace(/,/g, '')) || 0));
             formData.append('staff_to_pax_ratio', value('StaffRatio')?.value || '0');
             formData.append('min_staff_required', value('MinStaff')?.value || '1');
-            formData.append('status', value('Status')?.value || 'available');
         } else if (type === 'equipment') {
             formData.append('category', value('Category')?.value.trim() || 'Equipment');
-            formData.append('price', value('Fee')?.value.trim() || '0');
+            formData.append('price', String(Number((value('Fee')?.value || '0').replace(/,/g, '')) || 0));
             formData.append('unit_type', value('Unit')?.value || 'piece');
             formData.append('available_qty', value('Quantity')?.value || '1');
             formData.append('status', value('Status')?.value || 'available');

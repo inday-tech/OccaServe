@@ -573,7 +573,7 @@
 
                 <label id="referenceField" class="reference-field" for="referenceNoInput">
                     <span>Reference Number <small>(Optional · up to 30 characters)</small></span>
-                    <span class="reference-input-wrap"><i class="fas fa-hashtag"></i><input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Enter the reference shown on your receipt (optional)" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" class="ref-input-clean"></span>
+                    <span class="reference-input-wrap"><i class="fas fa-hashtag"></i><input type="text" id="referenceNoInput" name="reference_no" form="wizard-payment-form" placeholder="Enter the reference shown on your receipt (optional)" pattern="[a-zA-Z0-9]+" maxlength="30" oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 30)" class="ref-input-clean"></span>
                 </label>
 
                 {% set doc_type_display = "Booking Agreement" %}
@@ -718,13 +718,9 @@
             // For Cash: remove file required attr
             const fileInput = document.getElementById('proofImageInput');
             if(fileInput) fileInput.removeAttribute('required');
-            const refInput = document.getElementById('referenceNoInput');
-            if (refInput) refInput.removeAttribute('required');
         } else {
             const fileInput = document.getElementById('proofImageInput');
             if(fileInput) fileInput.setAttribute('required', 'required');
-            const refInput = document.getElementById('referenceNoInput');
-            if (refInput) refInput.setAttribute('required', 'required');
         }
     }
 
@@ -777,7 +773,7 @@
                     confirmButtonColor: 'var(--pay-emerald-600)'
                 });
             } else if (errorType === 'missing_reference') {
-                Swal.fire('Reference Number Required', 'Enter the reference number exactly as shown on your GCash or Bank receipt.', 'warning');
+                Swal.fire('Reference Number Optional', 'You can continue without entering a reference number. If you provide one, enter it exactly as shown on your receipt.', 'info');
                 openPaymentModal(errorMethod || 'GCash');
             } else if (errorType === 'amount_mismatch') {
                 Swal.fire('Amount Does Not Match', 'The amount detected on the receipt does not match the required payment amount.', 'error');

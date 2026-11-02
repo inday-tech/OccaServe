@@ -43,9 +43,22 @@ def caterer_notification_destination(link, notif_type, title=""):
 
     parsed = urlsplit(link)
     title_key = str(title or "").lower()
+    is_contract_notification = any(
+        phrase in title_key
+        for phrase in (
+            "contract",
+            "agreement",
+            "sign contract",
+            "signed the agreement",
+            "selected a deposit option",
+        )
+    )
     is_payment_notification = (
-        str(notif_type or "").lower() == "payment"
-        or any(word in title_key for word in ("payment", "invoice", "commission", "deposit", "balance"))
+        not is_contract_notification
+        and (
+            str(notif_type or "").lower() == "payment"
+            or any(word in title_key for word in ("payment", "invoice", "commission", "deposit", "balance"))
+        )
     )
 
     customer_booking_match = re.fullmatch(
@@ -57,7 +70,9 @@ def caterer_notification_destination(link, notif_type, title=""):
         if parsed.path.endswith("/quotation"):
             return f"/caterer/bookings/{booking_id}/quotation"
         query = {"open_booking": booking_id}
-        if is_payment_notification or parsed.path.endswith("/payment"):
+        if is_contract_notification:
+            query["open_tab"] = "contract"
+        elif is_payment_notification or parsed.path.endswith("/payment"):
             query["open_tab"] = "payment"
         return f"/caterer/bookings?{urlencode(query)}"
 
@@ -86,7 +101,9 @@ def caterer_notification_destination(link, notif_type, title=""):
             query["open_booking"] = [booking_id]
             for key in ("focus", "focus_id", "booking_id"):
                 query.pop(key, None)
-            if is_payment_notification:
+            if is_contract_notification:
+                query["open_tab"] = ["contract"]
+            elif is_payment_notification:
                 query["open_tab"] = ["payment"]
             elif "open_tab" in query and query["open_tab"][0] not in {
                 "overview", "customer", "services", "chat", "contract", "payment",

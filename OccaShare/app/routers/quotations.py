@@ -105,6 +105,7 @@ async def create_quote_request(
     db.add(booking)
     db.commit()
     db.refresh(booking)
+    await NotificationService.notify_new_booking(db, booking)
     
     return {"booking_id": booking.id}
 
@@ -422,7 +423,14 @@ async def sign_contract(
         quotation.status = "awaiting_caterer"
         booking.status = "awaiting_caterer"
         
-        background_tasks.add_task(NotificationService.notify_status_update, db, booking.caterer.user_id, "Action Required: Sign Contract", f"Customer {current_user.first_name} has signed the contract.", f"/caterer/bookings?open_booking={booking.id}")
+        background_tasks.add_task(
+            NotificationService.notify_status_update,
+            db,
+            booking.caterer.user_id,
+            "Action Required: Sign Contract",
+            f"Customer {current_user.first_name} has signed the agreement and selected a downpayment option.",
+            f"/caterer/bookings?open_booking={booking.id}&open_tab=contract",
+        )
     elif has_cat:
         quotation.status = "awaiting_customer"
         booking.status = "awaiting_customer"
@@ -537,7 +545,7 @@ async def update_dp(
             booking.caterer.user_id,
             "Customer selected a deposit option",
             f"The customer chose a {percent}% downpayment (₱{new_deposit:,.2f}) for '{booking.event_name or booking.event_type}'. Review the quotation and sign the agreement.",
-            f"/caterer/bookings?open_booking={booking.id}",
+            f"/caterer/bookings?open_booking={booking.id}&open_tab=contract",
         )
         await manager.broadcast_to_user(
             booking.user_id,
@@ -580,8 +588,14 @@ async def get_contract_content(
     quotation = booking.quotation
     if not quotation:
         raise HTTPException(status_code=404, detail="Contract/Quotation not found")
+    if current_user.role == "customer" and quotation.status not in {
+        "awaiting_caterer",
+        "awaiting_customer",
+        "signed",
+    }:
+        raise HTTPException(status_code=409, detail="Confirm your downpayment choice before viewing the agreement.")
 
-    return templates.TemplateResponse("shared/contract_content_partial.html", {
+    return templates.TemplateResponse("shared/contract_content_compact.html", {
         "request": request,
         "booking": booking,
         "quotation": quotation,
