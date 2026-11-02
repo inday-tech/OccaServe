@@ -880,9 +880,98 @@ function filterBySignature() {
 
 // ─── MODAL: NEW BOOKING ──────────────────────────────────────────────────────
 
+function clearWalkinValidationState(form) {
+    if (!form) return;
+    form.querySelectorAll('.is-invalid').forEach(function(input) {
+        input.classList.remove('is-invalid');
+    });
+    form.querySelectorAll('.invalid-feedback').forEach(function(feedback) {
+        feedback.innerText = '';
+        feedback.style.display = 'none';
+    });
+    form.querySelectorAll('input, select, textarea').forEach(function(input) {
+        input.style.borderColor = '';
+        input.removeAttribute('aria-invalid');
+    });
+}
+
+function setWalkinFieldError(input, message) {
+    if (!input) return;
+    input.classList.add('is-invalid');
+    input.style.borderColor = '#ef4444';
+    input.setAttribute('aria-invalid', 'true');
+    var feedback = input.parentElement.querySelector('.invalid-feedback');
+    if (feedback) {
+        feedback.innerText = message;
+        feedback.style.display = 'block';
+    }
+}
+
+function updateWalkinTimeNote() {
+    var note = document.getElementById('walkin-time-format-note');
+    var ingress = document.getElementById('walkin_ingress_time');
+    var egress = document.getElementById('walkin_egress_time');
+    if (!note || !ingress || !egress) return;
+
+    function formatTime(value) {
+        if (!value) return '';
+        var parts = value.split(':');
+        var hours = Number(parts[0]);
+        var minutes = parts[1];
+        var period = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return hours + ':' + minutes + ' ' + period;
+    }
+
+    var selectedTimes = [];
+    if (ingress.value) selectedTimes.push('Ingress: ' + formatTime(ingress.value));
+    if (egress.value) selectedTimes.push('Egress: ' + formatTime(egress.value));
+    note.textContent = selectedTimes.length
+        ? 'Times in AM/PM format: ' + selectedTimes.join(' | ')
+        : 'Choose times in AM/PM format (example: 8:00 AM to 12:00 PM).';
+}
+
+function validateWalkinTimes() {
+    var ingress = document.getElementById('walkin_ingress_time');
+    var egress = document.getElementById('walkin_egress_time');
+    if (!ingress || !egress) return false;
+    if (!ingress.value || !egress.value) {
+        var existingFeedback = egress.parentElement.querySelector('.invalid-feedback');
+        if (existingFeedback && existingFeedback.innerText === 'Egress must be later than ingress.') {
+            egress.classList.remove('is-invalid');
+            egress.style.borderColor = '';
+            egress.removeAttribute('aria-invalid');
+            existingFeedback.innerText = '';
+            existingFeedback.style.display = 'none';
+        }
+        return false;
+    }
+
+    if (egress.value <= ingress.value) {
+        setWalkinFieldError(egress, 'Egress must be later than ingress.');
+        return true;
+    }
+    egress.classList.remove('is-invalid');
+    egress.style.borderColor = '';
+    egress.removeAttribute('aria-invalid');
+    var feedback = egress.parentElement.querySelector('.invalid-feedback');
+    if (feedback) {
+        feedback.innerText = '';
+        feedback.style.display = 'none';
+    }
+    return false;
+}
+
 function openWalkinModal() {
     bk_openModal('walkinBookingModal');
     var form = document.getElementById('walkinBookingForm');
+    clearWalkinValidationState(form);
+    updateWalkinTimeNote();
+    var submitButton = document.getElementById('walkinSubmitBtn');
+    if (form && submitButton) {
+        submitButton.disabled = Array.from(form.querySelectorAll('[required]'))
+            .some(function(input) { return !input.value.trim(); });
+    }
     
     // Minimum 2 Days Lead Time Enforcement
     var dateInput = document.getElementById('walkin_event_date');
@@ -893,7 +982,8 @@ function openWalkinModal() {
     }
     
     // Bind Real-Time Validation Triggers
-    if (form) {
+    if (form && form.dataset.walkinListenersBound !== 'true') {
+        form.dataset.walkinListenersBound = 'true';
         // Auto-fill min pax when package changes
         var pkgSelect = document.getElementById('bookPackage');
         var guestInput = document.getElementById('bookGuests');
@@ -911,37 +1001,58 @@ function openWalkinModal() {
             });
         }
 
+        var validationManagerFields = new Set([
+            'customer_email', 'customer_contact', 'guest_count',
+            'total_amount', 'event_name', 'venue_address'
+        ]);
         form.querySelectorAll('.real-time-val').forEach(input => {
-            // Clear error dynamically as user types
             input.addEventListener('input', function() {
-                this.style.borderColor = '#cbd5e1';
-                var feedback = this.parentElement.querySelector('.invalid-feedback');
-                if (feedback) feedback.innerText = '';
-                
-                // Extra Name Validation Logic (John John John checker)
                 if (this.name === 'first_name' || this.name === 'last_name' || this.name === 'middle_name') {
-                    var fn = document.getElementById('bookCustFirstName').value.toLowerCase().trim();
-                    var ln = document.getElementById('bookCustLastName').value.toLowerCase().trim();
-                    var mn = document.getElementById('bookCustMiddleName').value.toLowerCase().trim();
-                    
-                    if (fn && ln && fn === ln) {
-                        this.style.borderColor = '#ef4444';
-                        if (feedback) feedback.innerText = 'First name and Last name cannot be identical.';
-                    } else if (fn && mn && fn === mn) {
-                        this.style.borderColor = '#ef4444';
-                        if (feedback) feedback.innerText = 'First name and Middle name cannot be identical.';
+                    var firstName = document.getElementById('bookCustFirstName').value.trim().toLowerCase();
+                    var lastName = document.getElementById('bookCustLastName').value.trim().toLowerCase();
+                    var middleName = document.getElementById('bookCustMiddleName').value.trim().toLowerCase();
+                    var nameError = firstName && lastName && firstName === lastName
+                        ? 'First name and Last name cannot be identical.'
+                        : (firstName && middleName && firstName === middleName
+                            ? 'First name and Middle name cannot be identical.'
+                            : '');
+                    if (nameError) {
+                        setWalkinFieldError(this, nameError);
+                    } else {
+                        this.classList.remove('is-invalid');
+                        this.style.borderColor = '';
+                        this.removeAttribute('aria-invalid');
+                        var nameFeedback = this.parentElement.querySelector('.invalid-feedback');
+                        if (nameFeedback) {
+                            nameFeedback.innerText = '';
+                            nameFeedback.style.display = 'none';
+                        }
+                    }
+                } else if (!validationManagerFields.has(this.name) && this.validity.valid) {
+                    this.classList.remove('is-invalid');
+                    this.style.borderColor = '';
+                    this.removeAttribute('aria-invalid');
+                    var feedback = this.parentElement.querySelector('.invalid-feedback');
+                    if (feedback) {
+                        feedback.innerText = '';
+                        feedback.style.display = 'none';
                     }
                 }
+
+                validateWalkinTimes();
+                updateWalkinTimeNote();
             });
 
-            // Show error immediately if field is left empty on blur
             input.addEventListener('blur', function() {
                 if (this.hasAttribute('required') && !this.value.trim()) {
-                    this.style.borderColor = '#ef4444';
-                    var feedback = this.parentElement.querySelector('.invalid-feedback');
-                    if (feedback) feedback.innerText = 'This field is required.';
+                    setWalkinFieldError(this, 'This field is required.');
                 }
             });
+        });
+        var ingressInput = document.getElementById('walkin_ingress_time');
+        var egressInput = document.getElementById('walkin_egress_time');
+        [ingressInput, egressInput].forEach(function(input) {
+            if (input) input.addEventListener('change', updateWalkinTimeNote);
         });
     }
 }
@@ -951,24 +1062,29 @@ function closeWalkinModal() {
     var form = document.getElementById('walkinBookingForm');
     if (form) {
         form.reset();
-        form.querySelectorAll('.is-invalid').forEach(function(el) { el.classList.remove('is-invalid'); });
+        clearWalkinValidationState(form);
     }
+    updateWalkinTimeNote();
 }
 
 async function submitWalkinBooking(e) {
     if (e && e.preventDefault) e.preventDefault();
     const form = document.getElementById('walkinBookingForm');
+    if (!form) {
+        window.showError('The booking form is unavailable. Please refresh the page and try again.');
+        return;
+    }
     let hasError = false;
 
     // Real-time custom required check
     form.querySelectorAll('.real-time-val[required]').forEach(input => {
         if (!input.value.trim()) {
-            input.style.borderColor = '#ef4444';
-            let feedback = input.parentElement.querySelector('.invalid-feedback');
-            if (feedback) feedback.innerText = 'This field is required.';
+            setWalkinFieldError(input, 'This field is required.');
             hasError = true;
         }
     });
+
+    if (validateWalkinTimes()) hasError = true;
 
     // Check custom JS errors from real-time events
     form.querySelectorAll('.invalid-feedback').forEach(feedback => {
@@ -1034,7 +1150,19 @@ async function submitWalkinBooking(e) {
             if (window.refreshBookingsTable) window.refreshBookingsTable();
         } else {
             const errorMsg = result.detail || result.message || "Failed to create booking.";
-            window.showError(errorMsg);
+            const separatorIndex = errorMsg.indexOf('|');
+            const errorField = separatorIndex >= 0 ? errorMsg.slice(0, separatorIndex) : '';
+            const errorMessage = separatorIndex >= 0 ? errorMsg.slice(separatorIndex + 1) : errorMsg;
+            const fieldInput = {
+                extEventTime: document.getElementById('walkin_ingress_time'),
+                extEventEndTime: document.getElementById('walkin_egress_time')
+            }[errorField];
+            if (fieldInput) {
+                setWalkinFieldError(fieldInput, errorMessage);
+                fieldInput.focus();
+            } else {
+                window.showError(errorMsg);
+            }
         }
     } catch (err) {
         console.error('Error submitting manual booking:', err);

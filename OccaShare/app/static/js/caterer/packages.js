@@ -2989,7 +2989,7 @@ window.toggleCustomizableItem = function (type, id, checked) {
         if (checked) {
             customizableEquipmentIds.add(numId);
             const item = (window.inclusionsCatalog.equipment || []).find(candidate => Number(candidate.id) === numId);
-            if (customizableEquipmentPrices[numId] === undefined) customizableEquipmentPrices[numId] = Number(item?.addon_price || item?.rental_price || item?.price) || '';
+            if (customizableEquipmentPrices[numId] === undefined) customizableEquipmentPrices[numId] = Number(item?.rental_price ?? item?.price) || '';
             if (customizableEquipmentQuantityLimits[numId] === undefined) customizableEquipmentQuantityLimits[numId] = Number(item?.available_qty) || '';
         } else {
             customizableEquipmentIds.delete(numId);
@@ -3118,7 +3118,7 @@ function renderCustomizableEquipment(query = '') {
         const id = Number(item.id);
         const selected = customizableEquipmentIds.has(id);
         const included = customizableIncludedEquipmentIds.has(id);
-        const configuredPrice = customizableEquipmentPrices[id] ?? item.addon_price ?? item.rental_price ?? item.price ?? '';
+        const configuredPrice = customizableEquipmentPrices[id] ?? item.rental_price ?? item.price ?? '';
         const price = Number(configuredPrice) || 0;
         const priceInputValue = String(configuredPrice).trim() && Number.isFinite(Number(configuredPrice))
             ? Number(configuredPrice).toLocaleString('en-PH', { maximumFractionDigits: 2 })
@@ -3417,7 +3417,7 @@ function syncCustomizableSelectionRules() {
         });
         customizableEquipmentIds.forEach(id => {
             const item = (window.inclusionsCatalog.equipment || []).find(candidate => Number(candidate.id) === Number(id));
-            const price = Number(customizableEquipmentPrices[id] ?? item?.addon_price ?? item?.rental_price ?? item?.price);
+            const price = Number(customizableEquipmentPrices[id] ?? item?.rental_price ?? item?.price);
             const maxQuantity = Number(customizableEquipmentQuantityLimits[id] ?? item?.available_qty);
             if (!customizableIncludedEquipmentIds.has(Number(id)) && Number.isFinite(price) && price > 0 && price <= 99999999.99) {
                 cleanEquipmentPrices[id] = Math.round(price * 100) / 100;
@@ -3623,7 +3623,7 @@ function renderReviewCustomizable() {
             } else {
                 equipmentList.innerHTML = selectedEquipmentItems.map(i => {
                     const included = customizableIncludedEquipmentIds.has(Number(i.id));
-                    const price = Number(customizableEquipmentPrices[Number(i.id)] ?? i.addon_price ?? i.rental_price ?? i.price) || 0;
+                    const price = Number(customizableEquipmentPrices[Number(i.id)] ?? i.rental_price ?? i.price) || 0;
                     const unit = String(i.unit_type || 'piece').replace(/^per_/, '').replace(/_/g, ' ');
                     const priceHtml = included
                         ? '<span style="font-weight:700;color:#15803d;font-size:.78rem;">Included in base</span>'
@@ -3750,7 +3750,7 @@ function getCustomizableConfigurationIssues() {
     });
     selectedEquipment.forEach(item => {
         const included = customizableIncludedEquipmentIds.has(Number(item.id));
-        const packagePrice = Number(customizableEquipmentPrices[Number(item.id)] ?? item.addon_price ?? item.rental_price ?? item.price);
+        const packagePrice = Number(customizableEquipmentPrices[Number(item.id)] ?? item.rental_price ?? item.price);
         const quantityLimit = Number(customizableEquipmentQuantityLimits[Number(item.id)] ?? item.available_qty);
         if (item.status !== 'available') issues.push(`${item.name} is unavailable; remove it from the package or restore its availability.`);
         if (!included && (!Number.isFinite(packagePrice) || packagePrice <= 0 || packagePrice > 99999999.99)) {
@@ -3783,11 +3783,15 @@ window.validateQuickAddOptionPrice = function () {
         if (input.dataset.formatOverflow === 'true' || !/^\d{1,8}(?:\.\d{1,2})?$/.test(rawValue)) {
             message = 'Use up to 8 whole-number digits and 2 decimal places.';
         } else if (!Number.isFinite(amount)) {
-            message = 'Enter a valid service fee with no more than 2 decimal places.';
+            message = type === 'equipment'
+                ? 'Enter a valid rental price with no more than 2 decimal places.'
+                : 'Enter a valid service fee with no more than 2 decimal places.';
         } else if (amount <= 0) {
-            message = 'Service fee must be greater than zero.';
+            message = type === 'equipment' ? 'Rental price must be greater than zero.' : 'Service fee must be greater than zero.';
         } else if (amount > 99999999.99) {
-            message = 'The maximum service fee is ₱99,999,999.99.';
+            message = type === 'equipment'
+                ? 'The maximum rental price is ₱99,999,999.99.'
+                : 'The maximum service fee is ₱99,999,999.99.';
         }
     }
 
@@ -4175,6 +4179,9 @@ window.setQuickAddOptionType = function (type) {
     const priceLabel = document.getElementById('quickAddOptionPriceLabel');
     const priceInput = document.getElementById('quickAddOptionPrice');
     const priceError = document.getElementById('quickAddOptionPriceError');
+    const equipmentSettingsRow = document.getElementById('quickAddEquipmentSettingsRow');
+    const equipmentUnitInput = document.getElementById('quickAddEquipmentUnit');
+    const equipmentQuantityInput = document.getElementById('quickAddEquipmentQuantity');
     const nameLabel = document.getElementById('quickAddOptionNameLabel');
     const nameInput = document.getElementById('quickAddOptionName');
     const categoryInput = document.getElementById('quickAddOptionCategory');
@@ -4237,6 +4244,8 @@ window.setQuickAddOptionType = function (type) {
     if (upgradeFeeError) upgradeFeeError.textContent = '';
     if (priceRow) priceRow.style.display = type === 'service' || type === 'equipment' ? 'grid' : 'none';
     if (priceRow) priceRow.style.gridTemplateColumns = '1fr';
+    if (equipmentSettingsRow) equipmentSettingsRow.style.display = type === 'equipment' ? 'grid' : 'none';
+    if (equipmentQuantityInput) equipmentQuantityInput.required = type === 'equipment';
     if (priceInput) priceInput.required = false;
     if (priceError) {
         priceError.textContent = '';
@@ -4292,6 +4301,8 @@ window.setQuickAddOptionType = function (type) {
         if (priceLabel) priceLabel.innerHTML = 'Default rental price (₱) <small>(Optional · unpriced selections require review)</small>';
         if (categoryInput) categoryInput.value = 'Equipment';
         if (priceInput) priceInput.value = '';
+        if (equipmentUnitInput && !equipmentUnitInput.value) equipmentUnitInput.value = 'piece';
+        if (equipmentQuantityInput && !equipmentQuantityInput.value) equipmentQuantityInput.value = '1';
         if (extraDishInput) extraDishInput.value = '';
     }
 
@@ -4419,11 +4430,17 @@ window.submitQuickAddOption = async function (e) {
     const categoryInput = document.getElementById('quickAddOptionCategory');
     const category = (type === 'menu' ? categoryInput?.value : document.getElementById('quickAddOptionCatalogCategory')?.value)?.trim() || '';
     const customCategory = (document.getElementById('quickAddOptionCustomCategory')?.value || '').trim();
-    const unitByType = { menu: 'per_pax', service: 'per_event', equipment: 'piece' };
+    const unitByType = {
+        menu: 'per_pax',
+        service: 'per_event',
+        equipment: document.getElementById('quickAddEquipmentUnit')?.value || 'piece'
+    };
     const unit = unitByType[type] || '';
     const priceInput = document.getElementById('quickAddOptionPrice');
     const priceText = (priceInput?.value || '').trim();
     const price = type === 'menu' ? 0 : (Number(priceText.replace(/,/g, '')) || 0);
+    const equipmentQuantityInput = document.getElementById('quickAddEquipmentQuantity');
+    const equipmentQuantity = Number(equipmentQuantityInput?.value);
     const desc = (document.getElementById('quickAddOptionDescription')?.value || '').trim();
 
     if (!['menu', 'service', 'equipment'].includes(type)) {
@@ -4458,6 +4475,17 @@ window.submitQuickAddOption = async function (e) {
         priceInput?.focus();
         return;
     }
+    if (type === 'equipment' && (
+        !Number.isInteger(equipmentQuantity) || equipmentQuantity < 1 || equipmentQuantity > 999999
+    )) {
+        if (equipmentQuantityInput) {
+            equipmentQuantityInput.setCustomValidity('Enter an available quantity from 1 to 999,999.');
+            equipmentQuantityInput.reportValidity();
+            equipmentQuantityInput.focus();
+        }
+        return;
+    }
+    equipmentQuantityInput?.setCustomValidity('');
     const monetaryInputs = [
         document.getElementById('quickAddOptionPrice'),
         document.getElementById('quickAddOptionExtraDishPrice'),
@@ -4500,7 +4528,8 @@ window.submitQuickAddOption = async function (e) {
         }
         if (type === 'service' || type === 'equipment') formData.append('price', priceText ? Number(priceText.replace(/,/g, '')) : 0);
         formData.append('unit_type', unit);
-        if (type === 'service' || type === 'equipment') formData.append('available_qty', '1');
+        if (type === 'service') formData.append('available_qty', '1');
+        if (type === 'equipment') formData.append('available_qty', String(equipmentQuantity));
         if (type === 'service') formData.append('minimum_hours', '1');
         formData.append('status', 'available');
         formData.append('description', desc);

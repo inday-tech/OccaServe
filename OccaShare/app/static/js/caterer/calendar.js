@@ -2200,7 +2200,7 @@ window.openExternalBookingModal = function() {
     }
     const walkinSubmit = document.getElementById('extBtnSubmit');
     if (walkinSubmit) walkinSubmit.disabled = true;
-    if (window.updateWalkinFormValidation) window.updateWalkinFormValidation(false);
+    if (window.updateWalkinFormValidation) window.updateWalkinFormValidation(true);
 
     const eqDateInput = document.getElementById('eqRentalDate');
     if (eqDateInput && window.MIN_BOOKING_DATE) {
@@ -2211,13 +2211,16 @@ window.openExternalBookingModal = function() {
     }
 
     // Attach live summary update listeners
-    ['extVenue', 'extEventTime', 'extCustomerContact', 'extFullName', 'extMotifTheme'].forEach(id => {
+    ['extVenue', 'extEventTime', 'extEventEndTime', 'extCustomerContact', 'extFullName', 'extMotifTheme'].forEach(id => {
         const el = document.getElementById(id);
         if (el && !el.dataset.summaryBound) {
-            el.addEventListener('input', () => { if (window.updateWalkinSummary) window.updateWalkinSummary(); });
+            ['input', 'change'].forEach(eventName => el.addEventListener(eventName, () => {
+                if (window.updateWalkinSummary) window.updateWalkinSummary();
+            }));
             el.dataset.summaryBound = 'true';
         }
     });
+    updateWalkinEgress();
 
     if (window.updateWalkinSummary) {
         window.updateWalkinSummary();
@@ -2249,6 +2252,47 @@ window.clearWalkinError = function(fieldId) {
         if (inputEl.parentElement?.classList.contains('walkin-phone-field')) inputEl.parentElement.style.borderColor = '#cbd5e1';
     }
 };
+
+function formatWalkinTime12h(value) {
+    if (!value) return '';
+    const [hourText, minute] = value.split(':');
+    const hour = Number(hourText);
+    return `${hour % 12 || 12}:${minute} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
+function expectedWalkinEgress(time) {
+    const duration = Number(window.CATERER_SERVICE_DURATION);
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '') || !Number.isInteger(duration) || duration < 1 || duration > 23) {
+        return '';
+    }
+    const [hour, minute] = time.split(':').map(Number);
+    const endMinutes = hour * 60 + minute + duration * 60;
+    if (endMinutes >= 24 * 60) return '';
+    return `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+}
+
+window.updateWalkinEgress = function() {
+    const ingress = document.getElementById('extEventTime');
+    const egress = document.getElementById('extEventEndTime');
+    if (!ingress || !egress) return;
+
+    const expectedEgress = expectedWalkinEgress(ingress.value);
+    egress.value = expectedEgress;
+    if (expectedEgress) {
+        window.clearWalkinError('extEventEndTime');
+    }
+    return expectedEgress;
+};
+
+function walkinIngressBusinessHoursError(time) {
+    const open = window.BUSINESS_OPEN || '08:00';
+    const close = window.BUSINESS_CLOSE || '20:00';
+    if (!time || time < open) return walkinBusinessHoursMessage(time);
+    if (time >= close) {
+        return `Ingress must be before ${formatWalkinTime12h(close)}. Choose an earlier time.`;
+    }
+    return '';
+}
 
 window.updateWalkinFormValidation = function(showTouched = true) {
     const modal = document.getElementById('externalBookingModal');
@@ -2283,7 +2327,11 @@ window.updateWalkinFormValidation = function(showTouched = true) {
     const eventTime = value('extEventTime');
     if (!eventTime) errors.extEventTime = 'Event time is required.';
     else if (!/^([01]\d|2[0-3]):(00|30)$/.test(eventTime)) errors.extEventTime = 'Choose a time ending in :00 or :30.';
-    else if (walkinBusinessHoursMessage(eventTime)) errors.extEventTime = walkinBusinessHoursMessage(eventTime);
+    else if (walkinIngressBusinessHoursError(eventTime)) errors.extEventTime = walkinIngressBusinessHoursError(eventTime);
+    else if (!expectedWalkinEgress(eventTime)) errors.extEventTime = 'Ingress and service duration must end before midnight. Choose an earlier ingress.';
+    const eventEndTime = value('extEventEndTime');
+    const expectedEgress = expectedWalkinEgress(eventTime);
+    if (eventTime && expectedEgress && eventEndTime !== expectedEgress) errors.extEventEndTime = 'Egress is set automatically based on the Caterer service duration.';
     if (!value('extVenue')) errors.extVenue = 'Event venue is required.';
 
     let servicesTotal = 0;
@@ -2307,7 +2355,7 @@ window.updateWalkinFormValidation = function(showTouched = true) {
     if (discount > servicesTotal) errors.extDiscount = 'Discount cannot exceed the services amount.';
     if (paid > grandTotal) errors.extDownpayment = 'Amount paid cannot exceed the grand total.';
 
-    const fields = ['extEventType', ...(eventType === 'other' ? ['extOtherEventType'] : []), ...requiredNames, 'extCustomerContact', 'extEventDate', 'extEventTime', 'extGuestCount', 'extVenue', 'walkinServices', 'extDiscount', 'extDownpayment'];
+    const fields = ['extEventType', ...(eventType === 'other' ? ['extOtherEventType'] : []), ...requiredNames, 'extCustomerContact', 'extEventDate', 'extEventTime', 'extEventEndTime', 'extGuestCount', 'extVenue', 'walkinServices', 'extDiscount', 'extDownpayment'];
     fields.forEach(id => {
         const touchedId = id === 'extDiscount' ? 'extDiscountInput' : id === 'extDownpayment' ? 'extDownpaymentInput' : id;
         const touched = !showTouched || document.getElementById(touchedId)?.dataset.walkinTouched === 'true' || id === 'walkinServices' && document.querySelector('#walkinServicesList .walkin-service-checkbox:checked');
@@ -3496,11 +3544,12 @@ window.updateWalkinSummary = function(servicesTotal, grandTotal, amountPaid, rem
     // 3. Date & Time
     const dateVal = document.getElementById('extEventDate')?.value || '';
     const timeVal = document.getElementById('extEventTime')?.value || '';
+    const endTimeVal = document.getElementById('extEventEndTime')?.value || '';
     let dateTimeStr = '-';
     if (dateVal) {
         dateTimeStr = dateVal;
-        if (timeVal) {
-            dateTimeStr += ` @ ${timeVal}`;
+        if (timeVal || endTimeVal) {
+            dateTimeStr += ` @ ${formatWalkinTime12h(timeVal) || 'Ingress TBA'} – ${formatWalkinTime12h(endTimeVal) || 'Egress TBA'}`;
         }
     }
     const sumDateTime = document.getElementById('sumDateTime');
@@ -3667,11 +3716,20 @@ window.submitExternalBooking = async function(e) {
     const eventTimeEl = document.getElementById('extEventTime');
     const eventTimeVal = eventTimeEl ? eventTimeEl.value : '';
     if (!eventTimeVal) {
-        reportError('extEventTime', 'Event time is required.');
+        reportError('extEventTime', 'Ingress time is required.');
     } else if (!/^([01]\d|2[0-3]):(00|30)$/.test(eventTimeVal)) {
         reportError('extEventTime', 'Choose a time ending in :00 or :30.');
-    } else if (walkinBusinessHoursMessage(eventTimeVal)) {
-        reportError('extEventTime', walkinBusinessHoursMessage(eventTimeVal));
+    } else if (walkinIngressBusinessHoursError(eventTimeVal)) {
+        reportError('extEventTime', walkinIngressBusinessHoursError(eventTimeVal));
+    } else if (!expectedWalkinEgress(eventTimeVal)) {
+        reportError('extEventTime', 'Ingress and service duration must end before midnight. Choose an earlier ingress.');
+    }
+
+    const eventEndTimeEl = document.getElementById('extEventEndTime');
+    const eventEndTimeVal = eventEndTimeEl ? eventEndTimeEl.value : '';
+    const expectedEgress = expectedWalkinEgress(eventTimeVal);
+    if (eventTimeVal && expectedEgress && eventEndTimeVal !== expectedEgress) {
+        reportError('extEventEndTime', 'Egress is set automatically based on the Caterer service duration.');
     }
 
     // 5. Venue Validation
@@ -3833,6 +3891,8 @@ window.submitExternalBooking = async function(e) {
         event_name: `${normType === 'other' ? otherEventType : eventType} - ${genericFullName || (normType === 'wedding' ? `${brideName} & ${groomName}` : (celebrantName || repName))}`,
         event_date: dateVal,
         event_time: eventTimeVal,
+        event_end_time: eventEndTimeVal,
+        service_duration_based: true,
         guest_count: guestCount,
         street_address: streetVal,
         barangay: brgyVal,
@@ -3899,6 +3959,8 @@ window.submitExternalBooking = async function(e) {
                     window.setWalkinError('extFullName', cleanMsg);
                 } else if (fieldKey === 'extEventTime') {
                     window.setWalkinError('extEventTime', cleanMsg);
+                } else if (fieldKey === 'extEventEndTime') {
+                    window.setWalkinError('extEventEndTime', cleanMsg);
                 } else if (fieldKey === 'manDownpayment') {
                     window.setWalkinError('extDownpayment', cleanMsg);
                 } else {

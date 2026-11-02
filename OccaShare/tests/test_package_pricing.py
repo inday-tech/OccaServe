@@ -88,6 +88,27 @@ def test_recalculates_client_supplied_prices_from_catalog():
     assert result["selected_equipment"][0]["qty"] == 1
 
 
+def test_equipment_default_uses_catalog_rental_price_not_addon_price():
+    menu, services, equipment = catalog()
+    equipment[5].addon_price = 250
+
+    result = calculate_customization(
+        package(),
+        {
+            "guest_count": 20,
+            "selected_food": [],
+            "selected_services": [],
+            "selected_equipment": [{"id": 5, "qty": 1}],
+        },
+        menu,
+        services,
+        equipment,
+    )
+
+    assert result["selected_equipment"][0]["price"] == 1000
+    assert result["equipment_total"] == 1000
+
+
 def test_fixed_service_charge_is_applied_once():
     menu, services, equipment = catalog()
     result = calculate_customization(

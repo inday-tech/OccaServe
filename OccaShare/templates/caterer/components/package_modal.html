@@ -735,6 +735,23 @@
                         <small id="quickAddOptionPriceError" aria-live="polite" style="display: none; margin-top: 0.3rem; color: #dc2626; font-size: 0.76rem;"></small>
                     </div>
                 </div>
+                <div class="form-row-pro" id="quickAddEquipmentSettingsRow" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
+                    <div class="form-group-pro">
+                        <label for="quickAddEquipmentUnit">Pricing unit</label>
+                        <select id="quickAddEquipmentUnit" class="control-pro">
+                            <option value="piece">Per Piece</option>
+                            <option value="set">Per Set</option>
+                            <option value="pair">Per Pair</option>
+                            <option value="lot">Per Lot</option>
+                            <option value="per_day">Per Day</option>
+                            <option value="per_event">Per Event</option>
+                        </select>
+                    </div>
+                    <div class="form-group-pro">
+                        <label for="quickAddEquipmentQuantity">Available quantity</label>
+                        <input type="number" id="quickAddEquipmentQuantity" class="control-pro" min="1" max="999999" step="1" value="1" required>
+                    </div>
+                </div>
 
                 <div class="form-group-pro" id="quickAddOptionDescriptionWrapper" style="display: none; margin-bottom: 0.5rem;">
                     <label style="display: block; font-size: 0.85rem; font-weight: 800; color: #334155; margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.5px;">

@@ -1241,6 +1241,22 @@
 
                         <div class="occ-form-grid" style="gap: 0.85rem;">
                             <div class="occ-form-group">
+                                <label class="occ-form-label" for="walkin_ingress_time">Ingress *</label>
+                                <input type="time" id="walkin_ingress_time" name="event_time" required class="occ-form-input real-time-val">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                            <div class="occ-form-group">
+                                <label class="occ-form-label" for="walkin_egress_time">Egress *</label>
+                                <input type="time" id="walkin_egress_time" name="event_end_time" required class="occ-form-input real-time-val">
+                                <div class="invalid-feedback" style="font-size: 0.7rem; color: #ef4444; margin-top: 0.25rem;"></div>
+                            </div>
+                        </div>
+                        <div id="walkin-time-format-note" style="font-size: 0.7rem; color: #64748b; margin-top: -0.5rem;">
+                            Choose times in AM/PM format (example: 8:00 AM to 12:00 PM).
+                        </div>
+
+                        <div class="occ-form-grid" style="gap: 0.85rem;">
+                            <div class="occ-form-group">
                                 <label class="occ-form-label">Province *</label>
                                 <select id="bookProvince" name="province" required class="filter-select-pro real-time-val">
                                     <option value="">Select Province...</option>

@@ -613,12 +613,24 @@
         }
         
         if (urlParams.has('success_msg')) {
-            Swal.fire({
-                title: 'Success!',
-                text: urlParams.get('success_msg'),
-                icon: 'success',
-                confirmButtonColor: 'var(--up-emerald-500)'
-            });
+            const successMessage = urlParams.get('success_msg');
+            if (window.showToast) {
+                window.showToast(successMessage, 'success');
+            } else {
+                Swal.fire({
+                    title: 'Success!',
+                    text: successMessage,
+                    icon: 'success',
+                    confirmButtonColor: 'var(--up-emerald-500)'
+                });
+            }
+            try {
+                sessionStorage.removeItem(
+                    `occaserve:booking-details:{{ booking.caterer_id }}:{{ booking.package_id or '' }}`
+                );
+            } catch (storageError) {
+                console.warn('Could not clear submitted event details:', storageError);
+            }
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     });

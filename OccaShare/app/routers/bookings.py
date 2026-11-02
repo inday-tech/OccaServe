@@ -2633,7 +2633,13 @@ async def step_details_submit(
     # Requirement #14 & #15: Transaction History != Verified. Only successful KYC makes customer verified.
     if user.is_verified and user.is_kyc_complete:
         print(f"[StepDetails SUCCESS] Booking #{booking.id} submitted for caterer review.")
-        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
+        return RedirectResponse(
+            url=(
+                f"/customer/bookings/manage/{booking.id}"
+                "?success_msg=Booking+submitted+for+Caterer+review.+Wait+for+acceptance+before+continuing+to+the+next+step."
+            ),
+            status_code=303,
+        )
         
     print(f"[StepDetails SUCCESS] Booking #{booking.id} created/updated! Redirecting to KYC Verification.")
     return RedirectResponse(url=f"/bookings/step/kyc/{booking.id}", status_code=303)
@@ -2673,7 +2679,13 @@ async def step_kyc_page(booking_id: int, request: Request, return_to: Optional[s
                 notes="Customer submitted the booking after identity verification; waiting for caterer review.",
             ))
             db.commit()
-        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}", status_code=303)
+        return RedirectResponse(
+            url=(
+                f"/customer/bookings/manage/{booking.id}"
+                "?success_msg=Booking+submitted+for+Caterer+review.+Wait+for+acceptance+before+continuing+to+the+next+step."
+            ),
+            status_code=303,
+        )
 
     # KYC is booking-bound. Do not let a verification from another booking
     # drive this page's step visibility or trigger a premature liveness init.

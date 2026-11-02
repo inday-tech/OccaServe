@@ -21,6 +21,7 @@ from ..services.payment_verification import payment_verification_service
 from ..services.notification import NotificationService, caterer_notification_destination
 from ..services.reminders import billing_period_due_date
 from ..services.payment_deadline import ALLOWED_PAYMENT_DEADLINE_HOURS, normalize_deadline_hours
+from ..services.booking_duration import expected_same_day_end_time
 from ..services.payment_validation import (
     normalize_ph_mobile_number,
     validate_card_number,
@@ -1295,6 +1296,7 @@ async def create_manual_booking(
 
         # Package Constraint Check
         package_id = data.get("package_id")
+        package = None
         try:
             guest_count = int(data.get("guest_count", 0) or 0)
         except (TypeError, ValueError):
@@ -1347,11 +1349,52 @@ async def create_manual_booking(
         profile_rules = user.caterer_profile.scheduling_rules or {}
         event_availability = profile_rules.get("event_availability") or {}
         business_hours = profile_rules.get("business_hours") or {}
-        business_open = event_availability.get("open_time") or business_hours.get("open_time") or "08:00"
-        business_close = event_availability.get("close_time") or business_hours.get("close_time") or "20:00"
+        business_open = str(event_availability.get("open_time") or business_hours.get("open_time") or "08:00")[:5]
+        business_close = str(event_availability.get("close_time") or business_hours.get("close_time") or "20:00")[:5]
         event_time_value = event_time.strftime("%H:%M")
-        if event_time_value < business_open or event_time_value > business_close:
-            raise HTTPException(status_code=400, detail=f"extEventTime|Event time must be within your business hours ({business_open}–{business_close}).")
+        if event_time_value < business_open or event_time_value >= business_close:
+            close_label = datetime.strptime(business_close, "%H:%M").strftime("%I:%M %p").lstrip("0")
+            raise HTTPException(status_code=400, detail=f"extEventTime|Ingress must be before {close_label}. Choose an earlier time.")
+
+        event_end_time = None
+        event_end_time_str = data.get("event_end_time")
+        if data.get("service_duration_based"):
+            profile_package_rules = (user.caterer_profile.scheduling_rules or {}).get("package_rules") or {}
+            try:
+                service_duration = int(
+                    getattr(package, "service_duration", None)
+                    or profile_package_rules.get("min_event_duration", 4)
+                )
+            except (TypeError, ValueError):
+                service_duration = 4
+            expected_egress = expected_same_day_end_time(
+                event_date,
+                event_time,
+                service_duration,
+            )
+            if expected_egress is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="extEventTime|Ingress and service duration must end before midnight. Choose an earlier ingress.",
+                )
+            if event_end_time_str:
+                try:
+                    event_end_time = datetime.strptime(event_end_time_str[:5], "%H:%M").time()
+                except (TypeError, ValueError):
+                    raise HTTPException(status_code=400, detail="extEventEndTime|Enter a valid egress time.")
+                if event_end_time != expected_egress:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"extEventEndTime|Egress is automatically set to {expected_egress.strftime('%I:%M %p').lstrip('0')} based on the {service_duration}-hour service duration.",
+                    )
+            event_end_time = expected_egress
+        elif event_end_time_str:
+            try:
+                event_end_time = datetime.strptime(event_end_time_str[:5], "%H:%M").time()
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="extEventEndTime|Enter a valid egress time.")
+            if event_end_time <= event_time:
+                raise HTTPException(status_code=400, detail="extEventEndTime|Egress must be later than ingress.")
 
         # Build special requests and staff notes
         special_notes = data.get("special_notes", "").strip()
@@ -1477,6 +1520,7 @@ async def create_manual_booking(
             event_type=event_type,
             event_date=event_date,
             event_time=event_time,
+            event_end_time=event_end_time,
             guest_count=guest_count or 1,
             total_amount=total_amt,
             total_price=total_amt,
@@ -5890,7 +5934,17 @@ async def business_summary(
 
     # 3. Package Performance
     package_stats = {}
+    archived_package_ids = {
+        pkg.id
+        for pkg in (profile.packages or [])
+        if _package_status_value(pkg) == "archived"
+    }
     for b in valid_period_bookings:
+        if b.package_id in archived_package_ids or (
+            b.package and _package_status_value(b.package) == "archived"
+        ):
+            continue
+
         pkg_name = None
         if b.package:
             pkg_name = b.package.name
@@ -5906,7 +5960,7 @@ async def business_summary(
             package_stats[pkg_name]["revenue"] += float(b.total_price or b.total_amount or 0.0)
 
     for pkg in (profile.packages or []):
-        if not getattr(pkg, 'is_archived', False) and pkg.name not in package_stats:
+        if _package_status_value(pkg) != "archived" and pkg.name not in package_stats:
             package_stats[pkg.name] = {"name": pkg.name, "bookings": 0, "revenue": 0.0, "avg_value": 0.0}
 
     for p in package_stats.values():
@@ -6367,6 +6421,13 @@ async def caterer_calendar(
     business_hours = scheduling_rules.get("business_hours") or {}
     business_open = event_availability.get("open_time") or business_hours.get("open_time") or "08:00"
     business_close = event_availability.get("close_time") or business_hours.get("close_time") or "20:00"
+    package_rules = scheduling_rules.get("package_rules") or {}
+    try:
+        caterer_service_duration = int(package_rules.get("min_event_duration", 4))
+    except (TypeError, ValueError):
+        caterer_service_duration = 4
+    if not 1 <= caterer_service_duration <= 23:
+        caterer_service_duration = 4
     
     # For the list view on the side (Status Tracker) - Show active non-completed bookings first
     tracker_bookings = db.query(models.Booking).filter(
@@ -6475,6 +6536,7 @@ async def caterer_calendar(
         "focus_schedule_date": focus_schedule_date,
         "business_open": business_open,
         "business_close": business_close,
+        "caterer_service_duration": caterer_service_duration,
         "min_pax": user.caterer_profile.min_pax or 1,
         "active_page": "calendar"
     })
@@ -7168,7 +7230,7 @@ def _validated_selection_rules(db: Session, caterer_id: int, raw_rules: Optional
         if item_id not in included_services and float(package_price or 0) <= 0:
             raise HTTPException(status_code=400, detail=f"{item.name} needs a valid package service price.")
     for item_id, item in equipment_items.items():
-        package_price = equipment_prices.get(str(item_id), equipment_prices.get(item_id, item.addon_price or item.rental_price))
+        package_price = equipment_prices.get(str(item_id), equipment_prices.get(item_id, item.rental_price))
         if item_id not in included_equipment and float(package_price or 0) <= 0:
             raise HTTPException(status_code=400, detail=f"{item.name} needs a valid package rental price.")
         limit = equipment_limits.get(str(item_id), equipment_limits.get(item_id))

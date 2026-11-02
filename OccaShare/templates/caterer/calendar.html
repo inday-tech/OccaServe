@@ -1345,17 +1345,27 @@
 
                             <div class="form-group-pro">
                                 <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
-                                    Event Time <span style="color: #ef4444;">*</span>
+                                    Ingress <span style="color: #ef4444;">*</span>
                                 </label>
-                                <select id="extEventTime" class="control-pro" required onchange="clearWalkinError('extEventTime')">
-                                    <option value="" disabled selected hidden>Select event time</option>
+                                <select id="extEventTime" class="control-pro" required onchange="clearWalkinError('extEventTime'); if(window.updateWalkinEgress) window.updateWalkinEgress(); if(window.updateWalkinFormValidation) window.updateWalkinFormValidation(true); if(window.updateWalkinSummary) window.updateWalkinSummary();">
+                                    <option value="" disabled selected hidden>Select ingress time</option>
                                     {% for hour in range(24) %}{% for minute in [0, 30] %}
                                     {% set time_value = '%02d:%02d'|format(hour, minute) %}
-                                    {% if time_value >= business_open and time_value <= business_close %}<option value="{{ time_value }}">{{ '%02d:%02d'|format((hour % 12) or 12, minute) }} {{ 'AM' if hour < 12 else 'PM' }}</option>{% endif %}
+                                    {% if time_value >= business_open and time_value < business_close and (hour * 60 + minute + caterer_service_duration * 60) < 1440 %}<option value="{{ time_value }}">{{ '%02d:%02d'|format((hour % 12) or 12, minute) }} {{ 'AM' if hour < 12 else 'PM' }}</option>{% endif %}
                                     {% endfor %}{% endfor %}
                                 </select>
-                                <small style="display:block; margin-top:4px; color:#64748b;">Business hours: {{ business_open }}–{{ business_close }}</small>
                                 <div class="field-error-msg" id="error-extEventTime" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+                                <small style="display:block; margin-top:2px; color:#64748b; font-size:0.68rem; line-height:1.3;">
+                                    The service ends automatically based on the Caterer's {{ caterer_service_duration }}-hour service duration.
+                                </small>
+                            </div>
+
+                            <div class="form-group-pro">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 0.35rem;">
+                                    Egress <span style="color: #64748b; font-weight:500;">(automatic)</span>
+                                </label>
+                                <input type="time" id="extEventEndTime" class="control-pro" required readonly aria-readonly="true">
+                                <div class="field-error-msg" id="error-extEventEndTime" style="color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
                             </div>
 
                             <div class="form-group-pro">
@@ -1959,6 +1969,7 @@
     window.CATERER_LEAD_TIME = parseInt("{{ booking_lead_time }}") || 0;
     window.BUSINESS_OPEN = "{{ business_open }}";
     window.BUSINESS_CLOSE = "{{ business_close }}";
+    window.CATERER_SERVICE_DURATION = parseInt("{{ caterer_service_duration }}", 10) || 4;
     window.CATERER_MIN_PAX = parseInt("{{ min_pax }}") || 20;
     window.MIN_BOOKING_DATE = "{{ min_booking_date.strftime('%Y-%m-%d') }}";
     window.MAX_BOOKING_DATE = "{{ max_booking_date.strftime('%Y-%m-%d') }}";

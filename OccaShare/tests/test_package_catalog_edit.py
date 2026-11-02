@@ -5,7 +5,11 @@ import pytest
 from fastapi import HTTPException
 
 from app.db import models
-from app.routers.caterer_dashboard import get_catalogs_inclusions, quick_edit_catalog_item
+from app.routers.caterer_dashboard import (
+    get_catalogs_inclusions,
+    quick_add_catalog_item,
+    quick_edit_catalog_item,
+)
 
 
 class CatalogQuery:
@@ -34,9 +38,10 @@ class CatalogDatabase:
 
 
 class InclusionCatalogQuery:
-    def __init__(self, model, filters):
+    def __init__(self, model, filters, equipment_items):
         self.model = model
         self.filters = filters
+        self.equipment_items = equipment_items
 
     def filter(self, *criteria):
         self.filters[self.model] = criteria
@@ -46,15 +51,30 @@ class InclusionCatalogQuery:
         return self
 
     def all(self):
-        return []
+        return self.equipment_items if self.model is models.Equipment else []
 
 
 class InclusionCatalogDatabase:
-    def __init__(self):
+    def __init__(self, equipment_items=()):
         self.filters = {}
+        self.equipment_items = equipment_items
 
     def query(self, model):
-        return InclusionCatalogQuery(model, self.filters)
+        return InclusionCatalogQuery(model, self.filters, self.equipment_items)
+
+
+class QuickAddCatalogDatabase:
+    def __init__(self):
+        self.item = None
+
+    def add(self, item):
+        self.item = item
+
+    def commit(self):
+        pass
+
+    def refresh(self, item):
+        item.id = 24
 
 
 def edit_catalog_item(item_type, item, **values):
@@ -109,6 +129,48 @@ def test_inclusion_catalog_only_returns_items_accepted_by_package_save():
         "usage_type",
         "status",
     }
+
+
+def test_quick_add_equipment_saves_and_returns_rental_price_unit_and_quantity():
+    db = QuickAddCatalogDatabase()
+
+    result = asyncio.run(quick_add_catalog_item(
+        item_type="equipment",
+        name="Banquet tables",
+        category="Furniture",
+        upgrade_fee="0",
+        addon_price="0",
+        cost_price="0",
+        price="350.00",
+        unit_type="set",
+        available_qty=12,
+        minimum_hours=1,
+        staff_to_pax_ratio=0,
+        min_staff_required=1,
+        serving_size=None,
+        status="available",
+        description="",
+        image=None,
+        db=db,
+        user=SimpleNamespace(caterer_profile=SimpleNamespace(id=7)),
+    ))
+
+    assert db.item.rental_price == 350
+    assert db.item.unit_type == "set"
+    assert db.item.available_qty == 12
+    assert result["item"]["rental_price"] == 350
+    assert result["item"]["price"] == 350
+    assert result["item"]["unit_type"] == "set"
+    assert result["item"]["available_qty"] == 12
+
+    catalog = asyncio.run(get_catalogs_inclusions(
+        db=InclusionCatalogDatabase([db.item]),
+        user=SimpleNamespace(caterer_profile=SimpleNamespace(id=7)),
+    ))
+    fetched_equipment = catalog["equipment"][0]
+    assert fetched_equipment["rental_price"] == 350
+    assert fetched_equipment["unit_type"] == "set"
+    assert fetched_equipment["available_qty"] == 12
 
 
 def test_menu_edit_saves_extra_price_availability_and_pricing_unit():

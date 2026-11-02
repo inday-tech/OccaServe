@@ -63,6 +63,63 @@ document.addEventListener('DOMContentLoaded', function () {
         const submitBtn = document.getElementById('submitBtn');
         const customizePackageLink = document.getElementById('customize-package-link');
         const getDetailsStorageKey = () => `occaserve:booking-details:${catererId}:${document.getElementById('package_id_hidden')?.value || ''}`;
+        const getDetailsFormState = () => {
+            const fields = {};
+            form?.querySelectorAll('[name]').forEach(field => {
+                if (field.type === 'checkbox') {
+                    if (!Array.isArray(fields[field.name])) fields[field.name] = [];
+                    if (field.checked) fields[field.name].push(field.value);
+                } else if (field.type === 'radio') {
+                    if (field.checked) fields[field.name] = field.value;
+                } else {
+                    fields[field.name] = field.value;
+                }
+            });
+            return {
+                fields,
+                guestCountDisplay: guestDisplay?.value || '',
+                venueSearch: venueSearch?.value || ''
+            };
+        };
+        const saveDetailsFormState = () => {
+            if (!form) return;
+            try {
+                sessionStorage.setItem(getDetailsStorageKey(), JSON.stringify(getDetailsFormState()));
+            } catch (storageError) {
+                console.warn('Could not save event details in this browser:', storageError);
+            }
+        };
+        const focusInvalidField = (errorElement) => {
+            if (!errorElement) return;
+            const group = errorElement.closest('.form-group') || errorElement.parentElement;
+            const target = group?.querySelector(
+                'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])'
+            );
+            errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (target) {
+                window.setTimeout(() => target.focus({ preventScroll: true }), 250);
+            }
+        };
+        const focusFirstInvalidField = () => {
+            const firstError = form?.querySelector('.field-error.show');
+            if (firstError) {
+                focusInvalidField(firstError);
+                return;
+            }
+            const invalidMenuGroup = Array.from(form?.querySelectorAll('.selection-group') || []).find(group => {
+                const limit = parseInt(group.dataset.limit, 10) || 0;
+                return limit > 0 && group.querySelectorAll('input[type="checkbox"]:checked').length !== limit;
+            });
+            if (invalidMenuGroup) {
+                const firstCheckbox = invalidMenuGroup.querySelector('input[type="checkbox"]:not([disabled])');
+                (firstCheckbox || invalidMenuGroup).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstCheckbox?.focus({ preventScroll: true });
+                return;
+            }
+            const invalidInput = form?.querySelector('.form-input.error, .error.form-input');
+            invalidInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            invalidInput?.focus({ preventScroll: true });
+        };
         const cancelBookingLink = form?.querySelector('.btn-wizard-back[href*="/marketplace/"]');
         if (cancelBookingLink) {
             cancelBookingLink.addEventListener('click', () => {
@@ -74,8 +131,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        if (customizePackageLink && form) {
-            const originalLinkContent = customizePackageLink.innerHTML;
+        if (form) {
             try {
                 const savedState = JSON.parse(sessionStorage.getItem(getDetailsStorageKey()) || 'null');
                 if (savedState && savedState.fields) {
@@ -83,6 +139,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (['caterer_id', 'package_id', 'booking_id'].includes(field.name)) return;
                         const savedValue = savedState.fields[field.name];
                         if (savedValue === undefined) return;
+                        if (field.name === 'event_time' && field.tagName === 'SELECT') {
+                            field.dataset.initial = savedValue;
+                            return;
+                        }
                         if (field.type === 'checkbox' || field.type === 'radio') {
                             field.checked = Array.isArray(savedValue)
                                 ? savedValue.includes(field.value)
@@ -104,41 +164,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.warn('Could not restore event details before customization:', error);
             }
 
-            customizePackageLink.addEventListener('click', (event) => {
-                event.preventDefault();
-                if (customizePackageLink.getAttribute('aria-busy') === 'true') return;
+            form.addEventListener('input', saveDetailsFormState);
+            form.addEventListener('change', saveDetailsFormState);
 
-                const status = document.getElementById('customize-save-status');
-                if (status) status.textContent = '';
-                customizePackageLink.setAttribute('aria-busy', 'true');
-                customizePackageLink.textContent = 'Saving details...';
+            if (customizePackageLink) {
+                const originalLinkContent = customizePackageLink.innerHTML;
+                customizePackageLink.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    if (customizePackageLink.getAttribute('aria-busy') === 'true') return;
 
-                try {
-                    const fields = {};
-                    form.querySelectorAll('[name]').forEach(field => {
-                        if (field.type === 'checkbox') {
-                            if (!Array.isArray(fields[field.name])) fields[field.name] = [];
-                            if (field.checked) fields[field.name].push(field.value);
-                        } else if (field.type === 'radio') {
-                            if (field.checked) fields[field.name] = field.value;
-                        } else {
-                            fields[field.name] = field.value;
-                        }
-                    });
-                    sessionStorage.setItem(getDetailsStorageKey(), JSON.stringify({
-                        fields,
-                        guestCountDisplay: guestDisplay?.value || '',
-                        venueSearch: venueSearch?.value || ''
-                    }));
-                    const customizeUrl = new URL(customizePackageLink.href, window.location.origin);
-                    if (guestInput?.value) customizeUrl.searchParams.set('guest_count', guestInput.value);
-                    window.location.assign(customizeUrl.toString());
-                } catch (error) {
-                    if (status) status.textContent = 'Could not save your event details in this browser. Please try again.';
-                    customizePackageLink.innerHTML = originalLinkContent;
-                    customizePackageLink.removeAttribute('aria-busy');
-                }
-            });
+                    const status = document.getElementById('customize-save-status');
+                    if (status) status.textContent = '';
+                    customizePackageLink.setAttribute('aria-busy', 'true');
+                    customizePackageLink.textContent = 'Saving details...';
+
+                    try {
+                        saveDetailsFormState();
+                        const customizeUrl = new URL(customizePackageLink.href, window.location.origin);
+                        if (guestInput?.value) customizeUrl.searchParams.set('guest_count', guestInput.value);
+                        window.location.assign(customizeUrl.toString());
+                    } catch (error) {
+                        if (status) status.textContent = 'Could not save your event details in this browser. Please try again.';
+                        customizePackageLink.innerHTML = originalLinkContent;
+                        customizePackageLink.removeAttribute('aria-busy');
+                    }
+                });
+            }
         }
 
         // --- 1. Set Min and Max Date based on Lead Time and Max Advance ---
@@ -1378,6 +1429,19 @@ document.addEventListener('DOMContentLoaded', function () {
     if (eventEndMins === null) eventEndMins = 20 * 60; // 08:00 PM
     if (eventEndMins <= eventStartMins) eventEndMins = Math.min(eventStartMins + 12 * 60, 23 * 60 + 30);
 
+    if (timeInput && timeInput.tagName === 'SELECT') {
+        const initialTime = timeInput.dataset.initial || '';
+        timeInput.replaceChildren(new Option('Select ingress time', '', true, !initialTime));
+        timeInput.options[0].disabled = true;
+        for (let minutes = eventStartMins; minutes < eventEndMins; minutes += 30) {
+            const timeValue = formatTimeStr(minutes);
+            timeInput.add(new Option(formatAmPmStr(minutes), timeValue));
+        }
+        if (initialTime && Array.from(timeInput.options).some(option => option.value === initialTime)) {
+            timeInput.value = initialTime;
+        }
+    }
+
     // --- Real-time Time Validation ---
     const validateEventTime = () => {
         if (!timeInput) return true;
@@ -1648,6 +1712,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (form) {
         form.addEventListener('submit', function (e) {
             try {
+                saveDetailsFormState();
                 console.log('[BookingWizard] Form submit triggered');
                 let isValid = true;
                 const check = (label, result) => {
@@ -1704,9 +1769,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     console.warn('[BookingWizard] FAILED: out of delivery coverage');
                     isValid = false;
                     if (window.Swal) {
-                        Swal.fire({ icon: 'error', title: 'Out of Coverage', text: 'Sorry, the caterer does not deliver to your specified location.', confirmButtonColor: '#FF7B54' });
+                        Swal.fire({ icon: 'error', title: 'Out of Coverage', text: 'Sorry, the caterer does not deliver to your specified location.', confirmButtonColor: '#FF7B54' })
+                            .then(focusFirstInvalidField);
                     } else {
                         alert('Out of Coverage: Sorry, the caterer does not deliver to your specified location.');
+                        focusFirstInvalidField();
                     }
                 }
 
@@ -1739,9 +1806,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (selectionErrorMsg) {
                     if (window.Swal) {
-                        Swal.fire({ icon: 'warning', title: 'Incomplete Menu Setup', text: selectionErrorMsg, confirmButtonColor: '#FF7B54' });
+                        Swal.fire({ icon: 'warning', title: 'Incomplete Menu Setup', text: selectionErrorMsg, confirmButtonColor: '#FF7B54' })
+                            .then(focusFirstInvalidField);
                     } else {
                         alert('Incomplete Menu Setup:\n\n' + selectionErrorMsg);
+                        focusFirstInvalidField();
                     }
                 }
 
@@ -1750,11 +1819,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!isValid) {
                     e.preventDefault();
                     e.stopPropagation();
-
-                    const firstError = document.querySelector('.field-error.show');
-                    if (firstError) {
-                        firstError.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
 
                     // Reset the submit button if main.js already started its loading state
                     const submitBtnEl = document.getElementById('submitBtn');
@@ -1773,29 +1837,26 @@ document.addEventListener('DOMContentLoaded', function () {
                                 title: 'Date / Time Unavailable',
                                 text: chipMsg || 'The selected date or time is not available for booking. Please select another date or time.',
                                 confirmButtonColor: '#FF7B54'
-                            });
+                            }).then(focusFirstInvalidField);
                         } else {
                             alert(chipMsg || 'The selected date or time is not available for booking. Please select another date or time.');
+                            focusFirstInvalidField();
                         }
                     } else if (!selectionErrorMsg && window.deliveryFeeStatus !== 'error') {
                         if (window.Swal) {
                             Swal.fire({
                                 icon: 'warning',
                                 title: 'Please complete all required fields',
-                                text: 'Check your Event Date, Time, Venue Location, and Guest Count.',
+                                text: 'Please complete the highlighted fields before continuing.',
                                 confirmButtonColor: '#FF7B54'
-                            });
+                            }).then(focusFirstInvalidField);
                         } else {
-                            alert('Please fill in all required fields (Date, Time, Location, Guest Count).');
+                            alert('Please complete the highlighted fields before continuing.');
+                            focusFirstInvalidField();
                         }
                     }
                 } else {
                     console.log('[BookingWizard] All valid — submitting form to server');
-                    try {
-                        sessionStorage.removeItem(getDetailsStorageKey());
-                    } catch (storageError) {
-                        console.warn('Could not clear saved event details:', storageError);
-                    }
                 }
             } catch (err) {
                 console.error('Fatal validation error:', err);
@@ -1848,11 +1909,28 @@ document.addEventListener('DOMContentLoaded', function () {
             errSpan.classList.add('show');
             if (targetInput) {
                 if (targetInput.classList) targetInput.classList.add('error');
-                targetInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Please correct this field',
+                    text: errorMsg,
+                    confirmButtonColor: '#FF7B54'
+                }).then(() => focusInvalidField(errSpan));
             } else {
-                errSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                focusInvalidField(errSpan);
             }
         } else {
+            const lowerError = errorMsg.toLowerCase();
+            let focusTarget = null;
+            if (lowerError.includes('venue') || lowerError.includes('pin the exact')) {
+                focusTarget = venueSearch || document.getElementById('venue-map');
+            } else if (lowerError.includes('egress')) {
+                focusTarget = endTimeInput;
+                endTimeInput?.classList.add('error');
+            } else if (lowerError.includes('guest count')) {
+                focusTarget = guestDisplay || guestInput;
+            }
             // Generic fallback — always show the error to the user
             if (window.Swal) {
                 Swal.fire({
@@ -1860,9 +1938,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     title: 'Cannot proceed',
                     text: errorMsg,
                     confirmButtonColor: '#FF7B54'
+                }).then(() => {
+                    if (focusTarget) {
+                        focusTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        focusTarget.focus({ preventScroll: true });
+                    }
                 });
             } else {
                 alert('Error: ' + errorMsg);
+                if (focusTarget) {
+                    focusTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    focusTarget.focus({ preventScroll: true });
+                }
             }
         }
 

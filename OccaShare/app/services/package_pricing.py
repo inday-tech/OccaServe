@@ -533,7 +533,7 @@ def calculate_customization(
         included = item_id in included_equipment_ids
         equipment_unit = (getattr(item, "unit_type", None) or "piece").lower()
         unit_price = Decimal("0.00") if included else _amount(
-            equipment_overrides.get(item_id, getattr(item, "addon_price", None) or getattr(item, "rental_price", 0)),
+            equipment_overrides.get(item_id, getattr(item, "rental_price", 0)),
             f"{item.name} rental price",
         )
         if unit_price == 0 and not included:

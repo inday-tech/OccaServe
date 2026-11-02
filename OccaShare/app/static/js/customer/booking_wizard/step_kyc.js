@@ -2548,7 +2548,7 @@ const initKyc = () => {
                     window.location.href = `/bookings/alacarte/checkout/1?booking_id=${bookingId}&verified=1`;
                 }
             } else {
-                window.location.href = `/bookings/step/quotation/${bookingId}`;
+                window.location.href = `/customer/bookings/manage/${bookingId}?success_msg=Booking+submitted+for+Caterer+review.+Wait+for+acceptance+before+continuing+to+the+next+step.`;
             }
         }, 2000);
     }
@@ -2723,4 +2723,3 @@ if (document.readyState === 'loading') {
 } else {
     initKyc();
 }
-
