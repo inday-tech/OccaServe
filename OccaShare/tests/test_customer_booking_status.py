@@ -72,6 +72,38 @@ def test_pickup_status_is_not_overridden_by_delivery_preparation_flag():
     assert display["label"] == "Ready for pickup"
 
 
+def test_post_event_cleanup_is_visible_to_the_customer():
+    display = customer_booking_status_display(
+        "setup_ongoing",
+        "partially_paid",
+        "post_event_cleanup",
+    )
+
+    assert display["label"] == "Post-event cleanup"
+    assert display["customer_action"] == "Check the post-event cleanup update"
+
+
+def test_post_event_cleanup_overrides_legacy_ready_for_event_status():
+    display = customer_booking_status_display(
+        "ready_for_event",
+        "partially_paid",
+        "post_event_cleanup",
+    )
+
+    assert display["label"] == "Post-event cleanup"
+    assert display["customer_action"] == "Check the post-event cleanup update"
+
+
+def test_ready_for_event_stage_is_visible_during_event_setup():
+    display = customer_booking_status_display(
+        "setup_ongoing",
+        "partially_paid",
+        "ready_for_event",
+    )
+
+    assert display["label"] == "Ready for event"
+
+
 def test_payment_review_status_keeps_each_role_action_clear():
     display = customer_booking_status_display("confirmed", "balance_proof_submitted")
 

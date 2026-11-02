@@ -617,11 +617,6 @@
         <!-- Main Content Column -->
         <div class="lg:col-span-8 space-y-8">
 
-            
-            <!-- Business Hours Status Banner -->
-            <div id="business-hours-banner" class="hidden rounded-2xl p-4 md:p-5 border shadow-sm flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left transition-all"></div>
-
-            
 {% if packages %}
             <section class="card-premium p-6">
                 <h2 class="font-black text-slate-400 uppercase mb-4 flex items-center gap-2" style="font-size: 10px !important; letter-spacing: 0.15em !important; margin-bottom: 1rem !important;">
@@ -2793,77 +2788,6 @@
             el.innerHTML = `<i class="fas fa-location-arrow"></i> ${distanceText}`;
         }
     };
-    });
-
-    // Add Business Hours Logic
-    document.addEventListener('DOMContentLoaded', function() {
-        const rules = {{ caterer.scheduling_rules|tojson if caterer.scheduling_rules else '{}'|safe }};
-        const openTime = (rules && rules.business_hours && rules.business_hours.open_time) ? rules.business_hours.open_time : '08:00';
-        const closeTime = (rules && rules.business_hours && rules.business_hours.close_time) ? rules.business_hours.close_time : '18:00';
-        const operatingDays = (rules && rules.business_hours && rules.business_hours.operating_days) ? rules.business_hours.operating_days : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        
-        const now = new Date();
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const currentTime = currentHour * 60 + currentMinute;
-        
-        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const currentDayName = daysOfWeek[now.getDay()];
-        
-        const parseTime = (timeStr) => {
-            const [h, m] = timeStr.split(':').map(Number);
-            return h * 60 + m;
-        };
-        
-        const formatTimeAmPm = (timeStr) => {
-            const [h, m] = timeStr.split(':').map(Number);
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const hr12 = h % 12 || 12;
-            return `${hr12}:${m.toString().padStart(2, '0')} ${ampm}`;
-        };
-        
-        const formatDays = (days) => {
-            if (!days || days.length === 0) return 'Daily';
-            if (days.length === 7) return 'Daily';
-            return days.join(', ');
-        };
-        
-        const openMins = parseTime(openTime);
-        const closeMins = parseTime(closeTime);
-        const formattedDays = formatDays(operatingDays);
-        
-        const isOperatingDay = operatingDays.includes(currentDayName);
-        const isOpen = isOperatingDay && (currentTime >= openMins && currentTime <= closeMins);
-        
-        const banner = document.getElementById('business-hours-banner');
-        
-        if (banner) {
-            if (isOpen) {
-                banner.classList.remove('hidden');
-                banner.classList.add('bg-emerald-50', 'border-emerald-100');
-                banner.innerHTML = `
-                    <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
-                        <i class="fas fa-door-open text-emerald-600 text-xl"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-emerald-800 font-bold text-sm mb-1">Open & Accepting Bookings</h3>
-                        <p class="text-emerald-600 text-xs">Business Hours: <span class="font-black">${formatTimeAmPm(openTime)} - ${formatTimeAmPm(closeTime)}</span> (${formattedDays})</p>
-                    </div>
-                `;
-            } else {
-                banner.classList.remove('hidden');
-                banner.classList.add('bg-red-50', 'border-red-100');
-                banner.innerHTML = `
-                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
-                        <i class="fas fa-door-closed text-red-600 text-xl"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-red-800 font-bold text-sm mb-1">Currently Closed</h3>
-                        <p class="text-red-600 text-xs leading-snug">We are not accepting bookings at this time. Our business hours are from <span class="font-black">${formatTimeAmPm(openTime)} to ${formatTimeAmPm(closeTime)}</span> (${formattedDays}). Please come back during these hours!</p>
-                    </div>
-                `;
-            }
-        }
     });
 
     // Real-time live synchronization on public caterer profile

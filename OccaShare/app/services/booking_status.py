@@ -48,6 +48,7 @@ _STATUS_PRESENTATION = {
     "setup_ongoing": ("Event setup", "active", "Check the event setup update", "Update event setup progress"),
     "setup_in_progress": ("Event setup", "active", "Check the event setup update", "Update event setup progress"),
     "ready_for_event": ("Ready for event", "active", "Check the event update", "Update the event progress"),
+    "post_event_cleanup": ("Post-event cleanup", "active", "Check the post-event cleanup update", "Complete post-event cleanup before completing the booking"),
     "in_progress": ("Event in progress", "active", "Check the event update", "Mark the event complete when finished"),
     "completed": ("Completed", "completed", "Leave a review for the caterer", "No further action required"),
     "delivered": ("Completed", "completed", "Leave a review for the caterer", "No further action required"),
@@ -66,12 +67,13 @@ _PREPARATION_PRESENTATION = {
     "arrived": "arrived",
     "setup_in_progress": "setup_in_progress",
     "ready_for_event": "ready_for_event",
+    "post_event_cleanup": "post_event_cleanup",
     "in_progress": "in_progress",
     "completed": "completed",
 }
 _CONFIRMED_PREPARATION_STATUSES = {
     "preparing", "ready_for_delivery", "on_the_way", "arrived",
-    "setup_in_progress", "ready_for_event", "in_progress", "completed",
+    "setup_in_progress", "ready_for_event", "post_event_cleanup", "in_progress", "completed",
 }
 
 
@@ -124,7 +126,9 @@ def booking_status_display(
             }
 
     effective_status = booking_status
-    if booking_status == "confirmed" and preparation in _CONFIRMED_PREPARATION_STATUSES:
+    if preparation in {"ready_for_event", "post_event_cleanup"} and booking_status in {"setup_ongoing", "in_progress", "ready_for_event"}:
+        effective_status = _PREPARATION_PRESENTATION[preparation]
+    elif booking_status == "confirmed" and preparation in _CONFIRMED_PREPARATION_STATUSES:
         effective_status = _PREPARATION_PRESENTATION[preparation]
     presentation = _STATUS_PRESENTATION.get(effective_status)
     if presentation:

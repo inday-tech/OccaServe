@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const maxAdvUnit = (evAvail.max_advance_unit || ((evAvail.max_advance_booking_days || (parsedRules.booking_rules && parsedRules.booking_rules.max_advance_booking_days)) ? 'days' : 'months')).toLowerCase();
 
         let eventEarliest = evAvail.open_time || evAvail.opening_time || bh.open_time || '08:00';
-        let eventLatest = evAvail.close_time || evAvail.closing_time || bh.close_time || '22:00';
+        let eventLatest = evAvail.close_time || evAvail.closing_time || bh.close_time || '20:00';
         if (!evAvail.open_time && !evAvail.opening_time && parsedRules.service_rules) {
             eventEarliest = parsedRules.service_rules.earliest_start || eventEarliest;
             eventLatest = parsedRules.service_rules.latest_end || eventLatest;
@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateInput = document.getElementById('event_date');
         const timeInput = document.getElementById('event_time');
         const endTimeInput = document.getElementById('event_end_time');
-        const eventDurationHint = document.getElementById('event-duration-hint');
         const provinceSelect = document.getElementById('province_select');
         const citySelect = document.getElementById('city_select');
         const barangaySelect = document.getElementById('barangay_select');
@@ -208,22 +207,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateEgressFromDuration = () => {
         if (!endTimeInput) return null;
         const packageData = window.packagesMap && window.packagesMap[window.currentPackageId];
-        const duration = Number(packageData && packageData.service_duration);
         if (!packageData) {
-            if (eventDurationHint) eventDurationHint.textContent = 'Enter Egress after Ingress for this booking.';
             return null;
         }
         const expectedEgress = getExpectedEgress();
         endTimeInput.value = expectedEgress || '';
-        if (eventDurationHint) {
-            if (Number.isInteger(duration) && duration > 0) {
-                eventDurationHint.textContent = expectedEgress
-                    ? `Automatically calculated: ${duration} hour${duration === 1 ? '' : 's'} after Ingress.`
-                    : `Choose an Ingress time that allows the full ${duration}-hour package service to finish on the event date.`;
-            } else {
-                eventDurationHint.textContent = 'Select a package and Ingress time to calculate Egress.';
-            }
-        }
+        if (expectedEgress) endTimeInput.classList.remove('error');
         return expectedEgress;
     };
 
@@ -713,10 +702,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const selMins = parseMinutes(time);
             const openMins = parseMinutes(eventEarliest);
             const closeMins = parseMinutes(eventLatest);
-            if (selMins < openMins || selMins > closeMins) {
+            if (selMins < openMins || selMins >= closeMins) {
                 chip.className = 'availability-chip booked';
                 chip.style.display = 'inline-flex';
-                chip.innerHTML = '<i class="fas fa-clock"></i> The selected event time is outside the caterer’s available hours. Please select another time.';
+                chip.innerHTML = selMins >= closeMins
+                    ? `<i class="fas fa-clock"></i> Ingress must be before ${formatAmPmStr(closeMins)}. Choose an earlier time.`
+                    : '<i class="fas fa-clock"></i> The selected event time is outside the caterer’s available hours. Please select another time.';
                 if (submitBtn) submitBtn.disabled = true;
                 isAvailabilityValid = false;
                 return;
@@ -1384,7 +1375,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let eventStartMins = parseTimeStr(eventEarliest);
     let eventEndMins = parseTimeStr(eventLatest);
     if (eventStartMins === null) eventStartMins = 8 * 60; // 08:00 AM
-    if (eventEndMins === null) eventEndMins = 22 * 60; // 10:00 PM
+    if (eventEndMins === null) eventEndMins = 20 * 60; // 08:00 PM
     if (eventEndMins <= eventStartMins) eventEndMins = Math.min(eventStartMins + 12 * 60, 23 * 60 + 30);
 
     // --- Real-time Time Validation ---
@@ -1419,7 +1410,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         }
 
-        if (mins < eventStartMins || mins > eventEndMins) {
+        if (mins < eventStartMins || mins >= eventEndMins) {
             const startFormatted = formatAmPmStr(eventStartMins);
             const endFormatted = formatAmPmStr(eventEndMins);
             if (triggerBtn) {
@@ -1427,7 +1418,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 triggerBtn.classList.remove('is-valid');
             }
             if (errEl) {
-                errEl.innerText = `The selected event time is outside caterer's available hours (${startFormatted} - ${endFormatted}).`;
+                errEl.innerText = mins >= eventEndMins
+                    ? `Ingress must be before ${endFormatted}. Choose an earlier time.`
+                    : `The selected event time is outside caterer's available hours (${startFormatted} - ${endFormatted}).`;
                 errEl.classList.add('show');
             }
             return false;
@@ -1486,7 +1479,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Populate time chips for event hours
             chipsGrid.innerHTML = '';
-            for (let m = eventStartMins; m <= eventEndMins; m += 30) {
+            for (let m = eventStartMins; m < eventEndMins; m += 30) {
                 const valStr = formatTimeStr(m);
                 const labelStr = formatAmPmStr(m);
 
@@ -1693,7 +1686,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ? endTimeInput?.value === expectedEgress
                     : !!(endTimeInput?.value && timeInput?.value && endTimeInput.value > timeInput.value);
                 check('event_end_time', validEnd);
-                if (!validEnd) document.getElementById('err-end-time')?.classList.add('show');
+                endTimeInput?.classList.toggle('error', !validEnd);
 
                 // 5.1 Booking availability
                 if (!isAvailabilityValid) {

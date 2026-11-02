@@ -154,6 +154,30 @@ def test_operating_hours_restriction():
     assert res_late["available"] is False
     assert res_late["reason"] == "outside_hours"
 
+def test_ingress_at_closing_time_is_rejected_with_clear_message():
+    mock_db = MagicMock()
+    rules = {
+        "event_availability": {
+            "status": "available",
+            "open_time": "08:00",
+            "close_time": "20:00",
+        }
+    }
+    mock_caterer = MockCaterer(scheduling_rules=rules)
+    mock_db.query.return_value.filter.return_value.first.return_value = mock_caterer
+    mock_db.query.return_value.filter.return_value.all.return_value = []
+
+    result = AvailabilityService.check_caterer_availability(
+        mock_db,
+        1,
+        date.today() + timedelta(days=10),
+        time(20, 0),
+    )
+
+    assert result["available"] is False
+    assert result["reason"] == "outside_hours"
+    assert result["message"] == "Ingress must be before 8:00 PM. Choose an earlier time."
+
 def test_daily_event_capacity_limit():
     mock_db = MagicMock()
     rules = {

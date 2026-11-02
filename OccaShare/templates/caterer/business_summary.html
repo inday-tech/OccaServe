@@ -48,52 +48,52 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <div class="kpi-grid">
         <!-- 1. Total Bookings -->
-        <div class="kpi-card accent-primary">
+        <a class="kpi-card accent-primary" href="/caterer/bookings" aria-label="View all bookings">
             <div class="kpi-header">
                 <span class="kpi-title">Total Bookings</span>
             </div>
             <div class="kpi-value">{{ total_bookings }}</div>
             <div class="kpi-subtext">Received in selected timeframe</div>
-        </div>
+        </a>
 
         <!-- 2. Upcoming Events -->
-        <div class="kpi-card accent-blue">
+        <a class="kpi-card accent-blue" href="/caterer/bookings" aria-label="View upcoming bookings">
             <div class="kpi-header">
                 <span class="kpi-title">Upcoming Events</span>
             </div>
             <div class="kpi-value">{{ upcoming_events_count }}</div>
             <div class="kpi-subtext">Confirmed upcoming bookings</div>
-        </div>
+        </a>
 
         <!-- 3. Completed Events -->
-        <div class="kpi-card accent-emerald">
+        <a class="kpi-card accent-emerald" href="/caterer/bookings" aria-label="View completed bookings">
             <div class="kpi-header">
                 <span class="kpi-title">Completed Events</span>
             </div>
             <div class="kpi-value">{{ completed_events_count }}</div>
             <div class="kpi-subtext">Fulfilled events in timeframe</div>
-        </div>
+        </a>
 
         <!-- 4. Pending Bookings -->
-        <div class="kpi-card accent-amber">
+        <a class="kpi-card accent-amber" href="/caterer/bookings" aria-label="View pending bookings">
             <div class="kpi-header">
                 <span class="kpi-title">Pending Bookings</span>
             </div>
             <div class="kpi-value">{{ pending_bookings_count }}</div>
             <div class="kpi-subtext">Awaiting action or verification</div>
-        </div>
+        </a>
     </div>
 
     <!-- 5. Total Booking Value (Featured Highlight Card) -->
-    <div class="kpi-featured-card">
+    <a class="kpi-featured-card" href="/caterer/bookings" aria-label="View bookings and booking value">
         <div class="kpi-featured-left">
             <div class="kpi-featured-label">
                 <span class="kpi-featured-title">Total Booking Value</span>
-                <button type="button" class="kpi-help" data-help="Combined contract value of non-cancelled bookings in the selected timeframe." title="Combined contract value of non-cancelled bookings in the selected timeframe." aria-label="Total booking value includes non-cancelled bookings in the selected timeframe.">i</button>
+                <span class="kpi-help" data-help="Combined contract value of non-cancelled bookings in the selected timeframe." title="Combined contract value of non-cancelled bookings in the selected timeframe." aria-hidden="true">i</span>
             </div>
             <div class="kpi-featured-value">₱{{ "{:,.2f}".format(total_revenue) }}</div>
         </div>
-    </div>
+    </a>
 
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 3. REVENUE PERFORMANCE                                     -->
@@ -112,14 +112,14 @@
             <div class="section-body">
                 <!-- 2 Revenue Summary Cards -->
                 <div class="rev-summary-grid">
-                    <div class="rev-card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                    <a href="/caterer/payments#transactionHistory" class="rev-card rev-card-link" style="background: #f8fafc; border: 1px solid #e2e8f0;">
                         <span class="rev-card-title" style="color: #64748b;">Total Booking Value</span>
                         <span class="rev-card-val" style="color: #0f172a;">₱{{ "{:,.2f}".format(total_revenue) }}</span>
-                    </div>
-                    <div class="rev-card" style="background: #ecfdf5; border: 1px solid #bbf7d0;">
+                    </a>
+                    <a href="/caterer/payments#transactionHistory" class="rev-card rev-card-link" style="background: #ecfdf5; border: 1px solid #bbf7d0;">
                         <span class="rev-card-title" style="color: #166534;">Amount Collected</span>
                         <span class="rev-card-val" style="color: #166534;">₱{{ "{:,.2f}".format(total_paid) }}</span>
-                    </div>
+                    </a>
                 </div>
 
                 <!-- Collection Progress Bar -->
@@ -239,36 +239,36 @@
             <div class="section-body">
                 <div class="engage-grid">
                     <!-- 1. Profile Views -->
-                    <div class="engage-box">
+                    <a href="/caterer/profile" class="engage-box engage-link" aria-label="View business profile settings">
                         <div>
                             <div class="engage-val">{{ profile_views }}</div>
                             <div class="engage-lbl">Profile Views</div>
                         </div>
-                    </div>
+                    </a>
 
                     <!-- 2. Booking Requests -->
-                    <div class="engage-box">
+                    <a href="/caterer/bookings" class="engage-box engage-link" aria-label="View booking requests">
                         <div>
                             <div class="engage-val">{{ booking_requests }}</div>
                             <div class="engage-lbl">Booking Requests</div>
                         </div>
-                    </div>
+                    </a>
 
                     <!-- 3. Customer Reviews -->
-                    <div class="engage-box">
+                    <a href="/caterer/reviews" class="engage-box engage-link" aria-label="View customer reviews">
                         <div>
                             <div class="engage-val">{{ total_reviews }}</div>
                             <div class="engage-lbl">Customer Reviews</div>
                         </div>
-                    </div>
+                    </a>
 
                     <!-- 4. Average Rating -->
-                    <div class="engage-box">
+                    <a href="/caterer/reviews" class="engage-box engage-link" aria-label="View customer ratings">
                         <div>
                             <div class="engage-val">{{ avg_rating }} <span style="font-size: 0.85rem; font-weight: 600; color: #94a3b8;">/ 5.0</span></div>
                             <div class="engage-lbl">Average Rating</div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </div>
         </div>

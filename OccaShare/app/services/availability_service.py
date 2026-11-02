@@ -6,6 +6,29 @@ from ..db import models
 
 class AvailabilityService:
     @staticmethod
+    def get_operating_hours_error(
+        target_time: dt_time,
+        settings: Dict[str, Any],
+    ) -> Optional[str]:
+        """Return a customer-facing error when ingress falls outside service hours."""
+        try:
+            open_time = datetime.strptime(settings["open_time"], "%H:%M").time()
+        except (KeyError, TypeError, ValueError):
+            open_time = dt_time(8, 0)
+
+        try:
+            close_time = datetime.strptime(settings["close_time"], "%H:%M").time()
+        except (KeyError, TypeError, ValueError):
+            close_time = dt_time(20, 0)
+
+        if target_time >= close_time:
+            close_label = close_time.strftime("%I:%M %p").lstrip("0")
+            return f"Ingress must be before {close_label}. Choose an earlier time."
+        if target_time < open_time:
+            return "The selected event time is outside the caterer’s available hours. Please select another time."
+        return None
+
+    @staticmethod
     def get_caterer_availability_settings(caterer: models.CatererProfile) -> Dict[str, Any]:
         """
         Extracts and normalizes the caterer's availability settings.
@@ -195,6 +218,33 @@ class AvailabilityService:
                 "settings": settings
             }
 
+        # 5. Operating Hours Check (if event_time provided)
+        target_time: Optional[dt_time] = None
+        if event_time:
+            if isinstance(event_time, str):
+                cleaned_time = event_time.strip()
+                if cleaned_time:
+                    try:
+                        target_time = datetime.strptime(cleaned_time, "%H:%M").time()
+                    except ValueError:
+                        try:
+                            target_time = datetime.strptime(cleaned_time, "%H:%M:%S").time()
+                        except ValueError:
+                            pass
+            else:
+                target_time = event_time
+
+        if target_time:
+            hours_error = cls.get_operating_hours_error(target_time, settings)
+            if hours_error:
+                return {
+                    "available": False,
+                    "code": "outside_hours",
+                    "reason": "outside_hours",
+                    "message": hours_error,
+                    "settings": settings
+                }
+
         # 5. Blocked / Unavailable Dates Check
         target_date_str = target_date.strftime("%Y-%m-%d")
         blocked_in_settings = any(item["date"] == target_date_str for item in settings["blocked_dates"])
@@ -238,44 +288,8 @@ class AvailabilityService:
                     "settings": settings
                 }
 
-        # 7. Operating Hours Check (if event_time provided)
-        target_time: Optional[dt_time] = None
-        if event_time:
-            if isinstance(event_time, str):
-                cleaned_time = event_time.strip()
-                if cleaned_time:
-                    try:
-                        target_time = datetime.strptime(cleaned_time, "%H:%M").time()
-                    except ValueError:
-                        try:
-                            target_time = datetime.strptime(cleaned_time, "%H:%M:%S").time()
-                        except ValueError:
-                            pass
-            else:
-                target_time = event_time
-
+        # 7. Slot Overlap / Conflict with Confirmed Booking
         if target_time:
-            # Parse configured open and close times
-            try:
-                open_t = datetime.strptime(settings["open_time"], "%H:%M").time()
-            except Exception:
-                open_t = dt_time(8, 0)
-
-            try:
-                close_t = datetime.strptime(settings["close_time"], "%H:%M").time()
-            except Exception:
-                close_t = dt_time(20, 0)
-
-            if target_time < open_t or target_time > close_t:
-                return {
-                    "available": False,
-                    "code": "outside_hours",
-                    "reason": "outside_hours",
-                    "message": "The selected event time is outside the caterer’s available hours. Please select another time.",
-                    "settings": settings
-                }
-
-            # 8. Slot Overlap / Conflict with Confirmed Booking
             same_day_confirmed = db.query(models.Booking).filter(
                 models.Booking.caterer_id == caterer_id,
                 models.Booking.event_date == target_date,

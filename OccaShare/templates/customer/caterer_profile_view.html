@@ -1413,10 +1413,6 @@
     .mobile-business-address { display:none !important; }
     .hub-container .storefront-heading-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; }
     .hub-container .storefront-heading-row h1 { min-width:0; }
-    #business-hours-banner { flex:0 0 auto; align-items:center; gap:.55rem !important; max-width:340px; margin:0 !important; padding:.55rem .75rem !important; border-radius:10px !important; box-shadow:none !important; }
-    #business-hours-banner .hours-status-content { min-width:0; }
-    #business-hours-banner h3 { font-size:.72rem !important; line-height:1.25; }
-    #business-hours-banner p { font-size:.67rem !important; line-height:1.3; }
     .hub-container .hub-tabs { margin:0 0 .8rem; padding:.45rem .6rem; gap:1.25rem; background:#fff; border:1px solid #e2e8f0; border-radius:12px; }
     .hub-container .tab-btn { font-size:.82rem; }
     .hub-container .intel-card { padding:1.15rem; margin-bottom:.85rem; }
@@ -1472,12 +1468,6 @@
         .hub-container .mobile-business-address span { min-width:0; }
         .hub-container .business-address-meta i { margin-top:.15rem; }
         .hub-container .business-rating-meta,.hub-container .business-completed-meta { display:none !important; }
-        #business-hours-banner { grid-column:1 / -1; grid-row:3; order:0; display:flex !important; align-items:center; width:100%; max-width:100%; min-width:0; height:auto; box-sizing:border-box; padding:.45rem .5rem !important; margin:0 !important; white-space:nowrap; overflow-x:auto !important; overflow-y:hidden !important; }
-        #business-hours-banner .hours-status-content { display:flex; align-items:center; gap:.35rem; width:max-content; min-width:max-content; white-space:nowrap; }
-        #business-hours-banner h3,#business-hours-banner p { display:inline; flex:0 0 auto; max-width:none; white-space:nowrap; margin:0 !important; line-height:1.3 !important; overflow:visible; }
-        #business-hours-banner h3 { font-size:.66rem !important; }
-        #business-hours-banner p { font-size:.62rem !important; }
-        #business-hours-banner::-webkit-scrollbar { display:none; }
         .hub-container .business-metadata { display:grid !important; width:100%; flex-wrap:wrap; align-items:flex-start !important; justify-content:flex-start; gap:.18rem !important; font-size:.69rem !important; line-height:1.35 !important; text-align:left !important; }
         .hub-container .business-metadata > span { min-width:0; max-width:100%; overflow-wrap:anywhere; }
         .hub-container .policy-grid { grid-template-columns:minmax(0,1fr) !important; gap:.65rem !important; }
@@ -1551,7 +1541,6 @@
                 </div>
             </div>
             {% if business_address %}<div class="business-address-meta mobile-business-address"><i class="fas fa-location-dot" style="color:var(--hub-primary);"></i><span>{{ business_address }}</span></div>{% endif %}
-            <div id="business-hours-banner" class="hidden" style="background:#fff; border-radius:12px; padding:1.25rem; border:1px solid var(--hub-slate-200); box-shadow:0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom:1.5rem; display:flex; align-items:center; gap:1rem; transition:all 0.3s;"></div>
         </div>
     </div>
 
@@ -1623,72 +1612,6 @@
             
             sections.forEach(sec => observer.observe(sec));
         });
-
-        // Business Hours Logic. This template script may load after DOMContentLoaded.
-        const renderBusinessHours = function() {
-            const rules = window.catererRules;
-            const openTime = (rules && rules.business_hours && rules.business_hours.open_time) ? rules.business_hours.open_time : '08:00';
-            const closeTime = (rules && rules.business_hours && rules.business_hours.close_time) ? rules.business_hours.close_time : '18:00';
-            const operatingDays = (rules && rules.business_hours && rules.business_hours.operating_days) ? rules.business_hours.operating_days : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-            
-            const now = new Date();
-            const currentHour = now.getHours();
-            const currentMinute = now.getMinutes();
-            const currentTime = currentHour * 60 + currentMinute;
-            
-            const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const currentDayName = daysOfWeek[now.getDay()];
-            
-            const parseTime = (timeStr) => {
-                const [h, m] = timeStr.split(':').map(Number);
-                return h * 60 + m;
-            };
-            
-            const formatTimeAmPm = (timeStr) => {
-                const [h, m] = timeStr.split(':').map(Number);
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                const hr12 = h % 12 || 12;
-                return `${hr12}:${m.toString().padStart(2, '0')} ${ampm}`;
-            };
-            
-            const formatDays = (days) => {
-                if (!days || days.length === 0) return 'Daily';
-                if (days.length === 7) return 'Daily';
-                const shortDays = { Sunday: 'Sun', Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri', Saturday: 'Sat' };
-                return days.map(day => shortDays[day] || day).join(' · ');
-            };
-            
-            const openMins = parseTime(openTime);
-            const closeMins = parseTime(closeTime);
-            const formattedDays = formatDays(operatingDays);
-            
-            const isOperatingDay = operatingDays.includes(currentDayName);
-            const isOpen = isOperatingDay && (currentTime >= openMins && currentTime <= closeMins);
-            window.isCatererOpen = isOpen;
-            
-            const banner = document.getElementById('business-hours-banner');
-            if (banner) {
-                if (isOpen) {
-                    banner.classList.remove('hidden');
-                    banner.style.background = '#ecfdf5';
-                    banner.style.borderColor = '#d1fae5';
-                    banner.innerHTML = `<div class="hours-status-content"><h3 style="color:#065f46;font-weight:800;">Open · Accepting bookings</h3><p style="color:#047857;"><strong>${formatTimeAmPm(openTime)}–${formatTimeAmPm(closeTime)}</strong> · ${formattedDays}</p></div>`;
-                } else {
-                    banner.classList.remove('hidden');
-                    banner.style.background = '#fef2f2';
-                    banner.style.borderColor = '#fee2e2';
-                    banner.innerHTML = `<div class="hours-status-content"><h3 style="color:#991b1b;font-weight:800;">Closed · Bookings paused</h3><p style="color:#b91c1c;"><strong>${formatTimeAmPm(openTime)}–${formatTimeAmPm(closeTime)}</strong> · ${formattedDays}</p></div>`;
-                    
-                    // A caterer being closed right now should not block a future
-                    // booking. The server availability flag remains authoritative.
-                }
-            }
-        };
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', renderBusinessHours, { once: true });
-        } else {
-            renderBusinessHours();
-        }
 
         window.filterMenu = function(cat, btn) {
             document.querySelectorAll('#menu-category-filter .category-chip').forEach(c => c.classList.remove('active'));
@@ -2424,7 +2347,7 @@
                     </div>
                     {% endif %}
 
-                    <div class="intel-stats-row" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="intel-stats-row" style="grid-template-columns: repeat(4, 1fr);">
                         <div class="stat-mini-box">
                             <i class="far fa-clock smb-icon"></i>
                             <span class="smb-val">{{ caterer.years_of_operation or 0 }}</span>
@@ -2444,11 +2367,6 @@
                             <i class="fas fa-eye smb-icon"></i>
                             <span class="smb-val">{{ caterer.profile_views or 0 }}</span>
                             <span class="smb-lab">Profile Views</span>
-                        </div>
-                        <div class="stat-mini-box">
-                            <i class="fas fa-hourglass-half smb-icon"></i>
-                            <span class="smb-val">{{ caterer.equipment_turnover_hours if caterer.equipment_turnover_hours is not none else 24 }}h</span>
-                            <span class="smb-lab">Turnover Buffer</span>
                         </div>
                     </div>
                 </div>
@@ -2644,15 +2562,6 @@
                                 <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; font-size: 0.95rem;">Services start for groups of {{ caterer.min_pax if caterer.min_pax else 20 }} pax and above.</div>
                             </div>
                         </div>
-                        <div class="meta-pill" style="background: #fff; color: var(--hub-text-dark); justify-content: flex-start; padding: 1.25rem; border: 1px solid var(--hub-slate-200); height: auto; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; gap: 1rem;">
-                            <div style="width: 40px; height: 40px; border-radius: 10px; background: #fef2f2; color: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0;">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                            <div>
-                                <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--hub-slate-400); letter-spacing: 0.05em;">Equipment Turnover Time</div>
-                                <div style="color: var(--hub-slate-600); font-weight: 500; margin-top: 4px; font-size: 0.95rem;">Items require a {{ caterer.equipment_turnover_hours if caterer.equipment_turnover_hours is not none else 24 }} hour cleaning buffer.</div>
-                            </div>
-                        </div>
                         {% set pols = caterer.scheduling_rules.get('policies', {}) if caterer.scheduling_rules else {} %}
                         
                         {% if caterer.terms_and_conditions %}
@@ -2804,25 +2713,6 @@
             <!-- COMPACT STICKY BOOKING PANEL -->
             <div class="elite-sidebar" style="background: #fff; border-radius: 16px; border: 1px solid var(--hub-slate-200); box-shadow: 0 10px 30px rgba(0,0,0,0.04); overflow: hidden; padding: 0;">
                 
-                {% if caterer_unavailable %}
-                <div style="background: #fef2f2; padding: 1.5rem; text-align: center; border-bottom: 1px solid #fee2e2;">
-                    <i class="fas fa-store-slash" style="font-size: 2rem; color: #ef4444; margin-bottom: 10px;"></i>
-                    <h3 style="font-size: 1rem; font-weight: 800; color: #991b1b; margin: 0 0 5px 0;">Currently Closed</h3>
-                    <p style="font-size: 0.8rem; color: #b91c1c; margin: 0;">Not accepting new bookings at this time.</p>
-                </div>
-                {% else %}
-                <div style="background: var(--hub-slate-50); padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--hub-slate-200);">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <span style="font-size: 0.72rem; font-weight: 850; color: var(--hub-slate-400); text-transform: uppercase; letter-spacing: 0.08em;">Status</span>
-                            <div style="font-size: 0.95rem; font-weight: 900; color: #10b981; display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                                <div style="width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 3px #d1fae5;"></div> Accepting Orders
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
                 <div style="padding: 1.5rem;">
                     {% if has_previous_bookings %}
                     <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 10px;">

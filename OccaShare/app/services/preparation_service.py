@@ -52,6 +52,15 @@ PREP_STATUSES = [
         "booking_status": None,
     },
     {
+        "key": "post_event_cleanup",
+        "label": "Post-Event Cleanup",
+        "progress": 95,
+        "color": "#b45309",
+        "bg": "#fffbeb",
+        "emoji": "🧹",
+        "booking_status": None,
+    },
+    {
         "key": "completed",
         "label": "Event Completed",
         "progress": 100,
@@ -78,6 +87,7 @@ _ALIAS_MAP = {
     "setup_ongoing": "setup_in_progress",
     "ready_for_event": "ready_for_event",
     "arrived": "setup_in_progress",
+    "post_event_cleanup": "post_event_cleanup",
     "in_progress": "ready_for_event",
     "completed": "completed",
 }
@@ -103,6 +113,22 @@ def normalize_prep_status(
 def get_prep_meta(status_key: str) -> Dict[str, Any]:
     key = status_key if status_key in PREP_BY_KEY else "not_started"
     return dict(PREP_BY_KEY[key])
+
+
+def completion_stage_block_reason(booking) -> Optional[str]:
+    """Require event cleanup before completing on-site catering bookings."""
+    booking_status = (getattr(booking, "status", None) or "").strip().lower()
+    document_type = (getattr(booking, "document_type", None) or "").strip().lower()
+    if document_type == "invoice" or booking_status == "ready_for_pickup":
+        return None
+
+    prep_status = normalize_prep_status(
+        getattr(booking, "preparation_status", None),
+        booking_status,
+    )
+    if booking_status not in {"setup_ongoing", "in_progress", "ready_for_event"} or prep_status != "post_event_cleanup":
+        return "Complete the Post-Event Cleanup checklist before marking this event completed."
+    return None
 
 
 def build_prep_summary(booking) -> Dict[str, Any]:

@@ -2093,6 +2093,24 @@ async def step_details_submit(
     if not event_time_parsed:
         print(f"[StepDetails REJECT] event_time_parsed is None! raw event_time={event_time!r}, cleaned={cleaned_time_str!r}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-time:Valid+event+time+is+required", status_code=303)
+
+    caterer = db.query(models.CatererProfile).get(caterer_id)
+    if not caterer:
+        print(f"[StepDetails REJECT] Caterer profile {caterer_id} not found")
+        return RedirectResponse(url="/customer/marketplace", status_code=303)
+
+    from app.services.availability_service import AvailabilityService
+    availability_settings = AvailabilityService.get_caterer_availability_settings(caterer)
+    ingress_error = AvailabilityService.get_operating_hours_error(
+        event_time_parsed,
+        availability_settings,
+    )
+    if ingress_error:
+        return RedirectResponse(
+            url=f"{redirect_base}?booking_error=err-time:{ingress_error.replace(' ', '+')}",
+            status_code=303,
+        )
+
     if not event_end_time_parsed or event_end_time_parsed <= event_time_parsed:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Egress+must+be+after+ingress.", status_code=303)
     if package:
@@ -2127,15 +2145,9 @@ async def step_details_submit(
     if not venue_location_valid:
         return RedirectResponse(url=f"{redirect_base}?booking_error=Please+pin+the+exact+venue+location+on+the+map.", status_code=303)
 
-    caterer = db.query(models.CatererProfile).get(caterer_id)
-    if not caterer:
-        print(f"[StepDetails REJECT] Caterer profile {caterer_id} not found")
-        return RedirectResponse(url=f"/customer/marketplace", status_code=303)
-
     today = date.today()
     
     # 🚨 SINGLE SOURCE OF TRUTH: Caterer Availability Validation
-    from app.services.availability_service import AvailabilityService
     avail_check = AvailabilityService.check_caterer_availability(
         db=db,
         caterer_id=caterer_id,

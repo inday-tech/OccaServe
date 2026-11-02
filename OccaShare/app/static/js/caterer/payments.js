@@ -452,7 +452,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Commission estimate
         const commissionAttr = row.getAttribute('data-commission');
-        const commission = commissionAttr ? parseFloat(commissionAttr) : (total * 0.10);
+        const commissionRate = parseFloat(row.getAttribute('data-commission-rate')) || 0;
+        const commission = commissionAttr ? parseFloat(commissionAttr) : (total * commissionRate / 100);
         const estEarnings = Math.max(0, paid - commission);
 
         const content = document.getElementById('detailsContent');
@@ -607,7 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const total = parseFloat(booking.total_amount || booking.total_price || 0);
             const paid = parseFloat(booking.paid_amount || booking._pay_verified || 0);
             const balance = parseFloat(booking.balance_amount || booking._pay_balance || (total - paid));
-            const commission = parseFloat(booking.commission || (total * 0.10));
+            const commission = parseFloat(booking.commission) || 0;
             const estEarnings = parseFloat(booking.net_earnings || (paid - commission));
             const custRef = booking.customer_ref || 'Client';
             const status = booking.payment_status || booking.status || 'Pending';
@@ -1083,6 +1084,97 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.body.style.overflow = '';
             }
         }
+    };
+
+    const commissionCurrency = new Intl.NumberFormat('en-PH', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
+    window.openCommissionStatement = function(statementId) {
+        const statement = (window.commissionStatementData || {})[String(statementId)];
+        const modal = document.getElementById('commissionStatementModal');
+        const rows = document.getElementById('commissionStatementRows');
+        const note = document.getElementById('commissionStatementNote');
+        if (!statement || !modal || !rows || !note) {
+            console.error('Commission statement data or modal is unavailable.', statementId);
+            if (window.showError) window.showError('This commission statement could not be opened. Please refresh the page and try again.');
+            return;
+        }
+
+        document.getElementById('statementReference').textContent = statement.reference || '—';
+        document.getElementById('statementPeriod').textContent = statement.billing_period || '—';
+        document.getElementById('statementDueDate').textContent = statement.due_date || '—';
+        document.getElementById('statementStatus').textContent = statement.status || '—';
+        document.getElementById('statementTotal').textContent = commissionCurrency.format(Number(statement.amount) || 0);
+        rows.replaceChildren();
+
+        if (statement.line_items && statement.line_items.length) {
+            statement.line_items.forEach(item => {
+                const row = document.createElement('tr');
+                const values = [
+                    `${item.booking_reference || 'Booking'} · ${item.event_name || 'Catering event'}`,
+                    item.customer_name || 'Customer',
+                    item.event_date || 'Not scheduled',
+                    item.booking_amount == null ? '—' : commissionCurrency.format(Number(item.booking_amount) || 0),
+                    item.commission_rate_percent == null
+                        ? '—'
+                        : Number(item.commission_rate_percent).toLocaleString('en-PH', { maximumFractionDigits: 2 }) + '%',
+                    commissionCurrency.format(Number(item.commission_amount) || 0),
+                    item.status || 'Pending'
+                ];
+                values.forEach((value, index) => {
+                    const cell = document.createElement('td');
+                    cell.textContent = value;
+                    if (index >= 3 && index <= 5) cell.classList.add('statement-amount-cell');
+                    row.appendChild(cell);
+                });
+                rows.appendChild(row);
+            });
+            note.hidden = true;
+            note.textContent = '';
+        } else {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 7;
+            cell.textContent = 'No itemized booking commission is available for this statement.';
+            row.appendChild(cell);
+            rows.appendChild(row);
+            note.textContent = statement.breakdown_note || '';
+            note.hidden = !statement.breakdown_note;
+        }
+
+        if (typeof window.openModal === 'function') {
+            window.openModal('commissionStatementModal');
+        } else {
+            modal.classList.add('active');
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    };
+
+    window.closeCommissionStatement = function() {
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('commissionStatementModal');
+        } else {
+            const modal = document.getElementById('commissionStatementModal');
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+    };
+
+    window.printCommissionStatement = function() {
+        const modal = document.getElementById('commissionStatementModal');
+        if (!modal || !modal.classList.contains('active')) {
+            console.error('Cannot print commission statement while its modal is closed.');
+            return;
+        }
+        window.print();
     };
 
     // Real-time Summary Polling

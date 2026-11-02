@@ -1062,6 +1062,28 @@
     gap: 0;
 }
 
+.overview-container a.kpi-card,
+.overview-container a.kpi-featured-card,
+.overview-container a.rev-card-link,
+.overview-container a.engage-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.overview-container a.kpi-card:focus-visible,
+.overview-container a.kpi-featured-card:focus-visible,
+.overview-container a.rev-card-link:focus-visible,
+.overview-container a.engage-link:focus-visible {
+    outline: 3px solid var(--biz-primary);
+    outline-offset: 3px;
+}
+
+.overview-container a.rev-card-link:hover,
+.overview-container a.engage-link:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--biz-shadow-md);
+}
+
 .engage-icon {
     display: none;
 }

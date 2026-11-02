@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from ..core.templates import templates
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from ..db import database, models, schemas
 from ..core import security as auth
 from ..core.utils import is_valid_ph_coordinates
@@ -1841,13 +1841,11 @@ async def update_booking_status(
     if booking.is_archived:
         raise HTTPException(status_code=400, detail="Cannot modify an archived booking.")
     current_status = (booking.status or "").lower()
-    if current_status in ["completed", "delivered"]:
-        raise HTTPException(status_code=400, detail="Completed bookings are locked and their status cannot be changed.")
-    if current_status == "cancelled":
-        raise HTTPException(status_code=400, detail=f"Booking is already {booking.status} and cannot be reopened or modified.")
+    if current_status in {"completed", "delivered", "cancelled", "rejected", "expired", "no_show"}:
+        raise HTTPException(status_code=400, detail=f"Booking is already {booking.status} and its status cannot be changed.")
 
     new_status = data.status.lower()
-    allowed_statuses = ["pending", "confirmed", "preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing", "completed", "cancelled", "no_show"]
+    allowed_statuses = ["pending", "confirmed", "preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing", "ready_for_pickup", "completed", "cancelled", "no_show"]
     
     if new_status not in allowed_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
@@ -1871,6 +1869,13 @@ async def update_booking_status(
     if new_status == "cancelled":
         ensure_booking_cancellation_has_no_verified_payment(booking)
 
+    if new_status == "completed":
+        from app.services.preparation_service import completion_stage_block_reason
+
+        stage_block_reason = completion_stage_block_reason(booking)
+        if stage_block_reason:
+            raise HTTPException(status_code=409, detail=stage_block_reason)
+
     if new_status in {"preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing"}:
         from app.services.payment_service import PaymentService
         payment_summary = PaymentService.get_payment_summary(booking)
@@ -1881,27 +1886,26 @@ async def update_booking_status(
             )
 
     # --- STRICT STATE MACHINE ENFORCEMENT ---
-    # Normal flow: Pending -> Confirmed -> Completed
-    # Cancellation: Pending/Confirmed -> Cancelled
-    # No-show: Confirmed -> No Show
     valid_transitions = {
         "pending": ["confirmed", "cancelled"],
-        "confirmed": ["preparing", "completed", "cancelled", "no_show"],
-        "preparing": ["ready_for_delivery", "cancelled"],
+        "confirmed": ["preparing", "cancelled", "no_show"],
+        "preparing": ["ready_for_delivery", "ready_for_pickup", "cancelled"],
         "ready_for_delivery": ["on_the_way", "cancelled"],
         "on_the_way": ["arrived", "cancelled"],
-        "arrived": ["setup_ongoing", "completed", "cancelled"],
+        "arrived": ["setup_ongoing", "cancelled"],
         "setup_ongoing": ["completed", "cancelled"],
+        "in_progress": ["completed", "cancelled"],
+        "ready_for_event": ["completed", "cancelled"],
+        "ready_for_pickup": ["completed", "cancelled"],
         "completed": [],
         "cancelled": [],
         "no_show": []
     }
     
     current_status = (booking.status or "pending").lower()
-    if new_status != "cancelled":
-        allowed_next = valid_transitions.get(current_status, allowed_statuses)
-        if new_status not in allowed_next:
-            raise HTTPException(status_code=400, detail=f"Cannot transition directly from '{current_status}' to '{new_status}'. Please follow proper status progression.")
+    allowed_next = valid_transitions.get(current_status, [])
+    if new_status not in allowed_next:
+        raise HTTPException(status_code=400, detail=f"Cannot transition directly from '{current_status}' to '{new_status}'. Please follow proper status progression.")
 
     # Gate removed: preparation is status-based, not checklist-based
     if new_status == "ready_for_delivery":
@@ -3406,6 +3410,8 @@ async def caterer_payments(
     # Fetch billing invoices
     invoices = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.caterer_id == profile.id
+    ).options(
+        joinedload(models.BillingInvoice.booking).joinedload(models.Booking.user)
     ).order_by(models.BillingInvoice.created_at.desc()).all()
     invoices = [
         invoice for invoice in invoices
@@ -3518,7 +3524,35 @@ async def caterer_payments(
     if balance_updated:
         db.commit()
 
+    commission_invoice_by_booking = {
+        invoice.booking_id: invoice
+        for invoice in invoices
+        if invoice.booking_id is not None
+    }
+    for booking in bookings:
+        commission_invoice = commission_invoice_by_booking.get(booking.id)
+        booking.commission_display_amount = (
+            float(commission_invoice.amount or 0.0)
+            if commission_invoice
+            else calculate_booking_commission(
+                float(booking.total_amount or booking.total_price or 0.0),
+                comm_rate_percent,
+            )
+        )
+
     commission_invoice_rows = build_commission_invoice_rows(invoices)
+    commission_statement_data = {
+        str(invoice.id): {
+            "reference": f"INV-{int(invoice.id or 0):04d}",
+            "billing_period": invoice.billing_period,
+            "amount": float(invoice.amount or 0.0),
+            "status": invoice.status,
+            "due_date": invoice.due_date.strftime("%b %d, %Y") if invoice.due_date else "End of Month",
+            "line_items": invoice.line_items,
+            "breakdown_note": invoice.breakdown_note,
+        }
+        for invoice in commission_invoice_rows
+    }
 
     from app.services.reminders import generate_caterer_reminders
     new_notifications = generate_caterer_reminders(user.id, db)
@@ -3615,8 +3649,14 @@ async def caterer_payments(
     
     # Estimated period commission & net earnings
     period_commission_est = sum(
-        calculate_booking_commission(float(b.total_amount or b.total_price or 0.0), comm_rate_percent)
-        for b in period_bookings if b.status in ('completed', 'delivered')
+        float(commission_invoice_by_booking[b.id].amount or 0.0)
+        if b.id in commission_invoice_by_booking
+        else calculate_booking_commission(
+            float(b.total_amount or b.total_price or 0.0),
+            comm_rate_percent,
+        )
+        for b in period_bookings
+        if b.status in ('completed', 'delivered')
     )
     period_net_earnings = max(0.0, period_amount_collected - period_commission_est)
 
@@ -3787,6 +3827,7 @@ async def caterer_payments(
         "config": config,
         "bookings": bookings,
         "invoices": commission_invoice_rows,
+        "commission_statement_data": commission_statement_data,
         "unsettled_bookings": unsettled_bookings,
         "period": period,
         "start_date": start_date_param or "",
@@ -3809,6 +3850,7 @@ async def caterer_payments(
         "transactions": transactions,
         "outstanding_balance": outstanding_commission,
         "active_count": period_active_count,
+        "commission_rate_percent": comm_rate_percent,
         "active_page": "payments"
     })
 
@@ -4557,7 +4599,19 @@ async def get_booking_details_api(
     comm_rate = get_commission_rate_percent(config)
     
     total = float(booking.total_price or booking.total_amount or 0)
-    commission = calculate_booking_commission(total, comm_rate)
+    commission_invoice = db.query(models.BillingInvoice).filter(
+        models.BillingInvoice.caterer_id == booking.caterer_id,
+        models.BillingInvoice.booking_id == booking.id,
+    ).first()
+    commission = (
+        float(commission_invoice.amount or 0.0)
+        if commission_invoice
+        else calculate_booking_commission(total, comm_rate)
+    )
+    if commission_invoice and commission_invoice.commission_rate is not None:
+        comm_rate = float(commission_invoice.commission_rate)
+        if 0 < comm_rate <= 1:
+            comm_rate *= 100.0
     net_amount = total - commission
     # derive entry method from booking_source for UI convenience
     try:
@@ -4920,6 +4974,7 @@ async def get_booking_details_api(
         "is_under_review": pay_summary.get("is_under_review", False),
         "needs_verification": pay_summary.get("needs_verification", False),
         "can_start_preparation": pay_summary.get("can_start_preparation", False),
+        "can_mark_completed": pay_summary.get("can_mark_completed", False),
         "required_deposit": pay_summary.get("required_deposit", 0),
         "quotation_id": booking.quotation.id if booking.quotation else None,
         "contract_url": booking.quotation.contract_url if booking.quotation else None,
@@ -5542,8 +5597,13 @@ async def complete_booking(
     if booking.is_archived:
         raise HTTPException(status_code=400, detail="Cannot modify an archived booking.")
 
-    if booking.status not in ['confirmed', 'paid', 'setup_ongoing', 'arrived', 'on_the_way', 'ready_for_delivery', 'preparing']:
+    if booking.status not in ['confirmed', 'paid', 'setup_ongoing', 'in_progress', 'ready_for_event', 'arrived', 'on_the_way', 'ready_for_delivery', 'preparing', 'ready_for_pickup']:
         raise HTTPException(status_code=400, detail="Only active confirmed bookings can be marked as completed")
+
+    from app.services.preparation_service import completion_stage_block_reason
+    stage_block_reason = completion_stage_block_reason(booking)
+    if stage_block_reason:
+        raise HTTPException(status_code=409, detail=stage_block_reason)
 
     # --- COMPLETION GATING: Fully Paid required (Cash included; no remaining balance) ---
     from app.services.payment_service import PaymentService
@@ -10516,12 +10576,21 @@ async def update_booking_preparation_status(
     if new_key == "completed":
         raise HTTPException(
             status_code=409,
-            detail="Use the booking completion action after the event ends and full payment is verified.",
+            detail="Use the booking completion action after post-event cleanup and full payment verification.",
         )
 
     old_key = normalize_prep_status(booking.preparation_status, booking.status)
     old_meta = get_prep_meta(old_key)
     new_meta = get_prep_meta(new_key)
+    if old_key == new_key:
+        return {
+            "status": "success",
+            "message": f"Preparation status is already {new_meta['label']}.",
+            "preparation": build_prep_summary(booking),
+            "booking_status": booking.status,
+            "previous_preparation_status": old_key,
+            "previous_booking_status": booking.status,
+        }
     if old_key != new_key and data.get("checklist_confirmed") is not True:
         raise HTTPException(
             status_code=400,
@@ -10561,11 +10630,18 @@ async def update_booking_preparation_status(
             detail="Mark the booking as arrived at the venue before starting setup.",
         )
     if new_key == "ready_for_event" and (
-        old_key != "setup_in_progress" or current_booking_status != "setup_ongoing"
+        old_key != "setup_in_progress" or current_booking_status not in {"setup_ongoing", "in_progress"}
     ):
         raise HTTPException(
             status_code=409,
             detail="Start and complete venue setup before marking the event ready.",
+        )
+    if new_key == "post_event_cleanup" and (
+        old_key != "ready_for_event" or current_booking_status not in {"setup_ongoing", "in_progress", "ready_for_event"}
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Mark the event ready and finish the service before starting post-event cleanup.",
         )
 
     if old_key != new_key:
@@ -10607,6 +10683,7 @@ async def update_booking_preparation_status(
         "ready_for_delivery": ("Preparation Complete", "has finished preparing"),
         "setup_in_progress": ("Event Setup in Progress", "is setting up your event"),
         "ready_for_event": ("Ready for Your Event", "has marked your booking ready for the event"),
+        "post_event_cleanup": ("Post-Event Cleanup", "has started post-event cleanup for"),
         "completed": ("Event Completed", "has completed the catering service for"),
     }
     if booking.user_id and new_key in prep_titles:

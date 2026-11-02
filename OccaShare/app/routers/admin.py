@@ -20,6 +20,7 @@ from ..services.verification import verification_service
 from ..services.commission import (
     get_commission_rate_percent,
     is_pre_deployment_manual_booking,
+    reprice_open_commission_invoices,
 )
 from ..services.payment_service import PaymentService
 from ..services.audit_report import build_sectioned_report_docx, build_sectioned_report_pdf
@@ -1666,6 +1667,8 @@ async def update_website_settings(
         config = models.WebsiteConfig()
         db.add(config)
 
+    previous_commission_rate = get_commission_rate_percent(config)
+
     # 🛡️ VALIDATION & SANITATION
     if commission is not None and (commission < 0 or commission > 100):
         return {"success": False, "message": "Commission rate must be between 0% and 100%."}
@@ -1675,7 +1678,8 @@ async def update_website_settings(
 
     # 📝 AUDIT PREPARATION (Capture old values)
     changes = []
-    if config.commission_rate != commission: changes.append(f"Commission: {config.commission_rate}% -> {commission}%")
+    if commission is not None and float(commission) != previous_commission_rate:
+        changes.append(f"Commission: {previous_commission_rate:g}% -> {float(commission):g}%")
     if config.max_file_size_mb != max_upload: changes.append(f"Max Upload: {config.max_file_size_mb}MB -> {max_upload}MB")
     
     new_maint_mode = True if maintenance_mode == "on" else False
@@ -1688,6 +1692,46 @@ async def update_website_settings(
     config.twitter_link = tw_link
     if commission is not None:
         config.commission_rate = commission
+        if float(commission) != previous_commission_rate:
+            from sqlalchemy.orm import joinedload
+
+            open_booking_invoices = db.query(models.BillingInvoice).options(
+                joinedload(models.BillingInvoice.booking)
+            ).filter(
+                models.BillingInvoice.booking_id.isnot(None),
+                models.BillingInvoice.status.in_(("pending", "overdue")),
+            ).all()
+            impacted_caterer_ids = reprice_open_commission_invoices(
+                open_booking_invoices,
+                float(commission),
+            )
+            if impacted_caterer_ids:
+                outstanding_invoices = db.query(models.BillingInvoice).options(
+                    joinedload(models.BillingInvoice.booking)
+                ).filter(
+                    models.BillingInvoice.caterer_id.in_(impacted_caterer_ids),
+                    models.BillingInvoice.status.in_(("pending", "processing", "overdue")),
+                ).all()
+                profiles = db.query(models.CatererProfile).filter(
+                    models.CatererProfile.id.in_(impacted_caterer_ids)
+                ).all()
+                for caterer_profile in profiles:
+                    booking_due = sum(
+                        float(invoice.amount or 0.0)
+                        for invoice in outstanding_invoices
+                        if invoice.caterer_id == caterer_profile.id
+                        and invoice.booking_id is not None
+                        and invoice.booking
+                        and not is_pre_deployment_manual_booking(invoice.booking)
+                    )
+                    aggregate_due = sum(
+                        float(invoice.amount or 0.0)
+                        for invoice in outstanding_invoices
+                        if invoice.caterer_id == caterer_profile.id
+                        and invoice.booking_id is None
+                        and not (invoice.payment_proof_url or "").strip()
+                    )
+                    caterer_profile.outstanding_balance = max(booking_due, aggregate_due)
     if max_upload is not None:
         config.max_file_size_mb = max_upload
     config.maintenance_mode = new_maint_mode

@@ -1312,6 +1312,7 @@ function hydrateButtonDataset(btn, detail) {
         isUnderReview: String(Boolean(detail.is_under_review || detail.needs_verification || ['proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested'].includes(detail.payment_status))),
         needsVerification: String(Boolean(detail.needs_verification || detail.is_under_review)),
         canStartPreparation: String(Boolean(detail.can_start_preparation)),
+        canMarkCompleted: String(Boolean(detail.can_mark_completed)),
         paymentMethod: detail.payment_method || btn.dataset.paymentMethod || 'Not specified',
         paymentPlan: detail.payment_plan || btn.dataset.paymentPlan || 'downpayment',
         paymentRef: detail.payment_reference || btn.dataset.paymentRef || '',
@@ -1601,12 +1602,14 @@ function showBookingDetails(btn) {
     if (previousBookingId !== cleanId) {
         window._prepCache = { status: 'not_started', progress: 0, label: 'Not Started', statuses: [] };
         window.selectedPrepStatusKey = null;
+        window.currentBookingCanMarkCompleted = false;
         var prepLastUpdated = document.getElementById('prepLastUpdated');
         if (prepLastUpdated) prepLastUpdated.innerText = '—';
     }
     window.currentBookingBalance = balanceValue;
     window.currentBookingStatus = data.status;
     window.currentBookingCanStartPreparation = String(data.canStartPreparation || '').toLowerCase() === 'true';
+    window.currentBookingCanMarkCompleted = String(data.canMarkCompleted || '').toLowerCase() === 'true';
     window._prepCache = Object.assign({}, window._prepCache, {
         status: data.preparationStatus || window._prepCache?.status || 'not_started'
     });
@@ -2490,7 +2493,7 @@ function showBookingDetails(btn) {
         } else if (bookingStatus === 'on_the_way') {
             actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'arrived')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-map-marker-alt"></i> ${isFoodOrder ? 'Mark Arrived' : 'Mark Arrived at Venue'}</button>`;
         } else if (bookingStatus === 'ready_for_pickup') {
-            var canCompletePickup = totalAmountValue > 0 && paidAmountValue >= (totalAmountValue - 0.009) && balanceValue <= 0.009;
+            var canCompletePickup = String(data.canMarkCompleted || '').toLowerCase() === 'true';
             if (canCompletePickup) {
                 actionButtonsHtml += `<button type="button" onclick="window.confirmCompleteBooking('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-check"></i> ${isFoodOrder ? 'Mark Picked Up' : 'Mark Collected'}</button>`;
             } else {
@@ -2498,16 +2501,21 @@ function showBookingDetails(btn) {
             }
         } else if (bookingStatus === 'arrived') {
             actionButtonsHtml += `<button type="button" onclick="updateBookingStage('${cleanId}', 'setup_ongoing')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-tools"></i> ${isFoodOrder ? 'Start Setup' : 'Start Event Setup'}</button>`;
-        } else if (['in_progress', 'setup_ongoing'].includes(bookingStatus)) {
-            var canCompleteNow = totalAmountValue > 0 && paidAmountValue >= (totalAmountValue - 0.009) && balanceValue <= 0.009;
-            if (canCompleteNow) {
+        } else if (['in_progress', 'setup_ongoing', 'ready_for_event'].includes(bookingStatus)) {
+            var isCleanupComplete = data.preparationStatus === 'post_event_cleanup';
+            var canCompleteNow = String(data.canMarkCompleted || '').toLowerCase() === 'true';
+            if (isFoodOrder || isCleanupComplete) {
+                if (canCompleteNow) {
                 actionButtonsHtml += `<button type="button" onclick="window.confirmCompleteBooking('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-flag-checkered"></i> ${isFoodOrder ? 'Mark as Completed' : 'Complete Event'}</button>`;
-            } else if (paymentStatus === 'balance_proof_submitted') {
-                actionButtonsHtml += `<button type="button" onclick="window.verifyPayment('${cleanId}', true)" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-shield-alt"></i> Verify Balance Proof</button>`;
-            } else if (paymentStatus === 'cash_balance_requested') {
-                actionButtonsHtml += `<button type="button" onclick="window.confirmCashPayment('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-money-bill-wave"></i> Confirm Cash Balance</button>`;
+                } else if (paymentStatus === 'balance_proof_submitted') {
+                    actionButtonsHtml += `<button type="button" onclick="window.verifyPayment('${cleanId}', true)" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #0284c7; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-shield-alt"></i> Verify Balance Proof</button>`;
+                } else if (paymentStatus === 'cash_balance_requested') {
+                    actionButtonsHtml += `<button type="button" onclick="window.confirmCashPayment('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-money-bill-wave"></i> Confirm Cash Balance</button>`;
+                } else {
+                    actionButtonsHtml += `<button type="button" disabled title="The customer’s full payment must be verified before the booking can be completed." class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: not-allowed; background: #cbd5e1; color: #64748b; border: none; display: inline-flex; align-items: center; gap: 6px; opacity: .85;"><i class="fas fa-lock"></i> ${isFoodOrder ? 'Mark as Completed' : 'Complete Event'} — Full Payment Required</button>`;
+                }
             } else {
-                actionButtonsHtml += `<button type="button" disabled title="The customer must be fully paid before the booking can be completed." class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: not-allowed; background: #cbd5e1; color: #64748b; border: none; display: inline-flex; align-items: center; gap: 6px; opacity: .85;"><i class="fas fa-lock"></i> ${isFoodOrder ? 'Mark as Completed' : 'Complete Event'} — Full Payment Required</button>`;
+                actionButtonsHtml += `<button type="button" onclick="openPrepStatusModal()" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #7c3aed; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-broom"></i> Update Post-Event Status</button>`;
             }
         }
 
@@ -3033,13 +3041,12 @@ function renderOverviewWorkspace(data, context) {
     }
 
     // Block Mark Completed in overview until remaining balance is fully settled
-    const paidAmt = Math.max(parseFloat(data.amountPaid) || 0, 0);
-    const isFullyPaidOverview = total > 0 && paidAmt >= (total - 0.009);
-    if (String(primaryBtnAction || '').includes('confirmCompleteBooking') && !isFullyPaidOverview) {
-        primaryTitle = 'Outstanding Balance Remaining';
-        primaryDesc = 'Settle via GCash, Bank, or Cash before marking Completed. Record payment if already received.';
-        primaryBtnText = 'Settle Remaining Balance First';
-        primaryBtnAction = `window.openBalanceSettlement('${cleanId}')`;
+    const canMarkCompleted = String(data.canMarkCompleted || '').toLowerCase() === 'true';
+    if (String(primaryBtnAction || '').includes('confirmCompleteBooking') && !canMarkCompleted) {
+        primaryTitle = 'Full Payment Verification Required';
+        primaryDesc = 'Verify the customer’s full payment before completing this booking.';
+        primaryBtnText = 'Review Payment';
+        primaryBtnAction = `switchBookingTab('payment', document.getElementById('tabBtnPayment'))`;
     }
 
     const eyebrow = document.getElementById('modalOverviewActionEyebrow');
@@ -3933,35 +3940,28 @@ async function submitRejectionWithReason() {
     }
 }
 
-function isBookingFullyPaidFromDom(bookingId) {
-    const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
-    const viewBtn = cleanId ? document.querySelector(`.view-details[data-id="${cleanId}"]`) : null;
-    const total = Math.max(parseFloat(viewBtn?.dataset?.totalRawAmount) || parseFloat(document.getElementById('modalHeaderTotal')?.dataset?.raw) || 0, 0);
-    let paid = Math.max(parseFloat(viewBtn?.dataset?.amountPaid) || 0, 0);
-    // Fallback: parse header paid text
-    if (!paid) {
-        const paidEl = document.getElementById('modalHeaderPaid');
-        if (paidEl) paid = parseFloat(String(paidEl.innerText).replace(/[^0-9.-]+/g, '')) || 0;
-    }
-    let totalVal = total;
-    if (!totalVal) {
-        const totalEl = document.getElementById('modalHeaderTotal');
-        if (totalEl) totalVal = parseFloat(String(totalEl.innerText).replace(/[^0-9.-]+/g, '')) || 0;
-    }
-    const balEl = document.getElementById('modalHeaderBalance');
-    const bal = balEl ? (parseFloat(String(balEl.innerText).replace(/[^0-9.-]+/g, '')) || 0) : Math.max(totalVal - paid, 0);
-    return totalVal > 0 && paid >= (totalVal - 0.009) && bal <= 0.009;
-}
-
 function confirmCompleteBooking(bookingId) {
-    if (!isBookingFullyPaidFromDom(bookingId)) {
-        window.showError('Cannot mark as Completed while there is still a remaining balance. Settle and verify the full payment first.');
+    const cleanId = String(bookingId || '').replace(/\D/g, '');
+    const bookingButton = document.querySelector('.view-details[data-id="' + cleanId + '"]');
+    const isCurrentBooking = String(currentBookingId || '') === cleanId;
+    const canComplete = isCurrentBooking
+        ? window.currentBookingCanMarkCompleted === true
+        : bookingButton?.dataset?.canMarkCompleted === 'true';
+    if (!canComplete) {
+        window.showError('Verify the customer’s full payment before completing the event.');
+        return;
+    }
+    const status = String(isCurrentBooking ? window.currentBookingStatus : bookingButton?.dataset?.status || '').toLowerCase();
+    const preparationStatus = String(isCurrentBooking ? window._prepCache?.status : bookingButton?.dataset?.preparationStatus || '').toLowerCase();
+    const documentType = String(bookingButton?.dataset?.documentType || '').toLowerCase();
+    if (documentType !== 'invoice' && status !== 'ready_for_pickup' && preparationStatus !== 'post_event_cleanup') {
+        window.showError('Complete post-event cleanup before completing the event.');
         return;
     }
 
     window.showConfirm('Is the event finished and everything settled?',
         async function() {
-            var result = await window.apiAction('/caterer/bookings/' + bookingId + '/update-status', { 
+            var result = await window.apiAction('/caterer/bookings/' + cleanId + '/update-status', {
                 method: 'POST', 
                 body: JSON.stringify({status: 'completed'}),
                 muteToast: true
@@ -3980,12 +3980,12 @@ function confirmCompleteBooking(bookingId) {
 }
 
 window.validateAndProceed = function(bookingId, stage) {
-    if (stage === 'ready_for_delivery' || stage === 'ready_for_pickup') {
-        if (typeof window.requestReadyForDelivery === 'function') {
-            window.requestReadyForDelivery(bookingId);
-        } else {
-            updateBookingStage(bookingId, stage);
-        }
+    if (stage === 'ready_for_delivery') {
+        window.requestReadyForDelivery(bookingId);
+        return;
+    }
+    if (stage === 'ready_for_pickup') {
+        updateBookingStage(bookingId, stage);
         return;
     }
 
@@ -4462,8 +4462,13 @@ const PREP_STATUS_CHECKLISTS = {
         'Food stations and equipment are set up and checked.',
         'The service area is ready for the event.'
     ],
+    post_event_cleanup: [
+        'The event service has ended.',
+        'Food stations, equipment, and supplies have been packed.',
+        'The event area has been cleaned and cleared.'
+    ],
     completed: [
-        'The event service has finished.',
+        'Post-event cleanup is complete.',
         'All customer payments have been received and verified.'
     ]
 };
@@ -4474,6 +4479,7 @@ const PREP_PROGRESS_FALLBACK = {
     ready_for_delivery: 50,
     setup_in_progress: 75,
     ready_for_event: 90,
+    post_event_cleanup: 95,
     completed: 100
 };
 
@@ -4543,6 +4549,7 @@ function _updatePreparationRowStatus(bookingId, prep, bookingStatus) {
         ready_for_delivery: 'Preparation Complete',
         setup_in_progress: 'Setup in Progress',
         ready_for_event: 'Ready for Event',
+        post_event_cleanup: 'Post-Event Cleanup',
         completed: 'Event Completed'
     };
     badge.textContent = labels[prep.status] || prep.label || 'Preparation Updated';
@@ -4590,6 +4597,7 @@ window.openPrepStatusModal = function() {
             { key: 'ready_for_delivery', label: 'Preparation Complete', progress: 50, emoji: '🔵' },
             { key: 'setup_in_progress', label: 'Setup in Progress', progress: 75, emoji: '🟠' },
             { key: 'ready_for_event', label: 'Ready for Event', progress: 90, emoji: '🟣' },
+            { key: 'post_event_cleanup', label: 'Post-Event Cleanup', progress: 95, emoji: '🧹' },
             { key: 'completed', label: 'Event Completed', progress: 100, emoji: '🟢' }
         ];
 
@@ -4617,8 +4625,12 @@ window.openPrepStatusModal = function() {
             lockReason = 'Mark the booking as arrived at the venue before starting setup.';
         } else if (s.key === 'ready_for_event' && bookingStatus !== 'setup_ongoing') {
             lockReason = 'Complete the venue setup stage before marking the event ready.';
-        } else if (s.key === 'completed' && Number(window.currentBookingBalance || 0) > 0.009) {
-            lockReason = 'Verify the full payment before completing the event.';
+        } else if (s.key === 'post_event_cleanup' && !['setup_ongoing', 'in_progress', 'ready_for_event'].includes(bookingStatus)) {
+            lockReason = 'Mark the event ready and finish the service before starting post-event cleanup.';
+        } else if (s.key === 'completed' && current !== 'post_event_cleanup') {
+            lockReason = 'Complete post-event cleanup before completing the event.';
+        } else if (s.key === 'completed' && !window.currentBookingCanMarkCompleted) {
+            lockReason = 'Verify the customer’s full payment before completing the event.';
         }
         const locked = Boolean(lockReason);
         const disabled = locked ? ' disabled aria-disabled="true" title="' + lockReason + '"' : '';

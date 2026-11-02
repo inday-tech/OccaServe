@@ -67,7 +67,7 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <div class="pay-kpi-grid">
         <!-- Card 1: Total Booking Value -->
-        <div class="pay-stat-box theme-indigo">
+        <a class="pay-stat-box pay-stat-box-link theme-indigo" href="#transactionHistory">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Total Booking Value</span>
                 <span class="pay-stat-number" id="kpiTotalValue">₱{{ "{:,.2f}".format(period_total_booking_value) }}</span>
@@ -76,10 +76,10 @@
             <div class="pay-stat-icon-wrapper" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5;">
                 <i class="fas fa-file-invoice-dollar"></i>
             </div>
-        </div>
+        </a>
 
         <!-- Card 2: Amount Collected -->
-        <div class="pay-stat-box theme-emerald">
+        <a class="pay-stat-box pay-stat-box-link theme-emerald" href="#transactionHistory">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Amount Collected</span>
                 <span class="pay-stat-number" id="kpiCollected">₱{{ "{:,.2f}".format(period_amount_collected) }}</span>
@@ -88,10 +88,10 @@
             <div class="pay-stat-icon-wrapper" style="background: rgba(5, 150, 105, 0.1); color: #059669;">
                 <i class="fas fa-check-circle"></i>
             </div>
-        </div>
+        </a>
 
         <!-- Card 3: Outstanding Customer Balance -->
-        <div class="pay-stat-box theme-amber">
+        <a class="pay-stat-box pay-stat-box-link theme-amber" href="#customerBalances">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Outstanding Customer Balance</span>
                 <span class="pay-stat-number" id="kpiOutstanding">₱{{ "{:,.2f}".format(period_outstanding_balance) }}</span>
@@ -100,10 +100,10 @@
             <div class="pay-stat-icon-wrapper" style="background: rgba(217, 119, 6, 0.1); color: #d97706;">
                 <i class="fas fa-clock"></i>
             </div>
-        </div>
+        </a>
 
         <!-- Card 4: Estimated Earnings -->
-        <div class="pay-stat-box theme-purple">
+        <a class="pay-stat-box pay-stat-box-link theme-purple" href="#commissionOverview">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Estimated Earnings</span>
                 <span class="pay-stat-number" id="kpiNetEarnings">₱{{ "{:,.2f}".format(period_net_earnings) }}</span>
@@ -112,10 +112,10 @@
             <div class="pay-stat-icon-wrapper" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
                 <i class="fas fa-coins"></i>
             </div>
-        </div>
+        </a>
     </div>
 
-    <div class="pay-card-container">
+    <div class="pay-card-container" id="transactionHistory">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
                 <h3>Transaction History</h3>
@@ -165,7 +165,6 @@
                 </thead>
                 <tbody id="paymentsTableBody">
                     {% for t in transactions %}
-                    {% set comm_val = (t.booking.commission or (t.booking_total * 0.10)) if t.booking else (t.booking_total * 0.10) %}
                     <tr class="premium-row transaction-row"
                         data-status="{{ t.status|lower }}"
                         data-type="{{ t.payment_type|lower }}"
@@ -180,7 +179,8 @@
                         data-paid="{{ t.paid_val }}"
                         data-current="{{ t.amount }}"
                         data-balance="{{ t.balance_val }}"
-                        data-commission="{{ comm_val }}"
+                        data-commission="{{ t.booking.commission_display_amount if t.booking else 0 }}"
+                        data-commission-rate="{{ commission_rate_percent }}"
                         data-contract="{{ (t.booking.contract_url or '') if t.booking else '' }}"
                         data-method="{{ t.method }}"
                         data-date="{{ t.date_str }}"
@@ -326,7 +326,7 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 5. OUTSTANDING CUSTOMER BALANCES                            -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="pay-card-container">
+    <div class="pay-card-container" id="customerBalances">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
                 <h3>Outstanding Customer Balances</h3>
@@ -435,7 +435,7 @@
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 6. PLATFORM COMMISSION SECTION                              -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="section-headline">
+    <div class="section-headline" id="commissionOverview">
         <h2>Commission Overview</h2>
         <p>Commission totals and settlement status.</p>
     </div>
@@ -443,7 +443,7 @@
     <!-- 4 Compact Commission KPI Cards -->
     <div class="pay-kpi-grid">
         <!-- 1. Total Commission Due -->
-        <div class="pay-stat-box theme-purple">
+        <a class="pay-stat-box pay-stat-box-link theme-purple" href="#commissionStatements">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Total Commission Due</span>
                 <span class="pay-stat-number">₱{{ "{:,.2f}".format(total_commission_due) }}</span>
@@ -452,10 +452,10 @@
             <div class="pay-stat-icon-wrapper" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;">
                 <i class="fas fa-calculator"></i>
             </div>
-        </div>
+        </a>
 
         <!-- 2. Commission Paid -->
-        <div class="pay-stat-box theme-emerald">
+        <a class="pay-stat-box pay-stat-box-link theme-emerald" href="#commissionStatements">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Commission Paid</span>
                 <span class="pay-stat-number">₱{{ "{:,.2f}".format(total_commission_paid) }}</span>
@@ -464,10 +464,10 @@
             <div class="pay-stat-icon-wrapper" style="background: rgba(5, 150, 105, 0.1); color: #059669;">
                 <i class="fas fa-check-double"></i>
             </div>
-        </div>
+        </a>
 
         <!-- 3. Outstanding Commission -->
-        <div class="pay-stat-box theme-amber">
+        <a class="pay-stat-box pay-stat-box-link theme-amber" href="#commissionStatements">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Outstanding Commission</span>
                 <span class="pay-stat-number" style="color: {% if outstanding_commission > 0 %}#b91c1c{% else %}#059669{% endif %};">
@@ -478,10 +478,10 @@
             <div class="pay-stat-icon-wrapper" style="background: rgba(217, 119, 6, 0.1); color: #d97706;">
                 <i class="fas fa-balance-scale"></i>
             </div>
-        </div>
+        </a>
 
         <!-- 4. Next Billing Date -->
-        <div class="pay-stat-box theme-indigo">
+        <a class="pay-stat-box pay-stat-box-link theme-indigo" href="#commissionStatements">
             <div class="pay-stat-content">
                 <span class="pay-stat-title">Next Billing Date</span>
                 <span class="pay-stat-number" style="font-size: 1.15rem; color: #334155;">{{ next_billing_date_str }}</span>
@@ -490,13 +490,13 @@
             <div class="pay-stat-icon-wrapper" style="background: rgba(79, 70, 229, 0.1); color: #4f46e5;">
                 <i class="fas fa-calendar-alt"></i>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 7. COMMISSION INVOICES                                      -->
     <!-- ─────────────────────────────────────────────────────────── -->
-    <div class="pay-card-container">
+    <div class="pay-card-container" id="commissionStatements">
         <div class="pay-card-header">
             <div class="pay-card-header-left">
                 <h3>Commission Billing Statements</h3>
@@ -577,7 +577,10 @@
                                 <i class="fas fa-hand-holding-usd"></i> Submit Payment
                             </button>
                             {% endif %}
-                            <button type="button" class="btn-sm-outline" onclick="window.print()" style="padding: 4px 10px; font-size: 0.78rem;">
+                            <button type="button" class="btn-sm-outline"
+                                data-statement-id="{{ inv.id }}"
+                                onclick="window.openCommissionStatement(this.dataset.statementId)"
+                                style="padding: 4px 10px; font-size: 0.78rem;">
                                 <i class="fas fa-file-invoice"></i> View Statement
                             </button>
                         </td>
@@ -732,12 +735,69 @@
     </div>
 </div>
 
+<!-- Commission Statement Modal -->
+<div id="commissionStatementModal" class="occ-modal-overlay">
+    <div class="occ-modal-box commission-statement-modal">
+        <div class="occ-modal-header">
+            <div>
+                <h3 class="occ-modal-title"><i class="fas fa-file-invoice-dollar" style="margin-right: 6px;"></i> Commission Billing Statement</h3>
+                <div class="occ-modal-subtitle">Booking-level breakdown of the platform commission billed for this period.</div>
+            </div>
+            <button type="button" onclick="window.closeCommissionStatement()" class="occ-modal-close" aria-label="Close statement">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="occ-modal-body" id="commissionStatementContent">
+            <div class="commission-statement-heading">
+                <div><span>Statement reference</span><strong id="statementReference">—</strong></div>
+                <div><span>Billing period</span><strong id="statementPeriod">—</strong></div>
+                <div><span>Due date</span><strong id="statementDueDate">—</strong></div>
+                <div><span>Status</span><strong id="statementStatus">—</strong></div>
+            </div>
+            <div class="commission-statement-explainer">
+                Calculation: booking value × the commission rate saved on its billing record. “Commission billed” shows the actual amount recorded for that booking and included in this statement.
+            </div>
+            <div id="commissionStatementBreakdown">
+                <div class="commission-statement-table-wrap">
+                    <table class="commission-statement-table">
+                        <thead>
+                            <tr>
+                                <th>Booking / Event</th>
+                                <th>Customer</th>
+                                <th>Event date</th>
+                                <th class="statement-amount-cell">Booking value</th>
+                                <th class="statement-amount-cell">Commission rate</th>
+                                <th class="statement-amount-cell">Commission billed</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commissionStatementRows"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="commission-statement-legacy-note" id="commissionStatementNote" hidden></div>
+            <div class="commission-statement-total">
+                <span>Statement total</span>
+                <strong id="statementTotal">₱0.00</strong>
+            </div>
+            <p class="commission-statement-footnote">The statement total matches the open commission invoices for pending statements, or the invoices included in a settled statement.</p>
+        </div>
+        <div class="occ-modal-footer commission-statement-footer">
+            <button type="button" class="btn-sm-outline" onclick="window.closeCommissionStatement()">Close</button>
+            <button type="button" class="btn-primary-pro" onclick="window.printCommissionStatement()">
+                <i class="fas fa-print"></i> Print / Save PDF
+            </button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>window.commissionStatementData = {{ commission_statement_data|tojson }};</script>
 <script src="{{ url_for('static', path='/js/caterer/payments.js') }}?v={{ static_asset_version('js/caterer/payments.js') }}"></script>
 <script>
     function handlePeriodChange(selectEl) {
