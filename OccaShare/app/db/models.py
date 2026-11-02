@@ -384,70 +384,14 @@ class CateringPackage(Base):
 
     @property
     def total_bookings_count(self) -> int:
-        """Accurately count all bookings belonging to this package including customizable bookings."""
-        direct_non_draft = [b for b in (self.bookings or []) if getattr(b, 'status', '') != 'draft']
-        if direct_non_draft:
-            return len(direct_non_draft)
-        if self.bookings and len(self.bookings) > 0:
-            return len(self.bookings)
-            
-        try:
-            from sqlalchemy.orm import object_session
-            sess = object_session(self)
-            if sess:
-                from sqlalchemy import or_, func
-                q = sess.query(Booking).filter(
-                    Booking.caterer_id == self.caterer_id,
-                    Booking.status != 'draft',
-                    Booking.is_archived == False
-                )
-                if self.pricing_mode == 'customizable':
-                    q = q.filter(
-                        or_(
-                            Booking.package_id == self.id,
-                            Booking.is_custom_event == True,
-                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_type') == 'customizable',
-                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_id') == str(self.id),
-                            func.jsonb_extract_path_text(Booking.custom_requirements, 'customization').isnot(None),
-                            Booking.event_type.ilike('%custom%')
-                        )
-                    )
-                else:
-                    q = q.filter(
-                        or_(
-                            Booking.package_id == self.id,
-                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_id') == str(self.id)
-                        )
-                    )
-                c = q.count()
-                if c > 0:
-                    return c
-                # Fallback: check all bookings including pending
-                q_all = sess.query(Booking).filter(Booking.caterer_id == self.caterer_id)
-                if self.pricing_mode == 'customizable':
-                    q_all = q_all.filter(
-                        or_(
-                            Booking.package_id == self.id,
-                            Booking.is_custom_event == True,
-                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_type') == 'customizable',
-                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_id') == str(self.id),
-                            func.jsonb_extract_path_text(Booking.custom_requirements, 'customization').isnot(None),
-                            Booking.event_type.ilike('%custom%')
-                        )
-                    )
-                else:
-                    q_all = q_all.filter(
-                        or_(
-                            Booking.package_id == self.id,
-                            func.jsonb_extract_path_text(Booking.custom_requirements, 'package_id') == str(self.id)
-                        )
-                    )
-                c_all = q_all.count()
-                if c_all > 0:
-                    return c_all
-        except Exception:
-            pass
-        return len(self.bookings) if self.bookings else 0
+        """Count non-draft, non-archived bookings linked to this package."""
+        return sum(
+            1
+            for booking in (self.bookings or [])
+            if booking.package_id == self.id
+            if (booking.status or "").lower() != "draft"
+            and not booking.is_archived
+        )
 
     @property
     def starting_price_amount(self) -> float:

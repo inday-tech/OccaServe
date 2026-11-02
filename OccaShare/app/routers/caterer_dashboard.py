@@ -658,9 +658,9 @@ def validate_delivery_fee(amount_value: float) -> None:
         )
 
 
-def calculate_fixed_package_total(starting_price, base_pax: int) -> Optional[Decimal]:
+def calculate_fixed_package_total(extra_guest_rate, base_pax: int) -> Optional[Decimal]:
     try:
-        per_guest_price = Decimal(str(starting_price or 0))
+        per_guest_price = Decimal(str(extra_guest_rate or 0))
     except InvalidOperation:
         return None
     if not per_guest_price.is_finite() or per_guest_price <= 0 or base_pax <= 0:
@@ -7504,9 +7504,9 @@ async def add_package(
             errors.append("Category name must be 60 characters or fewer.")
         if pricing_mode == "fixed":
             min_guests = base_pax
-            fixed_total = calculate_fixed_package_total(profile.starting_price, base_pax)
+            fixed_total = calculate_fixed_package_total(additional_guest_price, base_pax)
             if fixed_total is None:
-                errors.append("Set a starting price above ₱0 in Business Settings and enter a valid base guest count.")
+                errors.append("Enter an extra guest rate above ₱0 and a valid base guest count.")
             else:
                 price_per_head = float(fixed_total)
         elif price_per_head <= 0:
@@ -8721,9 +8721,9 @@ async def update_package(
             errors.append("Category name must be 60 characters or fewer.")
         if pricing_mode == "fixed":
             min_guests = base_pax
-            fixed_total = calculate_fixed_package_total(profile.starting_price, base_pax)
+            fixed_total = calculate_fixed_package_total(additional_guest_price, base_pax)
             if fixed_total is None:
-                errors.append("Set a starting price above ₱0 in Business Settings and enter a valid base guest count.")
+                errors.append("Enter an extra guest rate above ₱0 and a valid base guest count.")
             else:
                 price_per_head = float(fixed_total)
         elif price_per_head <= 0:

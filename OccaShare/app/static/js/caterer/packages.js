@@ -198,7 +198,7 @@ window.togglePricingMode = function (mode) {
 
     if (extraGuestRateInput) {
         extraGuestRateInput.min = String(startingPriceFloor);
-        const currentExtraRate = Number(extraGuestRateInput.value) || 0;
+        const currentExtraRate = Number(String(extraGuestRateInput.value).replace(/,/g, '')) || 0;
         if (isFixed && currentExtraRate < startingPriceFloor) {
             extraGuestRateInput.value = String(startingPriceFloor);
         }
@@ -222,7 +222,7 @@ window.togglePricingMode = function (mode) {
         }
     } else if (mode === 'fixed') {
         if (pricingLabelText) pricingLabelText.textContent = 'Package price (base total)';
-        if (pricingUnitHint) pricingUnitHint.textContent = 'Included guests × Business Settings rate per guest.';
+        if (pricingUnitHint) pricingUnitHint.textContent = 'Included guests × this package\'s extra guest rate.';
         if (priceInput) {
             priceInput.readOnly = true;
             priceInput.placeholder = '0.00';
@@ -688,14 +688,16 @@ function calculatePricing() {
     const priceInput = form.elements.namedItem('price_per_head');
     const basePaxInput = form.elements.namedItem('base_pax');
     const minGuestsInput = form.elements.namedItem('min_guests');
+    const extraGuestRateInput = form.elements.namedItem('additional_guest_price');
     const mode = modeInput ? modeInput.value : 'per_pax';
     if (mode === 'fixed' && priceInput && basePaxInput) {
         const basePax = Number(basePaxInput.value);
-        const startingPrice = Number(window.CATERER_STARTING_PRICE);
+        const extraGuestRateText = String(extraGuestRateInput?.value || '').replace(/,/g, '').trim();
+        const extraGuestRate = Number(extraGuestRateText);
         const hasValidInputs = Number.isSafeInteger(basePax) && basePax > 0
-            && Number.isFinite(startingPrice) && startingPrice > 0;
+            && extraGuestRateText !== '' && Number.isFinite(extraGuestRate) && extraGuestRate > 0;
         const total = hasValidInputs
-            ? Math.round((basePax * startingPrice + Number.EPSILON) * 100) / 100
+            ? Math.round((basePax * extraGuestRate + Number.EPSILON) * 100) / 100
             : 0;
         priceInput.value = total > 0
             ? total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -703,13 +705,13 @@ function calculatePricing() {
         if (minGuestsInput) minGuestsInput.value = hasValidInputs ? String(basePax) : '';
         const priceHelp = document.getElementById('pkgPriceHelp');
         if (priceHelp) {
-            const formattedRate = Number.isFinite(startingPrice) && startingPrice > 0
-                ? startingPrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            const formattedRate = Number.isFinite(extraGuestRate) && extraGuestRate > 0
+                ? extraGuestRate.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : 'not set';
             const formattedTotal = total > 0
                 ? total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                 : 'not available';
-            priceHelp.textContent = `Base total = ${hasValidInputs ? basePax : 'valid included guests'} × ₱${formattedRate} per guest = ₱${formattedTotal}. Extra guest rate is charged separately for guests above the included count.`;
+            priceHelp.textContent = `Base total = ${hasValidInputs ? basePax : 'valid included guests'} × ₱${formattedRate} per guest = ₱${formattedTotal}. This rate is also charged separately for guests above the included count.`;
         }
     }
     const rawPrice = String(priceInput?.value || '').replace(/,/g, '');
@@ -799,10 +801,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const basePaxInput = form.elements.namedItem('base_pax');
         const extraGuestRateInput = form.elements.namedItem('additional_guest_price');
         if (basePaxInput) {
-            ['input', 'change'].forEach(eventName => basePaxInput.addEventListener(eventName, calculatePricing));
+            ['input', 'change'].forEach(eventName => basePaxInput.addEventListener(eventName, () => {
+                calculatePricing();
+                if (document.querySelector('.pkg-step-side.active')?.id === 'step-btn-review') updateReviewTab();
+            }));
         }
         if (extraGuestRateInput) {
             ['input', 'change'].forEach(eventName => extraGuestRateInput.addEventListener(eventName, () => {
+                calculatePricing();
                 updatePackageWizardControls();
                 if (document.querySelector('.pkg-step-side.active')?.id === 'step-btn-review') updateReviewTab();
             }));
@@ -872,10 +878,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveButton.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Saving...';
             }
             try {
+                const formData = new FormData(form);
+                ['price_per_head', 'additional_guest_price'].forEach(fieldName => {
+                    const value = formData.get(fieldName);
+                    if (typeof value === 'string') formData.set(fieldName, value.replace(/,/g, '').trim());
+                });
                 const response = await fetch(form.action, {
                     method: 'POST',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                    body: new FormData(form)
+                    body: formData
                 });
                 const responseText = await response.text();
                 let result;
@@ -1057,9 +1068,10 @@ function validateTab(tabName) {
             if (!Number.isInteger(basePax) || basePax < globalMinPax) addError(form.base_pax, `Package guest count must be at least ${globalMinPax}.`);
             const extraRateInput = form.elements.namedItem('additional_guest_price');
             const extraRateText = String(extraRateInput?.value || '').trim();
-            const extraRate = Number(extraRateText);
+            const normalizedExtraRate = extraRateText.replace(/,/g, '');
+            const extraRate = Number(normalizedExtraRate);
             const rateFloor = Math.max(0, Number(window.CATERER_STARTING_PRICE) || 0);
-            if (extraRateText && (!/^\d{1,8}(?:\.\d{1,2})?$/.test(extraRateText)
+            if (extraRateText && (!/^\d{1,8}(?:\.\d{1,2})?$/.test(normalizedExtraRate)
                 || !Number.isFinite(extraRate) || extraRate <= 0 || extraRate < rateFloor || extraRate > 99999999.99)) {
                 addError(extraRateInput, `Enter a valid extra guest rate of at least ₱${rateFloor.toFixed(2)}.`);
             }
@@ -1209,7 +1221,8 @@ function updateReviewTab() {
             dCap.innerText = form.base_pax && form.base_pax.value ? `${form.base_pax.value} guests included` : 'N/A';
             if (excessRow && form.additional_guest_price && form.additional_guest_price.value) {
                 excessRow.style.display = 'block';
-                excessRate.innerText = `₱${Number(form.additional_guest_price.value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per extra guest`;
+                const rate = Number(String(form.additional_guest_price.value).replace(/,/g, ''));
+                excessRate.innerText = `₱${rate.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per extra guest`;
             } else if (excessRow) {
                 excessRow.style.display = 'none';
             }
@@ -1225,7 +1238,7 @@ function updateReviewTab() {
             dPrice.innerText = `₱${val} base total`;
             if (priceFormula) {
                 const basePax = Number(form.base_pax?.value) || 0;
-                const rate = Number(window.CATERER_STARTING_PRICE) || 0;
+                const rate = Number(String(form.additional_guest_price?.value || '').replace(/,/g, '')) || 0;
                 priceFormula.innerText = `${basePax} included guests × ₱${rate.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} per guest. Extra guests are charged separately.`;
             }
         } else {
