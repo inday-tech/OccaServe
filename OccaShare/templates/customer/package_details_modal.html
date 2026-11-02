@@ -124,17 +124,22 @@
         {% endif %}
 
         <!-- Package Inclusions Section (Section A / Mandatory Inclusions) - ONLY DISPLAYED FOR FIXED PACKAGES -->
-        {% if package.pricing_mode != 'customizable' and grouped_inclusions and (grouped_inclusions.food or grouped_inclusions.services) %}
+        {% if package.pricing_mode != 'customizable' and grouped_inclusions and (grouped_inclusions.food or grouped_inclusions.services or grouped_inclusions.equipment) %}
         {% set food_cnt = grouped_inclusions.food|length if grouped_inclusions.food else 0 %}
         {% set svc_cnt = grouped_inclusions.services|length if grouped_inclusions.services else 0 %}
-        {% set total_cnt = food_cnt + svc_cnt %}
+        {% set equipment_cnt = grouped_inclusions.equipment|length if grouped_inclusions.equipment else 0 %}
+        {% set total_cnt = food_cnt + svc_cnt + equipment_cnt %}
+        {% set food_inclusions = namespace(by_name={}) %}
+        {% for inclusion in grouped_inclusions.food %}
+            {% set _ = food_inclusions.by_name.update({inclusion.name|lower: inclusion}) %}
+        {% endfor %}
 
         <div class="body-section" style="margin-bottom: 2rem;">
             <div style="margin-bottom: 1rem;">
                 <h3 class="section-title" style="margin-bottom: 0.25rem; font-size: 1.15rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-boxes-packing" style="color: #FF6B00;"></i> PACKAGE INCLUSIONS
                 </h3>
-                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Food and services included automatically in this package</p>
+                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Food, services, and equipment included automatically in this package</p>
                 <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; margin-top: 6px; font-weight: 600;">
                     <i class="fas fa-lock" style="color: #FF6B00; font-size: 0.75rem;"></i>
                     <span>These inclusions are fixed and cannot be removed or changed by customers.</span>
@@ -154,6 +159,11 @@
                 {% if svc_cnt > 0 %}
                 <button type="button" class="modal-inc-tab" data-inc-cat="services" onclick="filterModalInclusions('services', this)">
                     <i class="fas fa-concierge-bell" style="color: #2563eb;"></i> Services <span class="modal-inc-badge">{{ svc_cnt }}</span>
+                </button>
+                {% endif %}
+                {% if equipment_cnt > 0 %}
+                <button type="button" class="modal-inc-tab" data-inc-cat="equipment" onclick="filterModalInclusions('equipment', this)">
+                    <i class="fas fa-chair" style="color: #7c3aed;"></i> Equipment <span class="modal-inc-badge">{{ equipment_cnt }}</span>
                 </button>
                 {% endif %}
             </div>
@@ -187,18 +197,22 @@
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
                             {% for item in c_items %}
+                            {% set inclusion = food_inclusions.by_name.get(item.name|lower) %}
                             <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
                                 <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 6px;">
                                     <span style="font-size: 0.85rem; font-weight: 800; color: #1e293b; line-height: 1.25;">
                                         <i class="fas fa-check-circle" style="color: #16a34a; font-size: 0.75rem; margin-right: 4px;"></i>{{ item.name }}
                                     </span>
-                                    <span style="font-size: 0.65rem; font-weight: 700; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 6px; border-radius: 12px; white-space: nowrap; flex-shrink: 0;">
-                                        {{ cat_name }}
-                                    </span>
+                                    {% if inclusion and inclusion.quantity %}
+                                    <span style="font-size: 0.65rem; font-weight: 700; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0;">{{ inclusion.quantity }}</span>
+                                    {% else %}
+                                    <span style="font-size: 0.65rem; font-weight: 700; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 1px 6px; border-radius: 12px; white-space: nowrap; flex-shrink: 0;">{{ cat_name }}</span>
+                                    {% endif %}
                                 </div>
                                 {% if item.description %}
                                 <div style="font-size: 0.75rem; color: #64748b; line-height: 1.35; padding-left: 1rem;">{{ item.description }}</div>
                                 {% endif %}
+
                             </div>
                             {% endfor %}
                         </div>
@@ -225,6 +239,36 @@
                         {% endfor %}
                     </div>
                     {% endif %}
+
+                </div>
+                {% endif %}
+
+                <!-- EQUIPMENT -->
+                {% if equipment_cnt > 0 %}
+                <div class="modal-inc-section" data-inc-cat="equipment" style="margin-bottom: 1.25rem;">
+                    <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.6rem; margin-bottom: 0.75rem;">
+                        <span style="font-size: 1.1rem; line-height: 1;">🪑</span>
+                        <span style="font-size: 0.92rem; font-weight: 800; color: #0f172a;">Equipment</span>
+                        <span style="font-size: 0.72rem; font-weight: 700; color: #6d28d9; background: #ede9fe; padding: 2px 8px; border-radius: 20px; margin-left: auto;">{{ equipment_cnt }} items</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px;">
+                        {% for item in grouped_inclusions.equipment %}
+                        <div style="background: #ffffff; border: 1.5px solid #ddd6fe; border-radius: 12px; padding: 0.75rem 0.9rem; display: flex; gap: 10px; align-items: flex-start;">
+                            <div style="width: 34px; height: 34px; border-radius: 10px; background: #f5f3ff; color: #7c3aed; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="fas fa-chair"></i>
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                    <strong style="font-size: 0.85rem; color: #3b0764;">{{ item.name }}</strong>
+                                    {% if item.quantity %}
+                                    <span style="font-size: 0.65rem; font-weight: 800; color: #6d28d9; background: #ede9fe; padding: 1px 7px; border-radius: 12px; white-space: nowrap;">{{ item.quantity }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if item.description %}<div style="margin-top: 0.35rem; color: #64748b; font-size: 0.76rem; line-height: 1.4;">{{ item.description }}</div>{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
                 {% endif %}
 

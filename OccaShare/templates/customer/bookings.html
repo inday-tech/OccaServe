@@ -402,13 +402,13 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             {% set modal_package_items = namespace(items=[]) %}
             {% if b.package and b.package.pricing_mode != 'customizable' %}
                 {% for package_menu in b.package.menu_items or [] %}
-                    {% if not package_menu.is_addon %}{% set modal_package_items.items = modal_package_items.items + [{'id': 'food-' ~ package_menu.id, 'name': package_menu.name, 'type': 'Food', 'quantity': 1}] %}{% endif %}
+                    {% if not package_menu.is_addon %}{% set modal_package_items.items = modal_package_items.items + [{'id': 'food-' ~ package_menu.id, 'name': package_menu.name, 'type': 'Food', 'quantity': 1, 'unit': 'tray'}] %}{% endif %}
                 {% endfor %}
                 {% for package_service in b.package.service_links or [] %}
-                    {% if package_service.service %}{% set modal_package_items.items = modal_package_items.items + [{'id': 'service-' ~ package_service.service.id, 'name': package_service.service.name, 'type': 'Service', 'quantity': package_service.quantity or 1}] %}{% endif %}
+                    {% if package_service.service %}{% set service_name_lower = package_service.service.name|lower %}{% set service_unit = 'staff' if ('wait' in service_name_lower or 'staff' in service_name_lower or 'server' in service_name_lower or 'bartender' in service_name_lower) else 'unit' %}{% set modal_package_items.items = modal_package_items.items + [{'id': 'service-' ~ package_service.service.id, 'name': package_service.service.name, 'type': 'Service', 'quantity': package_service.quantity or 1, 'unit': service_unit}] %}{% endif %}
                 {% endfor %}
                 {% for package_equipment in b.package.equipment_links or [] %}
-                    {% if package_equipment.equipment %}{% set modal_package_items.items = modal_package_items.items + [{'id': 'equipment-' ~ package_equipment.equipment.id, 'name': package_equipment.equipment.name, 'type': 'Equipment', 'quantity': package_equipment.quantity or 1}] %}{% endif %}
+                    {% if package_equipment.equipment %}{% set modal_package_items.items = modal_package_items.items + [{'id': 'equipment-' ~ package_equipment.equipment.id, 'name': package_equipment.equipment.name, 'type': 'Equipment', 'quantity': package_equipment.quantity or 1, 'unit': package_equipment.equipment.unit_type or 'unit'}] %}{% endif %}
                 {% endfor %}
             {% endif %}
             {% set modal_history = namespace(items=[]) %}
@@ -1032,9 +1032,28 @@ function openBookingDetails(button, openPane = 'overview') {
     if (Array.isArray(packageInclusions)) {
         normalizedInclusions = packageInclusions.map(item => {
             if (typeof item === 'string') return { name: item, detail: 'Included' };
+            const rawQuantity = item?.quantity_num ?? item?.quantity;
+            const quantityText = String(rawQuantity ?? '').trim();
+            const embeddedQuantity = quantityText.match(/^(\d+(?:\.\d+)?)\s*([A-Za-z_-]+)?$/);
+            const quantity = embeddedQuantity ? embeddedQuantity[1] : '';
+            const embeddedUnit = embeddedQuantity?.[2] || '';
+            const rawUnit = String(item?.unit || embeddedUnit).toLowerCase();
+            const unit = ({
+                trays: 'tray', pieces: 'piece', sets: 'set', pairs: 'pair',
+                lots: 'lot', days: 'day', events: 'event', units: 'unit'
+            })[rawUnit] || rawUnit;
+            const displayUnit = quantity && Number(quantity) !== 1 && unit !== 'staff'
+                ? ({
+                    tray: 'trays', piece: 'pieces', set: 'sets', pair: 'pairs',
+                    lot: 'lots', day: 'days', event: 'events', unit: 'units'
+                })[unit] || `${unit}s`
+                : unit;
+            const quantityDetail = quantity
+                ? `${quantity}${displayUnit ? ` ${displayUnit}` : ''}`
+                : quantityText;
             return {
                 name: item?.name || item?.item_name || item?.title || 'Package inclusion',
-                detail: item?.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ''}` : (item?.category || item?.item_type || 'Included')
+                detail: quantityDetail || (item?.category || item?.item_type || 'Included')
             };
         });
     } else if (packageInclusions && typeof packageInclusions === 'object') {
@@ -1047,10 +1066,25 @@ function openBookingDetails(button, openPane = 'overview') {
     const packageItemRows = Array.isArray(packageItems) ? packageItems : [];
     const inclusionNames = new Set(normalizedInclusions.map(item => String(item.name || '').trim().toLocaleLowerCase()).filter(Boolean));
     const uniquePackageItems = packageItemRows.filter(item => !inclusionNames.has(String(item.name || '').trim().toLocaleLowerCase()));
-    const allPackageItems = normalizedInclusions.concat(uniquePackageItems.map(item => ({
-        name: item.name || 'Package item',
-        detail: `${item.type || 'Item'} · Qty ${item.quantity || 1}`
-    })));
+    const allPackageItems = normalizedInclusions.concat(uniquePackageItems.map(item => {
+        const quantity = Number.parseFloat(String(item.quantity || 1)) || 1;
+        const rawUnit = String(item.unit || '').toLowerCase();
+        const singularUnit = ({
+            pieces: 'piece', sets: 'set', pairs: 'pair', lots: 'lot',
+            trays: 'tray', days: 'day', events: 'event', units: 'unit',
+            per_day: 'day', per_event: 'event'
+        })[rawUnit] || rawUnit;
+        const unit = quantity !== 1 && singularUnit !== 'staff'
+            ? ({
+                piece: 'pieces', set: 'sets', pair: 'pairs', lot: 'lots',
+                tray: 'trays', day: 'days', event: 'events', unit: 'units'
+            })[singularUnit] || `${singularUnit}s`
+            : singularUnit;
+        return {
+            name: item.name || 'Package item',
+            detail: `${item.type || 'Item'} · Qty ${quantity}${unit ? ` ${unit}` : ''}`
+        };
+    }));
     renderDetailList('bkModalInclusions', allPackageItems, 'No package inclusions were recorded.', values =>
         values.map(item => [item.name, item.detail])
     );
@@ -1061,9 +1095,9 @@ function openBookingDetails(button, openPane = 'overview') {
             const packageNames = new Set(allPackageItems.map(row => String(row.name || '').trim().toLocaleLowerCase()));
             return !packageNames.has(String(item.name || '').trim().toLocaleLowerCase());
         }).map(item => {
-            const quantity = Number(item.quantity || 1);
+            const quantity = Number.parseFloat(String(item.quantity_num ?? item.quantity ?? 1)) || 1;
             const price = Number(item.price || 0);
-            const meta = `${item.type || 'Item'} · Qty ${quantity}${price > 0 ? ` · ₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : ' · Included'}`;
+            const meta = `${item.type || 'Item'} · Qty ${quantity}${item.unit ? ` ${item.unit}` : ''}${price > 0 ? ` · ₱${price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : ' · Included'}`;
             return [item.name || 'Selected item', meta];
         })
     );

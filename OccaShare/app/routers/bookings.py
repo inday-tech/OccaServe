@@ -140,7 +140,14 @@ def get_package_grouped_inclusions(package) -> dict:
 
     seen_names = {'food': set(), 'services': set(), 'equipment': set()}
 
-    def add_item(bucket: str, name: str, quantity: str = "", description: str = ""):
+    def add_item(
+        bucket: str,
+        name: str,
+        quantity: str = "",
+        description: str = "",
+        unit: str = "",
+        quantity_num=None,
+    ):
         name_clean = (name or "").strip()
         if not name_clean:
             return
@@ -148,9 +155,48 @@ def get_package_grouped_inclusions(package) -> dict:
         if name_key in seen_names[bucket]:
             return
         seen_names[bucket].add(name_key)
+        quantity_text = (str(quantity) if quantity is not None else "").strip()
+        match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([A-Za-z_-]+)?", quantity_text)
+        count_match = re.fullmatch(r"\d+(?:\.\d+)?", str(quantity_num)) if quantity_num is not None else None
+        count = float(quantity_num) if count_match else None
+        if count is None and match:
+            count = float(match.group(1))
+        if count is not None and count.is_integer():
+            count = int(count)
+        unit_clean = str(unit or (match.group(2) if match else "") or "").strip().lower()
+        singular_unit = {
+            "trays": "tray",
+            "pieces": "piece",
+            "sets": "set",
+            "pairs": "pair",
+            "lots": "lot",
+            "days": "day",
+            "events": "event",
+            "units": "unit",
+        }.get(unit_clean, unit_clean)
+        display_unit = singular_unit
+        if count and singular_unit:
+            if count != 1 and singular_unit != "staff":
+                display_unit = {
+                    "tray": "trays",
+                    "piece": "pieces",
+                    "set": "sets",
+                    "pair": "pairs",
+                    "lot": "lots",
+                    "day": "days",
+                    "event": "events",
+                    "unit": "units",
+                }.get(singular_unit, f"{singular_unit}s")
+            quantity_display = f"{count} {display_unit}"
+        elif count:
+            quantity_display = str(count)
+        else:
+            quantity_display = quantity_text
         grouped[bucket].append({
             'name': name_clean,
-            'quantity': (str(quantity) if quantity is not None else "").strip(),
+            'quantity': quantity_display,
+            'quantity_num': count,
+            'unit': display_unit,
             'description': (str(description) if description is not None else "").strip(),
             'notes': split_service_notes(description) if bucket == 'services' else []
         })
@@ -173,16 +219,17 @@ def get_package_grouped_inclusions(package) -> dict:
                     add_item('food', item)
                 elif isinstance(item, dict):
                     name = item.get('name') or ''
-                    qty = item.get('quantity') or item.get('qty') or ''
+                    qty = item.get('quantity_num') or item.get('quantity') or item.get('qty') or ''
                     desc = item.get('description') or item.get('details') or item.get('notes') or ''
-                    cat = (item.get('category') or '').strip().lower()
+                    unit = item.get('unit') or ''
+                    cat = (item.get('category') or item.get('type') or item.get('item_type') or '').strip().lower()
 
                     if any(k in cat for k in ['service', 'staff', 'coordination', 'waiter', 'host', 'crew', 'setup', 'cleanup']):
-                        add_item('services', name, qty, desc)
+                        add_item('services', name, qty, desc, unit, item.get('quantity_num'))
                     elif any(k in cat for k in ['equipment', 'rental', 'furniture', 'table', 'chair', 'tent', 'utensil', 'chafing', 'sound', 'light']):
-                        add_item('equipment', name, qty, desc)
+                        add_item('equipment', name, qty, desc, unit, item.get('quantity_num'))
                     else:
-                        add_item('food', name, qty, desc)
+                        add_item('food', name, qty, desc, unit, item.get('quantity_num'))
         elif isinstance(raw, dict):
             for k, v in raw.items():
                 if v:
@@ -203,7 +250,7 @@ def get_package_grouped_inclusions(package) -> dict:
     if hasattr(package, 'service_links') and package.service_links:
         for link in package.service_links:
             if link.service and not link.service.is_archived:
-                qty_str = f"{link.quantity} staff" if link.quantity else ""
+                qty_unit = "staff" if re.search(r"wait(er|ress)|staff|bartender|server|personnel|crew", link.service.name or "", re.I) else "unit"
                 desc = link.service.description or ''
                 if hasattr(link.service, 'details_json') and link.service.details_json:
                     incs = link.service.details_json.get('inclusions', [])
@@ -212,13 +259,20 @@ def get_package_grouped_inclusions(package) -> dict:
                         inc_names = [n for n in inc_names if n]
                         if inc_names:
                             desc = f"{desc} • Includes: {', '.join(inc_names)}" if desc else f"Includes: {', '.join(inc_names)}"
-                add_item('services', link.service.name, qty_str, desc)
+                add_item('services', link.service.name, link.quantity or "", desc, qty_unit)
 
     # 4. Add linked equipment
     if hasattr(package, 'equipment_links') and package.equipment_links:
         for link in package.equipment_links:
             if link.equipment and not link.equipment.is_archived:
-                qty_str = f"{link.quantity} units" if link.quantity else ""
+                equipment_unit = {
+                    "piece": "piece",
+                    "set": "set",
+                    "pair": "pair",
+                    "lot": "lot",
+                    "per_day": "day",
+                    "per_event": "event",
+                }.get((getattr(link.equipment, "unit_type", "") or "").lower(), "unit")
                 desc = link.equipment.description or ''
                 if hasattr(link.equipment, 'details_json') and link.equipment.details_json:
                     incs = link.equipment.details_json.get('inclusions', [])
@@ -227,7 +281,7 @@ def get_package_grouped_inclusions(package) -> dict:
                         inc_names = [n for n in inc_names if n]
                         if inc_names:
                             desc = f"{desc} • Includes: {', '.join(inc_names)}" if desc else f"Includes: {', '.join(inc_names)}"
-                add_item('equipment', link.equipment.name, qty_str, desc)
+                add_item('equipment', link.equipment.name, link.quantity or "", desc, equipment_unit)
 
     return grouped
 
@@ -2342,7 +2396,7 @@ async def step_details_submit(
                 booking.travel_fee_status = "calculated"
                 booking.travel_fee = zone.fee
         else:
-            if caterer.out_of_coverage_action == "manual":
+            if package_is_customizable or caterer.out_of_coverage_action == "manual":
                 booking.travel_fee_status = "manual_quote"
                 booking.travel_fee = 0.0
             else:

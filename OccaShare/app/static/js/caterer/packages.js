@@ -1290,7 +1290,7 @@ function updateReviewTab() {
                 let html = '';
                 for (const [cat, items] of Object.entries(grouped)) {
                     html += `<div class="review-inclusion-group" style="margin-bottom:0.75rem;"><div class="review-inclusion-group-title" style="font-size:0.75rem;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:0.35rem;">${catIcons[cat] || '•'} ${cat}</div>`;
-                    html += items.map(i => `<div class="review-inclusion-summary-item" style="font-size:0.85rem;color:#1e293b;display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;"><i class="fas fa-check-circle" style="color:#16a34a;margin-top:3px;flex-shrink:0;"></i><span><strong>${escapeHtml(i.name)}</strong>${i.description ? '<br><span style="color:#64748b;font-size:0.78rem;">' + escapeHtml(i.description) + '</span>' : ''}</span></div>`).join('');
+                    html += items.map(i => `<div class="review-inclusion-summary-item" style="font-size:0.85rem;color:#1e293b;display:flex;gap:6px;align-items:flex-start;margin-bottom:4px;"><i class="fas fa-check-circle" style="color:#16a34a;margin-top:3px;flex-shrink:0;"></i><span><strong>${escapeHtml(i.name)}</strong>${i.quantity || i.quantity_num ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:.72rem;font-weight:700;">${escapeHtml(packageInclusionQuantityLabel(i.quantity_num || i.quantity, i.unit || packageInclusionUnit(getPackageInclusionCatalogType(i), i.name)))}</span>` : ''}${i.description ? '<br><span style="color:#64748b;font-size:0.78rem;">' + escapeHtml(i.description) + '</span>' : ''}</span></div>`).join('');
                     html += '</div>';
                 }
                 reviewInclusionsDetail.innerHTML = html;
@@ -2079,6 +2079,9 @@ window.openAddInclusionModal = async function () {
         doneButton.hidden = true;
     }
     if (desc) desc.value = '';
+    setPackageQuantitySelect(document.getElementById('customInclusionQuantity'), 1);
+    const quantityWrapper = document.getElementById('customInclusionQuantityWrapper');
+    if (quantityWrapper) quantityWrapper.style.display = 'none';
     const categorySelect = document.getElementById('customInclusionCategory');
     if (categorySelect) categorySelect.disabled = false;
     if (searchInput) {
@@ -2129,6 +2132,8 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
         if (catalogSection) catalogSection.style.display = 'none';
         if (descriptionSection) descriptionSection.style.display = 'none';
         if (photoSection) photoSection.style.display = 'none';
+        const quantityWrapper = document.getElementById('customInclusionQuantityWrapper');
+        if (quantityWrapper) quantityWrapper.style.display = 'none';
         if (doneButton) {
             doneButton.disabled = true;
             doneButton.hidden = true;
@@ -2150,6 +2155,8 @@ window.handleInclusionTypeChange = function (type, preselectId = null) {
     if (catalogSection) catalogSection.style.display = 'block';
     if (descriptionSection) descriptionSection.style.display = 'block';
     if (photoSection) photoSection.style.display = 'block';
+    const quantityWrapper = document.getElementById('customInclusionQuantityWrapper');
+    if (quantityWrapper) quantityWrapper.style.display = 'none';
     if (doneButton) {
         doneButton.disabled = true;
         doneButton.hidden = false;
@@ -2332,6 +2339,12 @@ window.handleCatalogItemSelected = function (selectedId) {
     });
 
     if (doneButton) doneButton.disabled = false;
+    const quantityWrapper = document.getElementById('customInclusionQuantityWrapper');
+    if (quantityWrapper) quantityWrapper.style.display = getActivePackageMode() === 'fixed' ? 'block' : 'none';
+    const quantityUnit = setPackageQuantityUnit(catalogKey, itemName, item, 'customInclusion');
+    const quantitySelect = document.getElementById('customInclusionQuantity');
+    if (quantitySelect && !quantitySelect.value) setPackageQuantitySelect(quantitySelect, 1);
+    if (quantitySelect) quantitySelect.dataset.unit = quantityUnit;
 
     // Show the catalog item's existing photo unless the user already picked a new one
     if (!inclusionImageFile) {
@@ -2378,6 +2391,14 @@ window.editInclusion = async function (index) {
     // If item_id wasn't in catalog yet, set name manually
     const nameEl = document.getElementById('customInclusionName');
     if (nameEl) nameEl.value = item.name || '';
+    const quantityWrapper = document.getElementById('customInclusionQuantityWrapper');
+    const quantitySelect = document.getElementById('customInclusionQuantity');
+    if (quantityWrapper) quantityWrapper.style.display = getActivePackageMode() === 'fixed' ? 'block' : 'none';
+    const unit = setPackageQuantityUnit(catalogType, item.name, item);
+    if (quantitySelect) {
+        setPackageQuantitySelect(quantitySelect, item.quantity_num || String(item.quantity || '').match(/\d+/)?.[0] || 1);
+        quantitySelect.dataset.unit = unit;
+    }
 
     setInclusionCategoryChoices(itemType === 'Equipment');
     const typeSelect = document.getElementById('customInclusionCategory');
@@ -2465,6 +2486,14 @@ window.saveInclusion = async function () {
         description: descVal,
         image_url: imageUrl
     };
+    if (getActivePackageMode() === 'fixed') {
+        const quantity = Number(document.getElementById('customInclusionQuantity')?.value) || 1;
+        const unit = document.getElementById('customInclusionQuantity')?.dataset.unit
+            || packageInclusionUnit(selectedType.toLowerCase(), nameVal);
+        itemObj.quantity_num = quantity;
+        itemObj.quantity = formatPackageInclusionQuantity(quantity, unit);
+        itemObj.unit = packageInclusionStoredUnit(quantity, unit);
+    }
 
     const editIndex = editIndexEl ? parseInt(editIndexEl.value, 10) : -1;
 
@@ -2472,6 +2501,11 @@ window.saveInclusion = async function () {
         const existing = packageInclusions[editIndex];
         packageInclusions[editIndex] = {
             ...existing,
+            ...(itemObj.quantity_num ? {
+                quantity_num: itemObj.quantity_num,
+                quantity: itemObj.quantity,
+                unit: itemObj.unit
+            } : {}),
             description: descVal
         };
         syncInclusionsHidden();
@@ -2608,6 +2642,7 @@ function renderInclusionsList() {
                 </button>
             </div>
         `;
+        if (document.getElementById('reviewInclusionsDetail')) updateReviewTab();
         return;
     }
 
@@ -2641,6 +2676,7 @@ function renderInclusionsList() {
                     </div>
                     <div class="inclusion-item-card-details">
                         <strong>${escapeHtml(item.name)}</strong>
+                        ${item.quantity || item.quantity_num ? `<span class="inclusion-item-quantity" style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:.72rem;font-weight:700;">${escapeHtml(packageInclusionQuantityLabel(item.quantity_num || item.quantity, item.unit || 'unit'))}</span>` : ''}
                         ${description ? `<p>${escapeHtml(description)}</p>` : ''}
                     </div>
                     <div class="inclusion-item-card-actions">
@@ -2662,6 +2698,7 @@ function renderInclusionsList() {
             </section>
         `;
     }).join('');
+    if (document.getElementById('reviewInclusionsDetail')) updateReviewTab();
 }
 
 window.archivePackage = function (id) {
@@ -3943,6 +3980,107 @@ function isCustomizablePackageStepActive() {
     );
 }
 
+function getActivePackageMode() {
+    const packageModal = document.getElementById('packageModal');
+    if (!packageModal?.classList.contains('active')) return '';
+    return document.getElementById('pkgPricingModeSelect')?.value || 'fixed';
+}
+
+function isFixedPackageCatalogCreateContext() {
+    return getActivePackageMode() === 'fixed' && Boolean(window._pkgInclusionReturnState?.active);
+}
+
+function getFixedPackageInclusionEdit(type, id) {
+    if (getActivePackageMode() !== 'fixed') return null;
+    const index = Number(document.getElementById('customInclusionEditIndex')?.value ?? -1);
+    if (!Number.isInteger(index) || index < 0 || index >= packageInclusions.length) return null;
+    const inclusion = packageInclusions[index];
+    if (getPackageInclusionCatalogType(inclusion) !== type || Number(inclusion.item_id) !== Number(id)) return null;
+    return { index, inclusion };
+}
+
+function packageInclusionUnit(type, name, item = {}) {
+    if (type === 'menu') return 'tray';
+    if (type === 'service') return /wait(er|staff)|staff|bartender|server|personnel|crew/i.test(name || '')
+        ? 'staff'
+        : 'unit';
+    const unit = String(item.unit_type || '').toLowerCase();
+    return ({
+        piece: 'piece',
+        set: 'set',
+        pair: 'pair',
+        lot: 'lot',
+        per_day: 'day',
+        per_event: 'event'
+    })[unit] || 'piece';
+}
+
+function formatPackageInclusionQuantity(quantity, unit) {
+    return String(Math.max(1, Number(quantity) || 1));
+}
+
+function packageInclusionQuantityLabel(quantity, unit) {
+    const count = Number(String(quantity).match(/\d+/)?.[0]) || 1;
+    const singularUnit = ({
+        trays: 'tray',
+        pieces: 'piece',
+        sets: 'set',
+        pairs: 'pair',
+        lots: 'lot',
+        days: 'day',
+        events: 'event',
+        units: 'unit'
+    })[unit] || unit;
+    const plural = count === 1 || singularUnit === 'staff' ? singularUnit : ({
+        tray: 'trays',
+        piece: 'pieces',
+        set: 'sets',
+        pair: 'pairs',
+        lot: 'lots',
+        day: 'days',
+        event: 'events',
+        unit: 'units'
+    })[singularUnit] || `${singularUnit}s`;
+    return `${count} ${plural}`;
+}
+
+function packageInclusionStoredUnit(quantity, unit) {
+    const count = Number(quantity) || 1;
+    if (unit === 'staff') return 'staff';
+    return count === 1 ? unit : ({
+        tray: 'trays',
+        piece: 'pieces',
+        set: 'sets',
+        pair: 'pairs',
+        lot: 'lots',
+        day: 'days',
+        event: 'events',
+        unit: 'units'
+    })[unit] || `${unit}s`;
+}
+
+function setPackageQuantitySelect(select, quantity) {
+    if (!select) return;
+    const value = String(Math.max(1, Number(quantity) || 1));
+    if (!Array.from(select.options).some(option => option.value === value)) {
+        select.add(new Option(value, value));
+    }
+    select.value = value;
+}
+
+function setPackageQuantityUnit(type, name, item = {}, prefix = '') {
+    const unit = packageInclusionUnit(type, name, item);
+    const helper = document.getElementById(`${prefix}IncludedQuantityUnit`);
+    if (helper) {
+        helper.textContent = type === 'menu'
+            ? 'Menu quantity is counted by tray.'
+            : type === 'equipment'
+                ? `Included ${unit}${unit === 'piece' ? 's' : ''} in this package.`
+                : unit === 'staff' ? 'Number of staff included in this package.' : 'Number of service units included in this package.';
+    }
+    return unit;
+}
+
 function packageExtraVariantRow(variant = {}) {
     const row = document.createElement('div');
     row.className = 'package-extra-variant-row';
@@ -4208,6 +4346,8 @@ window.setQuickAddOptionType = function (type) {
     const upgradeFeeInput = document.getElementById('quickAddOptionUpgradeFee');
     const extraDishWrapper = document.getElementById('quickAddOptionExtraDishWrapper');
     const extraDishInput = document.getElementById('quickAddOptionExtraDishPrice');
+    const includedQuantityWrapper = document.getElementById('quickAddIncludedQuantityWrapper');
+    const includedQuantity = document.getElementById('quickAddIncludedQuantity');
     const customCategoryWrapper = document.getElementById('quickAddOptionCustomCategoryWrapper');
     const customCategoryInput = document.getElementById('quickAddOptionCustomCategory');
     if (categoryInput?.tagName === 'INPUT' && categorySuggestions && !categoryInput.dataset.suggestionsBound) {
@@ -4221,11 +4361,31 @@ window.setQuickAddOptionType = function (type) {
         });
         categoryInput.dataset.suggestionsBound = 'true';
     }
+    const updateIncludedQuantityUnit = () => {
+        const selectedType = hiddenType?.value || '';
+        const selectedName = nameInput?.value || '';
+        const unit = packageInclusionUnit(selectedType, selectedName, {
+            unit_type: equipmentUnitInput?.value || ''
+        });
+        if (includedQuantity) includedQuantity.dataset.unit = unit;
+        setPackageQuantityUnit(selectedType, selectedName, {
+            unit_type: equipmentUnitInput?.value || ''
+        }, 'quickAdd');
+    };
+    if (nameInput && !nameInput.dataset.includedQuantityUnitBound) {
+        nameInput.addEventListener('input', updateIncludedQuantityUnit);
+        nameInput.dataset.includedQuantityUnitBound = 'true';
+    }
+    if (equipmentUnitInput && !equipmentUnitInput.dataset.includedQuantityUnitBound) {
+        equipmentUnitInput.addEventListener('change', updateIncludedQuantityUnit);
+        equipmentUnitInput.dataset.includedQuantityUnitBound = 'true';
+    }
 
     if (hiddenType) hiddenType.value = type;
     if (type === 'menu') populateQuickAddMenuCategories();
 
     const hasType = Boolean(type);
+    const fixedPackageContext = isFixedPackageCatalogCreateContext();
     if (hiddenType) hiddenType.required = true;
     if (window._pkgInclusionReturnState?.direct) {
         window._pkgInclusionReturnState.type = type === 'menu'
@@ -4242,11 +4402,11 @@ window.setQuickAddOptionType = function (type) {
     if (catalogCategoryWrapper) catalogCategoryWrapper.style.display = type === 'service' || type === 'equipment' ? 'block' : 'none';
     if (catalogCategoryInput) {
         catalogCategoryInput.value = type === 'service' ? 'Service' : (type === 'equipment' ? 'Equipment' : '');
-        catalogCategoryInput.placeholder = type === 'service' ? 'e.g. Staffing, Setup, Beverage Service' : 'e.g. Tables, Chairs, Tableware';
+        catalogCategoryInput.readOnly = true;
     }
     if (catalogCategoryLabel) catalogCategoryLabel.textContent = type === 'service' ? 'Service category' : 'Equipment category';
-    if (upgradeFeeWrapper) upgradeFeeWrapper.style.display = type === 'menu' ? 'block' : 'none';
-    if (extraDishWrapper) extraDishWrapper.style.display = type === 'menu' ? 'block' : 'none';
+    if (upgradeFeeWrapper) upgradeFeeWrapper.style.display = type === 'menu' && !fixedPackageContext ? 'block' : 'none';
+    if (extraDishWrapper) extraDishWrapper.style.display = type === 'menu' && !fixedPackageContext ? 'block' : 'none';
     if (upgradeFeeInput && type !== 'menu') upgradeFeeInput.value = '';
     if (customCategoryWrapper) customCategoryWrapper.style.display = 'none';
     if (customCategoryInput) { customCategoryInput.required = false; customCategoryInput.value = ''; }
@@ -4255,10 +4415,15 @@ window.setQuickAddOptionType = function (type) {
     if (categoryInput) categoryInput.setCustomValidity('');
     const upgradeFeeError = document.getElementById('quickAddOptionUpgradeFeeError');
     if (upgradeFeeError) upgradeFeeError.textContent = '';
-    if (priceRow) priceRow.style.display = type === 'service' || type === 'equipment' ? 'grid' : 'none';
+    if (priceRow) priceRow.style.display = (type === 'service' || type === 'equipment') && !fixedPackageContext ? 'grid' : 'none';
     if (priceRow) priceRow.style.gridTemplateColumns = '1fr';
-    if (equipmentSettingsRow) equipmentSettingsRow.style.display = type === 'equipment' ? 'grid' : 'none';
-    if (equipmentQuantityInput) equipmentQuantityInput.required = type === 'equipment';
+    if (equipmentSettingsRow) equipmentSettingsRow.style.display = type === 'equipment' && !fixedPackageContext ? 'grid' : 'none';
+    if (equipmentQuantityInput) equipmentQuantityInput.required = type === 'equipment' && !fixedPackageContext;
+    if (includedQuantityWrapper) includedQuantityWrapper.style.display = hasType && fixedPackageContext ? 'block' : 'none';
+    if (includedQuantity) {
+        includedQuantity.required = hasType && fixedPackageContext;
+        updateIncludedQuantityUnit();
+    }
     if (priceInput) priceInput.required = false;
     if (priceError) {
         priceError.textContent = '';
@@ -4274,6 +4439,8 @@ window.setQuickAddOptionType = function (type) {
         if (priceRow) priceRow.style.display = 'none';
         if (priceInput) priceInput.required = false;
         if (categoryInput) categoryInput.value = '';
+        if (includedQuantityWrapper) includedQuantityWrapper.style.display = 'none';
+        if (includedQuantity) includedQuantity.required = false;
         if (categorySuggestions) {
             categorySuggestions.innerHTML = '';
             categorySuggestions.style.display = 'none';
@@ -4295,7 +4462,7 @@ window.setQuickAddOptionType = function (type) {
             priceInput.value = '0.00';
             priceInput.required = false;
         }
-        if (extraDishInput) extraDishInput.value = '';
+        if (extraDishInput && fixedPackageContext) extraDishInput.value = '';
         if (description) description.placeholder = 'Details, ingredients, specifications or notes...';
     } else if (type === 'service') {
         if (nameLabel) nameLabel.innerHTML = 'Service Name <span style="color: #ef4444;">*</span>';
@@ -4439,6 +4606,7 @@ window.submitQuickAddOption = async function (e) {
     e.preventDefault();
     const saveAnother = e.submitter?.value === 'add_another';
     const type = document.getElementById('quickAddOptionType')?.value || '';
+    const fixedPackageContext = isFixedPackageCatalogCreateContext();
     const name = (document.getElementById('quickAddOptionName')?.value || '').trim();
     const categoryInput = document.getElementById('quickAddOptionCategory');
     const category = (type === 'menu' ? categoryInput?.value : document.getElementById('quickAddOptionCatalogCategory')?.value)?.trim() || '';
@@ -4454,6 +4622,10 @@ window.submitQuickAddOption = async function (e) {
     const price = type === 'menu' ? 0 : (Number(priceText.replace(/,/g, '')) || 0);
     const equipmentQuantityInput = document.getElementById('quickAddEquipmentQuantity');
     const equipmentQuantity = Number(equipmentQuantityInput?.value);
+    const includedQuantity = Number(document.getElementById('quickAddIncludedQuantity')?.value) || 1;
+    const includedUnit = packageInclusionUnit(type, name, {
+        unit_type: document.getElementById('quickAddEquipmentUnit')?.value || ''
+    });
     const desc = (document.getElementById('quickAddOptionDescription')?.value || '').trim();
 
     if (!['menu', 'service', 'equipment'].includes(type)) {
@@ -4480,15 +4652,15 @@ window.submitQuickAddOption = async function (e) {
         return;
     }
     if (categoryInput) categoryInput.setCustomValidity('');
-    if (type === 'menu' && !window.validateSwapFee('quickAddOptionUpgradeFee', 'quickAddOptionUpgradeFeeError')) {
+    if (!fixedPackageContext && type === 'menu' && !window.validateSwapFee('quickAddOptionUpgradeFee', 'quickAddOptionUpgradeFeeError')) {
         document.getElementById('quickAddOptionUpgradeFee')?.focus();
         return;
     }
-    if ((type === 'service' || type === 'equipment') && !window.validateQuickAddOptionPrice()) {
+    if (!fixedPackageContext && (type === 'service' || type === 'equipment') && !window.validateQuickAddOptionPrice()) {
         priceInput?.focus();
         return;
     }
-    if (type === 'equipment' && (
+    if (type === 'equipment' && !fixedPackageContext && (
         !Number.isInteger(equipmentQuantity) || equipmentQuantity < 1 || equipmentQuantity > 999999
     )) {
         if (equipmentQuantityInput) {
@@ -4533,16 +4705,18 @@ window.submitQuickAddOption = async function (e) {
         formData.append('category', category);
         formData.append('custom_category', customCategory);
         const upgradeFeeText = document.getElementById('quickAddOptionUpgradeFee')?.value.trim() || '';
-        if (type === 'menu' && upgradeFeeText) {
+        if (type === 'menu' && !fixedPackageContext && upgradeFeeText) {
             formData.append('upgrade_fee', String(Number(upgradeFeeText.replace(/,/g, ''))));
         }
-        if (type === 'menu') {
+        if (type === 'menu' && !fixedPackageContext) {
             formData.append('addon_price', String(Number((document.getElementById('quickAddOptionExtraDishPrice')?.value || '0').replace(/,/g, '')) || 0));
         }
-        if (type === 'service' || type === 'equipment') formData.append('price', priceText ? Number(priceText.replace(/,/g, '')) : 0);
+        if (!fixedPackageContext && (type === 'service' || type === 'equipment')) {
+            formData.append('price', priceText ? Number(priceText.replace(/,/g, '')) : 0);
+        }
         formData.append('unit_type', unit);
         if (type === 'service') formData.append('available_qty', '1');
-        if (type === 'equipment') formData.append('available_qty', String(equipmentQuantity));
+        if (type === 'equipment') formData.append('available_qty', String(fixedPackageContext ? 1 : equipmentQuantity));
         if (type === 'service') formData.append('minimum_hours', '1');
         formData.append('status', 'available');
         formData.append('description', desc);
@@ -4589,6 +4763,11 @@ window.submitQuickAddOption = async function (e) {
                 category: categoryLabel,
                 item_id: newId,
                 name: newItem.name,
+                ...(fixedPackageContext ? {
+                    quantity_num: includedQuantity,
+                    quantity: formatPackageInclusionQuantity(includedQuantity, includedUnit),
+                    unit: packageInclusionStoredUnit(includedQuantity, includedUnit)
+                } : {}),
                 description: newItem.description || '',
                 image_url: newItem.image_url || ''
             });
@@ -4605,6 +4784,11 @@ window.submitQuickAddOption = async function (e) {
                     category: categoryLabel,
                     item_id: newId,
                     name: newItem.name,
+                    ...(fixedPackageContext ? {
+                        quantity_num: includedQuantity,
+                        quantity: formatPackageInclusionQuantity(includedQuantity, includedUnit),
+                        unit: packageInclusionStoredUnit(includedQuantity, includedUnit)
+                    } : {}),
                     description: newItem.description || '',
                     image_url: newItem.image_url || ''
                 });
@@ -4657,6 +4841,14 @@ window.submitQuickAddOption = async function (e) {
             window._pkgInclusionReturnState = null;
             safeOpenModal('addInclusionModal', true);
             window.handleInclusionTypeChange(savedState.type, newItem.id);
+            if (fixedPackageContext) {
+                const quantitySelect = document.getElementById('customInclusionQuantity');
+                const unit = setPackageQuantityUnit(type, newItem.name, newItem, 'customInclusion');
+                if (quantitySelect) {
+                    setPackageQuantitySelect(quantitySelect, includedQuantity);
+                    quantitySelect.dataset.unit = unit;
+                }
+            }
             if (window.showToast) {
                 window.showToast(`Added "${newItem.name}" and selected for inclusion!`, 'success');
             }
@@ -4739,6 +4931,18 @@ window.openQuickEditModal = function (type, id, event) {
             : '';
     }
     if (photoHint) photoHint.textContent = item.image_url ? 'Click to replace photo' : 'Upload photo';
+    const fixedInclusionEdit = getFixedPackageInclusionEdit(type, id);
+    const includedQuantityWrapper = document.getElementById(`${prefix}IncludedQuantityWrapper`);
+    const includedQuantity = document.getElementById(`${prefix}IncludedQuantity`);
+    if (includedQuantityWrapper) includedQuantityWrapper.style.display = fixedInclusionEdit ? 'block' : 'none';
+    if (includedQuantity) {
+        includedQuantity.required = Boolean(fixedInclusionEdit);
+        const quantityValue = fixedInclusionEdit
+            ? fixedInclusionEdit.inclusion.quantity_num || String(fixedInclusionEdit.inclusion.quantity || '').match(/\d+/)?.[0] || 1
+            : 1;
+        setPackageQuantitySelect(includedQuantity, quantityValue);
+        includedQuantity.dataset.unit = setPackageQuantityUnit(type, item.name, item, `${prefix}`);
+    }
 
     if (type === 'menu') {
         const categoryField = value('Category');
@@ -4765,10 +4969,17 @@ window.openQuickEditModal = function (type, id, event) {
             extraField.value = Number(item.addon_price) > 0 ? String(item.addon_price) : '';
             window.sanitizeMoneyInput(extraField);
         }
+        if (fixedInclusionEdit) {
+            value('UpgradeFee')?.closest('.form-group-pro')?.style.setProperty('display', 'none');
+            value('ExtraDishPrice')?.closest('.form-group-pro')?.style.setProperty('display', 'none');
+        } else {
+            value('UpgradeFee')?.closest('.form-group-pro')?.style.removeProperty('display');
+            value('ExtraDishPrice')?.closest('.form-group-pro')?.style.removeProperty('display');
+        }
         window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError');
     } else if (type === 'service') {
         const categoryField = value('Category');
-        if (categoryField) categoryField.value = item.category || 'Service';
+        if (categoryField) categoryField.value = 'Service';
         const feeField = value('Fee');
         const price = item.price ?? item.selling_price;
         if (feeField) {
@@ -4779,10 +4990,13 @@ window.openQuickEditModal = function (type, id, event) {
         if (staffRatioField) staffRatioField.value = String(item.staff_to_pax_ratio || 25);
         const minStaffField = value('MinStaff');
         if (minStaffField) minStaffField.value = String(item.min_staff_required || 1);
+        if (value('Fee')?.closest('.form-group-pro')) {
+            value('Fee').closest('.form-group-pro').style.display = fixedInclusionEdit ? 'none' : '';
+        }
         window.validateCatalogEditServiceFee();
     } else if (type === 'equipment') {
         const categoryField = value('Category');
-        if (categoryField) categoryField.value = item.category || 'Equipment';
+        if (categoryField) categoryField.value = 'Equipment';
         const feeField = value('Fee');
         const price = item.price ?? item.rental_price;
         if (feeField) {
@@ -4795,6 +5009,10 @@ window.openQuickEditModal = function (type, id, event) {
         if (quantityField) quantityField.value = String(item.available_qty || 1);
         const statusField = value('Status');
         if (statusField) statusField.value = item.status || 'available';
+        ['Fee', 'Unit', 'Quantity'].forEach(field => {
+            const wrapper = value(field)?.closest('.form-group-pro');
+            if (wrapper) wrapper.style.display = fixedInclusionEdit ? 'none' : '';
+        });
     }
 
     const packageContextActive = isCustomizablePackageStepActive();
@@ -4881,19 +5099,20 @@ window.submitCatalogItemEdit = async function (event, type) {
     const id = value('Id')?.value;
     const name = value('Name')?.value.trim() || '';
     const description = value('Description')?.value.trim() || '';
+    const fixedInclusionEdit = getFixedPackageInclusionEdit(type, id);
     if (!id || !name) {
         alert('Item name is required.');
         return;
     }
-    if (type === 'menu' && !window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError')) {
+    if (!fixedInclusionEdit && type === 'menu' && !window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError')) {
         value('UpgradeFee')?.focus();
         return;
     }
-    if (type === 'service' && !window.validateCatalogEditServiceFee()) {
+    if (!fixedInclusionEdit && type === 'service' && !window.validateCatalogEditServiceFee()) {
         value('Fee')?.focus();
         return;
     }
-    const moneyFields = type === 'menu'
+    const moneyFields = fixedInclusionEdit ? [] : type === 'menu'
         ? [value('ExtraDishPrice')]
         : type === 'equipment' ? [value('Fee')] : [];
     if (moneyFields.some(moneyField => {
@@ -4933,19 +5152,25 @@ window.submitCatalogItemEdit = async function (event, type) {
             const fee = value('UpgradeFee')?.value.trim() || '';
             formData.append('category', category);
             formData.append('custom_category', customCategory);
-            formData.append('upgrade_fee', fee ? String(Number(fee.replace(/,/g, ''))) : '0');
-            formData.append('addon_price', String(Number((value('ExtraDishPrice')?.value || '0').replace(/,/g, '')) || 0));
+            if (!fixedInclusionEdit) {
+                formData.append('upgrade_fee', fee ? String(Number(fee.replace(/,/g, ''))) : '0');
+                formData.append('addon_price', String(Number((value('ExtraDishPrice')?.value || '0').replace(/,/g, '')) || 0));
+            }
         } else if (type === 'service') {
-            formData.append('category', value('Category')?.value.trim() || 'Service');
-            formData.append('price', String(Number((value('Fee')?.value || '0').replace(/,/g, '')) || 0));
-            formData.append('staff_to_pax_ratio', value('StaffRatio')?.value || '0');
-            formData.append('min_staff_required', value('MinStaff')?.value || '1');
+            formData.append('category', 'Service');
+            if (!fixedInclusionEdit) {
+                formData.append('price', String(Number((value('Fee')?.value || '0').replace(/,/g, '')) || 0));
+                formData.append('staff_to_pax_ratio', value('StaffRatio')?.value || '0');
+                formData.append('min_staff_required', value('MinStaff')?.value || '1');
+            }
         } else if (type === 'equipment') {
-            formData.append('category', value('Category')?.value.trim() || 'Equipment');
-            formData.append('price', String(Number((value('Fee')?.value || '0').replace(/,/g, '')) || 0));
-            formData.append('unit_type', value('Unit')?.value || 'piece');
-            formData.append('available_qty', value('Quantity')?.value || '1');
-            formData.append('status', value('Status')?.value || 'available');
+            formData.append('category', 'Equipment');
+            if (!fixedInclusionEdit) {
+                formData.append('price', String(Number((value('Fee')?.value || '0').replace(/,/g, '')) || 0));
+                formData.append('unit_type', value('Unit')?.value || 'piece');
+                formData.append('available_qty', value('Quantity')?.value || '1');
+                formData.append('status', value('Status')?.value || 'available');
+            }
         }
         const image = value('Image')?.files?.[0];
         if (image) formData.append('image', image);
@@ -4967,16 +5192,25 @@ window.submitCatalogItemEdit = async function (event, type) {
         window.inclusionsCatalog[type] = catalog;
         applyPackageItemSettings(type, id, packageSettings);
         let packageChanged = false;
-        packageInclusions = packageInclusions.map(inclusion => {
+        packageInclusions = packageInclusions.map((inclusion, inclusionIndex) => {
             if (Number(inclusion.item_id) !== Number(id) ||
                 getPackageInclusionCatalogType(inclusion) !== type) return inclusion;
             packageChanged = true;
-            return {
+            const updatedInclusion = {
                 ...inclusion,
                 name: updatedItem.name,
                 description: updatedItem.description || '',
                 image_url: updatedItem.image_url || inclusion.image_url || ''
             };
+            if (fixedInclusionEdit && inclusionIndex === fixedInclusionEdit.index) {
+                const quantity = Number(value('IncludedQuantity')?.value) || 1;
+                const unit = value('IncludedQuantity')?.dataset.unit
+                    || packageInclusionUnit(type, updatedItem.name, updatedItem);
+                updatedInclusion.quantity_num = quantity;
+                updatedInclusion.quantity = formatPackageInclusionQuantity(quantity, unit);
+                updatedInclusion.unit = packageInclusionStoredUnit(quantity, unit);
+            }
+            return updatedInclusion;
         });
         if (packageChanged) {
             syncInclusionsHidden();

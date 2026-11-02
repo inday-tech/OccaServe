@@ -266,6 +266,103 @@ class BookingWriteDatabase(QuotationWriteDatabase):
         self.deleted.append(item)
 
 
+def test_customizable_booking_without_quotation_opens_draft_for_caterer_review(monkeypatch):
+    profile = SimpleNamespace(id=9)
+    booking = SimpleNamespace(
+        id=42,
+        caterer_id=profile.id,
+        status="inquiry",
+        quotation=None,
+        is_custom_event=False,
+        travel_fee_status=None,
+        package=SimpleNamespace(pricing_mode="customizable", inclusions=[]),
+        payment_request_activated_at=None,
+        payment_deadline_at=None,
+        customer_signature=None,
+        caterer_signature=None,
+    )
+    db = BookingWriteDatabase(booking)
+    user = SimpleNamespace(id=7, caterer_profile=profile)
+    rendered = {}
+    generated_quotation = SimpleNamespace(
+        status="draft",
+        package_details={"package_type": "customizable"},
+        total_amount=1000,
+        addons=[],
+        downpayment_percent=30,
+        customer_signature=None,
+        caterer_signature=None,
+    )
+
+    def render(template_name, context):
+        rendered["template_name"] = template_name
+        rendered["context"] = context
+        return "quotation"
+
+    def prepare_customizable_quote(_db, actual_booking):
+        assert actual_booking is booking
+        booking.quotation = generated_quotation
+        return generated_quotation
+
+    monkeypatch.setattr(caterer_dashboard.templates, "TemplateResponse", render)
+    monkeypatch.setattr(
+        caterer_dashboard,
+        "_prepare_customizable_package_quotation",
+        prepare_customizable_quote,
+    )
+
+    response = asyncio.run(caterer_dashboard.view_booking_quotation(
+        request=SimpleNamespace(query_params={"modal": "true"}),
+        booking_id=str(booking.id),
+        db=db,
+        user=user,
+    ))
+
+    assert response == "quotation"
+    assert rendered["template_name"] == "caterer/quotation_view.html"
+    assert rendered["context"]["booking"] is booking
+    assert rendered["context"]["quotation"] is generated_quotation
+
+
+def test_customizable_booking_without_quote_prepares_draft_before_sending(monkeypatch):
+    profile = SimpleNamespace(id=9, accepted_payment_terms=[30])
+    booking = SimpleNamespace(
+        id=43,
+        caterer_id=profile.id,
+        status="inquiry",
+        quotation=None,
+        is_custom_event=False,
+        travel_fee_status=None,
+        package=SimpleNamespace(pricing_mode="customizable"),
+    )
+    db = BookingWriteDatabase(booking)
+    user = SimpleNamespace(id=7, caterer_profile=profile)
+    generated_quotation = SimpleNamespace(status="draft", total_amount=1000, downpayment_percent=30)
+
+    def prepare_customizable_quote(_db, actual_booking):
+        actual_booking.quotation = generated_quotation
+        return generated_quotation
+
+    monkeypatch.setattr(
+        caterer_dashboard,
+        "_prepare_customizable_package_quotation",
+        prepare_customizable_quote,
+    )
+
+    response = asyncio.run(caterer_dashboard.send_standard_quotation(
+        booking_id=str(booking.id),
+        request=SimpleNamespace(query_params={"prepare": "true", "modal": "true"}),
+        db=db,
+        user=user,
+    ))
+
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/caterer/bookings/{booking.id}/quotation?modal=true"
+    assert booking.quotation is generated_quotation
+    assert generated_quotation.status == "draft"
+    assert booking.status == "inquiry"
+
+
 def test_caterer_cannot_revise_after_payment_request_activation():
     profile = SimpleNamespace(id=9)
     booking = SimpleNamespace(
@@ -494,6 +591,7 @@ def test_customizable_quotation_preserves_and_charges_package_extra_dishes():
         guest_count=10,
         status="draft",
         travel_fee=300,
+        travel_fee_status="calculated",
         document_type=None,
         reservation_fee=0,
         total_amount=0,
@@ -553,8 +651,10 @@ def test_customizable_quotation_preserves_and_charges_package_extra_dishes():
         QuotationWriteDatabase(), booking, 30
     )
 
-    assert quotation.total_amount == 1410
+    assert quotation.total_amount == 1710
     assert quotation.package_details["menu_extras_total"] == 160
+    assert quotation.package_details["transportation_total"] == 300
+    assert quotation.package_details["transportation_status"] == "calculated"
     assert quotation.package_details["selected_menu_extras"][0]["qty"] == 2
     assert quotation.package_details["selected_food"][0]["replacement_for_name"] == "Chicken"
     assert quotation.package_details["selected_services"][0]["included"] is True

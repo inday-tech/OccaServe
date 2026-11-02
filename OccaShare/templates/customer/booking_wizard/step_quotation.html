@@ -107,7 +107,7 @@
                         <li>
                             {% if inclusion is mapping %}
                                 {{ inclusion.get('name') or inclusion.get('label') or 'Package item' }}
-                                {% if inclusion.get('quantity') %}<span>× {{ inclusion.get('quantity') }}</span>{% endif %}
+                                {% if inclusion.get('quantity') %}<span>× {{ inclusion.get('quantity') }}{% if inclusion.get('unit') and inclusion.get('unit')|lower not in (inclusion.get('quantity')|string|lower) %} {{ inclusion.get('unit') }}{% endif %}</span>{% endif %}
                             {% else %}{{ inclusion }}{% endif %}
                         </li>
                         {% endfor %}
@@ -127,7 +127,8 @@
                                 ('Menu upgrades', quotation_details.get('food_total')),
                                 ('Extra dishes', quotation_details.get('menu_extras_total')),
                                 ('Services', quotation_details.get('services_total')),
-                                ('Equipment', quotation_details.get('equipment_total'))
+                                ('Equipment', quotation_details.get('equipment_total')),
+                                ('Transportation', quotation_details.get('transportation_total'))
                             ] %}
                             {% for label, amount in cost_rows %}
                                 {% if amount is not none and amount|float != 0 %}
@@ -144,6 +145,9 @@
                         {% for addon in quotation.addons or [] %}
                         <div class="quotation-cost-row"><span>{{ addon.get('name', 'Additional item') }}</span><strong>₱{{ "{:,.2f}".format(addon.get('price', 0)|float) }}</strong></div>
                         {% endfor %}
+                        {% if quotation_details.get('transportation_status') == 'manual_quote' %}
+                        <p class="quotation-deposit-hint"><i class="fas fa-truck"></i> Transportation fee is not included in this total. Please coordinate the fee with your caterer.</p>
+                        {% endif %}
                     </div>
 
                     <div class="quotation-total-row">

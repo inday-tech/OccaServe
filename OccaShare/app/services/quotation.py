@@ -327,6 +327,12 @@ class QuotationService:
         except Exception:
             food_removal_credit = Decimal("0")
         customized_subtotal = max(Decimal("0"), base_total + food_total + menu_extras_total + services_total + equipment_total - food_removal_credit)
+        transportation_total = (
+            Decimal(str(booking.travel_fee or 0))
+            if getattr(booking, "travel_fee_status", None) == "calculated"
+            else Decimal("0")
+        )
+        customized_subtotal += transportation_total
 
         addons = []
         total_amount = customized_subtotal
@@ -353,6 +359,8 @@ class QuotationService:
             "food_removal_credit": float(food_removal_credit),
             "services_total": float(services_total),
             "equipment_total": float(equipment_total),
+            "transportation_total": float(transportation_total),
+            "transportation_status": getattr(booking, "travel_fee_status", None) or "pending",
             "base_price": float(base_price),
             "base_package_total": float(base_total),
             "food_upgrade_total": float(food_total),

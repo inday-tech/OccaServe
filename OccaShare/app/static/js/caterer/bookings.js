@@ -3985,7 +3985,7 @@ async function proceedWithAcceptance(bookingId, isPayment) {
 
 window.acceptBookingRequest = function(bookingId) {
     window.showConfirm(
-        'Accept this verified booking request? You can then prepare and send a quotation to the customer.',
+        'Accept this verified booking request? Customizable package selections will be priced automatically, then you can review the quotation before sending it.',
         async function() {
             const result = await window.apiAction(
                 `/caterer/bookings/${bookingId}/accept-request`,
@@ -3993,8 +3993,8 @@ window.acceptBookingRequest = function(bookingId) {
             );
             if (result && result.status === 'success') {
                 await refreshBookingUiRealtime(bookingId, {
-                    toast: 'Booking request accepted. Prepare a quotation for the customer.',
-                    newStatus: 'inquiry',
+                    toast: result.message || 'Booking request accepted.',
+                    newStatus: result.new_status || 'inquiry',
                     closeModal: false
                 });
             }

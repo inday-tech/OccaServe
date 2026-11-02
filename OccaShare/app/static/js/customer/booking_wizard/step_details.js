@@ -552,9 +552,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (window.deliveryFeeStatus === "manual_quote") {
                 calcDeliveryFee.innerText = "Coordinate with caterer";
             } else if (window.deliveryFeeStatus === "error") {
-                calcDeliveryFee.innerText = window.pricingMode === 'fixed'
-                    ? "Coordinate with caterer"
-                    : "Out of Coverage";
+                calcDeliveryFee.innerText = "Coordinate with caterer";
             } else if (window.deliveryFeeStatus === "pending") {
                 calcDeliveryFee.innerText = "Coordinate with caterer";
             } else {
@@ -949,7 +947,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         window.deliveryFeeStatus = "calculated";
                     }
                 } else {
-                    if (data.out_of_coverage_action === 'manual') {
+                    if (window.pricingMode === 'customizable' || data.out_of_coverage_action === 'manual') {
                         window.currentDeliveryFee = 0;
                         window.deliveryFeeStatus = "manual_quote";
                     } else if (data.out_of_coverage_action === 'reject' && window.pricingMode === 'fixed') {
@@ -966,7 +964,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (e) {
                 console.error("Failed to fetch delivery fee", e);
                 window.currentDeliveryFee = 0;
-                window.deliveryFeeStatus = "error";
+                window.deliveryFeeStatus = window.pricingMode === 'customizable' ? "manual_quote" : "error";
             }
             updateCalculator();
         } else {

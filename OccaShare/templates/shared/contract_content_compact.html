@@ -14,7 +14,7 @@
 {% endif %}
 {% set package_name = details.get('name') or (booking.package.name if booking.package else None) or booking.event_name or booking.event_type or 'Booking package' %}
 {% set is_customizable = details.get('package_type') == 'customizable' or (booking.package and booking.package.pricing_mode == 'customizable') %}
-{% set package_inclusions = details.get('inclusions') or (booking.package.inclusions if booking.package else []) or [] %}
+{% set package_inclusions = details.get('inclusions') if details.get('inclusions') is not none else ((booking.package.inclusions if booking.package else []) or []) %}
 {% set doc_ref = 'ORD-' if booking.document_type == 'invoice' else ('RT-' if booking.document_type == 'rental_agreement' or booking.event_type == 'Equipment Rental' else 'BK-') %}
 
 <div id="printable-contract-container">
@@ -59,6 +59,9 @@
             </p>
             {% if details.get('description') %}
             <p class="compact-package-description">{{ details.get('description') }}</p>
+            {% endif %}
+            {% if details.get('transportation_status') == 'manual_quote' %}
+            <p class="compact-empty-note">Transportation fee is not included in the quoted total and must be coordinated separately with the caterer.</p>
             {% endif %}
             {% if is_customizable %}
                 {% set selection_groups = [
@@ -112,7 +115,7 @@
                                     <span>
                                         <strong>{{ inclusion.get('name') or inclusion.get('description') or 'Included item' }}</strong>
                                         {% if inclusion.get('category') %}<span class="compact-item-meta"> · {{ inclusion.get('category') }}</span>{% endif %}
-                                        {% if inclusion.get('quantity') %}<span class="compact-item-meta"> · Qty {{ inclusion.get('quantity') }}{% if inclusion.get('unit') %} {{ inclusion.get('unit') }}{% endif %}</span>{% endif %}
+                                        {% if inclusion.get('quantity') %}<span class="compact-item-meta"> · Qty {{ inclusion.get('quantity') }}{% if inclusion.get('unit') and inclusion.get('unit')|lower not in (inclusion.get('quantity')|string|lower) %} {{ inclusion.get('unit') }}{% endif %}</span>{% endif %}
                                     </span>
                                     <span class="compact-item-price">Included</span>
                                 </li>

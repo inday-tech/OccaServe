@@ -388,6 +388,11 @@
             {% if booking.package and booking.package.description %}
             <p style="margin: .35rem 0 0; color: #475569; font-size: .88rem;">{{ booking.package.description }}</p>
             {% endif %}
+            {% if quotation and quotation.package_details and quotation.package_details.get('transportation_status') == 'manual_quote' %}
+            <p style="margin: .55rem 0 0; padding: .55rem .7rem; border-radius: 8px; background: #fff7ed; color: #9a3412; font-size: .84rem;">
+                <i class="fas fa-truck"></i> Transportation fee is not included in this quotation and must be coordinated with the customer.
+            </p>
+            {% endif %}
             {% if displayed_inclusions %}
             <div style="overflow-x:auto;">
             <table style="width:100%; min-width:520px; border-collapse:collapse; margin-top:.7rem; color:#334155; font-size:.86rem;">
@@ -418,7 +423,7 @@
 
     {% set quotation_details = quotation.package_details if quotation and quotation.package_details else {} %}
     {% set is_cust_inv = quotation_details.get('package_type') == 'customizable' or (booking.package and booking.package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
-    {% set has_item_rows = (is_cust_inv and (quotation_details.get('selected_food') or quotation_details.get('selected_menu_extras') or quotation_details.get('selected_services') or quotation_details.get('selected_equipment'))) or (not is_cust_inv and ((quotation_details.get('base_amount', 0)|float > 0) or (quotation and quotation.addons))) or (quotation_details.get('revision_number', 1)|int > 1) or not quotation %}
+    {% set has_item_rows = (is_cust_inv and ((quotation_details.get('base_package_total', 0)|float > 0) or quotation_details.get('transportation_total', 0)|float > 0 or quotation_details.get('selected_food') or quotation_details.get('selected_menu_extras') or quotation_details.get('selected_services') or quotation_details.get('selected_equipment'))) or (not is_cust_inv and ((quotation_details.get('base_amount', 0)|float > 0) or (quotation and quotation.addons))) or (quotation_details.get('revision_number', 1)|int > 1) or not quotation %}
     {% if has_item_rows %}
     <div class="item-table-wrap">
     <table class="item-table">
@@ -433,6 +438,23 @@
         <tbody>
             {% if is_cust_inv and quotation_details.get('revision_number', 1)|int <= 1 %}
                 <!-- CUSTOMIZABLE PACKAGE INVOICE ITEMS -->
+                {% if quotation_details.get('base_package_total', 0)|float > 0 %}
+                <tr>
+                    <td>
+                        <div class="item-name">{{ quotation_details.get('name') or (booking.package.name if booking.package else 'Catering Package') }}</div>
+                        <div class="item-desc">Customizable package base · {{ quotation_details.get('guest_count') or booking.guest_count or 1 }} guests</div>
+                    </td>
+                    <td style="text-align: center; font-weight: 600; color: var(--color-neutral-600);">
+                        {{ quotation_details.get('guest_count') or booking.guest_count or 1 }}
+                    </td>
+                    <td style="text-align: right; color: var(--color-neutral-600);">
+                        ₱{{ "{:,.2f}".format((quotation_details.get('base_price') or 0)|float) }}
+                    </td>
+                    <td style="text-align: right; font-weight: 700;">
+                        ₱{{ "{:,.2f}".format(quotation_details.get('base_package_total')|float) }}
+                    </td>
+                </tr>
+                {% endif %}
                 {% set c_food = quotation.package_details.selected_food if quotation.package_details and quotation.package_details.selected_food else [] %}
                 {% for f in c_food %}
                 <tr>
@@ -497,6 +519,14 @@
                 </tr>
                 {% endfor %}
 
+                {% if quotation_details.get('transportation_total', 0)|float > 0 %}
+                <tr>
+                    <td><div class="item-name">Transportation</div><div class="item-desc">Delivery to the selected venue</div></td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(quotation_details.get('transportation_total')|float) }}</td>
+                    <td style="text-align: right; font-weight: 700;">₱{{ "{:,.2f}".format(quotation_details.get('transportation_total')|float) }}</td>
+                </tr>
+                {% endif %}
 
             {% else %}
                 <!-- FIXED PACKAGE INVOICE ITEMS -->

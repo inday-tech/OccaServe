@@ -675,6 +675,60 @@ def sanitize_booking_id(val) -> int:
     return int(cleaned) if cleaned else 0
 
 
+def _is_customizable_package_booking(booking: models.Booking) -> bool:
+    package = getattr(booking, "package", None)
+    if getattr(package, "pricing_mode", None) == "customizable":
+        return True
+    custom_requirements = getattr(booking, "custom_requirements", None)
+    return (
+        isinstance(custom_requirements, dict)
+        and custom_requirements.get("package_type") == "customizable"
+    )
+
+
+def _booking_requires_proposal_workspace(booking: models.Booking) -> bool:
+    is_customizable_package = _is_customizable_package_booking(booking)
+    return bool(
+        getattr(booking, "is_custom_event", False)
+        or (
+            not is_customizable_package
+            and getattr(booking, "travel_fee_status", None) == "manual_quote"
+        )
+    )
+
+
+def _prepare_customizable_package_quotation(
+    db: Session,
+    booking: models.Booking,
+) -> models.Quotation:
+    from ..services.quotation import quotation_service
+
+    terms = quotation_service._payment_terms_for_booking(booking)
+    quotation = quotation_service.create_quotation(db, booking, terms[0])
+    if not quotation or not quotation.total_amount or quotation.total_amount <= 0:
+        if quotation and quotation.status == "draft":
+            db.delete(quotation)
+            db.commit()
+        raise HTTPException(
+            status_code=409,
+            detail="The selected package options do not produce a valid quotation. Review the package pricing and selections.",
+        )
+
+    details = dict(quotation.package_details or {})
+    details["accepted_payment_terms"] = terms
+    details["agreement_terms"] = quotation_service._agreement_terms_for_booking(booking)
+    details["revision_number"] = 1
+    details["revision_pending"] = False
+    quotation.package_details = details
+    quotation.downpayment_percent = terms[0]
+    booking.expires_at = None
+    booking.reservation_fee = float(
+        Decimal(str(quotation.total_amount)) * Decimal(terms[0]) / Decimal("100")
+    )
+    db.commit()
+    return quotation
+
+
 def create_default_booking_tasks(db: Session, booking_id: int):
     """No-op: Preparation tab is now a simple status tracker (no checklist seeding)."""
     return
@@ -4122,7 +4176,7 @@ async def accept_booking_request(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only),
 ):
-    """Accept a verified customer request so the caterer can prepare its quotation."""
+    """Accept a verified customer request and prepare customizable quotes for caterer review."""
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
@@ -4133,6 +4187,12 @@ async def accept_booking_request(
         raise HTTPException(status_code=400, detail="This booking is not waiting for caterer review.")
     if not booking.user or not (booking.user.is_verified and booking.user.is_kyc_complete):
         raise HTTPException(status_code=409, detail="Customer identity verification must be complete before accepting this request.")
+
+    customizable_quote = (
+        _prepare_customizable_package_quotation(db, booking)
+        if _is_customizable_package_booking(booking)
+        else None
+    )
 
     booking.status = "inquiry"
     booking.expires_at = None
@@ -4155,12 +4215,17 @@ async def accept_booking_request(
         "type": "booking_update",
         "booking_id": booking.id,
         "new_status": "inquiry",
-        "message": "Booking request accepted. Prepare a quotation for the customer.",
+        "message": "Booking request accepted. Review the quotation before sending it to the customer.",
     })
     return {
         "status": "success",
-        "message": "Booking request accepted. Prepare a quotation for the customer.",
+        "message": (
+            "Booking accepted and the customizable quotation is ready for your review."
+            if customizable_quote
+            else "Booking request accepted. Prepare a quotation for the customer."
+        ),
         "new_status": "inquiry",
+        "quotation_id": customizable_quote.id if customizable_quote else None,
     }
 
 
@@ -5306,6 +5371,7 @@ async def view_booking_quotation(
         if not revision_eligible:
             raise HTTPException(status_code=409, detail="This quotation can no longer be revised before payment.")
         details = quotation.package_details or {}
+        saved_inclusions = details.get("inclusions") if isinstance(details, dict) else None
         addon_total = sum(Decimal(str(item.get("price", 0) or 0)) for item in (quotation.addons or []))
         raw_base_amount = details.get("base_amount")
         if raw_base_amount is None:
@@ -5321,12 +5387,20 @@ async def view_booking_quotation(
             "proposal_addons": quotation.addons or [],
             "revision_item_changes": "",
             "package_inclusions": _normalize_inclusions_for_api(
-                booking.package.inclusions if booking.package else None
+                saved_inclusions if saved_inclusions is not None else (
+                    booking.package.inclusions if booking.package else None
+                )
             ),
         })
     if not quotation:
-        # If it's a custom event or requires manual quote, show the Proposal Maker
-        if booking.is_custom_event or booking.travel_fee_status == "manual_quote":
+        if (
+            _is_customizable_package_booking(booking)
+            and booking.status == "inquiry"
+        ):
+            quotation = _prepare_customizable_package_quotation(db, booking)
+        # Custom events and fixed packages with manual transport still need
+        # caterer-entered pricing; customizable selections already have prices.
+        elif _booking_requires_proposal_workspace(booking):
             return templates.TemplateResponse("caterer/proposal_maker.html", {
                 "request": request,
                 "booking": booking,
@@ -5336,14 +5410,21 @@ async def view_booking_quotation(
                 ),
             })
             
-        # Fallback if no quotation record exists
-        quotation = {
-            "total_amount": booking.total_amount,
-            "package_details": {"name": booking.event_type},
-            "addons": [],
-            "status": "confirmed"
-        }
+        # Fallback if no quotation record exists.
+        if not quotation:
+            quotation = {
+                "total_amount": booking.total_amount,
+                "package_details": {"name": booking.event_type},
+                "addons": [],
+                "status": "confirmed"
+            }
 
+    quotation_details = quotation.package_details if hasattr(quotation, "package_details") else {}
+    saved_inclusions = (
+        quotation_details.get("inclusions")
+        if isinstance(quotation_details, dict)
+        else None
+    )
     return templates.TemplateResponse("caterer/quotation_view.html", {
         "request": request,
         "booking": booking,
@@ -5358,7 +5439,9 @@ async def view_booking_quotation(
             and not booking.payment_deadline_at
         ),
         "package_inclusions": _normalize_inclusions_for_api(
-            booking.package.inclusions if booking.package else None
+            saved_inclusions if saved_inclusions is not None else (
+                booking.package.inclusions if booking.package else None
+            )
         ),
     })
 
@@ -5551,13 +5634,20 @@ async def send_standard_quotation(
         raise HTTPException(status_code=400, detail="This quotation has already been sent.")
 
     if not quotation:
-        if booking.is_custom_event or booking.travel_fee_status == "manual_quote" or (booking.package and booking.package.pricing_mode == "customizable"):
-            raise HTTPException(status_code=400, detail="Prepare this custom quotation in the quotation workspace first.")
-        from ..services.quotation import quotation_service
-        terms = user.caterer_profile.accepted_payment_terms or []
-        downpayment_percent = int(float(min(float(term) for term in terms))) if terms else 30
-        quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
-        created_now = True
+        if _is_customizable_package_booking(booking):
+            quotation = _prepare_customizable_package_quotation(db, booking)
+            created_now = True
+        elif _booking_requires_proposal_workspace(booking):
+            redirect_url = f"/caterer/bookings/{booking.id}/quotation"
+            if request.query_params.get("modal") == "true":
+                redirect_url += "?modal=true"
+            return RedirectResponse(url=redirect_url, status_code=303)
+        else:
+            from ..services.quotation import quotation_service
+            terms = user.caterer_profile.accepted_payment_terms or []
+            downpayment_percent = int(float(min(float(term) for term in terms))) if terms else 30
+            quotation = quotation_service.create_quotation(db, booking, downpayment_percent)
+            created_now = True
 
     if not quotation or not quotation.total_amount or quotation.total_amount <= 0:
         if quotation and quotation.status == "draft":
@@ -7253,14 +7343,57 @@ def _normalize_inclusions_for_api(inclusions) -> list:
                     if "equipment" in cat.lower(): item_type = "Equipment"
                     elif "service" in cat.lower(): item_type = "Service"
                     else: item_type = "Menu"
+                raw_quantity = str(i.get("quantity_num") or i.get("quantity") or "").strip()
+                quantity_text = str(i.get("quantity") or "").strip()
+                quantity_match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([A-Za-z_-]+)?", raw_quantity)
+                display_match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*([A-Za-z_-]+)?", quantity_text)
+                quantity_num = i.get("quantity_num")
+                if quantity_num is None and quantity_match:
+                    quantity_num = quantity_match.group(1)
+                quantity = str(quantity_num) if quantity_num is not None else raw_quantity
+                unit = str(
+                    i.get("unit")
+                    or (display_match.group(2) if display_match else "")
+                    or (quantity_match.group(2) if quantity_match else "")
+                    or ""
+                )
+                unit_singular = {
+                    "trays": "tray",
+                    "pieces": "piece",
+                    "sets": "set",
+                    "pairs": "pair",
+                    "lots": "lot",
+                    "days": "day",
+                    "events": "event",
+                    "units": "unit",
+                }.get(unit.lower(), unit.lower())
+                if (
+                    quantity_num is not None
+                    and unit_singular
+                    and re.fullmatch(r"\d+(?:\.\d+)?", str(quantity_num))
+                ):
+                    quantity_value = float(quantity_num)
+                    if quantity_value != 1 and unit_singular != "staff":
+                        unit = {
+                            "tray": "trays",
+                            "piece": "pieces",
+                            "set": "sets",
+                            "pair": "pairs",
+                            "lot": "lots",
+                            "day": "days",
+                            "event": "events",
+                            "unit": "units",
+                        }.get(unit_singular, f"{unit_singular}s")
+                    else:
+                        unit = unit_singular
                 normalized.append({
                     "item_type": item_type,
                     "category": cat,
                     "item_id": i.get("item_id"),
                     "name": i.get("name") or "",
-                    "quantity": str(i.get("quantity") or ""),
-                    "quantity_num": i.get("quantity_num"),
-                    "unit": i.get("unit") or "",
+                    "quantity": quantity,
+                    "quantity_num": quantity_num,
+                    "unit": unit,
                     "description": i.get("description") or "",
                     "notes": i.get("notes") or "",
                     "image_url": i.get("image_url") or ""
@@ -9331,7 +9464,7 @@ async def quick_add_catalog_item(
             }
         }
     elif item_type == "service":
-        cat = category.strip() if category else "Service"
+        cat = "Service"
         unit = unit_type.strip() if unit_type else "per_event"
         new_service = models.Service(
             caterer_id=profile.id,
@@ -9374,7 +9507,7 @@ async def quick_add_catalog_item(
             }
         }
     elif item_type == "equipment":
-        cat = category.strip() if category else "Equipment"
+        cat = "Equipment"
         unit = unit_type.strip() if unit_type else "piece"
         qty = max(1, int(available_qty or 1))
         new_equip = models.Equipment(
@@ -9548,8 +9681,7 @@ async def quick_edit_catalog_item(
             raise HTTPException(status_code=404, detail="Service not found")
 
         svc.name = name
-        if category:
-            svc.category = category.strip()
+        svc.category = "Service"
         if price is not None:
             svc.selling_price = price
         if unit_type:
@@ -9601,8 +9733,7 @@ async def quick_edit_catalog_item(
             raise HTTPException(status_code=404, detail="Equipment not found")
 
         equipment.name = name
-        if category:
-            equipment.category = category.strip()
+        equipment.category = "Equipment"
         if price is not None:
             equipment.rental_price = price
         if unit_type:
