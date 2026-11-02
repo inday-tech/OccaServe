@@ -570,11 +570,10 @@
 
             <div class="form-group-pro" id="customInclusionQuantityWrapper" style="display: none; margin-bottom: 1rem;">
                 <label for="customInclusionQuantity">Included quantity</label>
-                <select class="control-pro" id="customInclusionQuantity" aria-describedby="customInclusionQuantityUnit">
-                    {% for quantity in range(1, 101) %}
-                    <option value="{{ quantity }}">{{ quantity }}</option>
-                    {% endfor %}
-                </select>
+                <div class="form-row-pro" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <input type="text" inputmode="numeric" pattern="[0-9]{1,6}" maxlength="6" class="control-pro" id="customInclusionQuantity" value="1" aria-describedby="customInclusionQuantityUnit" oninput="window.sanitizePackageIncludedQuantity(this)">
+                    <select class="control-pro" id="customInclusionQuantityUnitSelect" aria-label="Included quantity unit"></select>
+                </div>
                 <small id="customInclusionQuantityUnit" style="color:#64748b;">Included in this fixed package.</small>
             </div>
 
@@ -746,11 +745,10 @@
                 </div>
                 <div class="form-group-pro" id="quickAddIncludedQuantityWrapper" style="display:none; margin-bottom:1rem;">
                     <label for="quickAddIncludedQuantity">Included quantity</label>
-                    <select id="quickAddIncludedQuantity" class="control-pro">
-                        {% for quantity in range(1, 101) %}
-                        <option value="{{ quantity }}">{{ quantity }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="form-row-pro" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <input type="text" inputmode="numeric" pattern="[0-9]{1,6}" maxlength="6" id="quickAddIncludedQuantity" class="control-pro" value="1" oninput="window.sanitizePackageIncludedQuantity(this)">
+                        <select id="quickAddIncludedQuantityUnitSelect" class="control-pro" aria-label="Included quantity unit"></select>
+                    </div>
                     <small id="quickAddIncludedQuantityUnit" style="color:#64748b;">Included in this fixed package.</small>
                 </div>
                 <div class="form-row-pro" id="quickAddEquipmentSettingsRow" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
@@ -838,11 +836,10 @@
                 </div>
                 <div class="form-group-pro" id="editMenuItemIncludedQuantityWrapper" style="display:none;">
                     <label for="editMenuItemIncludedQuantity">Included quantity</label>
-                    <select id="editMenuItemIncludedQuantity" class="control-pro">
-                        {% for quantity in range(1, 101) %}
-                        <option value="{{ quantity }}">{{ quantity }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="form-row-pro" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <input type="text" inputmode="numeric" pattern="[0-9]{1,6}" maxlength="6" id="editMenuItemIncludedQuantity" class="control-pro" value="1" oninput="window.sanitizePackageIncludedQuantity(this)">
+                        <select id="editMenuItemIncludedQuantityUnitSelect" class="control-pro" aria-label="Included quantity unit"></select>
+                    </div>
                     <small id="editMenuItemIncludedQuantityUnit" style="color:#64748b;">Included in this fixed package.</small>
                 </div>
                 <div class="form-group-pro" id="editMenuItemCustomCategoryWrapper" hidden>
@@ -927,11 +924,10 @@
                 </div>
                 <div class="form-group-pro" id="editServiceItemIncludedQuantityWrapper" style="display:none;">
                     <label for="editServiceItemIncludedQuantity">Included quantity</label>
-                    <select id="editServiceItemIncludedQuantity" class="control-pro">
-                        {% for quantity in range(1, 101) %}
-                        <option value="{{ quantity }}">{{ quantity }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="form-row-pro" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <input type="text" inputmode="numeric" pattern="[0-9]{1,6}" maxlength="6" id="editServiceItemIncludedQuantity" class="control-pro" value="1" oninput="window.sanitizePackageIncludedQuantity(this)">
+                        <select id="editServiceItemIncludedQuantityUnitSelect" class="control-pro" aria-label="Included quantity unit"></select>
+                    </div>
                     <small id="editServiceItemIncludedQuantityUnit" style="color:#64748b;">Included in this fixed package.</small>
                 </div>
                 <section class="package-item-settings" id="editPackageServiceSettings" hidden>
@@ -999,11 +995,10 @@
                 </div>
                 <div class="form-group-pro" id="editEquipmentItemIncludedQuantityWrapper" style="display:none;">
                     <label for="editEquipmentItemIncludedQuantity">Included quantity</label>
-                    <select id="editEquipmentItemIncludedQuantity" class="control-pro">
-                        {% for quantity in range(1, 101) %}
-                        <option value="{{ quantity }}">{{ quantity }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="form-row-pro" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <input type="text" inputmode="numeric" pattern="[0-9]{1,6}" maxlength="6" id="editEquipmentItemIncludedQuantity" class="control-pro" value="1" oninput="window.sanitizePackageIncludedQuantity(this)">
+                        <select id="editEquipmentItemIncludedQuantityUnitSelect" class="control-pro" aria-label="Included quantity unit"></select>
+                    </div>
                     <small id="editEquipmentItemIncludedQuantityUnit" style="color:#64748b;">Included in this fixed package.</small>
                 </div>
                 <section class="package-item-settings" id="editPackageEquipmentSettings" hidden>

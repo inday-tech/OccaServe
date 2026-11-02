@@ -10,6 +10,9 @@ var currentPackageId = null;
 let packageNameValidationStatus = 'idle';
 let packageNameValidationSequence = 0;
 let packageNameValidationTimer = null;
+const packageCustomInclusionUnits = {};
+const PACKAGE_CUSTOM_UNIT_OTHER = '__other__';
+const PACKAGE_CUSTOM_UNIT_STORAGE_KEY = 'occaserve_package_inclusion_units_v1';
 
 // ==========================================
 // UNLIMITED INCLUSIONS STATE (v17)
@@ -2079,7 +2082,9 @@ window.openAddInclusionModal = async function () {
         doneButton.hidden = true;
     }
     if (desc) desc.value = '';
-    setPackageQuantitySelect(document.getElementById('customInclusionQuantity'), 1);
+    setPackageQuantityValue(document.getElementById('customInclusionQuantity'), 1);
+    const quantityUnitSelect = document.getElementById('customInclusionQuantityUnitSelect');
+    if (quantityUnitSelect) quantityUnitSelect.required = false;
     const quantityWrapper = document.getElementById('customInclusionQuantityWrapper');
     if (quantityWrapper) quantityWrapper.style.display = 'none';
     const categorySelect = document.getElementById('customInclusionCategory');
@@ -2341,10 +2346,11 @@ window.handleCatalogItemSelected = function (selectedId) {
     if (doneButton) doneButton.disabled = false;
     const quantityWrapper = document.getElementById('customInclusionQuantityWrapper');
     if (quantityWrapper) quantityWrapper.style.display = getActivePackageMode() === 'fixed' ? 'block' : 'none';
-    const quantityUnit = setPackageQuantityUnit(catalogKey, itemName, item, 'customInclusion');
+    setPackageQuantityUnit(catalogKey, itemName, item, 'customInclusion');
     const quantitySelect = document.getElementById('customInclusionQuantity');
-    if (quantitySelect && !quantitySelect.value) setPackageQuantitySelect(quantitySelect, 1);
-    if (quantitySelect) quantitySelect.dataset.unit = quantityUnit;
+    if (quantitySelect && !quantitySelect.value) setPackageQuantityValue(quantitySelect, 1);
+    const quantityUnitSelect = document.getElementById('customInclusionQuantityUnitSelect');
+    if (quantityUnitSelect) quantityUnitSelect.required = getActivePackageMode() === 'fixed';
 
     // Show the catalog item's existing photo unless the user already picked a new one
     if (!inclusionImageFile) {
@@ -2394,10 +2400,12 @@ window.editInclusion = async function (index) {
     const quantityWrapper = document.getElementById('customInclusionQuantityWrapper');
     const quantitySelect = document.getElementById('customInclusionQuantity');
     if (quantityWrapper) quantityWrapper.style.display = getActivePackageMode() === 'fixed' ? 'block' : 'none';
-    const unit = setPackageQuantityUnit(catalogType, item.name, item);
+    const unit = setPackageQuantityUnit(catalogType, item.name, item, 'customInclusion');
+    const quantityUnitSelect = document.getElementById('customInclusionQuantityUnitSelect');
+    if (quantityUnitSelect) quantityUnitSelect.required = getActivePackageMode() === 'fixed';
     if (quantitySelect) {
-        setPackageQuantitySelect(quantitySelect, item.quantity_num || String(item.quantity || '').match(/\d+/)?.[0] || 1);
-        quantitySelect.dataset.unit = unit;
+        setPackageQuantityValue(quantitySelect, item.quantity_num || String(item.quantity || '').match(/\d+/)?.[0] || 1);
+        if (quantityUnitSelect) quantityUnitSelect.value = unit;
     }
 
     setInclusionCategoryChoices(itemType === 'Equipment');
@@ -2451,6 +2459,17 @@ window.saveInclusion = async function () {
     if (searchInput) searchInput.style.borderColor = '';
 
     const descVal = descEl ? descEl.value.trim() : '';
+    const includedQuantity = getActivePackageMode() === 'fixed'
+        ? readPackageIncludedQuantity(document.getElementById('customInclusionQuantity'))
+        : null;
+    if (getActivePackageMode() === 'fixed' && includedQuantity === null) return;
+    const includedUnit = getActivePackageMode() === 'fixed'
+        ? readPackageIncludedUnit(
+            document.getElementById('customInclusionQuantityUnitSelect'),
+            selectedType.toLowerCase()
+        )
+        : null;
+    if (getActivePackageMode() === 'fixed' && !includedUnit) return;
 
     const categoryVal = selectedType === 'Menu' ? 'Menu / Food' : selectedType;
 
@@ -2487,12 +2506,9 @@ window.saveInclusion = async function () {
         image_url: imageUrl
     };
     if (getActivePackageMode() === 'fixed') {
-        const quantity = Number(document.getElementById('customInclusionQuantity')?.value) || 1;
-        const unit = document.getElementById('customInclusionQuantity')?.dataset.unit
-            || packageInclusionUnit(selectedType.toLowerCase(), nameVal);
-        itemObj.quantity_num = quantity;
-        itemObj.quantity = formatPackageInclusionQuantity(quantity, unit);
-        itemObj.unit = packageInclusionStoredUnit(quantity, unit);
+        itemObj.quantity_num = includedQuantity;
+        itemObj.quantity = formatPackageInclusionQuantity(includedQuantity, includedUnit);
+        itemObj.unit = packageInclusionStoredUnit(includedQuantity, includedUnit);
     }
 
     const editIndex = editIndexEl ? parseInt(editIndexEl.value, 10) : -1;
@@ -4000,10 +4016,43 @@ function getFixedPackageInclusionEdit(type, id) {
 }
 
 function packageInclusionUnit(type, name, item = {}) {
-    if (type === 'menu') return 'tray';
-    if (type === 'service') return /wait(er|staff)|staff|bartender|server|personnel|crew/i.test(name || '')
-        ? 'staff'
-        : 'unit';
+    const allowedUnits = packageInclusionUnitOptions(type);
+    const storedUnit = normalizePackageInclusionUnit(item.unit || item.unit_type);
+    const storedStandardUnit = allowedUnits.find(unit =>
+        unit.toLowerCase() === storedUnit.toLowerCase()
+        || pluralizePackageUnit(unit).toLowerCase() === storedUnit.toLowerCase()
+    );
+    if (storedStandardUnit) return storedStandardUnit;
+    if (item.unit && storedUnit) {
+        const savedCustomUnit = getPackageCustomUnits(type).find(saved =>
+            saved.toLowerCase() === storedUnit.toLowerCase()
+            || pluralizePackageUnit(saved).toLowerCase() === storedUnit.toLowerCase()
+        );
+        return savedCustomUnit || storedUnit;
+    }
+    if (type === 'menu') {
+        return /beverage|drink|juice/i.test(`${item.category || ''} ${name || ''}`)
+            ? 'bottle'
+            : 'tray';
+    }
+    if (type === 'service') {
+        const unit = String(item.unit_type || '').toLowerCase();
+        const serviceUnit = ({
+            per_staff: 'staff',
+            per_event: 'event',
+            per_hour: 'hour',
+            per_session: 'session',
+            per_unit: 'service',
+            staff: 'staff',
+            event: 'event',
+            hour: 'hour',
+            session: 'session'
+        })[unit];
+        if (serviceUnit) return serviceUnit;
+        return /wait(er|staff)|staff|bartender|server|personnel|crew/i.test(name || '')
+            ? 'staff'
+            : 'service';
+    }
     const unit = String(item.unit_type || '').toLowerCase();
     return ({
         piece: 'piece',
@@ -4015,69 +4064,342 @@ function packageInclusionUnit(type, name, item = {}) {
     })[unit] || 'piece';
 }
 
+function normalizePackageInclusionUnit(unit) {
+    const raw = String(unit || '')
+        .replace(/^per[_\s]+/i, '')
+        .replace(/_/g, ' ')
+        .trim();
+    const normalized = raw
+        .toLowerCase()
+        .trim();
+    const standard = ({
+        trays: 'tray',
+        platters: 'platter',
+        servings: 'serving',
+        pieces: 'piece',
+        bottles: 'bottle',
+        unit: 'service',
+        units: 'service',
+        events: 'event',
+        hours: 'hour',
+        sessions: 'session',
+        sets: 'set',
+        pairs: 'pair',
+        lots: 'lot'
+    })[normalized] || normalized;
+    const standardUnits = ['tray', 'platter', 'serving', 'piece', 'bottle', 'staff', 'service', 'hour', 'event', 'session', 'set', 'pair', 'lot'];
+    return standardUnits.includes(standard) ? standard : raw;
+}
+
+function packageInclusionUnitOptions(type) {
+    if (type === 'menu') return ['tray', 'platter', 'serving', 'piece', 'bottle'];
+    if (type === 'service') return ['staff', 'service', 'hour', 'event', 'session'];
+    if (type === 'equipment') return ['piece', 'set', 'pair', 'lot', 'day', 'event'];
+    return [];
+}
+
+function packageInclusionUnitOptionLabel(unit) {
+    return ({
+        tray: 'Tray',
+        platter: 'Platter',
+        serving: 'Serving',
+        piece: 'Piece',
+        bottle: 'Bottle',
+        staff: 'Staff',
+        service: 'Service',
+        hour: 'Hour',
+        event: 'Event',
+        session: 'Session',
+        set: 'Set',
+        pair: 'Pair',
+        lot: 'Lot'
+    })[unit] || unit;
+}
+
 function formatPackageInclusionQuantity(quantity, unit) {
-    return String(Math.max(1, Number(quantity) || 1));
+    return String(Math.max(1, Number.parseInt(quantity, 10) || 1));
 }
 
 function packageInclusionQuantityLabel(quantity, unit) {
     const count = Number(String(quantity).match(/\d+/)?.[0]) || 1;
-    const singularUnit = ({
-        trays: 'tray',
-        pieces: 'piece',
-        sets: 'set',
-        pairs: 'pair',
-        lots: 'lot',
-        days: 'day',
-        events: 'event',
-        units: 'unit'
-    })[unit] || unit;
+    const singularUnit = normalizePackageInclusionUnit(unit);
+    const knownUnit = ['menu', 'service', 'equipment']
+        .some(type => packageInclusionUnitOptions(type).includes(singularUnit));
+    if (!knownUnit) {
+        return `${count} ${unit}`;
+    }
+    if (singularUnit === 'staff') return `${count} staff`;
     const plural = count === 1 || singularUnit === 'staff' ? singularUnit : ({
         tray: 'trays',
+        platter: 'platters',
+        serving: 'servings',
         piece: 'pieces',
+        bottle: 'bottles',
         set: 'sets',
         pair: 'pairs',
         lot: 'lots',
         day: 'days',
         event: 'events',
+        service: 'services',
+        session: 'sessions',
         unit: 'units'
     })[singularUnit] || `${singularUnit}s`;
     return `${count} ${plural}`;
 }
 
 function packageInclusionStoredUnit(quantity, unit) {
-    const count = Number(quantity) || 1;
-    if (unit === 'staff') return 'staff';
-    return count === 1 ? unit : ({
+    return Number(quantity) === 1 || unit === 'staff' ? unit : pluralizePackageUnit(unit);
+}
+
+function pluralizePackageUnit(unit) {
+    const value = String(unit || '').trim();
+    const knownPlural = ({
         tray: 'trays',
+        platter: 'platters',
+        serving: 'servings',
         piece: 'pieces',
+        bottle: 'bottles',
         set: 'sets',
         pair: 'pairs',
         lot: 'lots',
         day: 'days',
         event: 'events',
-        unit: 'units'
-    })[unit] || `${unit}s`;
+        service: 'services',
+        session: 'sessions',
+        hour: 'hours'
+    })[value.toLowerCase()];
+    if (knownPlural) return knownPlural;
+    const words = value.split(/\s+/);
+    const last = words.pop() || '';
+    const lower = last.toLowerCase();
+    const pluralLast = /(?:ch|sh|s|x|z)$/i.test(last)
+        ? `${last}es`
+        : /[^aeiou]y$/i.test(last)
+            ? `${last.slice(0, -1)}ies`
+            : `${last}s`;
+    words.push(pluralLast);
+    return words.join(' ');
 }
 
-function setPackageQuantitySelect(select, quantity) {
-    if (!select) return;
-    const value = String(Math.max(1, Number(quantity) || 1));
-    if (!Array.from(select.options).some(option => option.value === value)) {
-        select.add(new Option(value, value));
+function singularizePackageUnit(unit) {
+    const words = String(unit || '').trim().split(/\s+/);
+    const last = words.pop() || '';
+    const singularLast = /ies$/i.test(last)
+        ? `${last.slice(0, -3)}y`
+        : /(?:ches|shes|sses|xes|zes)$/i.test(last)
+            ? last.slice(0, -2)
+            : /s$/i.test(last) && !/ss$/i.test(last)
+                ? last.slice(0, -1)
+                : last;
+    words.push(singularLast);
+    return words.join(' ');
+}
+
+function setPackageQuantityValue(field, quantity) {
+    if (!field) return;
+    field.value = String(Math.max(1, Number.parseInt(quantity, 10) || 1));
+}
+
+window.sanitizePackageIncludedQuantity = function (field) {
+    if (!field) return;
+    field.value = field.value.replace(/\D/g, '').slice(0, 6);
+    field.setCustomValidity(
+        field.value && Number(field.value) > 0
+            ? ''
+            : 'Enter a whole quantity from 1 to 999,999.'
+    );
+};
+
+function packageInclusionUnitSelectId(prefix) {
+    if (prefix === 'quickAdd') return 'quickAddIncludedQuantityUnitSelect';
+    if (prefix === 'customInclusion') return 'customInclusionQuantityUnitSelect';
+    return `${prefix}IncludedQuantityUnitSelect`;
+}
+
+function readPackageIncludedQuantity(field) {
+    const value = String(field?.value || '');
+    const quantity = Number(value);
+    if (/^\d{1,6}$/.test(value) && Number.isInteger(quantity) && quantity >= 1 && quantity <= 999999) {
+        field?.setCustomValidity('');
+        return quantity;
     }
-    select.value = value;
+    if (field) {
+        field.setCustomValidity('Enter an included quantity from 1 to 999,999.');
+        field.reportValidity();
+        field.focus();
+    }
+    return null;
+}
+
+function getPackageCustomUnits(type) {
+    if (packageCustomInclusionUnits[type]) return packageCustomInclusionUnits[type];
+    let units = [];
+    try {
+        const parsed = JSON.parse(window.localStorage.getItem(PACKAGE_CUSTOM_UNIT_STORAGE_KEY) || '{}');
+        const saved = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        if (saved && Array.isArray(saved[type])) {
+            units = saved[type].filter(unit => typeof unit === 'string' && isValidPackageCustomUnit(unit, type));
+        }
+    } catch (error) {
+        console.warn('Could not load saved package inclusion units.', error);
+    }
+    packageCustomInclusionUnits[type] = [...new Set(units.map(unit => unit.trim()))];
+    return packageCustomInclusionUnits[type];
+}
+
+function isValidPackageCustomUnit(unit, type) {
+    const value = String(unit || '').trim();
+    if (!/^[A-Za-z][A-Za-z0-9 /-]{0,29}$/.test(value)) return false;
+    const normalized = normalizePackageInclusionUnit(value).toLowerCase();
+    return !packageInclusionUnitOptions(type).some(standard =>
+        standard.toLowerCase() === normalized
+        || pluralizePackageUnit(standard).toLowerCase() === value.toLowerCase()
+    );
+}
+
+function addPackageCustomUnit(type, unit) {
+    const normalized = String(unit || '').trim();
+    if (!isValidPackageCustomUnit(normalized, type)) return false;
+    const units = getPackageCustomUnits(type);
+    if (!units.some(saved => saved.toLowerCase() === normalized.toLowerCase())) {
+        units.push(normalized);
+    }
+    try {
+        const parsed = JSON.parse(window.localStorage.getItem(PACKAGE_CUSTOM_UNIT_STORAGE_KEY) || '{}');
+        const saved = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        saved[type] = units;
+        window.localStorage.setItem(PACKAGE_CUSTOM_UNIT_STORAGE_KEY, JSON.stringify(saved));
+    } catch (error) {
+        console.warn('Could not persist package inclusion unit; it will remain available until this page is closed.', error);
+        window.showToast?.('Custom unit is available for this session, but could not be saved for future use.', 'warning');
+        return false;
+    }
+    return true;
+}
+
+function saveCustomPackageUnit(select, type) {
+    if (!select || select.value !== PACKAGE_CUSTOM_UNIT_OTHER) return true;
+    const input = select.parentElement?.parentElement?.querySelector(':scope > .package-custom-unit-input');
+    const unit = singularizePackageUnit(input?.value).replace(/\s+/g, ' ');
+    if (!isValidPackageCustomUnit(unit, type)) {
+        input?.setCustomValidity('Enter a new unit name starting with a letter (up to 30 characters).');
+        return false;
+    }
+    input.setCustomValidity('');
+    addPackageCustomUnit(type, unit);
+    let option = Array.from(select.options).find(existing => existing.value.toLowerCase() === unit.toLowerCase());
+    if (!option) {
+        option = new Option(unit, unit);
+        select.insertBefore(option, select.querySelector(`option[value="${PACKAGE_CUSTOM_UNIT_OTHER}"]`));
+    }
+    select.value = option.value;
+    input.hidden = true;
+    input.required = false;
+    return true;
+}
+
+function bindPackageCustomUnitInput(select, type) {
+    const controlRow = select.parentElement;
+    const container = controlRow?.parentElement;
+    let input = container?.querySelector(':scope > .package-custom-unit-input');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'control-pro package-custom-unit-input';
+        input.style.cssText = 'width:100%;margin-top:8px;';
+        input.maxLength = 30;
+        input.placeholder = 'Enter a unit (e.g. Chafing dish)';
+        input.setAttribute('aria-label', 'Custom included unit');
+        input.hidden = true;
+        controlRow?.insertAdjacentElement('afterend', input);
+    }
+    if (select.dataset.customUnitBound) return;
+    select.addEventListener('change', () => {
+        input.hidden = select.value !== PACKAGE_CUSTOM_UNIT_OTHER;
+        input.required = select.value === PACKAGE_CUSTOM_UNIT_OTHER;
+        input.setCustomValidity('');
+        if (!input.hidden) input.focus();
+    });
+    input.addEventListener('input', () => input.setCustomValidity(''));
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (!saveCustomPackageUnit(select, select.dataset.unitType || type)) input.reportValidity();
+        }
+    });
+    input.addEventListener('blur', () => saveCustomPackageUnit(select, select.dataset.unitType || type));
+    select.dataset.customUnitBound = 'true';
 }
 
 function setPackageQuantityUnit(type, name, item = {}, prefix = '') {
     const unit = packageInclusionUnit(type, name, item);
-    const helper = document.getElementById(`${prefix}IncludedQuantityUnit`);
-    if (helper) {
-        helper.textContent = type === 'menu'
-            ? 'Menu quantity is counted by tray.'
-            : type === 'equipment'
-                ? `Included ${unit}${unit === 'piece' ? 's' : ''} in this package.`
-                : unit === 'staff' ? 'Number of staff included in this package.' : 'Number of service units included in this package.';
+    const unitSelect = prefix
+        ? document.getElementById(packageInclusionUnitSelectId(prefix))
+        : null;
+    if (unitSelect) {
+        const previousType = unitSelect.dataset.unitType;
+        const changedType = Boolean(previousType && previousType !== type);
+        const customInput = unitSelect.parentElement?.parentElement?.querySelector(':scope > .package-custom-unit-input');
+        if (changedType && customInput) customInput.value = '';
+        unitSelect.dataset.unitType = type;
+        bindPackageCustomUnitInput(unitSelect, type);
+        const standardOptions = packageInclusionUnitOptions(type);
+        const customOptions = getPackageCustomUnits(type);
+        const explicitUnit = normalizePackageInclusionUnit(item.unit);
+        const availableOptions = [...standardOptions, ...customOptions];
+        const storedOption = availableOptions.find(option =>
+            option.toLowerCase() === explicitUnit.toLowerCase()
+            || pluralizePackageUnit(option).toLowerCase() === explicitUnit.toLowerCase()
+        );
+        const derivedOption = availableOptions.find(option => option.toLowerCase() === unit.toLowerCase());
+        const currentOption = availableOptions.find(option => option.toLowerCase() === unitSelect.value.toLowerCase());
+        const selectedUnit = unitSelect.value === PACKAGE_CUSTOM_UNIT_OTHER
+            ? PACKAGE_CUSTOM_UNIT_OTHER
+            : storedOption || (item.unit ? derivedOption : currentOption || derivedOption) || unit;
+        const options = [...availableOptions];
+        if (selectedUnit && !options.some(option => option.toLowerCase() === selectedUnit.toLowerCase())
+            && selectedUnit !== PACKAGE_CUSTOM_UNIT_OTHER) {
+            options.push(selectedUnit);
+        }
+        unitSelect.replaceChildren(...options.map(optionUnit => {
+            const option = new Option(packageInclusionUnitOptionLabel(optionUnit), optionUnit);
+            return option;
+        }), new Option('Other', PACKAGE_CUSTOM_UNIT_OTHER));
+        unitSelect.value = options.find(option => option.toLowerCase() === selectedUnit.toLowerCase()) || selectedUnit;
+        if (!unitSelect.value) unitSelect.value = standardOptions[0] || PACKAGE_CUSTOM_UNIT_OTHER;
+        if (customInput) {
+            customInput.hidden = unitSelect.value !== PACKAGE_CUSTOM_UNIT_OTHER;
+            customInput.required = unitSelect.value === PACKAGE_CUSTOM_UNIT_OTHER;
+            if (unitSelect.value === PACKAGE_CUSTOM_UNIT_OTHER && !customInput.value) {
+                customInput.value = item.unit && !standardOptions.includes(explicitUnit) ? item.unit : '';
+            }
+        }
     }
+    const helperId = prefix === 'customInclusion'
+        ? 'customInclusionQuantityUnit'
+        : `${prefix}IncludedQuantityUnit`;
+    const helper = document.getElementById(helperId);
+    if (helper) {
+        helper.textContent = 'Enter a quantity and choose a unit. Select Other to save another unit for future packages on this device.';
+    }
+    return unit;
+}
+
+function readPackageIncludedUnit(select, type) {
+    if (select?.value === PACKAGE_CUSTOM_UNIT_OTHER && !saveCustomPackageUnit(select, type)) {
+        const input = select.parentElement?.parentElement?.querySelector(':scope > .package-custom-unit-input');
+        input?.reportValidity();
+        input?.focus();
+        return null;
+    }
+    const unit = String(select?.value || '').trim();
+    if (!unit || unit === PACKAGE_CUSTOM_UNIT_OTHER) {
+        select?.setCustomValidity('Choose a unit or enter a custom unit.');
+        select?.reportValidity();
+        select?.focus();
+        return null;
+    }
+    select.setCustomValidity('');
     return unit;
 }
 
@@ -4348,6 +4670,7 @@ window.setQuickAddOptionType = function (type) {
     const extraDishInput = document.getElementById('quickAddOptionExtraDishPrice');
     const includedQuantityWrapper = document.getElementById('quickAddIncludedQuantityWrapper');
     const includedQuantity = document.getElementById('quickAddIncludedQuantity');
+    const includedQuantityUnitSelect = document.getElementById('quickAddIncludedQuantityUnitSelect');
     const customCategoryWrapper = document.getElementById('quickAddOptionCustomCategoryWrapper');
     const customCategoryInput = document.getElementById('quickAddOptionCustomCategory');
     if (categoryInput?.tagName === 'INPUT' && categorySuggestions && !categoryInput.dataset.suggestionsBound) {
@@ -4364,10 +4687,6 @@ window.setQuickAddOptionType = function (type) {
     const updateIncludedQuantityUnit = () => {
         const selectedType = hiddenType?.value || '';
         const selectedName = nameInput?.value || '';
-        const unit = packageInclusionUnit(selectedType, selectedName, {
-            unit_type: equipmentUnitInput?.value || ''
-        });
-        if (includedQuantity) includedQuantity.dataset.unit = unit;
         setPackageQuantityUnit(selectedType, selectedName, {
             unit_type: equipmentUnitInput?.value || ''
         }, 'quickAdd');
@@ -4422,7 +4741,10 @@ window.setQuickAddOptionType = function (type) {
     if (includedQuantityWrapper) includedQuantityWrapper.style.display = hasType && fixedPackageContext ? 'block' : 'none';
     if (includedQuantity) {
         includedQuantity.required = hasType && fixedPackageContext;
-        updateIncludedQuantityUnit();
+    }
+    if (includedQuantityUnitSelect) {
+        includedQuantityUnitSelect.required = hasType && fixedPackageContext;
+        if (hasType) updateIncludedQuantityUnit();
     }
     if (priceInput) priceInput.required = false;
     if (priceError) {
@@ -4622,10 +4944,8 @@ window.submitQuickAddOption = async function (e) {
     const price = type === 'menu' ? 0 : (Number(priceText.replace(/,/g, '')) || 0);
     const equipmentQuantityInput = document.getElementById('quickAddEquipmentQuantity');
     const equipmentQuantity = Number(equipmentQuantityInput?.value);
-    const includedQuantity = Number(document.getElementById('quickAddIncludedQuantity')?.value) || 1;
-    const includedUnit = packageInclusionUnit(type, name, {
-        unit_type: document.getElementById('quickAddEquipmentUnit')?.value || ''
-    });
+    let includedQuantity = Number(document.getElementById('quickAddIncludedQuantity')?.value) || 1;
+    let includedUnit = document.getElementById('quickAddIncludedQuantityUnitSelect')?.value || '';
     const desc = (document.getElementById('quickAddOptionDescription')?.value || '').trim();
 
     if (!['menu', 'service', 'equipment'].includes(type)) {
@@ -4637,6 +4957,15 @@ window.submitQuickAddOption = async function (e) {
     if (!name) {
         alert('Please enter an item name.');
         return;
+    }
+    if (fixedPackageContext) {
+        includedQuantity = readPackageIncludedQuantity(document.getElementById('quickAddIncludedQuantity'));
+        if (includedQuantity === null) return;
+        includedUnit = readPackageIncludedUnit(
+            document.getElementById('quickAddIncludedQuantityUnitSelect'),
+            type
+        );
+        if (!includedUnit) return;
     }
     if (type === 'menu' && !category.trim()) {
         if (categoryInput) {
@@ -4843,11 +5172,8 @@ window.submitQuickAddOption = async function (e) {
             window.handleInclusionTypeChange(savedState.type, newItem.id);
             if (fixedPackageContext) {
                 const quantitySelect = document.getElementById('customInclusionQuantity');
-                const unit = setPackageQuantityUnit(type, newItem.name, newItem, 'customInclusion');
-                if (quantitySelect) {
-                    setPackageQuantitySelect(quantitySelect, includedQuantity);
-                    quantitySelect.dataset.unit = unit;
-                }
+                setPackageQuantityUnit(type, newItem.name, { ...newItem, unit: includedUnit }, 'customInclusion');
+                if (quantitySelect) setPackageQuantityValue(quantitySelect, includedQuantity);
             }
             if (window.showToast) {
                 window.showToast(`Added "${newItem.name}" and selected for inclusion!`, 'success');
@@ -4940,9 +5266,12 @@ window.openQuickEditModal = function (type, id, event) {
         const quantityValue = fixedInclusionEdit
             ? fixedInclusionEdit.inclusion.quantity_num || String(fixedInclusionEdit.inclusion.quantity || '').match(/\d+/)?.[0] || 1
             : 1;
-        setPackageQuantitySelect(includedQuantity, quantityValue);
-        includedQuantity.dataset.unit = setPackageQuantityUnit(type, item.name, item, `${prefix}`);
+        setPackageQuantityValue(includedQuantity, quantityValue);
+        const savedUnit = fixedInclusionEdit?.inclusion.unit;
+        setPackageQuantityUnit(type, item.name, { ...item, unit: savedUnit }, `${prefix}`);
     }
+    const includedQuantityUnitSelect = document.getElementById(`${prefix}IncludedQuantityUnitSelect`);
+    if (includedQuantityUnitSelect) includedQuantityUnitSelect.required = Boolean(fixedInclusionEdit);
 
     if (type === 'menu') {
         const categoryField = value('Category');
@@ -5104,6 +5433,14 @@ window.submitCatalogItemEdit = async function (event, type) {
         alert('Item name is required.');
         return;
     }
+    const includedQuantity = fixedInclusionEdit
+        ? readPackageIncludedQuantity(value('IncludedQuantity'))
+        : null;
+    if (fixedInclusionEdit && includedQuantity === null) return;
+    const includedUnit = fixedInclusionEdit
+        ? readPackageIncludedUnit(value('IncludedQuantityUnitSelect'), type)
+        : null;
+    if (fixedInclusionEdit && !includedUnit) return;
     if (!fixedInclusionEdit && type === 'menu' && !window.validateSwapFee('editMenuItemUpgradeFee', 'editMenuItemUpgradeFeeError')) {
         value('UpgradeFee')?.focus();
         return;
@@ -5203,12 +5540,9 @@ window.submitCatalogItemEdit = async function (event, type) {
                 image_url: updatedItem.image_url || inclusion.image_url || ''
             };
             if (fixedInclusionEdit && inclusionIndex === fixedInclusionEdit.index) {
-                const quantity = Number(value('IncludedQuantity')?.value) || 1;
-                const unit = value('IncludedQuantity')?.dataset.unit
-                    || packageInclusionUnit(type, updatedItem.name, updatedItem);
-                updatedInclusion.quantity_num = quantity;
-                updatedInclusion.quantity = formatPackageInclusionQuantity(quantity, unit);
-                updatedInclusion.unit = packageInclusionStoredUnit(quantity, unit);
+                updatedInclusion.quantity_num = includedQuantity;
+                updatedInclusion.quantity = formatPackageInclusionQuantity(includedQuantity, includedUnit);
+                updatedInclusion.unit = packageInclusionStoredUnit(includedQuantity, includedUnit);
             }
             return updatedInclusion;
         });
