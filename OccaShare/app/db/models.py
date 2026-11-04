@@ -682,6 +682,8 @@ class Booking(Base):
     event_location = Column(Text, nullable=True)
     terms_accepted_at = Column(DateTime(timezone=True), nullable=True)
     terms_accepted_ip = Column(String, nullable=True)
+    cancellation_policy_version = Column(String(40), nullable=True)
+    cancellation_policy_accepted_at = Column(DateTime(timezone=True), nullable=True)
     is_custom_event = Column(Boolean, default=False)
     transaction_type = Column(String, default="contract_track") # 'fast_track' or 'contract_track'
     document_type = Column(String, nullable=True) # 'invoice', 'service_agreement', 'booking_agreement', 'rental_agreement'
@@ -703,6 +705,8 @@ class Booking(Base):
     expenses = relationship("BookingExpense", back_populates="booking", cascade="all, delete-orphan")
     messages = relationship("BookingMessage", back_populates="booking", cascade="all, delete-orphan")
     payment_records = relationship("BookingPaymentRecord", back_populates="booking", cascade="all, delete-orphan")
+    cancellation_requests = relationship("BookingCancellationRequest", back_populates="booking", cascade="all, delete-orphan")
+    refunds = relationship("BookingRefund", back_populates="booking", cascade="all, delete-orphan")
 
     def _get_caterer_prefix(self) -> str:
         """Derive standard uppercase 3-letter caterer prefix: REP, DAR, GAB."""
@@ -841,6 +845,7 @@ class BookingPaymentRecord(Base):
     recorded_by = Column(String, nullable=True) # "Caterer" or "System"
 
     booking = relationship("Booking", back_populates="payment_records")
+    refunds = relationship("BookingRefund", back_populates="payment_record")
 
     @property
     def display_payment_ref(self) -> str:
@@ -851,6 +856,57 @@ class BookingPaymentRecord(Base):
             prefix = self.booking._get_caterer_prefix()
         num = self.id if self.id else 1
         return f"{prefix}-PAY-{num:03d}"
+
+
+class BookingCancellationRequest(Base):
+    __tablename__ = "booking_cancellation_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True)
+    customer_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    caterer_id = Column(Integer, ForeignKey("caterer_profiles.id"), nullable=False)
+    reason = Column(Text, nullable=False)
+    status = Column(String(24), nullable=False, default="pending", index=True)
+    estimated_refund_amount = Column(Float, nullable=False, default=0.0)
+    verified_paid_amount_at_request = Column(Float, nullable=False, default=0.0)
+    refund_percent = Column(Float, nullable=False, default=0.0)
+    policy_version = Column(String(40), nullable=True)
+    decision_remarks = Column(Text, nullable=True)
+    decided_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    requested_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    decided_at = Column(DateTime(timezone=True), nullable=True)
+
+    booking = relationship("Booking", back_populates="cancellation_requests")
+    customer = relationship("User", foreign_keys=[customer_id])
+    caterer = relationship("CatererProfile", foreign_keys=[caterer_id])
+    decision_maker = relationship("User", foreign_keys=[decided_by])
+    refund = relationship("BookingRefund", back_populates="cancellation_request", uselist=False, cascade="all, delete-orphan")
+
+
+class BookingRefund(Base):
+    __tablename__ = "booking_refunds"
+
+    id = Column(Integer, primary_key=True, index=True)
+    booking_id = Column(Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True)
+    cancellation_request_id = Column(Integer, ForeignKey("booking_cancellation_requests.id", ondelete="CASCADE"), nullable=False, unique=True)
+    payment_record_id = Column(Integer, ForeignKey("booking_payment_records.id"), nullable=True)
+    amount = Column(Float, nullable=False, default=0.0)
+    reason = Column(Text, nullable=False)
+    method = Column(String(40), nullable=True)
+    status = Column(String(32), nullable=False, default="pending", index=True)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
+    transaction_reference = Column(String(120), nullable=True)
+    proof_url = Column(String, nullable=True)
+    processed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    customer_confirmed_at = Column(DateTime(timezone=True), nullable=True)
+    customer_dispute_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    booking = relationship("Booking", back_populates="refunds")
+    cancellation_request = relationship("BookingCancellationRequest", back_populates="refund")
+    payment_record = relationship("BookingPaymentRecord", back_populates="refunds")
+    processor = relationship("User", foreign_keys=[processed_by])
 
 class BookingMessage(Base):
     __tablename__ = "booking_messages"

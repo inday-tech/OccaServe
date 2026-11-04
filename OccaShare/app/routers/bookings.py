@@ -308,6 +308,8 @@ async def alacarte_checkout_page(
     verified: Optional[int] = None,
     db: Session = Depends(database.get_db)
 ):
+    from ..services.booking_cancellation import format_refund_policy
+
     if caterer_id == "None" or not caterer_id.isdigit():
         return RedirectResponse(url="/customer/marketplace?error_msg=Invalid caterer selected.", status_code=303)
     caterer_id_int = int(caterer_id)
@@ -472,6 +474,7 @@ async def alacarte_checkout_page(
         "booking": booking,
         "requires_kyc": requires_kyc,
         "is_user_verified": is_user_verified,
+        "cancellation_policy": format_refund_policy(),
         "current_step": 1
     })
 
@@ -763,6 +766,7 @@ async def alacarte_checkout_submit(
     landmark: Optional[str] = Form(None),
     booking_id: Optional[int] = Form(None),
     terms_agreement: Optional[str] = Form(None),
+    cancellation_policy_agreement: Optional[str] = Form(None),
     pullout_time: Optional[str] = Form(None),
     event_duration: Optional[int] = Form(None),
     province: Optional[str] = Form(None),
@@ -776,6 +780,8 @@ async def alacarte_checkout_submit(
         return {"success": False, "message": "Unauthorized"}
     if user.role != "customer":
         raise HTTPException(status_code=403, detail="Only customers can create online bookings.")
+    if cancellation_policy_agreement not in {"on", "true", "1"}:
+        raise HTTPException(status_code=400, detail="Please accept the cancellation and refund policy before submitting.")
 
     has_food, has_equipment, has_service = _cart_item_types(cart_data, items)
     if has_food or not has_equipment and not has_service:
@@ -1245,6 +1251,9 @@ async def alacarte_checkout_submit(
             booking.reservation_fee = recalculated_total
             booking.payment_plan = "full"
         booking.security_deposit_amount = round(total_security_deposit, 2)
+        from ..services.booking_cancellation import CANCELLATION_POLICY_VERSION
+        booking.cancellation_policy_version = CANCELLATION_POLICY_VERSION
+        booking.cancellation_policy_accepted_at = datetime.now(timezone.utc)
 
         db.commit()
         
@@ -2982,6 +2991,12 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
     if user.role != "customer" or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    if db.query(models.BookingCancellationRequest.id).filter(
+        models.BookingCancellationRequest.booking_id == booking.id,
+        models.BookingCancellationRequest.status == "pending",
+    ).first():
+        return RedirectResponse(url=f"/customer/bookings/manage/{booking.id}?error_msg=Payment+is+paused+while+the+cancellation+request+is+reviewed", status_code=303)
+
     # Heal premature completion (completed while balance still unpaid)
     from ..services.payment_service import PaymentService
     PaymentService.heal_premature_completion(booking, db)
@@ -3079,6 +3094,7 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
 
     template_name = "customer/booking_wizard/step_payment.html"
     verified_paid = float(payment_summary.get("verified_paid") or 0.0)
+    from ..services.booking_cancellation import format_refund_policy
     
     return templates.TemplateResponse(template_name, {
         "request": request,
@@ -3099,6 +3115,7 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
         "payment_deadline_hours": booking.payment_deadline_hours_snapshot or 48,
         "extension_eligible": extension_eligible,
         "extension_unavailable_reason": extension_unavailable_reason,
+        "cancellation_policy": format_refund_policy(),
     })
 
 @router.post("/step/payment/{path_booking_id}")
@@ -3112,6 +3129,7 @@ async def step_payment_submit(
     payment_proof: Optional[UploadFile] = File(None),
     reference_no: Optional[str] = Form(None),
     terms_agreement: Optional[str] = Form(None),
+    cancellation_policy_agreement: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
     import re
@@ -3134,6 +3152,12 @@ async def step_payment_submit(
         raise HTTPException(status_code=401, detail="Unauthorized")
     if user.role != "customer" or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    if db.query(models.BookingCancellationRequest.id).filter(
+        models.BookingCancellationRequest.booking_id == booking.id,
+        models.BookingCancellationRequest.status == "pending",
+    ).first():
+        raise HTTPException(status_code=409, detail="Payment is paused while the cancellation request is reviewed.")
 
     # Heal premature completion before validating / accepting payment
     from ..services.payment_service import PaymentService
@@ -3219,6 +3243,13 @@ async def step_payment_submit(
         raise HTTPException(status_code=400, detail="This caterer has not configured that payment method.")
     if terms_agreement not in {"on", "true", "1"}:
         raise HTTPException(status_code=400, detail="Please agree to the payment terms before submitting.")
+
+    from ..services.booking_cancellation import CANCELLATION_POLICY_VERSION
+    if not booking.cancellation_policy_version and cancellation_policy_agreement not in {"on", "true", "1"}:
+        raise HTTPException(status_code=400, detail="Please review and accept the cancellation and refund policy before submitting payment.")
+    if cancellation_policy_agreement in {"on", "true", "1"}:
+        booking.cancellation_policy_version = CANCELLATION_POLICY_VERSION
+        booking.cancellation_policy_accepted_at = datetime.now(timezone.utc)
 
     plan_key = str(payment_plan or "").strip().lower()
     if plan_key not in {"balance", "full", "100", "downpayment"}:

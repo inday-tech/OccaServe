@@ -1019,6 +1019,15 @@ Carte Checkout') }}{% endblock %}
                         {% endif %}
                     </div>
 
+                    <section style="margin-top: 1.25rem; padding: 1.25rem; border: 1px solid #cbd5e1; border-radius: 1rem; background: #f8fafc;">
+                        <h4 style="margin: 0 0 .6rem; color: #1e293b;">Cancellation and Refund Policy</h4>
+                        <p style="margin: 0 0 .75rem; color: #475569;">Refund estimates apply to verified payments only: {{ cancellation_policy.tiers[0].percentage }}% at least 30 days before the event, {{ cancellation_policy.tiers[1].percentage }}% 15–29 days before, {{ cancellation_policy.tiers[2].percentage }}% 7–14 days before, and {{ cancellation_policy.tiers[3].percentage }}% under 7 days before. Cash not yet received is not refundable. Caterer review is required; cancellation is unavailable once the event starts.</p>
+                        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="cancellationPolicyAgreement" name="cancellation_policy_agreement" required>
+                            <span>I have read and agree to the cancellation and refund policy ({{ cancellation_policy.version }}).</span>
+                        </label>
+                    </section>
+
                     <div id="place-order-loading" style="display: none; text-align: center; margin-bottom: 2.5rem;">
                         <div class="ocr-loader"
                             style="width: 32px; height: 32px; border: 3px solid #f1f5f9; border-top-color: var(--kyc-accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 0.75rem;">

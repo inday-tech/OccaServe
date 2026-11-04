@@ -61,6 +61,8 @@ def _ensure_schema_sync():
         "ALTER TABLE booking_contracts ADD COLUMN IF NOT EXISTS contract_history JSONB;",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_ref VARCHAR;",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_ref VARCHAR;",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_policy_version VARCHAR(40);",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_policy_accepted_at TIMESTAMP WITH TIME ZONE;",
         "ALTER TABLE billing_invoices ADD COLUMN IF NOT EXISTS invoice_ref VARCHAR;",
         """
         CREATE TABLE IF NOT EXISTS booking_payment_records (

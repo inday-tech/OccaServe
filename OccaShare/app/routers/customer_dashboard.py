@@ -800,46 +800,162 @@ async def upload_public_proof_of_payment(
     # Redirect back to the secure document
     return RedirectResponse(url=f"/customer/document/{booking_id}?success=1", status_code=303)
 
-@router.post("/bookings/manage/{booking_id}/cancel")
-async def cancel_booking(
+@router.get("/bookings/{booking_id}/cancellation-quote")
+async def customer_cancellation_quote(
     booking_id: str,
-    request: Request,
     db: Session = Depends(database.get_db),
-    user: models.User = Depends(customer_only)
+    user: models.User = Depends(customer_only),
 ):
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.user_id != user.id:
         raise HTTPException(status_code=404, detail="Booking not found")
-    
-    # Customers may cancel before any payment is received, including a fully signed
-    # agreement that is still waiting for the first payment.
-    cancellable_statuses = {'draft', 'pending', 'pending_payment', 'awaiting_payment', 'pending_quotation', 'awaiting_customer', 'awaiting_caterer'}
-    if booking.status in cancellable_statuses and booking.payment_status not in ['paid', 'deposit_paid', 'partially_paid', 'proof_submitted', 'balance_proof_submitted', 'pending_verification']:
-        # Prevent race condition: Block cancellation if admin is currently reviewing a payment proof
-        if booking.payment_status == 'proof_submitted':
-            return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}?error_msg=Cannot+cancel+while+payment+is+under+review", status_code=303)
-            
-        if booking.status == 'draft':
-            # Physical delete for drafts to prevent database bloat
-            db.delete(booking)
-            db.commit()
-            return RedirectResponse(url="/customer/bookings?success_msg=Draft+deleted+successfully", status_code=303)
-        else:
-            # Soft cancel for submitted but unpaid bookings
-            booking.status = 'cancelled'
-            db.add(models.BookingHistory(booking_id=booking.id, status='cancelled', notes='Customer cancelled the booking before making a payment.'))
-            db.commit()
-            from ..services.notification import NotificationService
-            if booking.caterer and booking.caterer.user:
-                await NotificationService.notify_status_update(
-                    db, booking.caterer.user_id, 'Booking Cancelled',
-                    f'{user.first_name} {user.last_name} cancelled booking #{booking.id} before payment.',
-                    f'/caterer/bookings?open_booking={booking.id}', 'booking_update'
-                )
-            return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}?success_msg=Booking+cancelled+successfully", status_code=303)
-    else:
-        return RedirectResponse(url=f"/customer/bookings/manage/{booking_id}?error_msg=Booking+cannot+be+cancelled", status_code=303)
+    from ..services.booking_cancellation import estimate_refund, event_has_started, format_refund_policy
+    requests = sorted(booking.cancellation_requests or [], key=lambda row: row.requested_at.isoformat() if row.requested_at else "")
+    active_request = next((row for row in reversed(requests) if row.status == "pending"), None)
+    latest_request = requests[-1] if requests else None
+    quote = estimate_refund(booking)
+    return {
+        **quote,
+        "can_request": (booking.status or "").strip().lower() not in {"draft", "cancelled", "completed", "delivered", "expired", "rejected", "declined", "no_show"}
+        and not event_has_started(booking) and active_request is None,
+        "event_started": event_has_started(booking),
+        "request": {
+            "id": latest_request.id,
+            "status": latest_request.status,
+            "reason": latest_request.reason,
+            "estimated_refund_amount": latest_request.estimated_refund_amount,
+            "refund_percent": latest_request.refund_percent,
+            "requested_at": latest_request.requested_at.isoformat() if latest_request.requested_at else None,
+            "decision_remarks": latest_request.decision_remarks,
+            "decided_at": latest_request.decided_at.isoformat() if latest_request.decided_at else None,
+            "refund": ({
+                "id": latest_request.refund.id,
+                "amount": latest_request.refund.amount,
+                "method": latest_request.refund.method,
+                "status": latest_request.refund.status,
+                "transaction_reference": latest_request.refund.transaction_reference,
+                "proof_url": latest_request.refund.proof_url,
+                "customer_dispute_reason": latest_request.refund.customer_dispute_reason,
+            } if latest_request.refund else None),
+        } if latest_request else None,
+        "policy": format_refund_policy(),
+    }
+
+
+@router.post("/bookings/manage/{booking_id}/cancel")
+async def cancel_booking(
+    booking_id: str,
+    reason: str = Form(..., min_length=4, max_length=2000),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only)
+):
+    numeric_id = sanitize_booking_id(booking_id)
+    booking = db.query(models.Booking).filter(models.Booking.id == numeric_id).with_for_update().first()
+    if not booking or booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    reason = reason.strip()
+    if len(reason) < 4:
+        raise HTTPException(status_code=400, detail="Please provide a cancellation reason.")
+    from ..services.booking_cancellation import CANCELLATION_POLICY_VERSION, estimate_refund, event_has_started
+    if (booking.status or "").strip().lower() in {"draft", "cancelled", "completed", "delivered", "expired", "rejected", "declined", "no_show"} or event_has_started(booking):
+        raise HTTPException(status_code=409, detail="This booking is not eligible for a cancellation request. Contact support if the event has started.")
+    if any(row.status == "pending" for row in booking.cancellation_requests):
+        raise HTTPException(status_code=409, detail="A cancellation request is already pending for this booking.")
+    estimate = estimate_refund(booking)
+    cancellation = models.BookingCancellationRequest(
+        booking_id=booking.id,
+        customer_id=user.id,
+        caterer_id=booking.caterer_id,
+        reason=reason,
+        status="pending",
+        estimated_refund_amount=estimate["estimated_refund_amount"],
+        verified_paid_amount_at_request=estimate["verified_paid_amount"],
+        refund_percent=estimate["refund_percent"],
+        policy_version=booking.cancellation_policy_version or CANCELLATION_POLICY_VERSION,
+    )
+    db.add(cancellation)
+    db.add(models.BookingHistory(booking_id=booking.id, status=booking.status, notes=f"Customer requested cancellation. Reason: {reason}"))
+    try:
+        db.commit()
+        db.refresh(cancellation)
+    except Exception:
+        db.rollback()
+        raise
+    from ..services.notification import NotificationService
+    if booking.caterer and booking.caterer.user:
+        await NotificationService.notify_status_update(
+            db, booking.caterer.user_id, "Cancellation Request Received",
+            f"A customer requested cancellation for booking #{booking.id}. Review the request in your booking details.",
+            f"/caterer/bookings?open_booking={booking.id}", "booking_update"
+        )
+    await NotificationService.notify_status_update(
+        db, user.id, "Cancellation Request Submitted",
+        f"Your cancellation request for booking #{booking.id} was sent to the caterer. The booking remains active while it is reviewed.",
+        f"/customer/bookings?open_detail={booking.id}", "booking_update"
+    )
+    return JSONResponse({"status": "success", "request_id": cancellation.id, "message": "Cancellation request sent to the caterer."})
+
+
+@router.post("/bookings/{booking_id}/refunds/{refund_id}/confirm")
+async def customer_confirm_refund(
+    booking_id: int,
+    refund_id: int,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only),
+):
+    refund = db.query(models.BookingRefund).filter(
+        models.BookingRefund.id == refund_id,
+        models.BookingRefund.booking_id == booking_id,
+    ).with_for_update().first()
+    if not refund or refund.booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Refund record not found")
+    if refund.status != "awaiting_customer_confirmation":
+        raise HTTPException(status_code=409, detail="This refund is not awaiting confirmation.")
+    from datetime import datetime, timezone
+    refund.status = "verified"
+    refund.customer_confirmed_at = datetime.now(timezone.utc)
+    db.add(models.BookingHistory(booking_id=booking_id, status="cancelled", notes=f"Customer confirmed refund #{refund.id} of ₱{refund.amount:.2f} received."))
+    db.commit()
+    from ..services.notification import NotificationService
+    await NotificationService.notify_status_update(
+        db, refund.cancellation_request.caterer.user_id, "Refund Confirmed",
+        f"The customer confirmed receipt of the ₱{refund.amount:.2f} refund for booking #{booking_id}.",
+        f"/caterer/bookings?open_booking={booking_id}", "booking_update"
+    )
+    return {"status": "success", "message": "Refund receipt confirmed."}
+
+
+@router.post("/bookings/{booking_id}/refunds/{refund_id}/dispute")
+async def customer_dispute_refund(
+    booking_id: int,
+    refund_id: int,
+    reason: str = Form(..., min_length=4, max_length=1000),
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(customer_only),
+):
+    refund = db.query(models.BookingRefund).filter(
+        models.BookingRefund.id == refund_id,
+        models.BookingRefund.booking_id == booking_id,
+    ).with_for_update().first()
+    if not refund or refund.booking.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Refund record not found")
+    if refund.status != "awaiting_customer_confirmation":
+        raise HTTPException(status_code=409, detail="This refund is not awaiting confirmation.")
+    refund.status = "disputed"
+    reason = reason.strip()
+    if len(reason) < 4:
+        raise HTTPException(status_code=400, detail="Please explain the refund issue.")
+    refund.customer_dispute_reason = reason
+    db.add(models.BookingHistory(booking_id=booking_id, status="cancelled", notes=f"Customer disputed refund #{refund.id}: {reason}"))
+    db.commit()
+    from ..services.notification import NotificationService
+    await NotificationService.notify_status_update(
+        db, refund.cancellation_request.caterer.user_id, "Refund Disputed",
+        f"The customer reported an issue with the refund for booking #{booking_id}. Review the refund record.",
+        f"/caterer/bookings?open_booking={booking_id}", "booking_update"
+    )
+    return {"status": "success", "message": "Refund issue sent to the caterer."}
 
 @router.get("/payments", response_class=HTMLResponse)
 async def customer_payments(

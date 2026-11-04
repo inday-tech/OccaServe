@@ -586,6 +586,24 @@
                 {% endif %}
 
                 <!-- Terms & Agreement Confirmation -->
+                <div style="margin:1rem 0;padding:1rem;border:1px solid #fed7aa;border-radius:12px;background:#fffaf5;color:#334155;">
+                    <strong style="display:block;margin-bottom:.45rem;color:#9a3412;">Cancellation and Refund Policy ({{ cancellation_policy.version }})</strong>
+                    <p style="margin:0 0 .6rem;line-height:1.5;font-size:.86rem;">{{ cancellation_policy.text }}</p>
+                    <ul style="margin:.25rem 0 .85rem;padding-left:1.2rem;font-size:.84rem;line-height:1.55;">
+                        <li>30 or more days before the event: 100%</li>
+                        <li>15–29 days: 75%</li>
+                        <li>7–14 days: 50%</li>
+                        <li>Under 7 days: 0%</li>
+                    </ul>
+                    {% if not booking.cancellation_policy_version %}
+                    <label style="display:flex;align-items:flex-start;gap:.55rem;font-size:.86rem;font-weight:700;">
+                        <input type="checkbox" name="cancellation_policy_agreement" form="wizard-payment-form" required style="margin-top:.2rem;">
+                        <span>I have read and agree to this cancellation and refund policy.</span>
+                    </label>
+                    {% else %}
+                    <small>Policy version {{ booking.cancellation_policy_version }} was previously accepted for this booking.</small>
+                    {% endif %}
+                </div>
                 <div class="terms-box-clean">
                     <label class="terms-label-clean">
                         <input type="checkbox" id="termsAgreementCheckbox" name="terms_agreement" form="wizard-payment-form" required class="terms-checkbox">
@@ -865,6 +883,11 @@
         const termsCheckbox = document.getElementById('termsAgreementCheckbox');
         if (termsCheckbox && !termsCheckbox.checked) {
             Swal.fire('Terms Required', 'Please agree to the payment terms before submitting.', 'warning');
+            return;
+        }
+        const cancellationPolicyCheckbox = document.querySelector('input[name="cancellation_policy_agreement"]');
+        if (cancellationPolicyCheckbox && !cancellationPolicyCheckbox.checked) {
+            Swal.fire('Policy Agreement Required', 'Please review and accept the cancellation and refund policy before submitting.', 'warning');
             return;
         }
 

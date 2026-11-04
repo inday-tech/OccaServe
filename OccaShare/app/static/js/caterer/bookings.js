@@ -1413,6 +1413,7 @@ function hydrateButtonDataset(btn, detail) {
         celebrantName: hasDetailField('celebrant_name') ? (detail.celebrant_name || '') : '',
         paymentRecordsJson: JSON.stringify(detail.payment_records || []),
         paymentExtensionRequestJson: JSON.stringify(detail.payment_extension_request || null),
+        cancellationRequestJson: JSON.stringify(detail.cancellation_request || null),
         eventDate: detail.event_date || btn.dataset.eventDate || '',
         eventTime: hasDetailField('event_time') ? (detail.event_time || 'TBA') : (btn.dataset.eventTime || 'TBA'),
         customerRef: customerRef,
@@ -1669,6 +1670,7 @@ function showBookingDetails(btn) {
     var isManual = sourceKindVal === 'manual' || data.isWalkin === 'true' || data.isManual === 'true' || sourceVal.includes('walk') || sourceVal.includes('manual');
     var bookingStatus = (data.status || 'pending').toLowerCase();
     var paymentStatus = (data.paymentStatus || 'unpaid').toLowerCase();
+    renderCancellationWorkflow(data, cleanId);
 
     var extensionReview = document.getElementById('paymentExtensionReview');
     var extensionReason = document.getElementById('paymentExtensionReason');
@@ -2590,6 +2592,11 @@ function showBookingDetails(btn) {
     var rightActions = document.getElementById('modalFooterRightActions');
     if (rightActions) {
         var actionButtonsHtml = '';
+        var cancellationRequest = null;
+        try { cancellationRequest = JSON.parse(data.cancellationRequestJson || 'null'); } catch (e) {}
+        if (cancellationRequest && cancellationRequest.status === 'pending') {
+            actionButtonsHtml += `<button type="button" onclick="switchBookingTab('payment', document.querySelector('#bookingDetailModal .mtab-btn-pro[data-tab=payment]'))" class="btn-primary" style="padding:.6rem 1rem;border-radius:8px;background:#c2410c;color:#fff;border:0;font-weight:700;"><i class="fas fa-ban"></i> Review Cancellation</button>`;
+        }
         if (bookingStatus === 'pending_review') {
             actionButtonsHtml += `<button type="button" onclick="window.acceptBookingRequest('${cleanId}')" class="btn-primary" style="padding: 0.6rem 1.25rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px; cursor: pointer; background: #16a34a; color: white; border: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-check"></i> Accept Request</button>`;
         } else if (bookingStatus === 'inquiry') {
@@ -2652,6 +2659,115 @@ function showBookingDetails(btn) {
 
     // Open Modal
     bk_openModal('bookingDetailModal');
+}
+
+function renderCancellationWorkflow(data, bookingId) {
+    const panel = document.getElementById('cancellationWorkflowPanel');
+    const details = document.getElementById('cancellationWorkflowDetails');
+    const actions = document.getElementById('cancellationWorkflowActions');
+    if (!panel || !details || !actions) return;
+    let cancellation = null;
+    try { cancellation = JSON.parse(data.cancellationRequestJson || 'null'); } catch {}
+    panel.style.display = cancellation ? 'block' : 'none';
+    details.replaceChildren();
+    actions.replaceChildren();
+    if (!cancellation) return;
+    const addText = (label, value) => {
+        const line = document.createElement('div');
+        const strong = document.createElement('strong');
+        strong.textContent = `${label}: `;
+        line.append(strong, document.createTextNode(value || '—'));
+        details.appendChild(line);
+    };
+    addText('Request', cancellation.status);
+    addText('Requested at', cancellation.requested_at ? new Date(cancellation.requested_at).toLocaleString() : '');
+    addText('Reason', cancellation.reason);
+    addText('Estimated refund', `₱${Number(cancellation.estimated_refund_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${Number(cancellation.refund_percent || 0)}%)`);
+    if (cancellation.decision_remarks) addText('Decision remarks', cancellation.decision_remarks);
+    const refund = cancellation.refund;
+    if (refund) {
+        addText('Refund status', refund.status);
+        addText('Refund amount / method', `₱${Number(refund.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} · ${refund.method || 'Not selected'}`);
+        addText('Processed at', refund.processed_at ? new Date(refund.processed_at).toLocaleString() : '');
+        if (refund.transaction_reference) addText('Transaction reference', refund.transaction_reference);
+        if (refund.customer_dispute_reason) addText('Customer issue', refund.customer_dispute_reason);
+        if (refund.proof_url) {
+            const link = document.createElement('a');
+            link.href = refund.proof_url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open refund proof';
+            details.appendChild(link);
+        }
+    }
+    if (cancellation.status === 'pending') {
+        const remarks = document.createElement('textarea');
+        remarks.id = 'cancellationDecisionRemarks'; remarks.required = true; remarks.minLength = 4; remarks.maxLength = 2000;
+        remarks.rows = 3; remarks.placeholder = 'Required decision remarks';
+        remarks.style.cssText = 'width:100%;box-sizing:border-box;padding:.65rem;border:1px solid #cbd5e1;border-radius:8px;font:inherit;';
+        actions.appendChild(remarks);
+        const buttons = document.createElement('div'); buttons.style.cssText = 'display:flex;gap:.5rem;flex-wrap:wrap;';
+        ['approve', 'reject'].forEach(decision => {
+            const button = document.createElement('button'); button.type = 'button'; button.textContent = decision === 'approve' ? 'Approve cancellation' : 'Reject request';
+            button.className = decision === 'approve' ? 'btn-primary' : 'btn-secondary-pro';
+            button.addEventListener('click', () => decideCancellationRequest(bookingId, cancellation.id, decision));
+            buttons.appendChild(button);
+        });
+        actions.appendChild(buttons);
+    }
+    if (refund && ['pending', 'disputed'].includes(refund.status)) {
+        const form = document.createElement('form');
+        form.style.cssText = 'display:grid;gap:.55rem;padding-top:.5rem;border-top:1px solid #fed7aa;';
+        form.innerHTML = '<strong>Record refund sent</strong><label>Actual refund amount <input name="amount" type="number" min="0.01" step="0.01" required></label><label>Refund method <select name="method" required><option>GCash</option><option>Maya</option><option>Cash</option><option>Bank Transfer</option></select></label><label>Transaction reference <input name="transaction_reference" maxlength="120"></label><label>Proof (JPG, PNG, WEBP, or PDF; max 5 MB) <input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label><button type="submit" class="btn-primary">Submit refund details</button>';
+        form.querySelector('[name="amount"]').max = String(Number(cancellation.estimated_refund_amount || 0));
+        form.querySelector('[name="amount"]').value = String(Number(refund.amount || cancellation.estimated_refund_amount || 0));
+        if (refund.method) form.querySelector('[name="method"]').value = refund.method;
+        form.addEventListener('submit', event => submitCatererRefund(event, bookingId, refund.id));
+        actions.appendChild(form);
+    }
+}
+
+async function refreshCancellationWorkspace(bookingId) {
+    const button = document.querySelector(`.view-details[data-id="${String(bookingId).replace(/\D/g, '')}"]`);
+    if (!button) return;
+    button.dataset.workspaceHydrated = 'loading';
+    try {
+        const response = await fetch(`/caterer/api/bookings/${bookingId}/details`, { headers: { Accept: 'application/json' } });
+        const detail = await response.json();
+        if (!response.ok) throw new Error(detail.detail || 'Could not refresh booking details.');
+        hydrateButtonDataset(button, detail);
+        button.dataset.workspaceHydrated = 'true';
+        if (String(currentBookingId) === String(bookingId)) showBookingDetails(button);
+    } catch (error) {
+        window.showToast(error instanceof Error ? error.message : 'Could not refresh the booking.', 'error');
+    }
+}
+
+async function decideCancellationRequest(bookingId, requestId, decision) {
+    const remarks = document.getElementById('cancellationDecisionRemarks')?.value.trim();
+    if (!remarks || remarks.length < 4) { window.showError('Enter decision remarks before continuing.'); return; }
+    try {
+        const response = await fetch(`/caterer/api/bookings/${bookingId}/cancellation-requests/${requestId}/decision`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ decision, remarks })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Decision could not be saved.');
+        await refreshCancellationWorkspace(bookingId);
+    } catch (error) { window.showError(error instanceof Error ? error.message : 'Decision could not be saved.'); }
+}
+
+async function submitCatererRefund(event, bookingId, refundId) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const payload = new FormData(form);
+    const method = String(payload.get('method') || '').toLowerCase();
+    if (['gcash', 'maya', 'bank transfer'].includes(method) && !String(payload.get('transaction_reference') || '').trim() && !payload.get('proof')?.size) {
+        window.showError('Online refunds need a transaction reference or proof.'); return;
+    }
+    try {
+        const response = await fetch(`/caterer/api/bookings/${bookingId}/refunds/${refundId}/process`, { method: 'POST', body: payload, headers: { Accept: 'application/json' } });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Refund details could not be saved.');
+        await refreshCancellationWorkspace(bookingId);
+    } catch (error) { window.showError(error instanceof Error ? error.message : 'Refund details could not be saved.'); }
 }
 
 // End of showBookingDetails

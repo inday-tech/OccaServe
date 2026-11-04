@@ -1646,6 +1646,14 @@ document.addEventListener('DOMContentLoaded', function () {
     window.finalSubmitOrder = async function () {
         const paymentMethod = document.getElementById('payment_method').value;
         const proofInput = document.getElementById('proofImageInput');
+        const cancellationPolicyAgreement = document.getElementById('cancellationPolicyAgreement');
+
+        if (!cancellationPolicyAgreement || !cancellationPolicyAgreement.checked) {
+            if (window.Swal) {
+                await Swal.fire({ icon: 'warning', title: 'Policy agreement required', text: 'Please review and accept the cancellation and refund policy.' });
+            }
+            return;
+        }
 
         if (paymentMethod !== 'CASH' && proofInput && proofInput.files.length === 0) {
             const err = document.getElementById('uploadErrorMsg');

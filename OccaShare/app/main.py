@@ -64,6 +64,8 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS travel_fee_status VARCHAR DEFAULT 'confirmed'",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'pending'",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_status VARCHAR DEFAULT 'pending'",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_policy_version VARCHAR(40)",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_policy_accepted_at TIMESTAMP WITH TIME ZONE",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_deadline_hours_snapshot INTEGER",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_request_activated_at TIMESTAMP WITH TIME ZONE",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_deadline_at TIMESTAMP WITH TIME ZONE",
