@@ -586,9 +586,7 @@
                     <i class="fas fa-download"></i> Export <i class="fas fa-chevron-down" style="font-size: 0.6rem; margin-left: 4px;"></i>
                 </button>
                 <div class="dropdown-menu-dm">
-                    <button type="button" class="dropdown-item-dm" onclick="exportBookings('pdf')"><i class="fas fa-file-pdf"></i> Export PDF</button>
-                    <button type="button" class="dropdown-item-dm" onclick="exportBookings('excel')"><i class="fas fa-file-excel"></i> Export Excel (CSV)</button>
-                    <button type="button" class="dropdown-item-dm" onclick="exportBookings('word')"><i class="fas fa-file-word"></i> Export Word</button>
+                    <button type="button" class="dropdown-item-dm" onclick="exportBookings('preview')"><i class="fas fa-eye"></i> Preview &amp; Export</button>
                 </div>
             </div>
             <label class="sr-only" for="catererFilter">Filter by caterer</label>
@@ -1209,6 +1207,15 @@
                 ? b.history.map(h => `[${h.created_at}] ${h.status} - ${h.notes || 'No notes'}`)
                 : ['No history available.'])
         ];
+        window.OccaExportPreview.open({
+            title: `Booking ${b.booking_ref || b.id} Log`,
+            filename: `booking-${b.booking_ref || b.id}-log`,
+            columns: ['Booking log entry'],
+            rows: lines.map(line => [line]),
+            textDownload: true,
+            metadata: ['Booking detail and event timeline']
+        });
+        return;
         const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/plain;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -1389,6 +1396,11 @@
             
             return [ref, cust, cat, amt, stat];
         });
+
+        if (format === 'preview') {
+            window.OccaExportPreview.open({ title: 'OccaServe Platform Bookings', filename: 'occaserve-platform-bookings', columns: headers, rows: data, metadata: [`${data.length} matching bookings`] });
+            return;
+        }
 
         if (format === 'excel') {
             const csvContent = "\uFEFF" 

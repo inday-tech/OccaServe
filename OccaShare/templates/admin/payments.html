@@ -49,7 +49,7 @@
     <div class="header-actions">
         {% if invoices %}
         <button class="btn-clean" style="background: var(--adm-navy); color: white;" onclick="exportRevenueCSV()">
-            <i class="fas fa-download"></i> Download Report
+            <i class="fas fa-eye"></i> Preview &amp; Export
         </button>
         {% endif %}
     </div>
@@ -184,6 +184,9 @@
                     rows.push([ref, caterer, bId, bAmount, cAmount, date, time, status]);
                 }
             });
+            Swal.close();
+            window.OccaExportPreview.open({ title: 'OccaServe Platform Revenue', filename: 'occaserve-platform-revenue', columns: rows[0], rows: rows.slice(1), metadata: [`${rows.length - 1} revenue rows`] });
+            return;
             const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));

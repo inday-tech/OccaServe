@@ -26,15 +26,9 @@
             <p>Monitor and review system activities and administrative actions.</p>
         </div>
         <div class="operational-actions-v2">
-            <a href="/admin/api/audit-logs/export?format=pdf&q={{ filters.q|urlencode }}&category={{ filters.category|urlencode }}&date={{ filters.date|urlencode }}" class="dm-btn-primary">
-                <i class="fas fa-file-pdf" aria-hidden="true"></i> Generate PDF Report
-            </a>
-            <a href="/admin/api/audit-logs/export?format=csv&q={{ filters.q|urlencode }}&category={{ filters.category|urlencode }}&date={{ filters.date|urlencode }}" class="dm-btn-secondary" id="auditExportLink">
-                <i class="fas fa-file-csv audit-export-icon audit-export-csv-icon" aria-hidden="true"></i> Export CSV
-            </a>
-            <a href="/admin/api/audit-logs/export?format=word&q={{ filters.q|urlencode }}&category={{ filters.category|urlencode }}&date={{ filters.date|urlencode }}" class="dm-btn-secondary">
-                <i class="fas fa-file-word audit-export-icon audit-export-word-icon" aria-hidden="true"></i> Export Word
-            </a>
+            <button type="button" class="dm-btn-primary" onclick="previewAdminAuditReport()">
+                <i class="fas fa-eye" aria-hidden="true"></i> Preview &amp; Export
+            </button>
         </div>
     </div>
 </div>
@@ -1002,6 +996,22 @@
 
 {% block extra_js %}
 <script>
+    async function previewAdminAuditReport() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            params.set('format', 'preview');
+            const response = await fetch(`/admin/api/audit-logs/export?${params.toString()}`, { credentials: 'same-origin' });
+            if (!response.ok) throw new Error('Unable to load matching audit entries.');
+            const report = await response.json();
+            params.set('format', 'word');
+            report.wordUrl = `/admin/api/audit-logs/export?${params.toString()}`;
+            window.OccaExportPreview.open(report);
+        } catch (error) {
+            if (window.showError) window.showError(error.message);
+            else window.alert(error.message);
+        }
+    }
+
     const auditFilterForm = document.getElementById('auditAutoFilterForm');
     const auditSearchInput = document.getElementById('auditSearch');
     let auditSearchTimer;

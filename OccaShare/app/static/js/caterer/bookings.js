@@ -5157,6 +5157,17 @@ window.exportBookings = function(format) {
 
     if (data.length === 0) return;
 
+    if (format === 'preview') {
+        window.OccaExportPreview.open({
+            title: 'Bookings Database Report',
+            filename: 'caterer-bookings',
+            columns: ['Booking ID', 'Customer Ref', 'Event', 'Date & Time', 'Status & Billing'],
+            rows: data.map(item => [item.idText, item.customerRef, item.eventInfo, item.dateTime, item.statusBilling]),
+            metadata: [`${data.length} bookings matching current search and filters`]
+        });
+        return;
+    }
+
     if (format === 'excel') {
         const csvRows = [["Booking ID", "Customer Ref", "Event", "Date & Time", "Status & Billing"]];
         

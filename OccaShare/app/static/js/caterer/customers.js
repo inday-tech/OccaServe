@@ -99,6 +99,29 @@ window.exportCustomerCSV = function(format = 'csv') {
         if (window.showError) window.showError("No data to export.");
         return;
     }
+
+    const exportRows = [];
+    rows.forEach(row => {
+        if (row.style.display === 'none') return;
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 5) return;
+        exportRows.push([
+            cells[0].innerText.trim(),
+            cells[1].innerText.trim(),
+            cells[2].innerText.trim(),
+            cells[3].innerText.trim(),
+            cells[4].innerText.trim()
+        ]);
+    });
+    window.OccaExportPreview.open({
+        title: 'Caterer Customer Directory Summary',
+        filename: 'customer-directory-summary',
+        columns: ['Client ID', 'Status', 'Total Spent', 'Bookings', 'Last Active'],
+        rows: exportRows,
+        metadata: [`${exportRows.length} customers matching current filters`]
+    });
+    window.toggleActionMenu('export');
+    return;
     
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Client ID,Status,Total Spent,Bookings,Last Active\n";

@@ -381,7 +381,7 @@
                 <option value="suspended">Suspended</option>
                 <option value="flagged">Flagged for review</option>
             </select>
-            <button type="button" class="btn-clean" onclick="downloadCustomerCsv()" style="background:#fff;color:var(--adm-navy);border:1px solid #e2e8f0;padding:6px 12px;font-size:.75rem;">Download CSV</button>
+            <button type="button" class="btn-clean" onclick="downloadCustomerCsv()" style="background:#fff;color:var(--adm-navy);border:1px solid #e2e8f0;padding:6px 12px;font-size:.75rem;">Preview &amp; Export</button>
         </div>
     </div>
 
@@ -519,6 +519,8 @@
                 cells[3].innerText.trim()
             ]);
         });
+        window.OccaExportPreview.open({ title: 'OccaServe Customer Directory', filename: 'occaserve-customers', columns: values[0], rows: values.slice(1), metadata: [`${visibleRows.length} customers matching current filters`] });
+        return;
         const csv = values.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
         const link = document.createElement('a');
         link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));

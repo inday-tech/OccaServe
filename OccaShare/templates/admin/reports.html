@@ -19,15 +19,9 @@
         <span class="report-updated">Live database snapshot · Updated {{ report_date }}</span>
     </div>
     <div class="report-export-actions" aria-label="Export report">
-        <a class="report-export-button report-export-csv" href="/admin/reports/export?format=csv">
-            <i class="fas fa-file-csv" aria-hidden="true"></i> CSV
-        </a>
-        <a class="report-export-button report-export-pdf" href="/admin/reports/export?format=pdf">
-            <i class="fas fa-file-pdf" aria-hidden="true"></i> PDF
-        </a>
-        <a class="report-export-button report-export-word" href="/admin/reports/export?format=word">
-            <i class="fas fa-file-word" aria-hidden="true"></i> Word
-        </a>
+        <button type="button" class="report-export-button report-export-pdf" onclick="previewAdminAnalyticsReport()">
+            <i class="fas fa-eye" aria-hidden="true"></i> Preview &amp; Export
+        </button>
     </div>
 </div>
 
@@ -177,6 +171,19 @@
 
 {% block extra_js %}
 <script>
+    async function previewAdminAnalyticsReport() {
+        try {
+            const response = await fetch('/admin/reports/export?format=preview', { credentials: 'same-origin' });
+            if (!response.ok) throw new Error('Unable to load the current analytics report.');
+            const report = await response.json();
+            report.wordUrl = '/admin/reports/export?format=word';
+            window.OccaExportPreview.open(report);
+        } catch (error) {
+            if (window.showError) window.showError(error.message);
+            else window.alert(error.message);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof Chart === 'undefined') return;
 

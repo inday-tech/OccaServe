@@ -170,6 +170,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }));
     }
 
+    window.openPaymentsExportPreview = function() {
+        const rows = getExportPaymentRows();
+        window.OccaExportPreview.open({
+            title: 'Payments & Earnings Report',
+            filename: 'payments-earnings-report',
+            columns: [
+                { label: 'Payment ID', key: 'paymentId' },
+                { label: 'Booking Ref', key: 'bookingRef' },
+                { label: 'Customer Reference', key: 'customerRef' },
+                { label: 'Payment Type', key: 'paymentType' },
+                { label: 'Amount (PHP)', key: 'amount', type: 'currency' },
+                { label: 'Method', key: 'method' },
+                { label: 'Date', key: 'date' },
+                { label: 'Status', key: 'status' }
+            ],
+            rows,
+            metadata: [`${rows.length} payments matching current filters`]
+        });
+    };
+
     // Filter Payments
     window.filterPayments = function() {
         const queryEl = document.getElementById('paymentSearch');

@@ -48,14 +48,8 @@
                     <i class="fas fa-file-export"></i> <span>Export</span> <i class="fas fa-chevron-down caret-icon"></i>
                 </button>
                 <div id="exportMenu" class="pay-dropdown-menu">
-                    <button type="button" class="pay-dropdown-item" onclick="window.exportToPDF()">
-                        <i class="fas fa-file-pdf" style="color: #ef4444;"></i> Export PDF
-                    </button>
-                    <button type="button" class="pay-dropdown-item" onclick="window.exportToExcel()">
-                        <i class="fas fa-file-excel" style="color: #10b981;"></i> Export Excel (.xlsx)
-                    </button>
-                    <button type="button" class="pay-dropdown-item" onclick="window.exportToCSV()">
-                        <i class="fas fa-file-csv" style="color: #3b82f6;"></i> Export CSV (.csv)
+                    <button type="button" class="pay-dropdown-item" onclick="window.openPaymentsExportPreview()">
+                        <i class="fas fa-eye" style="color: #3b82f6;"></i> Preview &amp; Export
                     </button>
                 </div>
             </div>
