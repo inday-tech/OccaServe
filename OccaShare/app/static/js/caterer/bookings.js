@@ -1859,6 +1859,28 @@ function showBookingDetails(btn) {
     const statusAction = document.getElementById('modalStatusAction');
     if (statusAction) statusAction.textContent = data.catererAction || '';
 
+    let cancellationHeader = null;
+    try { cancellationHeader = JSON.parse(data.cancellationRequestJson || 'null'); } catch {}
+    const cancellationBadge = document.getElementById('modalCancellationStatusBadge');
+    if (cancellationBadge) {
+        const cancellationState = String(cancellationHeader?.status || '').toLowerCase();
+        const refundState = String(cancellationHeader?.refund?.status || '').toLowerCase();
+        cancellationBadge.style.display = cancellationHeader ? 'inline-flex' : 'none';
+        cancellationBadge.textContent = cancellationState === 'pending'
+            ? 'Cancellation Review Pending'
+            : cancellationState === 'approved' && ['pending', 'disputed'].includes(refundState)
+                ? 'Cancellation Approved – Refund Pending'
+                : cancellationState === 'approved' ? 'Cancellation Approved' : cancellationState.replace(/_/g, ' ');
+        cancellationBadge.style.background = cancellationState === 'pending' || refundState === 'pending' ? '#fff7ed' : '#f0fdf4';
+        cancellationBadge.style.color = cancellationState === 'pending' || refundState === 'pending' ? '#9a3412' : '#166534';
+        cancellationBadge.style.borderColor = cancellationState === 'pending' || refundState === 'pending' ? '#fed7aa' : '#bbf7d0';
+        if (cancellationState === 'pending') {
+            if (statusAction) statusAction.textContent = 'Cancellation Review Pending';
+        } else if (cancellationState === 'approved' && ['pending', 'disputed'].includes(refundState)) {
+            if (statusAction) statusAction.textContent = 'Cancellation Approved – Refund Pending';
+        }
+    }
+
     // One payment state is shared by the header, Overview, and Payment tab.
     var payBadge = document.getElementById('modalPaymentStatusBadge');
     if (payBadge) {
@@ -2674,15 +2696,22 @@ function renderCancellationWorkflow(data, bookingId) {
     if (!cancellation) return;
     const addText = (label, value) => {
         const line = document.createElement('div');
+        line.className = 'cancellation-detail-line';
         const strong = document.createElement('strong');
         strong.textContent = `${label}: `;
-        line.append(strong, document.createTextNode(value || '—'));
+        const content = document.createElement('span');
+        content.textContent = value || '—';
+        line.append(strong, content);
         details.appendChild(line);
     };
     addText('Request', cancellation.status);
     addText('Requested at', cancellation.requested_at ? new Date(cancellation.requested_at).toLocaleString() : '');
     addText('Reason', cancellation.reason);
-    addText('Estimated refund', `₱${Number(cancellation.estimated_refund_amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${Number(cancellation.refund_percent || 0)}%)`);
+    const estimatedAmount = Number(cancellation.estimated_refund_amount || 0);
+    const refundPercent = Number(cancellation.refund_percent || 0);
+    addText('Estimated refund', estimatedAmount <= 0 && refundPercent > 0
+        ? `₱0.00 (${refundPercent}% policy rate). No verified payment has been received, so the current estimated refund is ₱0.00.`
+        : `₱${estimatedAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${refundPercent}% of verified payments)`);
     if (cancellation.decision_remarks) addText('Decision remarks', cancellation.decision_remarks);
     const refund = cancellation.refund;
     if (refund) {
@@ -2698,11 +2727,25 @@ function renderCancellationWorkflow(data, bookingId) {
         }
     }
     if (cancellation.status === 'pending') {
+        const remarksField = document.createElement('div');
+        remarksField.className = 'refund-field cancellation-remarks-field';
+        const remarksLabel = document.createElement('label');
+        remarksLabel.htmlFor = 'cancellationDecisionRemarks';
+        remarksLabel.textContent = 'Decision remarks (required; 4–2000 characters)';
         const remarks = document.createElement('textarea');
         remarks.id = 'cancellationDecisionRemarks'; remarks.required = true; remarks.minLength = 4; remarks.maxLength = 2000;
-        remarks.rows = 3; remarks.placeholder = 'Required decision remarks';
-        remarks.style.cssText = 'width:100%;box-sizing:border-box;padding:.65rem;border:1px solid #cbd5e1;border-radius:8px;font:inherit;';
-        actions.appendChild(remarks);
+        remarks.rows = 3; remarks.placeholder = 'Explain the reason for your decision';
+        const remarksCounter = document.createElement('small');
+        remarksCounter.className = 'refund-field-help';
+        remarksCounter.textContent = '0/2000';
+        const remarksError = document.createElement('small');
+        remarksError.className = 'refund-inline-error'; remarksError.setAttribute('aria-live', 'polite');
+        remarksField.append(remarksLabel, remarks, remarksCounter, remarksError);
+        remarks.addEventListener('input', () => {
+            remarksCounter.textContent = `${remarks.value.length}/2000`;
+            remarksError.textContent = remarks.value.length >= 2000 ? 'Maximum length reached.' : '';
+        });
+        actions.appendChild(remarksField);
         const buttons = document.createElement('div'); buttons.style.cssText = 'display:flex;gap:.5rem;flex-wrap:wrap;';
         ['approve', 'reject'].forEach(decision => {
             const button = document.createElement('button'); button.type = 'button'; button.textContent = decision === 'approve' ? 'Approve cancellation' : 'Reject request';
@@ -2714,11 +2757,24 @@ function renderCancellationWorkflow(data, bookingId) {
     }
     if (refund && ['pending', 'disputed'].includes(refund.status)) {
         const form = document.createElement('form');
-        form.style.cssText = 'display:grid;gap:.55rem;padding-top:.5rem;border-top:1px solid #fed7aa;';
-        form.innerHTML = '<strong>Record refund sent</strong><label>Actual refund amount <input name="amount" type="number" min="0.01" step="0.01" required></label><label>Refund method <select name="method" required><option>GCash</option><option>Maya</option><option>Cash</option><option>Bank Transfer</option></select></label><label>Transaction reference <input name="transaction_reference" maxlength="120"></label><label>Proof (JPG, PNG, WEBP, or PDF; max 5 MB) <input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"></label><button type="submit" class="btn-primary">Submit refund details</button>';
+        form.className = 'refund-form';
+        form.innerHTML = '<strong class="refund-form-title">Record refund sent</strong><p class="refund-form-intro">Enter the amount actually returned. It cannot exceed the estimated refundable amount.</p><label class="refund-field">Actual refund amount <span class="refund-required">Required</span><input name="amount" type="number" min="0.01" step="0.01" required><small class="refund-field-help refund-amount-limit"></small></label><label class="refund-field">Refund method <span class="refund-required">Required</span><select name="method" required><option>GCash</option><option>Maya</option><option>Cash</option><option>Bank Transfer</option></select></label><div class="refund-online-fields"><label class="refund-field">Transaction reference <span class="refund-optional">Optional if proof is attached</span><input name="transaction_reference" maxlength="120"><small class="refund-field-help">Provide a reference or upload proof for online refunds.</small></label><label class="refund-field">Refund proof <span class="refund-optional">Optional if reference is entered</span><input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small class="refund-field-help">JPG, PNG, WEBP, or PDF; maximum 5 MB.</small></label></div><small class="refund-inline-error refund-form-error" aria-live="polite"></small><button type="submit" class="btn-primary refund-submit">Submit refund details</button>';
         form.querySelector('[name="amount"]').max = String(Number(cancellation.estimated_refund_amount || 0));
         form.querySelector('[name="amount"]').value = String(Number(refund.amount || cancellation.estimated_refund_amount || 0));
+        form.querySelector('.refund-amount-limit').textContent = `Maximum estimated refund: ₱${estimatedAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}.`;
         if (refund.method) form.querySelector('[name="method"]').value = refund.method;
+        const onlineFields = form.querySelector('.refund-online-fields');
+        const methodSelect = form.querySelector('[name="method"]');
+        const toggleOnlineFields = () => {
+            const cashMethod = methodSelect.value.toLowerCase() === 'cash';
+            onlineFields.hidden = cashMethod;
+            if (cashMethod) {
+                form.querySelector('[name="transaction_reference"]').value = '';
+                form.querySelector('[name="proof"]').value = '';
+            }
+        };
+        methodSelect.addEventListener('change', toggleOnlineFields);
+        toggleOnlineFields();
         form.addEventListener('submit', event => submitCatererRefund(event, bookingId, refund.id));
         actions.appendChild(form);
     }
@@ -2741,8 +2797,14 @@ async function refreshCancellationWorkspace(bookingId) {
 }
 
 async function decideCancellationRequest(bookingId, requestId, decision) {
-    const remarks = document.getElementById('cancellationDecisionRemarks')?.value.trim();
-    if (!remarks || remarks.length < 4) { window.showError('Enter decision remarks before continuing.'); return; }
+    const remarksInput = document.getElementById('cancellationDecisionRemarks');
+    const remarks = remarksInput?.value.trim();
+    const remarksError = remarksInput?.parentElement.querySelector('.refund-inline-error');
+    if (!remarks || remarks.length < 4) {
+        if (remarksError) remarksError.textContent = 'Enter at least 4 characters of decision remarks.';
+        remarksInput?.focus(); return;
+    }
+    if (remarksError) remarksError.textContent = '';
     try {
         const response = await fetch(`/caterer/api/bookings/${bookingId}/cancellation-requests/${requestId}/decision`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -2760,8 +2822,12 @@ async function submitCatererRefund(event, bookingId, refundId) {
     const payload = new FormData(form);
     const method = String(payload.get('method') || '').toLowerCase();
     if (['gcash', 'maya', 'bank transfer'].includes(method) && !String(payload.get('transaction_reference') || '').trim() && !payload.get('proof')?.size) {
-        window.showError('Online refunds need a transaction reference or proof.'); return;
+        const inlineError = form.querySelector('.refund-form-error');
+        if (inlineError) inlineError.textContent = 'For GCash, Maya, or bank transfer, enter a transaction reference or attach refund proof.';
+        return;
     }
+    const inlineError = form.querySelector('.refund-form-error');
+    if (inlineError) inlineError.textContent = '';
     try {
         const response = await fetch(`/caterer/api/bookings/${bookingId}/refunds/${refundId}/process`, { method: 'POST', body: payload, headers: { Accept: 'application/json' } });
         const result = await response.json();

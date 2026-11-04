@@ -2342,6 +2342,31 @@
         #bookingDetailModal #paymentExtensionDecisionForm button { min-width:0;padding:.55rem .5rem !important;font-size:.72rem;line-height:1.25; }
         #bookingDetailModal .payment-history-scroll { max-width:100%; }
     }
+    #cancellationWorkflowPanel,#cancellationWorkflowPanel * { min-width:0;box-sizing:border-box; }
+    #cancellationWorkflowPanel { overflow-wrap:anywhere; }
+    #cancellationWorkflowDetails { overflow-wrap:anywhere; }
+    #cancellationWorkflowDetails .cancellation-detail-line { white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5; }
+    #cancellationWorkflowDetails .cancellation-detail-line strong { color:#334155; }
+    #cancellationWorkflowActions { min-width:0; }
+    #cancellationWorkflowActions textarea,#cancellationWorkflowActions input,#cancellationWorkflowActions select { width:100%;max-width:100%;min-width:0;padding:.65rem .75rem;border:1px solid #cbd5e1;border-radius:8px;font:inherit; }
+    #cancellationWorkflowActions textarea { resize:vertical;white-space:pre-wrap;overflow-wrap:anywhere; }
+    .refund-field { display:flex;flex-direction:column;gap:.35rem;min-width:0;color:#334155;font-size:.84rem;font-weight:700; }
+    .refund-field-help,.refund-optional { color:#64748b;font-size:.75rem;font-weight:500;line-height:1.4; }
+    .refund-required { color:#b91c1c;font-size:.7rem;font-weight:800;text-transform:uppercase; }
+    .refund-form { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem;padding-top:.75rem;border-top:1px solid #fed7aa;min-width:0; }
+    .refund-form-title,.refund-form-intro,.refund-form-error,.refund-submit { grid-column:1/-1; }
+    .refund-form-intro { margin:-.55rem 0 0;color:#64748b;font-size:.82rem;line-height:1.45; }
+    .refund-online-fields { display:contents; }
+    .refund-online-fields[hidden] { display:none; }
+    .refund-inline-error { min-height:1.2em;color:#b91c1c;font-size:.78rem;line-height:1.4; }
+    .refund-submit { justify-self:start; }
+    .cancellation-remarks-field { margin-bottom:.15rem; }
+    @media(max-width:640px) {
+        #bookingDetailModal .refund-form { grid-template-columns:minmax(0,1fr); }
+        #bookingDetailModal .refund-form-title,#bookingDetailModal .refund-form-intro,#bookingDetailModal .refund-form-error,#bookingDetailModal .refund-submit { grid-column:1; }
+        #bookingDetailModal #cancellationWorkflowPanel { padding:.8rem !important; }
+        #bookingDetailModal #modalCancellationStatusBadge { white-space:normal;line-height:1.25; }
+    }
 </style>
 
 <div id="bookingDetailModal" class="occ-modal-overlay">
@@ -2368,6 +2393,7 @@
                         
                         <!-- PAYMENT BADGE -->
                         <span id="modalPaymentStatusBadge" class="badge-status" style="padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase; background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa;">UNPAID</span>
+                        <span id="modalCancellationStatusBadge" class="badge-status" style="display:none;padding:3px 10px;border-radius:6px;font-weight:800;font-size:.7rem;text-transform:uppercase;background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;"></span>
                     </div>
 
                     <!-- Line 2: Customer Name & Event Subline -->

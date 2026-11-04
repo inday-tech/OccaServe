@@ -27,6 +27,18 @@
         border-radius: 50px;
         box-shadow: 0 4px 12px rgba(22,163,74,0.3);
     }
+    .policy-consent-label { display:grid !important;grid-template-columns:18px minmax(0,1fr);align-items:start;gap:.65rem;font-size:.86rem;font-weight:700;line-height:1.45; }
+    .policy-consent-label input,.terms-label-clean input { margin:.16rem 0 0 !important;width:18px;height:18px; }
+    .payment-consent-help { display:block;min-height:1.15em;margin:.4rem 0 0;color:#9a3412;font-size:.78rem;line-height:1.4; }
+    #paymentModalCard { min-height:0; }
+    #paymentModalCard .modal-body-clean { min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain; }
+    #paymentModalCard .modal-body-clean > * { min-width:0;max-width:100%; }
+    #paymentModalCard .modal-body-clean { overflow-wrap:anywhere; }
+    @media(max-width:640px) {
+        #paymentModalOverlay { align-items:flex-end !important;padding:0 !important; }
+        #paymentModalCard { width:100% !important;max-width:none !important;max-height:94dvh !important;border-radius:18px 18px 0 0 !important; }
+        #paymentModalCard .modal-body-clean { padding:1rem !important; }
+    }
 </style>
 {% endblock %}
 
@@ -586,20 +598,21 @@
                 {% endif %}
 
                 <!-- Terms & Agreement Confirmation -->
-                <div style="margin:1rem 0;padding:1rem;border:1px solid #fed7aa;border-radius:12px;background:#fffaf5;color:#334155;">
+                <div class="payment-policy-card" style="margin:1rem 0;padding:.85rem;border:1px solid #fed7aa;border-radius:12px;background:#fffaf5;color:#334155;">
                     <strong style="display:block;margin-bottom:.45rem;color:#9a3412;">Cancellation and Refund Policy ({{ cancellation_policy.version }})</strong>
-                    <p style="margin:0 0 .6rem;line-height:1.5;font-size:.86rem;">{{ cancellation_policy.text }}</p>
-                    <ul style="margin:.25rem 0 .85rem;padding-left:1.2rem;font-size:.84rem;line-height:1.55;">
+                    <p style="margin:0 0 .45rem;line-height:1.45;font-size:.82rem;">{{ cancellation_policy.text }}</p>
+                    <ul style="margin:.2rem 0 .6rem;padding-left:1.2rem;font-size:.8rem;line-height:1.4;">
                         <li>30 or more days before the event: 100%</li>
                         <li>15–29 days: 75%</li>
                         <li>7–14 days: 50%</li>
                         <li>Under 7 days: 0%</li>
                     </ul>
                     {% if not booking.cancellation_policy_version %}
-                    <label style="display:flex;align-items:flex-start;gap:.55rem;font-size:.86rem;font-weight:700;">
-                        <input type="checkbox" name="cancellation_policy_agreement" form="wizard-payment-form" required style="margin-top:.2rem;">
+                    <label class="policy-consent-label">
+                        <input type="checkbox" name="cancellation_policy_agreement" form="wizard-payment-form" required>
                         <span>I have read and agree to this cancellation and refund policy.</span>
                     </label>
+                    <small id="policyConsentHelp" class="payment-consent-help" aria-live="polite"></small>
                     {% else %}
                     <small>Policy version {{ booking.cancellation_policy_version }} was previously accepted for this booking.</small>
                     {% endif %}
@@ -612,6 +625,7 @@
                             <span id="cashAgreementText" style="display:none;">I understand that this is only a cash payment request. My booking will be updated after <strong>{{ profile.business_name }}</strong> receives and confirms the cash.</span>
                         </span>
                     </label>
+                    <small id="paymentTermsHelp" class="payment-consent-help" aria-live="polite"></small>
                 </div>
 
                 <button type="submit" id="submit-payment-btn" form="wizard-payment-form" class="btn-submit-modal" disabled aria-disabled="true">
@@ -624,6 +638,7 @@
                 <button type="button" id="cashSubmitBtn" class="btn-submit-modal cash-request-button" disabled aria-disabled="true" onclick="submitCashPayment()">
                     <i class="fas fa-hand-holding-usd"></i> Request Cash Payment
                 </button>
+                <small id="paymentConsentSummary" class="payment-consent-help" aria-live="polite"></small>
             </div>
         </div>
     </div>
@@ -749,21 +764,31 @@
     // Form Validation & URL Error Handling
     document.addEventListener('DOMContentLoaded', () => {
         const termsCheckbox = document.getElementById('termsAgreementCheckbox');
+        const policyCheckbox = document.querySelector('input[name="cancellation_policy_agreement"]');
         const agreementButtons = [
             document.getElementById('submit-payment-btn'),
             document.getElementById('cashSubmitBtn')
         ].filter(Boolean);
         const syncAgreementButtons = () => {
-            const agreed = Boolean(termsCheckbox && termsCheckbox.checked);
+            const termsAgreed = Boolean(termsCheckbox && termsCheckbox.checked);
+            const policyAgreed = !policyCheckbox || policyCheckbox.checked;
+            const agreed = termsAgreed && policyAgreed;
             agreementButtons.forEach(button => {
                 button.disabled = !agreed;
                 button.setAttribute('aria-disabled', agreed ? 'false' : 'true');
             });
+            const termsHelp = document.getElementById('paymentTermsHelp');
+            const policyHelp = document.getElementById('policyConsentHelp');
+            const summary = document.getElementById('paymentConsentSummary');
+            if (termsHelp) termsHelp.textContent = termsAgreed ? '' : 'Please accept the payment or cash acknowledgment above to continue.';
+            if (policyHelp) policyHelp.textContent = policyAgreed ? '' : 'Please accept the cancellation and refund policy to continue.';
+            if (summary) summary.textContent = agreed ? '' : `To continue, ${[!policyAgreed ? 'accept the cancellation policy' : '', !termsAgreed ? 'confirm the payment or cash acknowledgment' : ''].filter(Boolean).join(' and ')}.`;
         };
         if (termsCheckbox) {
             termsCheckbox.addEventListener('change', syncAgreementButtons);
-            syncAgreementButtons();
         }
+        if (policyCheckbox) policyCheckbox.addEventListener('change', syncAgreementButtons);
+        syncAgreementButtons();
 
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('error')) {

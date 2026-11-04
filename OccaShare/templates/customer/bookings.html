@@ -1298,7 +1298,10 @@ async function loadCancellationDetails(bookingId) {
         }
         const estimatedAmount = request ? request.estimated_refund_amount : data.estimated_refund_amount;
         const refundPercent = request ? request.refund_percent : data.refund_percent;
-        quote.append(document.createTextNode(`${quote.textContent ? ' · ' : ''}Estimated refund: ₱${Number(estimatedAmount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${Number(refundPercent || 0)}% of verified payments).`));
+        const estimateText = Number(estimatedAmount || 0) <= 0 && Number(refundPercent || 0) > 0
+            ? `Applicable refund policy rate: ${Number(refundPercent)}%. Estimated refund: ₱0.00 because no verified payment has been received.`
+            : `Estimated refund: ₱${Number(estimatedAmount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${Number(refundPercent || 0)}% of verified payments).`;
+        quote.append(document.createTextNode(`${quote.textContent ? ' · ' : ''}${estimateText}`));
         if (data.can_request) {
             form.action = `/customer/bookings/manage/${bookingId}/cancel`;
             form.style.display = 'block';
