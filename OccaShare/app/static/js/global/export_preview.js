@@ -4,7 +4,8 @@
     const libraries = {
         xlsx: 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
         pdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-        table: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js'
+        table: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js',
+        docx: 'https://unpkg.com/docx@8.5.0/dist/index.umd.js'
     };
     const loadPromises = new Map();
 
@@ -47,6 +48,75 @@
         })[character]);
     }
 
+    function renderFormatPreview(config, sections, format) {
+        const sheet = document.createElement('article');
+        sheet.className = `occa-export-sheet occa-export-sheet-${format}`;
+        const heading = document.createElement('h1');
+        heading.textContent = config.title || 'OccaServe Report';
+        sheet.appendChild(heading);
+        const metadata = document.createElement('div');
+        metadata.className = 'occa-export-meta';
+        metadata.textContent = [`Generated ${config.generatedAt || new Date().toLocaleString()}`].concat(config.metadata || []).filter(Boolean).join(' · ');
+        sheet.appendChild(metadata);
+        if (format === 'csv') {
+            sections.forEach(section => {
+                const title = document.createElement('h2');
+                title.textContent = section.title || config.title || 'Data';
+                sheet.appendChild(title);
+                const raw = document.createElement('pre');
+                raw.className = 'occa-export-csv-preview';
+                const rows = [section.columns.map(column => column.label)];
+                section.rows.forEach(row => rows.push(section.columns.map((column, index) => valueFor(row, column, index))));
+                raw.textContent = rows.map(row => row.map(value => `"${safeText(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+                sheet.appendChild(raw);
+            });
+            return sheet;
+        }
+        sections.forEach(section => {
+            const sectionEl = document.createElement('section');
+            sectionEl.className = 'occa-export-section';
+            if (section.title) {
+                const sectionTitle = document.createElement('h2');
+                sectionTitle.textContent = section.title;
+                sectionEl.appendChild(sectionTitle);
+            }
+            if (!section.columns.length || !section.rows.length) {
+                const empty = document.createElement('div');
+                empty.className = 'occa-export-empty';
+                empty.textContent = section.rows.length ? 'No columns available.' : 'No matching records.';
+                sectionEl.appendChild(empty);
+            } else {
+                const wrap = document.createElement('div');
+                wrap.className = 'occa-export-table-wrap';
+                const table = document.createElement('table');
+                table.className = 'occa-export-table';
+                const head = document.createElement('thead');
+                const headRow = document.createElement('tr');
+                section.columns.forEach(column => {
+                    const cell = document.createElement('th');
+                    cell.textContent = column.label;
+                    headRow.appendChild(cell);
+                });
+                head.appendChild(headRow);
+                const body = document.createElement('tbody');
+                section.rows.forEach(row => {
+                    const tr = document.createElement('tr');
+                    section.columns.forEach((column, index) => {
+                        const td = document.createElement('td');
+                        td.textContent = safeText(valueFor(row, column, index));
+                        tr.appendChild(td);
+                    });
+                    body.appendChild(tr);
+                });
+                table.append(head, body);
+                wrap.appendChild(table);
+                sectionEl.appendChild(wrap);
+            }
+            sheet.appendChild(sectionEl);
+        });
+        return sheet;
+    }
+
     function createPreview(config) {
         const sections = normalizeSections(config);
         const overlay = document.createElement('div');
@@ -58,22 +128,22 @@
         dialog.className = 'occa-export-dialog';
         const toolbar = document.createElement('div');
         toolbar.className = 'occa-export-toolbar';
-        toolbar.innerHTML = '<div class="occa-export-brand"><img src="/static/images/brand_icon.png" alt=""><span>OccaServe</span></div>';
+        toolbar.innerHTML = `<div class="occa-export-brand"><img src="/static/images/brand_icon.png" alt="OccaServe logo"><div><span>OccaServe</span><strong>${escapeHtml(config.title || 'Report Preview')}</strong></div></div>`;
         const actions = document.createElement('div');
         actions.className = 'occa-export-actions';
-        [['PDF', 'pdf'], ['Excel (.xlsx)', 'xlsx'], ['CSV', 'csv']].forEach(([label, format]) => {
+        [['PDF', 'pdf', 'fa-file-pdf'], ['Excel (.xlsx)', 'xlsx', 'fa-file-excel'], ['CSV', 'csv', 'fa-file-csv']].forEach(([label, format, icon]) => {
             const button = document.createElement('button');
             button.type = 'button';
             button.dataset.format = format;
-            button.textContent = `Download ${label}`;
+            button.innerHTML = `<i class="fas ${icon}" aria-hidden="true"></i><span>${label}</span>`;
             button.addEventListener('click', () => download(config, sections, format, button));
             actions.appendChild(button);
         });
         const wordButton = document.createElement('button');
         wordButton.type = 'button';
         wordButton.dataset.format = 'word';
-        wordButton.textContent = 'Download Word';
-        wordButton.addEventListener('click', () => downloadWord(config, sections, wordButton));
+        wordButton.innerHTML = '<i class="fas fa-file-word" aria-hidden="true"></i><span>Word (.docx)</span>';
+        wordButton.addEventListener('click', () => downloadWordDocument(config, sections, wordButton));
         actions.appendChild(wordButton);
         if (config.textDownload) {
             const textButton = document.createElement('button');
@@ -86,7 +156,7 @@
         const printButton = document.createElement('button');
         printButton.type = 'button';
         printButton.dataset.action = 'print';
-        printButton.textContent = 'Print';
+        printButton.innerHTML = '<i class="fas fa-print" aria-hidden="true"></i><span>Print</span>';
         printButton.addEventListener('click', () => printReport(config, sections));
         actions.appendChild(printButton);
         const closeButton = document.createElement('button');
@@ -95,7 +165,7 @@
         closeButton.setAttribute('aria-label', 'Close preview');
         closeButton.textContent = '×';
         closeButton.addEventListener('click', () => overlay.remove());
-        toolbar.append(actions, closeButton);
+        toolbar.appendChild(closeButton);
 
         const content = document.createElement('main');
         content.className = 'occa-export-content';
@@ -153,9 +223,40 @@
             sheet.appendChild(sectionEl);
         });
         content.appendChild(sheet);
+        const formatNav = document.createElement('nav');
+        formatNav.className = 'occa-export-formats';
+        formatNav.setAttribute('aria-label', 'Preview format');
+        const previewHost = document.createElement('div');
+        previewHost.className = 'occa-export-preview-host';
+        const formatButtons = new Map();
+        let selectedFormat = 'pdf';
+        [['pdf', 'PDF', 'fa-file-pdf'], ['xlsx', 'Excel', 'fa-file-excel'], ['csv', 'CSV', 'fa-file-csv'], ['word', 'Word', 'fa-file-word']].forEach(([format, label, icon]) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'occa-export-format';
+            button.innerHTML = `<i class="fas ${icon}" aria-hidden="true"></i><span>${label}</span>`;
+            button.addEventListener('click', () => selectFormat(format));
+            formatButtons.set(format, button);
+            formatNav.appendChild(button);
+        });
+        function selectFormat(format) {
+            selectedFormat = format;
+            formatButtons.forEach((button, key) => {
+                button.classList.toggle('is-active', key === format);
+                button.setAttribute('aria-pressed', String(key === format));
+            });
+            previewHost.replaceChildren(renderFormatPreview(config, sections, format));
+        }
+        const previewLabel = document.createElement('div');
+        previewLabel.className = 'occa-export-preview-label';
+        previewLabel.innerHTML = '<span>Report preview</span><small>Showing the selected file format</small>';
+        content.replaceChildren(formatNav, previewLabel, previewHost);
+        selectFormat(selectedFormat);
         const footer = document.createElement('div');
         footer.className = 'occa-export-footer';
         footer.textContent = 'OccaServe · Report preview uses the records and filters selected on this page.';
+        footer.textContent = '';
+        footer.append(actions);
         dialog.append(toolbar, content, footer);
         overlay.appendChild(dialog);
         overlay.addEventListener('click', event => { if (event.target === overlay) overlay.remove(); });
@@ -237,6 +338,45 @@
             button.disabled = false;
             button.textContent = label;
         }
+    }
+
+    async function downloadWordDocument(config, sections, button) {
+        const label = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i><span>Preparing…</span>';
+        try {
+            await loadScript(libraries.docx);
+            const word = window.docx;
+            if (!word || !word.Document || !word.Packer) throw new Error('Word document library is unavailable.');
+            const children = [
+                new word.Paragraph({ children: [new word.TextRun({ text: 'OCCASERVE', bold: true, color: 'F47B55', size: 24 })], spacing: { after: 120 } }),
+                new word.Paragraph({ text: config.title || 'OccaServe Report', heading: word.HeadingLevel.TITLE }),
+                new word.Paragraph({ text: `Generated ${config.generatedAt || new Date().toLocaleString()}${(config.metadata || []).length ? ` · ${(config.metadata || []).join(' · ')}` : ''}`, spacing: { after: 360 } })
+            ];
+            sections.forEach(section => {
+                if (section.title) children.push(new word.Paragraph({ text: section.title, heading: word.HeadingLevel.HEADING_1, spacing: { before: 240, after: 120 } }));
+                const rows = [new word.TableRow({ children: section.columns.map(column => makeWordCell(word, column.label, true)), tableHeader: true })];
+                section.rows.forEach(row => rows.push(new word.TableRow({ children: section.columns.map((column, index) => makeWordCell(word, valueFor(row, column, index))) })));
+                if (!section.columns.length) children.push(new word.Paragraph({ text: 'No matching records.' }));
+                else children.push(new word.Table({ rows, width: { size: 100, type: word.WidthType.PERCENTAGE }, borders: Object.fromEntries(['top', 'bottom', 'left', 'right', 'insideHorizontal', 'insideVertical'].map(edge => [edge, { style: word.BorderStyle.SINGLE, size: 1, color: 'D7DEE8' }])) }));
+            });
+            const document = new word.Document({ creator: 'OccaServe', title: config.title || 'OccaServe Report', sections: [{ properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } }, children }] });
+            saveBlob(await word.Packer.toBlob(document), `${fileBase(config)}.docx`);
+        } catch (error) {
+            if (window.showError) window.showError(error.message || 'Could not generate the Word report.');
+            else window.alert(error.message || 'Could not generate the Word report.');
+        } finally {
+            button.disabled = false;
+            button.innerHTML = label;
+        }
+    }
+
+    function makeWordCell(word, value, header = false) {
+        return new word.TableCell({
+            children: [new word.Paragraph({ children: [new word.TextRun({ text: safeText(value), bold: header, color: header ? 'FFFFFF' : '1E293B', size: 18 })] })],
+            shading: header ? { fill: '172033', type: word.ShadingType.CLEAR } : undefined,
+            margins: { top: 80, bottom: 80, left: 100, right: 100 }
+        });
     }
 
     async function downloadWord(config, sections, button) {
