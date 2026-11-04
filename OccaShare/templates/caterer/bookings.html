@@ -4,6 +4,7 @@
 {% block title %}Manage Bookings - Caterer Dashboard{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/global/booking_invoice.css') }}?v={{ static_asset_version('css/global/booking_invoice.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/bookings.css') }}?v={{ static_asset_version('css/caterer/bookings.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/contract_view.css') }}?v={{ static_asset_version('css/caterer/contract_view.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/contract_formal.css') }}?v={{ static_asset_version('css/shared/contract_formal.css') }}">
@@ -2458,6 +2459,9 @@
             <button id="tabBtnPayment" data-tab="payment" class="mtab-btn-pro" onclick="switchBookingTab('payment', this)">
                 <i class="fas fa-receipt"></i> <span>Payment</span>
             </button>
+            <button id="tabBtnInvoice" data-tab="invoice" class="mtab-btn-pro" onclick="switchBookingTab('invoice', this)">
+                <i class="fas fa-file-invoice-dollar"></i> <span>Invoice</span>
+            </button>
             <button id="tabBtnPreparation" data-tab="preparation" class="mtab-btn-pro" onclick="switchBookingTab('preparation', this)">
                 <i class="fas fa-tasks"></i> <span>Preparation</span>
             </button>
@@ -3013,6 +3017,10 @@
                 </div>
             </div>
 
+            <div id="btab-invoice" class="mtab-pane-pro" data-booking-id="" style="display:none;flex-direction:column;gap:1rem;">
+                <div id="bookingInvoiceHost"></div>
+            </div>
+
             <!-- ─── TAB 7: PREPARATION ─── -->
             <div id="btab-preparation" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
                 <div class="prep-status-card">
@@ -3427,6 +3435,7 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', path='/js/auth/location_data.js') }}?v={{ static_asset_version('js/auth/location_data.js') }}"></script>
+<script src="{{ url_for('static', path='/js/global/booking_invoice.js') }}?v={{ static_asset_version('js/global/booking_invoice.js') }}"></script>
 <script src="{{ url_for('static', path='/js/caterer/bookings.js') }}?v={{ static_asset_version('js/caterer/bookings.js') }}"></script>
 
 <script>

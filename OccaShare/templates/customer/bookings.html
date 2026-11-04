@@ -2,6 +2,7 @@
 {% block title %}My Events - OccaServe{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', path='/css/global/booking_invoice.css') }}?v={{ static_asset_version('css/global/booking_invoice.css') }}">
 <style>
 :root {
     --bk-text:    #0f172a;
@@ -561,6 +562,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             <button type="button" role="tab" aria-selected="true" class="bk-modal-tab is-active" data-booking-pane="overview" onclick="switchBookingDetailTab('overview',this)">Overview</button>
             <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="items" onclick="switchBookingDetailTab('items',this)">Package &amp; Items</button>
             <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="payment" onclick="switchBookingDetailTab('payment',this)">Payment</button>
+            <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="invoice" onclick="switchBookingDetailTab('invoice',this)">Invoice</button>
             <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="updates" onclick="switchBookingDetailTab('updates',this)">Contract &amp; Updates</button>
             <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="chat" onclick="switchBookingDetailTab('chat',this)">Chat</button>
         </nav>
@@ -627,6 +629,9 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                 </form>
             </div>
         </div>
+        <div class="bk-modal-body bk-invoice-pane" id="bkPaneInvoice" data-booking-pane-content="invoice" data-booking-id="">
+            <div id="bookingInvoiceHost"></div>
+        </div>
         <div class="bk-modal-body" id="bkPaneUpdates" data-booking-pane-content="updates">
             <div class="bk-detail-item"><span class="bk-detail-label">Contract status</span><span class="bk-detail-value" id="bkModalContractStatus"></span></div>
             <div class="bk-detail-item"><span class="bk-detail-label">Your signature</span><span class="bk-detail-value" id="bkModalCustomerSigned"></span></div>
@@ -664,6 +669,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', path='/js/global/booking_invoice.js') }}?v={{ static_asset_version('js/global/booking_invoice.js') }}"></script>
 <script>
 /* ── Pagination + Filter Engine ── */
 const ROWS_PER_PAGE = 8;
@@ -849,6 +855,9 @@ function switchBookingDetailTab(tab, button) {
         pane.classList.toggle('is-active', pane.dataset.bookingPaneContent === tab);
     });
     if (tab === 'chat' && currentModalBookingId) loadBookingDetailMessages();
+    if (tab === 'invoice' && currentModalBookingId && window.OccaBookingInvoice) {
+        window.OccaBookingInvoice.load(document.getElementById('bookingInvoiceHost'), currentModalBookingId);
+    }
 }
 
 function parseDetailJson(value, fallback) {
@@ -1003,6 +1012,7 @@ function openBookingDetails(button, openPane = 'overview') {
     if (modal.parentElement !== document.body) document.body.appendChild(modal);
     const id = row.dataset.bookingId;
     currentModalBookingId = id;
+    document.getElementById('bkPaneInvoice').dataset.bookingId = id;
     const status = row.dataset.status || '';
     const paymentStatus = row.dataset.paymentStatus || '';
     const setText = (elementId, value) => {

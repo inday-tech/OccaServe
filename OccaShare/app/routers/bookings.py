@@ -36,6 +36,123 @@ except ImportError:
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
+@router.get("/{booking_id}/invoice-data")
+async def get_booking_invoice_data(
+    booking_id: str,
+    db: Session = Depends(database.get_db),
+    user: models.User = Depends(auth.get_current_user),
+):
+    from sqlalchemy.orm import joinedload, selectinload
+    from ..services.payment_service import PaymentService, INITIAL_PAYMENT_TYPES, BALANCE_PAYMENT_TYPES, REJECTED_STATUSES
+
+    numeric_id = re.sub(r"\D", "", str(booking_id or ""))
+    booking = db.query(models.Booking).options(
+        joinedload(models.Booking.user),
+        joinedload(models.Booking.caterer),
+        joinedload(models.Booking.package),
+        selectinload(models.Booking.selected_items).joinedload(models.BookingMenuItem.menu_item),
+        selectinload(models.Booking.selected_items).joinedload(models.BookingMenuItem.equipment),
+        selectinload(models.Booking.selected_items).joinedload(models.BookingMenuItem.service),
+        selectinload(models.Booking.payment_records),
+    ).filter(models.Booking.id == (int(numeric_id) if numeric_id else 0)).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    allowed = user.role == "admin"
+    if user.role == "customer":
+        allowed = booking.user_id == user.id
+    elif user.role == "caterer":
+        allowed = bool(user.caterer_profile and booking.caterer_id == user.caterer_profile.id)
+    if not allowed:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    summary = PaymentService.get_payment_summary(booking)
+    total = round(float(summary.get("total_amount") or 0), 2)
+    line_items = []
+    saved_item_total = 0.0
+    for item in booking.selected_items or []:
+        relation = item.menu_item or item.equipment or item.service
+        name = item.custom_name or (relation.name if relation else "Selected booking item")
+        quantity = max(int(item.quantity or 1), 1)
+        amount = round(float(item.price or 0) * quantity, 2)
+        if amount > 0:
+            line_items.append({"description": str(name), "quantity": quantity, "amount": amount})
+            saved_item_total += amount
+    if saved_item_total > total + 0.01:
+        line_items = []
+        saved_item_total = 0.0
+    remaining_charge = round(max(total - saved_item_total, 0), 2)
+    if remaining_charge > 0 or not line_items:
+        line_items.insert(0, {
+            "description": booking.package.name if booking.package else (booking.event_type or "Booking service"),
+            "quantity": 1,
+            "amount": remaining_charge if line_items else total,
+        })
+
+    payment_status = PaymentService.display_payment_label(booking, summary)
+    pending_initial = (booking.payment_status or "").strip().lower() in {
+        "proof_submitted", "cash_payment_requested", "pending_verification"
+    }
+    pending_balance = (booking.payment_status or "").strip().lower() in {
+        "balance_proof_submitted", "cash_balance_requested"
+    }
+    verified_payments = []
+    for record in sorted(booking.payment_records or [], key=lambda row: row.payment_date.isoformat() if row.payment_date else ""):
+        amount = round(float(record.amount or 0), 2)
+        recorded_by = PaymentService._normalize_by(record.recorded_by)
+        payment_type = PaymentService._normalize_type(record.payment_type)
+        pending = recorded_by == "customer" and (
+            (booking.payment_status or "").strip().lower() in REJECTED_STATUSES
+            or
+            (pending_initial and payment_type in INITIAL_PAYMENT_TYPES | {""})
+            or (pending_balance and payment_type in BALANCE_PAYMENT_TYPES)
+        )
+        if amount > 0 and not pending:
+            verified_payments.append({
+                "amount": amount,
+                "method": record.payment_method or booking.payment_method or "Payment",
+                "type": record.payment_type or "Payment",
+                "reference": record.reference_notes or record.payment_ref or "",
+                "date": record.payment_date.isoformat() if record.payment_date else "",
+            })
+    if not verified_payments and summary.get("verified_paid", 0) > 0:
+        verified_payments.append({
+            "amount": round(float(summary["verified_paid"]), 2),
+            "method": booking.payment_method or "Recorded payment",
+            "type": "Previously verified payment",
+            "reference": "",
+            "date": "",
+        })
+
+    customer_name = (
+        f"{booking.user.first_name or ''} {booking.user.last_name or ''}".strip()
+        if booking.user else booking.customer_name or "Customer"
+    )
+    caterer_name = booking.caterer.business_name if booking.caterer else "OccaServe Caterer"
+    return {
+        "success": True,
+        "invoice": {
+            "booking_id": booking.id,
+            "booking_ref": booking.booking_ref or f"BK-{booking.id:06d}",
+            "customer_name": customer_name or "Customer",
+            "caterer_name": caterer_name,
+            "event_name": booking.event_name or booking.event_type or "Event service",
+            "event_type": booking.event_type or "Event",
+            "event_date": booking.event_date.isoformat() if booking.event_date else "",
+            "event_time": booking.event_time.strftime("%I:%M %p") if booking.event_time else "",
+            "guest_count": int(booking.guest_count or 0),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "payment_method": booking.payment_method or "Not selected",
+            "payment_status": payment_status,
+            "total_amount": total,
+            "verified_paid": round(float(summary.get("verified_paid") or 0), 2),
+            "remaining_balance": round(float(summary.get("remaining_balance") or 0), 2),
+            "line_items": line_items,
+            "payments": verified_payments,
+        },
+    }
+
+
 def _cart_item_types(cart_data: Optional[str], items: str = "") -> tuple[bool, bool, bool]:
     has_food = has_equipment = has_service = False
     if cart_data:

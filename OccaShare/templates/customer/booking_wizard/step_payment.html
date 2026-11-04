@@ -600,8 +600,9 @@
                 <!-- Terms & Agreement Confirmation -->
                 <div class="payment-policy-card" style="margin:1rem 0;padding:.85rem;border:1px solid #fed7aa;border-radius:12px;background:#fffaf5;color:#334155;">
                     <strong style="display:block;margin-bottom:.45rem;color:#9a3412;">Cancellation and Refund Policy ({{ cancellation_policy.version }})</strong>
-                    <p style="margin:0 0 .45rem;line-height:1.45;font-size:.82rem;">{{ cancellation_policy.text }}</p>
-                    <ul style="margin:.2rem 0 .6rem;padding-left:1.2rem;font-size:.8rem;line-height:1.4;">
+                    <p id="cancellationPolicyText" style="margin:0 0 .4rem;line-height:1.45;font-size:.82rem;">Customers may request booking cancellation subject to caterer approval. The refundable amount depends on how many days remain before the event. Only verified payments are eligible for refunds. Unverified payment proofs and cash payments not yet received are excluded. Cancellation takes effect only after caterer approval.</p>
+                    <small id="cancellationPolicyMethodNote" style="display:block;margin:0 0 .6rem;color:#64748b;font-size:.76rem;line-height:1.4;">Refund eligibility is based only on payments verified by the caterer.</small>
+                    <ul style="display:none;margin:.2rem 0 .6rem;padding-left:1.2rem;font-size:.8rem;line-height:1.4;">
                         <li>30 or more days before the event: 100%</li>
                         <li>15–29 days: 75%</li>
                         <li>7–14 days: 50%</li>
@@ -683,6 +684,7 @@
         const overlay = document.getElementById('paymentModalOverlay');
         const card = document.getElementById('paymentModalCard');
         const isCash = method === 'Cash';
+        const policyMethodNote = document.getElementById('cancellationPolicyMethodNote');
         const modalTitle = document.getElementById('modalTitle');
         const modalSubtitle = document.getElementById('modalSubtitle');
         const modalIcon = document.querySelector('.payment-modal-icon i');
@@ -699,6 +701,9 @@
             ? 'Request cash payment and wait for the caterer to confirm receipt.'
             : 'Scan the QR code or send the exact amount to complete your payment.';
         if (modalIcon) modalIcon.className = isCash ? 'fas fa-money-bill-wave' : 'fas fa-wallet';
+        if (policyMethodNote) policyMethodNote.textContent = isCash
+            ? 'Cash is eligible only after the caterer has received and confirmed it. A cash request alone is not a payment.'
+            : `For ${method}, only payments verified by the caterer are eligible. Submitted proofs that are still under review do not count as verified payments.`;
         if (uploadSection) uploadSection.style.display = isCash ? 'none' : '';
         if (referenceField) referenceField.style.display = isCash ? 'none' : '';
         if (onlineSubmitButton) onlineSubmitButton.style.display = isCash ? 'none' : 'flex';

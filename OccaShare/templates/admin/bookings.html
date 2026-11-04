@@ -4,6 +4,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', path='/css/admin/dashboard.css') }}?v={{ static_asset_version('css/admin/dashboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', path='/css/global/booking_invoice.css') }}?v={{ static_asset_version('css/global/booking_invoice.css') }}">
 <style>
     /* Diamond Standard Layout Alignment */
     .table-card-clean {
@@ -507,6 +508,9 @@
     @media (min-width: 769px) and (max-width: 1100px) {
         .kpi-grid-clean { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
+    .admin-booking-detail-tabs { display:flex;gap:.4rem;padding:.45rem 1rem;border-bottom:1px solid #e2e8f0;background:#fff; }
+    .admin-booking-detail-tab { padding:.55rem .85rem;border:0;border-bottom:2px solid transparent;background:transparent;color:#64748b;font:inherit;font-size:.78rem;font-weight:800;cursor:pointer; }
+    .admin-booking-detail-tab.active { color:#c2410c;border-bottom-color:#ea580c; }
 </style>
 {% endblock %}
 
@@ -760,7 +764,14 @@
             <button style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--adm-muted);"
                 onclick="closeModal('bookingDetailModal')">&times;</button>
         </div>
+        <nav class="admin-booking-detail-tabs" role="tablist" aria-label="Booking detail sections">
+            <button type="button" class="admin-booking-detail-tab active" id="adminBookingDetailsTab" role="tab" aria-selected="true" onclick="switchAdminBookingModalTab('details')">Booking Details</button>
+            <button type="button" class="admin-booking-detail-tab" id="adminBookingInvoiceTab" role="tab" aria-selected="false" onclick="switchAdminBookingModalTab('invoice')">Invoice</button>
+        </nav>
         <div class="modal-body-clean" id="modalBody"></div>
+        <div class="modal-body-clean" id="adminInvoicePane" data-booking-id="" style="display:none;overflow:auto;">
+            <div id="bookingInvoiceHost"></div>
+        </div>
         <div class="modal-footer-clean">
             <button class="btn-clean" style="background: #f1f5f9; color: var(--adm-navy); font-weight: 800;"
                 onclick="closeModal('bookingDetailModal')">Close</button>
@@ -776,6 +787,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="{{ url_for('static', path='/js/global/booking_invoice.js') }}?v={{ static_asset_version('js/global/booking_invoice.js') }}"></script>
 <script>
     function toggleActionDropdown(btn, event) {
         event.stopPropagation();
@@ -997,6 +1009,21 @@
     // so the "Download Log" button always has something to export.
     let currentBookingRecord = null;
 
+    function switchAdminBookingModalTab(tab) {
+        const invoiceActive = tab === 'invoice';
+        const detailsPane = document.getElementById('modalBody');
+        const invoicePane = document.getElementById('adminInvoicePane');
+        const detailsTab = document.getElementById('adminBookingDetailsTab');
+        const invoiceTab = document.getElementById('adminBookingInvoiceTab');
+        if (detailsPane) detailsPane.style.display = invoiceActive ? 'none' : '';
+        if (invoicePane) invoicePane.style.display = invoiceActive ? 'block' : 'none';
+        if (detailsTab) { detailsTab.classList.toggle('active', !invoiceActive); detailsTab.setAttribute('aria-selected', String(!invoiceActive)); }
+        if (invoiceTab) { invoiceTab.classList.toggle('active', invoiceActive); invoiceTab.setAttribute('aria-selected', String(invoiceActive)); }
+        if (invoiceActive && invoicePane?.dataset.bookingId && window.OccaBookingInvoice) {
+            window.OccaBookingInvoice.load(document.getElementById('bookingInvoiceHost'), invoicePane.dataset.bookingId);
+        }
+    }
+
     function showModalLoading(label = 'Loading booking record...') {
         const body = document.getElementById('modalBody');
         body.innerHTML = `
@@ -1066,6 +1093,8 @@
     async function viewBookingDetails(id, bookingRef) {
         const modal = document.getElementById('bookingDetailModal');
         const body = document.getElementById('modalBody');
+        document.getElementById('adminInvoicePane').dataset.bookingId = '';
+        switchAdminBookingModalTab('details');
         currentBookingRecord = null;
         document.getElementById('detailBookingId').innerText = bookingRef || `Booking ${id}`;
         modal.classList.add('active');
@@ -1080,6 +1109,8 @@
             }
             const b = data.booking;
             currentBookingRecord = b;
+            document.getElementById('adminInvoicePane').dataset.bookingId = b.id;
+            switchAdminBookingModalTab('details');
             document.getElementById('detailBookingId').innerText = b.booking_ref || bookingRef || `Booking ${b.id}`;
             const ri = b.risk_intelligence;
                 const riskColor = ri.score > 70 ? '#ef4444' : (ri.score > 30 ? '#f59e0b' : '#10b981');
@@ -1230,6 +1261,8 @@
     async function viewPaymentDetails(id, bookingRef) {
         const modal = document.getElementById('bookingDetailModal');
         const body = document.getElementById('modalBody');
+        document.getElementById('adminInvoicePane').dataset.bookingId = '';
+        switchAdminBookingModalTab('details');
         currentBookingRecord = null;
         document.getElementById('detailBookingId').innerText = bookingRef || `Booking ${id}`;
         modal.classList.add('active');
@@ -1245,6 +1278,8 @@
             if (data.success) {
                 const b = data.booking;
                 currentBookingRecord = b;
+                document.getElementById('adminInvoicePane').dataset.bookingId = b.id;
+                switchAdminBookingModalTab('details');
                 const paymentProofs = [
                     ['Payment proof', b.payment_proof_url],
                     ['Balance payment proof', b.balance_proof_url]

@@ -1669,6 +1669,8 @@ function showBookingDetails(btn) {
     var sourceKindVal = (data.sourceKind || '').toString().toLowerCase();
     var isManual = sourceKindVal === 'manual' || data.isWalkin === 'true' || data.isManual === 'true' || sourceVal.includes('walk') || sourceVal.includes('manual');
     var bookingStatus = (data.status || 'pending').toLowerCase();
+    const invoicePane = document.getElementById('btab-invoice');
+    if (invoicePane) invoicePane.dataset.bookingId = cleanId;
     var paymentStatus = (data.paymentStatus || 'unpaid').toLowerCase();
     renderCancellationWorkflow(data, cleanId);
 
@@ -3027,6 +3029,8 @@ function switchBookingTab(tabId, targetEl) {
         if (typeof window.loadBookingHistory === 'function') {
             window.loadBookingHistory(currentBookingId);
         }
+    } else if (tabId === 'invoice' && typeof currentBookingId !== 'undefined' && currentBookingId && window.OccaBookingInvoice) {
+        window.OccaBookingInvoice.load(document.getElementById('bookingInvoiceHost'), currentBookingId);
     }
 }
 
@@ -3076,7 +3080,8 @@ function configureBookingTabs(data, context) {
         contract: agreementStage || (!isManual && hasContract && !['pending_review', 'inquiry', 'pending_quotation', 'quoted'].includes(status)),
         payment: isPaymentStageAvailable(status, data?.paymentStatus, data?.isUnderReview),
         preparation: preparationVisibleStatuses.has(status) || (status === 'confirmed' && canStartPreparation),
-        activity: true
+        activity: true,
+        invoice: true
     };
 
     Object.entries(visibleTabs).forEach(([tabId, isVisible]) => {
