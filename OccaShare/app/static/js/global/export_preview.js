@@ -5,7 +5,10 @@
         xlsx: 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',
         pdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
         table: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js',
-        docx: 'https://unpkg.com/docx@8.5.0/dist/index.umd.js'
+        docx: [
+            'https://cdn.jsdelivr.net/npm/docx@8.5.0/dist/index.umd.js',
+            'https://unpkg.com/docx@8.5.0/dist/index.umd.js'
+        ]
     };
     const loadPromises = new Map();
 
@@ -16,11 +19,28 @@
             const script = document.createElement('script');
             script.src = src;
             script.onload = resolve;
-            script.onerror = () => reject(new Error('Export library failed to load.'));
+            script.onerror = () => {
+                script.remove();
+                loadPromises.delete(src);
+                reject(new Error('Export library failed to load.'));
+            };
             document.head.appendChild(script);
         });
         loadPromises.set(src, promise);
         return promise;
+    }
+
+    async function loadLibrary(sources) {
+        let lastError;
+        for (const source of sources) {
+            try {
+                await loadScript(source);
+                return;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+        throw lastError || new Error('Export library failed to load.');
     }
 
     function normalizeSections(config) {
@@ -345,7 +365,7 @@
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i><span>Preparing…</span>';
         try {
-            await loadScript(libraries.docx);
+            await loadLibrary(libraries.docx);
             const word = window.docx;
             if (!word || !word.Document || !word.Packer) throw new Error('Word document library is unavailable.');
             const children = [
@@ -489,10 +509,12 @@
                 alternateRowStyles: { fillColor: [248, 250, 252] },
                 didDrawPage: data => {
                     const pageCount = doc.internal.getNumberOfPages();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    const pageWidth = doc.internal.pageSize.getWidth();
                     doc.setFontSize(8);
                     doc.setTextColor(100, 116, 139);
-                    doc.text('OccaServe · Confidential report', margin, data.pageSize.height - 16);
-                    doc.text(`Page ${data.pageNumber} of ${pageCount}`, data.pageSize.width - margin, data.pageSize.height - 16, { align: 'right' });
+                    doc.text('OccaServe · Confidential report', margin, pageHeight - 16);
+                    doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - margin, pageHeight - 16, { align: 'right' });
                 }
             });
         });
