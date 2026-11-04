@@ -88,6 +88,9 @@ async def create_portfolio(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(description, "Portfolio description", max_length=1000)
+    enforce_text_limit(highlights, "Portfolio highlights")
     profile = user.caterer_profile
 
     title = title.strip()
@@ -158,6 +161,7 @@ async def update_portfolio(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
     profile = user.caterer_profile
     title = title.strip()
     event_type = event_type.strip()
@@ -172,6 +176,8 @@ async def update_portfolio(
     
     if not portfolio:
         raise HTTPException(status_code=404, detail="Portfolio not found")
+    enforce_text_limit(description, "Portfolio description", existing_value=portfolio.description, max_length=1000)
+    enforce_text_limit(highlights, "Portfolio highlights", existing_value=portfolio.highlights)
         
     portfolio.title = title
     portfolio.event_type = event_type

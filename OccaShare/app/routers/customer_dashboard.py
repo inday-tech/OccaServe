@@ -389,6 +389,8 @@ async def submit_platform_feedback(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(comment, "Feedback")
     # Prevent duplicate submissions
     existing_fb = db.query(models.PlatformFeedback).filter_by(user_id=user.id).first()
     if existing_fb:
@@ -846,10 +848,12 @@ async def customer_cancellation_quote(
 @router.post("/bookings/manage/{booking_id}/cancel")
 async def cancel_booking(
     booking_id: str,
-    reason: str = Form(..., min_length=4, max_length=2000),
+    reason: str = Form(..., min_length=4),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Cancellation reason")
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(models.Booking.id == numeric_id).with_for_update().first()
     if not booking or booking.user_id != user.id:
@@ -930,10 +934,12 @@ async def customer_confirm_refund(
 async def customer_dispute_refund(
     booking_id: int,
     refund_id: int,
-    reason: str = Form(..., min_length=4, max_length=1000),
+    reason: str = Form(..., min_length=4),
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only),
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Refund issue reason")
     refund = db.query(models.BookingRefund).filter(
         models.BookingRefund.id == refund_id,
         models.BookingRefund.booking_id == booking_id,
@@ -2296,6 +2302,9 @@ async def report_booking(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(customer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Report reason")
+    enforce_text_limit(details, "Report details")
     numeric_id = sanitize_booking_id(booking_id)
     import uuid
     booking = db.query(models.Booking).filter(

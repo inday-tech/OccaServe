@@ -14,6 +14,8 @@ async def submit_contact_form_api(
     phone: str = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(message, "Contact message")
     full_message = f"Phone Number: {phone}\n\n{message}" if phone else message
     inquiry_data = schemas.InquiryCreate(name=name, email=email, message=full_message)
     crud.create_inquiry(db, inquiry_data)

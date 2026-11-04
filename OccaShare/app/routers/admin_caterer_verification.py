@@ -122,6 +122,8 @@ async def api_review_verification(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Verification decision reason")
     verification = db.query(models.CatererVerification).filter(models.CatererVerification.id == verification_id).first()
     if not verification:
         return JSONResponse(status_code=404, content={"success": False, "message": "Verification not found"})

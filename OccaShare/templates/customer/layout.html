@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/layout.css') }}?v={{ static_asset_version('css/customer/layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/character_limits.css') }}?v={{ static_asset_version('css/global/character_limits.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v={{ static_asset_version('css/global/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/customer/customer_mobile.css') }}?v={{ static_asset_version('css/customer/customer_mobile.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v={{ static_asset_version('css/caterer/alert_modal.css') }}">
@@ -518,6 +519,7 @@
     <script src="{{ url_for('static', path='/js/main.js') }}?v={{ static_asset_version('js/main.js') }}"></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v={{ static_asset_version('js/caterer/alert_modal.js') }}"></script>
     <script src="{{ url_for('static', path='/js/customer/layout.js') }}?v={{ static_asset_version('js/customer/layout.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/global/character_limits.js') }}?v={{ static_asset_version('js/global/character_limits.js') }}" defer></script>
 
     <script>
         let customerMessagesPreviousFocus = null;

@@ -29,6 +29,7 @@
     {% block head %}{% endblock %}
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/character_limits.css') }}?v={{ static_asset_version('css/global/character_limits.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v={{ static_asset_version('css/global/responsive.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/diamond_auth_modals.css') }}?v={{ static_asset_version('css/global/diamond_auth_modals.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/location_dropdowns.css') }}?v={{ static_asset_version('css/global/location_dropdowns.css') }}">
@@ -182,6 +183,7 @@
 
     {% include "shared/auth_modals.html" %}
     <script src="{{ url_for('static', path='/js/main.js') }}?v={{ static_asset_version('js/main.js') }}" defer></script>
+    <script src="{{ url_for('static', path='/js/global/character_limits.js') }}?v={{ static_asset_version('js/global/character_limits.js') }}" defer></script>
     <script src="{{ url_for('static', path='/js/landing_base.js') }}?v={{ static_asset_version('js/landing_base.js') }}" defer></script>
     <script src="{{ url_for('static', path='/js/global/diamond_auth_modals.js') }}?v={{ static_asset_version('js/global/diamond_auth_modals.js') }}" defer></script>
     <script src="{{ url_for('static', path='/js/global/diamond_validation.js') }}?v={{ static_asset_version('js/global/diamond_validation.js') }}" defer></script>

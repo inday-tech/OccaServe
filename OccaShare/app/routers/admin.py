@@ -743,6 +743,8 @@ async def resolve_dispute(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(notes, "Dispute decision notes")
     from fastapi.responses import JSONResponse
     dispute = db.query(models.DisputeReport).get(dispute_id)
     if not dispute:
@@ -1211,6 +1213,8 @@ async def suspend_caterer(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Suspension reason")
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer: return {"success": False, "message": "Caterer not found"}
     
@@ -1309,6 +1313,8 @@ async def flag_caterer(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Flag reason")
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer: return {"success": False, "message": "Caterer not found"}
     
@@ -1562,6 +1568,8 @@ async def reject_invoice(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Invoice rejection reason")
     invoice = db.query(models.BillingInvoice).get(invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -1888,6 +1896,8 @@ async def reject_caterer(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Verification rejection reason")
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer: return {"success": False, "message": "Caterer not found"}
     caterer.verification_status = "Rejected"
@@ -1906,6 +1916,8 @@ async def suspend_caterer_api(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Suspension reason")
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer: return {"success": False, "message": "Caterer not found"}
     caterer.account_status = "Suspended"
@@ -2027,6 +2039,8 @@ def verify_caterer(
     db: Session = Depends(database.get_db), 
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Verification decision reason")
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
         raise HTTPException(status_code=404, detail="Caterer not found")
@@ -2161,6 +2175,8 @@ async def edit_caterer(
     caterer = db.query(models.CatererProfile).get(caterer_id)
     if not caterer:
          return {"success": False, "message": "Caterer not found."}
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(admin_remarks, "Admin remarks", existing_value=caterer.admin_remarks)
 
     if city is not None:
         caterer.city = city.strip() or None
@@ -2644,6 +2660,8 @@ async def suspend_customer(
     db: Session = Depends(database.get_db), 
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Suspension reason")
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user: return {"success": False, "message": "User not found"}
     user.status = "suspended"
@@ -2687,6 +2705,8 @@ async def flag_customer(
     db: Session = Depends(database.get_db), 
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Flag reason")
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user: return {"success": False, "message": "User not found"}
     user.status = "investigation"
@@ -2750,6 +2770,8 @@ async def update_investigation(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(notes, "Investigation notes")
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user: return {"success": False, "message": "User not found"}
     
@@ -2813,6 +2835,8 @@ def verify_customer(
     db: Session = Depends(database.get_db), 
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Verification decision reason")
     customer = db.query(models.User).filter(models.User.id == customer_id, models.User.role == "customer").first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -2990,6 +3014,8 @@ async def kyc_manual_action(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(notes, "Identity review notes")
     target_user = db.query(models.User).get(user_id)
     if not target_user:
         raise HTTPException(status_code=404, detail="Target user not found")
@@ -3084,6 +3110,8 @@ async def flag_booking(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(description, "Booking flag description")
     flag = models.FraudFlag(
         booking_id=booking_id,
         flag_type=flag_type,
@@ -3874,6 +3902,8 @@ async def suspend_customer_account(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Suspension reason")
     target = db.query(models.User).get(customer_id)
     if not target:
         return {"success": False, "message": "Participant not found."}
@@ -3925,6 +3955,8 @@ async def flag_customer_account(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Flag reason")
     target = db.query(models.User).get(customer_id)
     if not target:
         return {"success": False, "message": "Participant not found."}
@@ -3956,6 +3988,8 @@ async def send_system_alert(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(message, "Alert message")
     # Logic to create a notification record for the user
     new_notif = models.Notification(
         user_id=customer_id,
@@ -4025,6 +4059,8 @@ async def kyc_manual_action(
     user: models.User = Depends(admin_only),
     background_tasks: BackgroundTasks = BackgroundTasks()
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Identity review reason")
     from datetime import datetime
     from dateutil.relativedelta import relativedelta
 
@@ -4304,6 +4340,9 @@ async def flag_booking_dispute(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Dispute reason")
+    enforce_text_limit(description, "Dispute description")
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         return {"success": False, "message": "Booking not found"}
@@ -4333,6 +4372,8 @@ async def dispatch_booking_alert(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(message, "Alert message")
     booking = db.query(models.Booking).get(booking_id)
     if not booking:
         return {"success": False, "message": "Booking not found"}
@@ -4596,6 +4637,9 @@ async def review_caterer_document(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(remarks, "Document review remarks")
+    enforce_text_limit(review_reason, "Document review reason")
     profile = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
     if not profile:
         profile = db.query(models.CatererProfile).filter(models.CatererProfile.user_id == caterer_id).first()
@@ -4828,6 +4872,8 @@ async def submit_caterer_review(
     db: Session = Depends(database.get_db),
     admin: models.User = Depends(admin_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(remarks, "Caterer review remarks")
     profile = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
     if not profile:
         return {"success": False, "message": "Partner not found"}

@@ -1,0 +1,22 @@
+.character-counter {
+    margin-top: 0.3rem;
+    color: #64748b;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.character-counter.is-limit-reached {
+    color: #b45309;
+    font-weight: 600;
+}
+
+.character-counter.is-over-limit {
+    color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+    .character-counter {
+        font-size: 0.72rem;
+    }
+}

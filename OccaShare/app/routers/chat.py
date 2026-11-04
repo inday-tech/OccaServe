@@ -240,6 +240,8 @@ async def send_message(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     """Save a message and broadcast via WebSocket."""
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(chat_msg.content, "Chat message")
     # Verify receiver exists
     receiver = db.query(models.User).get(chat_msg.receiver_id)
     if not receiver:
@@ -252,8 +254,8 @@ async def send_message(
     content = (chat_msg.content or "").strip()
     if not content and not chat_msg.file_url:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
-    if len(content) > 1000:
-        raise HTTPException(status_code=400, detail="Message is too long (max 1000 characters)")
+    if len(content) > 300:
+        raise HTTPException(status_code=400, detail="Message is too long (max 300 characters)")
         
     db_msg = models.ChatMessage(
         sender_id=current_user.id,
@@ -351,6 +353,9 @@ async def edit_message(
     
     if not db_msg:
         raise HTTPException(status_code=404, detail="Message not found or unauthorized")
+
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(chat_msg.content, "Chat message", existing_value=db_msg.content)
     
     if db_msg.is_deleted:
         raise HTTPException(status_code=400, detail="Cannot edit a deleted message")

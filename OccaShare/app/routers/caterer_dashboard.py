@@ -742,6 +742,8 @@ async def submit_platform_feedback_caterer(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(comment, "Feedback")
     # Prevent duplicate submissions
     existing_fb = db.query(models.PlatformFeedback).filter_by(user_id=user.id).first()
     if existing_fb:
@@ -1141,6 +1143,9 @@ async def create_manual_booking(
 ):
     try:
         data = await request.json()
+        from ..core.text_limits import enforce_text_limit
+        enforce_text_limit(data.get("special_notes"), "Customer special requests")
+        enforce_text_limit(data.get("booking_notes") or data.get("notes") or data.get("caterer_notes"), "Caterer booking notes")
         customer_email = data.get("customer_email", "").strip()
         customer_contact = data.get("customer_contact", "").strip()
         
@@ -5133,6 +5138,8 @@ async def decide_payment_extension(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only),
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(decision_reason, "Decision note")
     profile = user.caterer_profile
     booking = db.query(models.Booking).filter(
         models.Booking.id == booking_id,
@@ -5334,7 +5341,8 @@ async def update_booking_notes(
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.is_archived:
         raise HTTPException(status_code=400, detail="Cannot modify notes on an archived booking.")
-    
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(data.notes, "Caterer booking notes", existing_value=booking.caterer_notes)
     booking.caterer_notes = data.notes
     db.commit()
     return {"status": "success"}
@@ -5488,6 +5496,9 @@ async def submit_proposal_maker(
     user: models.User = Depends(caterer_only)
 ):
     """Submit a custom quotation/proposal from the caterer."""
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(revision_reason, "Quotation revision reason")
+    enforce_text_limit(revision_item_changes, "Quotation item changes", max_length=1000)
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).get(numeric_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
@@ -6193,6 +6204,8 @@ async def post_review_reply(
 ):
     data = await request.json()
     reply_text = data.get("reply")
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reply_text, "Review reply")
     
     review = db.query(models.Review).filter(
         models.Review.id == review_id,
@@ -6806,6 +6819,8 @@ async def add_service_item(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(description, "Service or equipment description", max_length=500)
     import base64
     image_url = None
     if image and image.filename:
@@ -6924,6 +6939,8 @@ async def update_service_item(
         item = db.query(models.Equipment).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
+        from ..core.text_limits import enforce_text_limit
+        enforce_text_limit(description, "Service or equipment description", existing_value=item.description, max_length=500)
         item.name = name
         if category is not None:
             item.category = category
@@ -6947,6 +6964,8 @@ async def update_service_item(
         item = db.query(models.MenuItem).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
+        from ..core.text_limits import enforce_text_limit
+        enforce_text_limit(description, "Menu description", existing_value=item.description, max_length=500)
         item.name = name
         if category is not None:
             item.category = category
@@ -6970,6 +6989,8 @@ async def update_service_item(
         item = db.query(models.Service).get(item_id)
         if not item or item.caterer_id != user.caterer_profile.id:
             raise HTTPException(status_code=404, detail="Item not found")
+        from ..core.text_limits import enforce_text_limit
+        enforce_text_limit(description, "Service description", existing_value=item.description, max_length=500)
         item.name = name
         if category is not None:
             item.category = category
@@ -7625,6 +7646,10 @@ async def add_package(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(description, "Package description", max_length=1000)
+    enforce_text_limit(policies_cancellation, "Package cancellation policy", max_length=5000)
+    enforce_text_limit(policies_internal, "Package internal notes", max_length=5000)
     errors = []
     try:
         status = _normalize_package_status(status)
@@ -8135,6 +8160,12 @@ async def update_profile(
     profile = user.caterer_profile
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(description, "Business description", existing_value=profile.description, max_length=1000)
+    enforce_text_limit(cash_instructions, "Cash payment instructions", existing_value=profile.cash_instructions, max_length=500)
+    enforce_text_limit(general_terms, "General terms", existing_value=profile.general_terms, max_length=5000)
+    enforce_text_limit(terms_and_conditions, "Terms and conditions", existing_value=profile.terms_and_conditions, max_length=5000)
 
     normalized_contact_phone = None
     if contact_phone is not None:
@@ -8845,6 +8876,10 @@ async def update_package(
     ).first()
     if not package:
         raise HTTPException(status_code=404, detail="Package not found")
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(description, "Package description", existing_value=package.description, max_length=1000)
+    enforce_text_limit(policies_cancellation, "Package cancellation policy", max_length=5000)
+    enforce_text_limit(policies_internal, "Package internal notes", max_length=5000)
         
     errors = []
     name = name.strip()
@@ -9144,6 +9179,8 @@ async def add_menu_to_package(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(description, "Menu description", max_length=500)
     # First check package
     package = db.query(models.CateringPackage).filter(
         models.CateringPackage.id == package_id,
@@ -9394,6 +9431,8 @@ async def quick_add_catalog_item(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(description, "Catalog description", max_length=500)
     profile = user.caterer_profile
     if not profile:
         raise HTTPException(status_code=403, detail="Unauthorized caterer access")
@@ -9666,6 +9705,8 @@ async def quick_edit_catalog_item(
         ).first()
         if not item:
             raise HTTPException(status_code=404, detail="Menu item not found")
+        from ..core.text_limits import enforce_text_limit
+        enforce_text_limit(desc, "Menu description", existing_value=item.description, max_length=500)
 
         item.name = name
         if menu_category:
@@ -9709,6 +9750,8 @@ async def quick_edit_catalog_item(
         ).first()
         if not svc:
             raise HTTPException(status_code=404, detail="Service not found")
+        from ..core.text_limits import enforce_text_limit
+        enforce_text_limit(desc, "Service description", existing_value=svc.description, max_length=500)
 
         svc.name = name
         svc.category = "Service"
@@ -9761,6 +9804,8 @@ async def quick_edit_catalog_item(
         ).first()
         if not equipment:
             raise HTTPException(status_code=404, detail="Equipment not found")
+        from ..core.text_limits import enforce_text_limit
+        enforce_text_limit(desc, "Equipment description", existing_value=equipment.description, max_length=500)
 
         equipment.name = name
         equipment.category = "Equipment"
@@ -9964,6 +10009,8 @@ async def update_menu_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     form_data = await request.form()
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(form_data.get("description"), "Menu description", existing_value=item.description, max_length=500)
     
     name = form_data.get("name")
     category = form_data.get("category")
@@ -11202,8 +11249,10 @@ async def decide_booking_cancellation(
         raise HTTPException(status_code=400, detail="A decision and remarks are required.") from exc
     decision = str(payload.get("decision") or "").strip().lower()
     remarks = str(payload.get("remarks") or "").strip()
-    if decision not in {"approve", "reject"} or len(remarks) < 4 or len(remarks) > 2000:
-        raise HTTPException(status_code=400, detail="Choose approve or reject and provide remarks (4–2000 characters).")
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(remarks, "Cancellation decision remarks")
+    if decision not in {"approve", "reject"} or len(remarks) < 4:
+        raise HTTPException(status_code=400, detail="Choose approve or reject and provide remarks (4–300 characters).")
     booking = db.query(models.Booking).filter(
         models.Booking.id == booking_id,
         models.Booking.caterer_id == user.caterer_profile.id,
@@ -11351,6 +11400,8 @@ async def cancel_booking(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Cancellation reason")
     booking = db.query(models.Booking).get(booking_id)
     if not booking or booking.caterer_id != user.caterer_profile.id:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -11908,6 +11959,8 @@ async def reply_to_review(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reply_text, "Review reply")
     profile = user.caterer_profile
     review = db.query(models.Review).filter(models.Review.id == review_id, models.Review.caterer_id == profile.id).first()
     if not review:
@@ -12760,6 +12813,9 @@ async def caterer_report_booking(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Report reason")
+    enforce_text_limit(details, "Report details")
     import uuid
     from fastapi.responses import JSONResponse
     
@@ -13651,6 +13707,8 @@ async def record_manual_payment(
         reference = (data.get("reference_number") or data.get("reference_notes") or "").strip()
         notes = (data.get("notes") or "").strip()
     
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(notes, "Payment notes")
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be greater than zero.")
 

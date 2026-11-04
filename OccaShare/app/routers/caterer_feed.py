@@ -29,6 +29,8 @@ async def create_social_post(
     db: Session = Depends(database.get_db),
     user: models.User = Depends(caterer_only)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(content, "Social post", max_length=1000)
     if not user.caterer_profile:
         raise HTTPException(status_code=400, detail="User has no caterer profile")
     

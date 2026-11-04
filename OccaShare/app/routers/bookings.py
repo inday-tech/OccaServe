@@ -1628,6 +1628,8 @@ async def custom_booking_submit(
     reference_images: list[UploadFile] = File(None),
     db: Session = Depends(database.get_db)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(theme_description, "Event theme description")
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url=f"/auth/login?next=/bookings/custom/request/{caterer_id}", status_code=303)
@@ -2023,6 +2025,9 @@ async def step_details_submit(
     other_event_type: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    from ..core.text_limits import enforce_text_limit
+    existing_booking = db.query(models.Booking).get(booking_id) if booking_id else None
+    enforce_text_limit(special_requests, "Special requests", existing_value=existing_booking.special_requests if existing_booking else None)
     theme_motif = (theme_motif or "").strip()
     celebrant_name = (celebrant_name or "").strip()
 
@@ -2931,6 +2936,8 @@ async def request_payment_extension(
     reason: str = Form(...),
     db: Session = Depends(database.get_db),
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(reason, "Payment extension reason")
     user = get_current_user_from_session(request, db)
     booking = db.query(models.Booking).get(booking_id)
     if not user or user.role != "customer" or not booking or booking.user_id != user.id:
@@ -3435,7 +3442,6 @@ async def step_payment_submit(
         booking.payment_status = "balance_proof_submitted"
         # Persist one pending balance record so the unified payment summary
         # retains the verified deposit and the balance under review.
-        from datetime import datetime, timezone
         balance_record = db.query(models.BookingPaymentRecord).filter(
             models.BookingPaymentRecord.booking_id == booking.id,
             models.BookingPaymentRecord.recorded_by == "Customer",
@@ -3480,7 +3486,6 @@ async def step_payment_submit(
         ).first()
 
         ref_notes = f"Payment proof submitted via {payment_method}. Ref: {reference_no or 'N/A'}"
-        from datetime import datetime, timezone
         if existing_record:
             existing_record.amount = expected_fee
             existing_record.payment_method = payment_method
@@ -3910,6 +3915,8 @@ async def submit_review(
     ontime: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(comment, "Review comment")
     user = get_current_user_from_session(request, db)
     if not user:
         return RedirectResponse(url="/auth/login")
@@ -4022,6 +4029,8 @@ async def send_booking_message(
     attachment: UploadFile = File(None),
     db: Session = Depends(database.get_db)
 ):
+    from ..core.text_limits import enforce_text_limit
+    enforce_text_limit(message, "Message")
     user = get_current_user_from_session(request, db)
     if not user:
         return JSONResponse({"success": False, "message": "Unauthorized"}, status_code=401)

@@ -41,6 +41,7 @@
     <link rel="stylesheet" href="{{ url_for('static', path='/css/shared/dashboard_premium.css') }}?v={{ static_asset_version('css/shared/dashboard_premium.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/caterer/alert_modal.css') }}?v={{ static_asset_version('css/caterer/alert_modal.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/global.css') }}?v={{ static_asset_version('css/global/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/global/character_limits.css') }}?v={{ static_asset_version('css/global/character_limits.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', path='/css/global/responsive.css') }}?v={{ static_asset_version('css/global/responsive.css') }}">
     {% if wconfig and wconfig.favicon_url %}
     <link rel="icon" href="{{ wconfig.favicon_url }}">
@@ -2258,6 +2259,7 @@
         document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.getElementById('catererMessagesModal').classList.contains('open'))closeCatererMessagesModal();});
     </script>
     <script src="{{ url_for('static', path='/js/caterer/layout.js') }}?v={{ static_asset_version('js/caterer/layout.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/global/character_limits.js') }}?v={{ static_asset_version('js/global/character_limits.js') }}" defer></script>
     <script src="{{ url_for('static', path='/js/caterer/alert_modal.js') }}?v={{ static_asset_version('js/caterer/alert_modal.js') }}"></script>
 
     <script>
