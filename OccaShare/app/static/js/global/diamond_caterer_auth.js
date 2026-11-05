@@ -56,9 +56,19 @@
         }
         if (label) {
             label.innerHTML = mode === 'unavailable'
-                ? 'Exact Street / Building / Subdivision <span style="color:#ef4444;">*</span>'
-                : 'Exact Street / Building / Subdivision <span class="optional-label">(Optional)</span>';
+                ? 'Street / Building / Subdivision <span style="color:#ef4444;">*</span>'
+                : 'Street / Building / Subdivision <span class="optional-label">(Optional)</span>';
         }
+        updateNearbyLandmarkLabel();
+    }
+
+    function updateNearbyLandmarkLabel() {
+        const street = document.getElementById('street_cat')?.value.trim() || '';
+        const label = document.getElementById('nearbyLandmarkCatLabel');
+        if (!label) return;
+        label.innerHTML = street
+            ? 'Nearby Landmark <span class="optional-label">(Optional if exact street address is provided)</span>'
+            : 'Nearby Landmark <span style="color:#ef4444;">(Required when no exact street address is available)</span>';
     }
 
     function catererAddressIsComplete() {
@@ -376,6 +386,7 @@
                 if (barangayInput) barangayInput.value = '';
                 setCatererBarangayMode('', true);
             }
+            updateNearbyLandmarkLabel();
             catererRegistrationPinSaved = false;
             setCatererSavedLocation(false);
             const saveButton = document.getElementById('catererSaveLocation');
@@ -387,6 +398,7 @@
                 setCatererLocationStatus('Address details changed. Save the pinned location again to confirm.');
             }
         }));
+        updateNearbyLandmarkLabel();
         checkbox?.addEventListener('change', () => {
             if (checkbox.checked && barangayInput) barangayInput.value = '';
             setCatererBarangayMode(checkbox.checked ? 'unavailable' : '', true);

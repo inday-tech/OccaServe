@@ -4969,6 +4969,30 @@ async def get_booking_details_api(
     )
     cancellation_rows = sorted(booking.cancellation_requests or [], key=lambda row: row.requested_at.isoformat() if row.requested_at else "")
     latest_cancellation = cancellation_rows[-1] if cancellation_rows else None
+    cancellation_history = next(
+        (
+            row for row in sorted(
+                booking.history or [],
+                key=lambda item: item.created_at.isoformat() if item.created_at else "",
+                reverse=True,
+            )
+            if row.status == "cancelled" and row.notes and "Reason:" in row.notes
+        ),
+        None,
+    )
+    history_cancellation_reason = (
+        cancellation_history.notes.split("Reason:", 1)[-1].strip()
+        if cancellation_history
+        else ""
+    )
+    cancellation_reason = (
+        history_cancellation_reason
+        or (
+            latest_cancellation.reason
+            if latest_cancellation and latest_cancellation.status in {"pending", "approved"}
+            else ""
+        )
+    )
     prep_summary = build_prep_summary(booking)
 
     return {
@@ -5044,6 +5068,7 @@ async def get_booking_details_api(
             "event_date": booking.event_date.isoformat() if booking.event_date else None,
             "event_time": booking.event_time.strftime("%H:%M") if booking.event_time else None,
         } if latest_cancellation else None),
+        "cancellation_reason": cancellation_reason,
         "computed_payment_status": computed_payment_status,
         "payment_method": booking.payment_method,
         "payment_plan": booking.payment_plan,

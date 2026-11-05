@@ -2288,6 +2288,18 @@ body.modal-open {
     width: 100%;
 }
 
+#authModalCaterer .caterer-address-heading {
+    grid-column: 1 / -1;
+    margin: 0.8rem 0 -0.2rem;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 750;
+}
+
+#authModalCaterer .caterer-street-field {
+    width: 100%;
+}
+
 #authModalCaterer .caterer-address-grid .form-group,
 #authModalCaterer .caterer-address-extra {
     min-width: 0;

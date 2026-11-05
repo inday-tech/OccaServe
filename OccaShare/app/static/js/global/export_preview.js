@@ -103,7 +103,7 @@
         sheet.appendChild(metadata);
     }
 
-    function appendReportSummary(sheet, config) {
+    function appendReportSummary(sheet, config, format) {
         const summary = config.summary;
         if (!summary || (!summary.items?.length && !summary.statusBreakdown?.length)) return;
         const section = document.createElement('section');
@@ -111,44 +111,67 @@
         const title = document.createElement('h2');
         title.textContent = 'Report summary';
         section.appendChild(title);
-        const metrics = document.createElement('div');
-        metrics.className = 'occa-export-summary-grid';
-        (summary.items || []).forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'occa-export-summary-card';
-            const label = document.createElement('span');
-            label.textContent = item.label;
-            const value = document.createElement('strong');
-            value.textContent = item.value;
-            card.append(label, value);
-            metrics.appendChild(card);
-        });
-        if (metrics.childElementCount) section.appendChild(metrics);
-        if (summary.statusBreakdown?.length) {
-            const breakdownTitle = document.createElement('h3');
-            breakdownTitle.textContent = 'Payment status breakdown';
-            section.appendChild(breakdownTitle);
-            const breakdown = document.createElement('ul');
-            breakdown.className = 'occa-export-status-breakdown';
-            summary.statusBreakdown.forEach(item => {
-                const entry = document.createElement('li');
-                const label = document.createElement('span');
-                label.textContent = item.label;
-                const count = document.createElement('strong');
-                count.textContent = String(item.count);
-                entry.append(label, count);
-                breakdown.appendChild(entry);
+        if (format === 'word') {
+            (summary.items || []).forEach(item => {
+                const line = document.createElement('p');
+                const label = document.createElement('strong');
+                label.textContent = `${item.label}: `;
+                line.append(label, document.createTextNode(item.value));
+                section.appendChild(line);
             });
-            section.appendChild(breakdown);
+            if (summary.statusBreakdown?.length) {
+                const breakdownTitle = document.createElement('h3');
+                breakdownTitle.textContent = 'Payment status breakdown';
+                section.appendChild(breakdownTitle);
+                summary.statusBreakdown.forEach(item => {
+                    const line = document.createElement('p');
+                    line.textContent = `${item.label}: ${item.count}`;
+                    section.appendChild(line);
+                });
+            }
+            sheet.appendChild(section);
+            return;
         }
+        const summaryTable = document.createElement('table');
+        summaryTable.className = 'occa-export-summary-table';
+        const summaryHead = document.createElement('thead');
+        const summaryHeadRow = document.createElement('tr');
+        ['Metric', 'Value'].forEach(label => {
+            const cell = document.createElement('th');
+            cell.textContent = label;
+            summaryHeadRow.appendChild(cell);
+        });
+        summaryHead.appendChild(summaryHeadRow);
+        const summaryBody = document.createElement('tbody');
+        [...(summary.items || []), ...(summary.statusBreakdown || []).map(item => ({
+            label: `Payment status · ${item.label}`,
+            value: String(item.count)
+        }))].forEach(item => {
+            const row = document.createElement('tr');
+            [item.label, item.value].forEach(value => {
+                const cell = document.createElement('td');
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+            summaryBody.appendChild(row);
+        });
+        summaryTable.append(summaryHead, summaryBody);
+        section.appendChild(summaryTable);
         sheet.appendChild(section);
     }
 
     function renderFormatPreview(config, sections, format) {
         const sheet = document.createElement('article');
         sheet.className = `occa-export-sheet occa-export-sheet-${format}`;
+        if (format === 'csv') {
+            const preview = document.createElement('pre');
+            preview.className = 'occa-export-csv-preview';
+            preview.textContent = buildCsvContent(config, sections).replace(/^\uFEFF/, '');
+            sheet.appendChild(preview);
+            return sheet;
+        }
         appendReportHeader(sheet, config);
-        appendReportSummary(sheet, config);
+        appendReportSummary(sheet, config, format);
         sections.forEach(section => {
             const sectionEl = document.createElement('section');
             sectionEl.className = 'occa-export-section';
@@ -167,7 +190,23 @@
                 wrap.className = 'occa-export-table-wrap';
                 const table = document.createElement('table');
                 table.className = 'occa-export-table';
-                table.style.minWidth = `${Math.max(760, section.columns.length * 112)}px`;
+                if (format === 'xlsx') {
+                    table.style.minWidth = `${Math.max(760, section.columns.length * 112)}px`;
+                } else {
+                    table.style.width = '100%';
+                }
+                if (format === 'word') {
+                    table.style.tableLayout = 'fixed';
+                    const weights = wordColumnWeights(section);
+                    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
+                    const colgroup = document.createElement('colgroup');
+                    weights.forEach(weight => {
+                        const col = document.createElement('col');
+                        col.style.width = `${(weight / totalWeight) * 100}%`;
+                        colgroup.appendChild(col);
+                    });
+                    table.appendChild(colgroup);
+                }
                 const head = document.createElement('thead');
                 const headRow = document.createElement('tr');
                 section.columns.forEach(column => {
@@ -323,7 +362,7 @@
         return `"${text.replace(/"/g, '""')}"`;
     }
 
-    function downloadCsv(config, sections) {
+    function buildCsvContent(config, sections) {
         const lines = [];
         if (config.summary) {
             lines.push([config.title || 'OccaServe Report']);
@@ -347,7 +386,11 @@
             section.rows.forEach(row => lines.push(section.columns.map((column, index) => valueFor(row, column, index))));
             lines.push([]);
         });
-        const csv = '\ufeff' + lines.map(row => row.map(csvCell).join(',')).join('\r\n');
+        return '\ufeff' + lines.map(row => row.map(csvCell).join(',')).join('\r\n');
+    }
+
+    function downloadCsv(config, sections) {
+        const csv = buildCsvContent(config, sections);
         saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${fileBase(config)}.csv`);
     }
 
@@ -519,7 +562,15 @@
     }
 
     function wordColumnWidths(section, totalWidth) {
-        const weights = section.columns.map((column, index) => {
+        const weights = wordColumnWeights(section);
+        const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
+        const widths = weights.map(weight => Math.floor(totalWidth * weight / totalWeight));
+        if (widths.length) widths[widths.length - 1] += totalWidth - widths.reduce((sum, width) => sum + width, 0);
+        return widths;
+    }
+
+    function wordColumnWeights(section) {
+        return section.columns.map((column, index) => {
             const longestValue = section.rows.slice(0, 100).reduce((longest, row) => (
                 Math.max(longest, safeText(valueFor(row, column, index)).split(/\r?\n/).reduce(
                     (maxLine, line) => Math.max(maxLine, line.length), 0
@@ -527,10 +578,6 @@
             ), 0);
             return Math.min(36, Math.max(8, String(column.label).length * 0.8, Math.min(30, longestValue * 0.35)));
         });
-        const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
-        const widths = weights.map(weight => Math.floor(totalWidth * weight / totalWeight));
-        if (widths.length) widths[widths.length - 1] += totalWidth - widths.reduce((sum, width) => sum + width, 0);
-        return widths;
     }
 
     function estimateWrappedLines(value, width) {

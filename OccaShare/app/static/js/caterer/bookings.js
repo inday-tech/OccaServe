@@ -1414,6 +1414,7 @@ function hydrateButtonDataset(btn, detail) {
         paymentRecordsJson: JSON.stringify(detail.payment_records || []),
         paymentExtensionRequestJson: JSON.stringify(detail.payment_extension_request || null),
         cancellationRequestJson: JSON.stringify(detail.cancellation_request || null),
+        cancellationReason: detail.cancellation_reason || '',
         eventDate: detail.event_date || btn.dataset.eventDate || '',
         eventTime: hasDetailField('event_time') ? (detail.event_time || 'TBA') : (btn.dataset.eventTime || 'TBA'),
         customerRef: customerRef,
@@ -1860,6 +1861,14 @@ function showBookingDetails(btn) {
     }
     const statusAction = document.getElementById('modalStatusAction');
     if (statusAction) statusAction.textContent = data.catererAction || '';
+    const cancellationReasonPanel = document.getElementById('modalCancellationReasonPanel');
+    const cancellationReason = document.getElementById('modalCancellationReason');
+    if (cancellationReasonPanel && cancellationReason) {
+        cancellationReason.textContent = data.cancellationReason || '';
+        cancellationReasonPanel.style.display = bookingStatus === 'cancelled' && data.cancellationReason
+            ? 'block'
+            : 'none';
+    }
 
     let cancellationHeader = null;
     try { cancellationHeader = JSON.parse(data.cancellationRequestJson || 'null'); } catch {}

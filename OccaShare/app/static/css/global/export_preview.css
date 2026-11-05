@@ -295,9 +295,35 @@
     overflow-wrap: anywhere;
 }
 
+.occa-export-summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #334155;
+    font-size: 11px;
+}
+
+.occa-export-summary-table th,
+.occa-export-summary-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #dbe3ec;
+    text-align: left;
+    vertical-align: top;
+}
+
+.occa-export-summary-table th {
+    color: #475569;
+    font-weight: 750;
+}
+
 .occa-export-summary h3 {
     margin: 14px 0 7px;
     color: #475569;
+    font-size: 11px;
+}
+
+.occa-export-summary p {
+    margin: 4px 0;
+    color: #334155;
     font-size: 11px;
 }
 
@@ -384,6 +410,52 @@
     background: #176b43;
 }
 
+.occa-export-sheet-xlsx .occa-export-summary-table th {
+    background: #176b43;
+    color: #fff;
+}
+
+.occa-export-sheet-pdf {
+    width: min(100%, 1120px);
+    min-height: 0;
+    aspect-ratio: 297 / 210;
+    padding: clamp(18px, 2.5vw, 32px);
+}
+
+.occa-export-sheet-pdf .occa-export-meta {
+    margin-bottom: 14px;
+}
+
+.occa-export-sheet-pdf .occa-export-summary {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 0;
+    background: #fff;
+}
+
+.occa-export-sheet-pdf .occa-export-section {
+    margin: 12px 0 16px;
+}
+
+.occa-export-sheet-pdf .occa-export-table,
+.occa-export-sheet-pdf .occa-export-summary-table {
+    font-size: 9px;
+}
+
+.occa-export-sheet-pdf .occa-export-table th,
+.occa-export-sheet-pdf .occa-export-table td {
+    padding: 5px 6px;
+}
+
+.occa-export-sheet-word .occa-export-table {
+    font-size: 10px;
+}
+
+.occa-export-sheet-word .occa-export-table th,
+.occa-export-sheet-word .occa-export-table td {
+    padding: 6px 7px;
+}
+
 .occa-export-sheet-word {
     max-width: 1020px;
     padding: clamp(22px, 3.2vw, 40px);
@@ -400,6 +472,7 @@
 
 .occa-export-csv-preview {
     max-width: 100%;
+    overflow: auto;
     margin: 0 0 24px;
     padding: 14px;
     border: 1px solid #dbe3ec;
@@ -407,8 +480,7 @@
     background: #f8fafc;
     color: #334155;
     font: 11px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    white-space: pre;
 }
 
 .occa-export-footer {

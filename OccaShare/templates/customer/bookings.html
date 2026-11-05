@@ -239,6 +239,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .bk-cancellation-status { margin:0; color:#334155; font-size:.78rem; line-height:1.45; }
 .bk-cancellation-status[data-state="blocked"] { color:#64748b; }
 .bk-cancellation-status[data-state="pending"] { color:#92400e; }
+.bk-cancellation-reason { margin:0; padding:.7rem .8rem; border-left:3px solid #ef4444; border-radius:7px; background:#fff7f7; color:#334155; font-size:.8rem; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
 .bk-cancellation-policy { margin:0; color:#64748b; font-size:.7rem; line-height:1.4; }
 .bk-cancellation-form { display:grid; gap:.5rem; }
 .bk-cancellation-form label { display:block; color:#475569; font-size:.72rem; font-weight:700; }
@@ -591,6 +592,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                     <span id="bkCancellationStage" class="bk-cancellation-stage"></span>
                 </div>
                 <p id="bkCancellationStatus" class="bk-cancellation-status" role="status" aria-live="polite"></p>
+                <p id="bkCancellationReasonDisplay" class="bk-cancellation-reason" hidden></p>
                 <p id="bkCancellationPolicy" class="bk-cancellation-policy" hidden></p>
                 <form id="bkModalCancelForm" class="bk-cancellation-form" method="post" action="#" onsubmit="submitCancellationRequest(event)" style="display:none;">
                     <label for="bkCancellationReason">Reason for cancellation</label>
@@ -1287,14 +1289,17 @@ async function loadCancellationDetails(bookingId) {
     const panel = document.getElementById('bkCancellationPanel');
     const status = document.getElementById('bkCancellationStatus');
     const stage = document.getElementById('bkCancellationStage');
+    const reasonDisplay = document.getElementById('bkCancellationReasonDisplay');
     const policy = document.getElementById('bkCancellationPolicy');
     const form = document.getElementById('bkModalCancelForm');
-    if (!panel || !status || !stage || !policy || !form) return;
+    if (!panel || !status || !stage || !reasonDisplay || !policy || !form) return;
     if (String(currentModalBookingId) !== String(bookingId)) return;
     panel.style.display = 'flex';
     status.textContent = 'Checking cancellation options…';
     status.dataset.state = '';
     stage.textContent = '';
+    reasonDisplay.hidden = true;
+    reasonDisplay.textContent = '';
     policy.hidden = true;
     policy.textContent = '';
     form.style.display = 'none';
@@ -1307,14 +1312,19 @@ async function loadCancellationDetails(bookingId) {
         if (String(currentModalBookingId) !== String(bookingId)) return;
         const request = data.request;
         const preparation = data.preparation || {};
+        const cancellationReason = data.cancellation_reason || request?.reason || '';
+        if (cancellationReason) {
+            reasonDisplay.textContent = `Reason for cancellation: ${cancellationReason}`;
+            reasonDisplay.hidden = false;
+        }
         stage.textContent = `Preparation · ${preparation.label || 'Not Started'}${Number.isFinite(Number(preparation.progress)) ? ` · ${Number(preparation.progress)}%` : ''}`;
         if (data.cancellation_mode === 'pending') {
             status.dataset.state = 'pending';
-            status.textContent = `Cancellation request pending review${request?.reason ? ` · ${request.reason}` : ''}.`;
+            status.textContent = 'Cancellation request pending review.';
             if (request?.decision_remarks) status.textContent += ` · Caterer: ${request.decision_remarks}`;
         } else if (request) {
             status.dataset.state = data.can_request ? '' : 'blocked';
-            status.textContent = `Previous request ${request.status.replaceAll('_', ' ')}${request.reason ? ` · ${request.reason}` : ''}${request.decision_remarks ? ` · Caterer: ${request.decision_remarks}` : ''}.`;
+            status.textContent = `Previous request ${request.status.replaceAll('_', ' ')}${request.decision_remarks ? ` · Caterer: ${request.decision_remarks}` : ''}.`;
         } else if (data.cancellation_mode === 'cancel') {
             status.textContent = 'You can cancel this booking before preparation begins.';
         } else if (data.cancellation_mode === 'request') {

@@ -817,6 +817,27 @@ async def customer_cancellation_quote(
     requests = sorted(booking.cancellation_requests or [], key=lambda row: row.requested_at.isoformat() if row.requested_at else "")
     active_request = next((row for row in reversed(requests) if row.status == "pending"), None)
     latest_request = requests[-1] if requests else None
+    cancellation_history = next(
+        (
+            row for row in sorted(
+                booking.history or [],
+                key=lambda item: item.created_at.isoformat() if item.created_at else "",
+                reverse=True,
+            )
+            if row.status == "cancelled" and row.notes and "Reason:" in row.notes
+        ),
+        None,
+    )
+    history_reason = (
+        cancellation_history.notes.split("Reason:", 1)[-1].strip()
+        if cancellation_history
+        else ""
+    )
+    cancellation_reason = (
+        history_reason or (latest_request.reason if latest_request else "")
+        if booking.status == "cancelled"
+        else (latest_request.reason if latest_request else "")
+    )
     preparation = build_prep_summary(booking)
     cancellation_mode = cancellation_mode_for_booking(booking)
     return {
@@ -824,6 +845,7 @@ async def customer_cancellation_quote(
         "cancellation_mode": "pending" if active_request else cancellation_mode,
         "preparation": preparation,
         "event_started": event_has_started(booking),
+        "cancellation_reason": cancellation_reason,
         "request": {
             "id": latest_request.id,
             "status": latest_request.status,

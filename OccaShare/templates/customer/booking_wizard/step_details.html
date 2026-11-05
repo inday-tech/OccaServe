@@ -284,27 +284,34 @@
                     <input type="text" name="theme_motif" class="form-input" value="{{ booking_data.get('theme_motif', ((booking.custom_requirements.get('theme_motif') or booking.custom_requirements.get('motif_theme', '')) if booking and booking.custom_requirements else '')) }}">
                 </div>
 
-                <div class="grid-2-col">
-                    <div class="form-group">
+                <section class="event-schedule-fields" aria-label="Event schedule">
+                    <div class="form-group event-date-row">
                         <label class="form-label" for="event_date">Event Date</label>
                         <input type="date" name="event_date" id="event_date" class="form-input"
                             value="{{ booking_data.get('event_date', booking.event_date.isoformat() if booking and booking.event_date else '') }}"
                             required onchange="checkAvailability()">
                         <span class="field-error" id="err-date">Please select a valid event date.</span>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="event_time">Ingress <small>(Service start / caterer arrival)</small></label>
-                        <select name="event_time" id="event_time" class="form-input" data-initial="{{ booking_data.get('event_time', booking.event_time.strftime('%H:%M') if booking and booking.event_time else '') }}" required>
-                            <option value="" disabled selected>Select ingress time</option>
-                        </select>
-                        <span class="field-error" id="err-time">Choose an ingress time before the caterer’s closing time.</span>
+                    <div class="event-time-grid">
+                        <div class="form-group event-time-field">
+                            <label class="form-label" for="event_time">Ingress</label>
+                            <small class="event-time-description">Caterer arrival / service start</small>
+                            <select name="event_time" id="event_time" class="form-input" data-initial="{{ booking_data.get('event_time', booking.event_time.strftime('%H:%M') if booking and booking.event_time else '') }}" required>
+                                <option value="" disabled selected>Select time</option>
+                            </select>
+                            <span class="field-error" id="err-time">Choose an ingress time before the caterer’s closing time.</span>
+                        </div>
+                        <div class="form-group event-time-field">
+                            <label class="form-label" for="event_end_time">Egress</label>
+                            <small class="event-time-description">Service end / cleanup completion</small>
+                            <input type="time" name="event_end_time" id="event_end_time" class="form-input" value="{{ booking_data.get('event_end_time', booking.event_end_time.strftime('%H:%M') if booking and booking.event_end_time else '') }}" required {% if package %}readonly aria-readonly="true"{% endif %}>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="event_end_time">Egress <small>(Service end / cleanup complete)</small></label>
-                        <input type="time" name="event_end_time" id="event_end_time" class="form-input" value="{{ booking_data.get('event_end_time', booking.event_end_time.strftime('%H:%M') if booking and booking.event_end_time else '') }}" required {% if package %}readonly aria-readonly="true"{% endif %}>
-                        <span id="event-duration-hint" style="display: block; margin-top: 4px; font-size: 0.74rem; color: #64748b;">The service ends automatically based on the selected package duration.</span>
+                    <div class="event-duration-note" id="event-duration-hint">
+                        <i class="fas fa-circle-info" aria-hidden="true"></i>
+                        <span>Egress is automatically calculated based on the selected package duration.</span>
                     </div>
-                </div>
+                </section>
                 <div id="availability-chip" class="availability-chip" style="margin-top: 0.75rem; width: 100%;"></div>
             </div>
 
