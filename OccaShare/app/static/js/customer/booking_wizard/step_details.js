@@ -66,6 +66,14 @@ document.addEventListener('DOMContentLoaded', function () {
             venuePinStatus.textContent = message;
             venuePinStatus.dataset.state = state;
         };
+        const setVenueAddressFieldsDisabled = disabled => {
+            [venueLandmark, provinceSelect, citySelect, barangaySelect, barangayUnavailableCheckbox]
+                .forEach(input => {
+                    if (input) input.disabled = disabled;
+                });
+            document.querySelector('.venue-address-details')
+                ?.classList.toggle('is-location-invalid', disabled);
+        };
         let validatedVenueCoordinateKey = '';
         const eventTypeSelect = document.getElementById('event_type_select');
         const otherEventWrap = document.getElementById('other-event-wrap');
@@ -1072,17 +1080,20 @@ document.addEventListener('DOMContentLoaded', function () {
             savedVenueText.textContent = venueHidden.value;
         }
         if (hasSavedPin) {
+            setVenueAddressFieldsDisabled(true);
             const landRequestId = ++landValidationRequest;
             window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(savedPoint.lat, savedPoint.lng)
                 .then(isValid => {
                     if (landRequestId !== landValidationRequest) return;
                     venueLandValid = isValid;
+                    setVenueAddressFieldsDisabled(!isValid);
                     refreshSaveButton();
                     if (!isValid) setVenuePinStatus('The saved pin is not on mapped land. Move it to a valid event location.', 'invalid');
                 })
                 .catch(error => {
                     if (landRequestId !== landValidationRequest) return;
                     console.error('Could not validate saved event land location:', error);
+                    setVenueAddressFieldsDisabled(true);
                     setVenuePinStatus('The saved pin could not be validated. Move the pin to check the location again.', 'error');
                 });
         }
@@ -1131,6 +1142,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (saveVenueButton) saveVenueButton.disabled = true;
             venueLandValid = false;
             ++landValidationRequest;
+            setVenueAddressFieldsDisabled(false);
             setVenuePinStatus('Choose a search result or pin the map, then save the location.', 'neutral');
         });
         const setLocation = (point, selectedPlace = null) => {
@@ -1141,6 +1153,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 lng: point.lng().toFixed(7)
             };
             venueLandValid = false;
+            setVenueAddressFieldsDisabled(true);
             clearSavedLocation(true);
             if (venueLandmark) venueLandmark.value = '';
             if (provinceSelect) provinceSelect.value = '';
@@ -1155,6 +1168,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(isValid => {
                     if (landRequestId !== landValidationRequest) return;
                     venueLandValid = isValid;
+                    setVenueAddressFieldsDisabled(!isValid);
                     if (!isValid) {
                         setVenuePinStatus('This pin is in water or outside mapped land. Move it onto a valid event venue.', 'invalid');
                     } else if (venuePinStatus) {
@@ -1166,6 +1180,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (landRequestId !== landValidationRequest) return;
                     console.error('Could not validate event land location:', error);
                     venueLandValid = false;
+                    setVenueAddressFieldsDisabled(true);
                     setVenuePinStatus('The land-location check could not be completed. Please try again.', 'error');
                     refreshSaveButton();
                 });
