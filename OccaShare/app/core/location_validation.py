@@ -6,7 +6,6 @@ from pathlib import Path
 from .utils import is_valid_ph_coordinates
 
 
-BARANGAY_STATUSES = {"identified", "manual", "unavailable"}
 LOCATION_BOUNDARIES_PATH = Path(__file__).parent.parent / "static" / "data" / "ph_location_boundaries.json"
 RIVER_BUFFER_METERS = 30
 
@@ -159,15 +158,11 @@ def validate_location_details(
     if not municipality:
         return "City or municipality is required for the business address."
 
-    if status and status not in BARANGAY_STATUSES:
-        return "Confirm the barangay or clear its status."
-    if status == "unavailable" and barangay:
-        return "Clear the barangay field when marking it unavailable."
-    if status in {"identified", "manual"} and not barangay:
-        return "Enter the barangay or mark it as unavailable."
-    if street_address:
-        return None
-    if not barangay or status == "unavailable":
-        return "Enter an exact street address, or provide a barangay."
+    if not street_address:
+        return "Street, building, or subdivision is required for the business address."
+    if not barangay:
+        return "Barangay is required for the business address."
+    if status not in {"identified", "manual"}:
+        return "Barangay must be confirmed."
 
     return None

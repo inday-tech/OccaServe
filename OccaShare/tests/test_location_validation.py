@@ -17,6 +17,7 @@ def validate_caterer(**overrides):
         "latitude": MANILA[0],
         "longitude": MANILA[1],
         "location_type": "caterer",
+        "street_address": "123 Main Street",
     }
     values.update(overrides)
     return validate_location_details(**values)
@@ -68,23 +69,26 @@ def test_caterer_requires_province_and_city():
     assert "City" in validate_caterer(municipality="")
 
 
-def test_caterer_accepts_exact_street_without_barangay():
+def test_caterer_requires_barangay_even_with_exact_street():
     assert validate_caterer(
         barangay="",
         barangay_status="unavailable",
         landmark="",
         street_address="123 Main Street",
-    ) is None
+    )
 
 
-def test_caterer_requires_barangay_but_not_nearby_landmark_without_street():
-    assert validate_caterer(street_address="", landmark="") is None
+def test_caterer_requires_street_even_when_barangay_is_available():
+    assert "Street" in validate_caterer(street_address="", landmark="")
+
+
+def test_caterer_requires_a_confirmed_barangay():
     assert validate_caterer(
-        street_address="",
         barangay="",
-        barangay_status="unavailable",
+        barangay_status="",
         landmark="",
     )
+    assert "Barangay" in validate_caterer(barangay_status="")
 
 
 def test_caterer_rejects_water_pin_even_with_complete_address():

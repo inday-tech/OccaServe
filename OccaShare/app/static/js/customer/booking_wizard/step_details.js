@@ -1021,11 +1021,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const mapEl = document.getElementById('venue-map');
         if (!mapEl || !window.google?.maps) return;
         const geocoder = new google.maps.Geocoder();
-        const placesService = google.maps.places ? new google.maps.places.PlacesService(map) : null;
         const fallback = { lat: 14.2811, lng: 121.4150 };
         const savedPoint = venueLat?.value !== '' && venueLng?.value !== '' && venueLat?.value != null && venueLng?.value != null
             ? { lat: Number(venueLat.value), lng: Number(venueLng.value) } : fallback;
         const map = new google.maps.Map(mapEl, { center: savedPoint, zoom: venueLat?.value ? 17 : 11, restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true }, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, clickableIcons: false });
+        const placesService = google.maps.places ? new google.maps.places.PlacesService(map) : null;
         const hasSavedPin = venueLat?.value !== '' && venueLng?.value !== '' && venueLat?.value != null && venueLng?.value != null &&
             Number.isFinite(savedPoint.lat) && Number.isFinite(savedPoint.lng) && savedPoint.lat >= 4.2 && savedPoint.lat <= 21.6 && savedPoint.lng >= 116.7 && savedPoint.lng <= 127.2;
         const marker = new google.maps.Marker({ map: hasSavedPin ? map : null, position: savedPoint, draggable: true });

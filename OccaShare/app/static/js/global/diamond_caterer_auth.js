@@ -49,8 +49,7 @@
             document.getElementById('province_cat'),
             document.getElementById('city_cat'),
             document.getElementById('barangay_cat'),
-            document.getElementById('nearby_landmark_cat'),
-            document.getElementById('barangayUnavailableCat')
+            document.getElementById('nearby_landmark_cat')
         ].forEach(input => {
             if (input) input.disabled = disabled;
         });
@@ -61,26 +60,16 @@
             ?.classList.toggle('is-location-invalid', invalid);
     }
 
-    function setCatererBarangayMode(mode, showUnavailableChoice = mode === '') {
+    function setCatererBarangayMode(mode) {
         const status = document.getElementById('barangayStatusCat');
-        const checkbox = document.getElementById('barangayUnavailableCat');
-        const choice = document.getElementById('barangayUnavailableCatChoice');
         const street = document.getElementById('street_cat');
         const label = document.getElementById('streetCatLabel');
         if (status) status.value = mode;
-        if (checkbox) checkbox.checked = mode === 'unavailable';
-        if (choice) choice.style.display = showUnavailableChoice ? 'block' : 'none';
         if (street) {
-            street.required = mode === 'unavailable';
-            street.placeholder = mode === 'unavailable'
-                ? 'Required exact street address when barangay is unavailable'
-                : 'Enter the exact street, building, or subdivision if available';
+            street.required = true;
+            street.placeholder = 'Required: enter the exact street, building, or subdivision';
         }
-        if (label) {
-            label.innerHTML = mode === 'unavailable'
-                ? 'Street / Building / Subdivision <span style="color:#ef4444;">*</span>'
-                : 'Street / Building / Subdivision <span class="optional-label">(Optional)</span>';
-        }
+        if (label) label.innerHTML = 'Street / Building / Subdivision <span style="color:#ef4444;">*</span>';
         updateNearbyLandmarkLabel();
     }
 
@@ -95,16 +84,12 @@
         const province = document.getElementById('province_cat')?.value.trim() || '';
         const city = document.getElementById('city_cat')?.value.trim() || '';
         const barangay = document.getElementById('barangay_cat')?.value.trim() || '';
-        const status = document.getElementById('barangayStatusCat')?.value || '';
         const street = document.getElementById('street_cat')?.value.trim() || '';
         if (!province) return 'Enter the business province to continue.';
         if (!city) return 'Enter the municipality or city to continue.';
-        if (!street && status === 'unavailable') {
-            return 'Enter an exact street address because the barangay is marked unavailable.';
-        }
-        if (!catererAddressIsComplete()) {
-            return 'Add an exact street address, or enter the barangay.';
-        }
+        if (!street) return 'Enter the exact street, building, or subdivision to continue.';
+        if (!barangay) return 'Enter the barangay to continue.';
+        if (!catererAddressIsComplete()) return 'Complete the business address details to continue.';
         return addressChanged
             ? 'Address details changed. Save this location again to confirm.'
             : 'Address found. Save this location to attach it to your registration.';
@@ -116,10 +101,7 @@
         const street = document.getElementById('street_cat')?.value.trim() || '';
         const province = document.getElementById('province_cat')?.value.trim() || '';
         const city = document.getElementById('city_cat')?.value.trim() || '';
-        return Boolean(province && city && (
-            street ||
-            (barangay && ['identified', 'manual'].includes(status))
-        ));
+        return Boolean(province && city && street && barangay && ['identified', 'manual'].includes(status));
     }
 
     function refreshCatererLocationSaveButton() {
@@ -132,21 +114,34 @@
         const result = window.OccaServeLocationAddress?.parseResults(results);
         if (!result) return false;
         const components = (results || []).flatMap(item => item.address_components || []);
-        const component = type => components.find(item => item.types.includes(type))?.long_name || '';
+        const normalize = value => String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLocaleLowerCase()
+            .replace(/^(barangay|brgy\.?)\s+/i, '')
+            .trim();
+        const administrativeNames = new Set([result.province, result.city].map(normalize).filter(Boolean));
         const startsWithBarangay = value => /^(barangay|brgy\.?)\s+/i.test(String(value || '').trim());
-        const barangay = component('administrative_area_level_4')
-            || components.find(item =>
-                item.types.includes('administrative_area_level_3') && startsWithBarangay(item.long_name)
-            )?.long_name
-            || components.find(item =>
-                item.types.some(type => type.startsWith('sublocality')) && startsWithBarangay(item.long_name)
-            )?.long_name
-            || '';
+        const barangayTypes = [
+            'administrative_area_level_4',
+            'sublocality_level_1',
+            'sublocality_level_2',
+            'sublocality_level_3'
+        ];
+        const candidates = components.filter(item =>
+            item.types.some(type => barangayTypes.includes(type))
+            || item.types.includes('administrative_area_level_3')
+            || (item.types.includes('sublocality') && startsWithBarangay(item.long_name))
+        );
+        const barangay = candidates.find(item => {
+            const name = normalize(item.long_name);
+            return name && !administrativeNames.has(name) && !isGooglePlusCode(item.long_name);
+        })?.long_name || '';
 
         document.getElementById('province_cat').value = result.province;
         document.getElementById('city_cat').value = result.city;
         document.getElementById('barangay_cat').value = barangay;
-        setCatererBarangayMode(barangay ? 'identified' : '', !barangay);
+        setCatererBarangayMode(barangay ? 'identified' : '');
         updateAddressCat();
         const search = document.getElementById('catererLocationSearch');
         if (search) search.value = document.getElementById('address_cat_hidden').value;
@@ -268,7 +263,7 @@
                     ...parsedAddress,
                     barangay: document.getElementById('barangay_cat').value
                 });
-                if (!addressApplied) setCatererBarangayMode('', true);
+                if (!addressApplied) setCatererBarangayMode('');
                 refreshCatererLocationSaveButton();
                 setCatererLocationStatus(!catererRegistrationLandCheckComplete || !catererRegistrationGeocodeComplete
                     ? 'Checking the pin and updating the address...'
@@ -279,7 +274,7 @@
                     : addressApplied
                     ? document.getElementById('barangay_cat').value
                         ? getCatererAddressStatus()
-                        : 'Barangay could not be confidently detected. Enter it manually or confirm that it is unavailable.'
+                        : 'Barangay could not be detected from the map. Enter the correct barangay manually to continue.'
                     : status === 'REQUEST_DENIED'
                         ? 'Google Maps could not verify the address. Please contact support to check the Maps API configuration.'
                         : 'Address not found. Enter province and city manually; street and barangay can also be entered manually.');
@@ -575,7 +570,6 @@
 
         const barangayInput = document.getElementById('barangay_cat');
         const streetInput = document.getElementById('street_cat');
-        const checkbox = document.getElementById('barangayUnavailableCat');
         const addressInputs = [
             document.getElementById('province_cat'),
             document.getElementById('city_cat'),
@@ -586,13 +580,13 @@
         addressInputs.forEach(input => input?.addEventListener('input', () => {
             if (input === barangayInput) {
                 const hasBarangay = Boolean(barangayInput.value.trim());
-                setCatererBarangayMode(hasBarangay ? 'manual' : '', !hasBarangay);
+                setCatererBarangayMode(hasBarangay ? 'manual' : '');
             } else if (
                 [document.getElementById('province_cat'), document.getElementById('city_cat')].includes(input) &&
                 document.getElementById('barangayStatusCat')?.value
             ) {
                 if (barangayInput) barangayInput.value = '';
-                setCatererBarangayMode('', true);
+                setCatererBarangayMode('');
             }
             updateNearbyLandmarkLabel();
             catererRegistrationPinSaved = false;
@@ -607,17 +601,6 @@
             }
         }));
         updateNearbyLandmarkLabel();
-        checkbox?.addEventListener('change', () => {
-            if (checkbox.checked && barangayInput) barangayInput.value = '';
-            setCatererBarangayMode(checkbox.checked ? 'unavailable' : '', true);
-            catererRegistrationPinSaved = false;
-            setCatererSavedLocation(false);
-            const saveButton = document.getElementById('catererSaveLocation');
-            if (saveButton) saveButton.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Save Business Location';
-            updateAddressCat();
-            refreshCatererLocationSaveButton();
-            setCatererLocationError('');
-        });
     };
 
     function loadCatererRegistrationMap() {
