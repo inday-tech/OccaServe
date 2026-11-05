@@ -103,66 +103,6 @@
         sheet.appendChild(metadata);
     }
 
-    function appendReportSummary(sheet, config, format) {
-        const summary = config.summary;
-        if (!summary || (!summary.items?.length && !summary.statusBreakdown?.length)) return;
-        const section = document.createElement('section');
-        section.className = 'occa-export-summary';
-        const title = document.createElement('h2');
-        title.textContent = 'Report summary';
-        section.appendChild(title);
-        if (format === 'word') {
-            (summary.items || []).forEach(item => {
-                const line = document.createElement('p');
-                const label = document.createElement('strong');
-                label.textContent = `${item.label}: `;
-                line.append(label, document.createTextNode(item.value));
-                section.appendChild(line);
-            });
-            if (summary.statusBreakdown?.length) {
-                const breakdownTitle = document.createElement('h3');
-                breakdownTitle.textContent = 'Payment status breakdown';
-                section.appendChild(breakdownTitle);
-                summary.statusBreakdown.forEach(item => {
-                    const line = document.createElement('p');
-                    line.textContent = `${item.label}: ${item.count}`;
-                    section.appendChild(line);
-                });
-            }
-            sheet.appendChild(section);
-            return;
-        }
-        const summaryTable = document.createElement('table');
-        summaryTable.className = 'occa-export-summary-table';
-        const summaryBody = document.createElement('tbody');
-        if (format !== 'pdf') {
-            const summaryHead = document.createElement('thead');
-            const summaryHeadRow = document.createElement('tr');
-            ['Metric', 'Value'].forEach(label => {
-                const cell = document.createElement('th');
-                cell.textContent = label;
-                summaryHeadRow.appendChild(cell);
-            });
-            summaryHead.appendChild(summaryHeadRow);
-            summaryTable.appendChild(summaryHead);
-        }
-        [...(summary.items || []), ...(summary.statusBreakdown || []).map(item => ({
-            label: `Payment status · ${item.label}`,
-            value: String(item.count)
-        }))].forEach(item => {
-            const row = document.createElement('tr');
-            [item.label, item.value].forEach(value => {
-                const cell = document.createElement('td');
-                cell.textContent = value;
-                row.appendChild(cell);
-            });
-            summaryBody.appendChild(row);
-        });
-        summaryTable.appendChild(summaryBody);
-        section.appendChild(summaryTable);
-        sheet.appendChild(section);
-    }
-
     function renderFormatPreview(config, sections, format) {
         const sheet = document.createElement('article');
         sheet.className = `occa-export-sheet occa-export-sheet-${format}`;
@@ -174,7 +114,6 @@
             return sheet;
         }
         appendReportHeader(sheet, config);
-        appendReportSummary(sheet, config, format);
         sections.forEach(section => {
             const sectionEl = document.createElement('section');
             sectionEl.className = 'occa-export-section';
@@ -367,23 +306,11 @@
     }
 
     function buildCsvContent(config, sections) {
-        const lines = [];
-        if (config.summary) {
-            lines.push([config.title || 'OccaServe Report']);
-            if (config.catererName) lines.push(['Caterer', config.catererName]);
-            lines.push(['Generated', config.generatedAt || new Date().toLocaleString()]);
-            (config.metadata || []).forEach(item => lines.push(['Filter', item]));
-            if (config.summary.items?.length || config.summary.statusBreakdown?.length) {
-                lines.push([], ['Report summary'], ['Metric', 'Value']);
-                (config.summary.items || []).forEach(item => lines.push([item.label, item.value]));
-                if (config.summary.statusBreakdown?.length) {
-                    lines.push([], ['Payment status breakdown'], ['Status', 'Count']);
-                    config.summary.statusBreakdown.forEach(item => lines.push([item.label, item.count]));
-                }
-            }
-            lines.push([]);
-        }
-        if (sections.length > 1) lines.push([config.title || 'OccaServe Report'], [`Generated ${config.generatedAt || new Date().toLocaleString()}`], []);
+        const lines = [[config.title || 'OccaServe Report']];
+        if (config.catererName) lines.push(['Caterer', config.catererName]);
+        lines.push([`Generated ${config.generatedAt || new Date().toLocaleString()}`]);
+        (config.metadata || []).forEach(item => lines.push([item]));
+        lines.push([]);
         sections.forEach(section => {
             if (sections.length > 1 && section.title) lines.push([section.title]);
             lines.push(section.columns.map(column => column.label));
@@ -459,15 +386,6 @@
     }
 
     async function downloadWordDocument(config, sections) {
-        if (config.wordUrl) {
-            const response = await fetch(config.wordUrl, { credentials: 'same-origin' });
-            if (!response.ok) throw new Error('Word report could not be generated.');
-            const blob = await response.blob();
-            const disposition = response.headers.get('Content-Disposition') || '';
-            const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `${fileBase(config)}.docx`;
-            saveBlob(blob, filename);
-            return;
-        }
         await loadLibrary(libraries.docx);
         const word = window.docx;
         if (!word || !word.Document || !word.Packer) throw new Error('Word document library is unavailable.');
@@ -477,7 +395,6 @@
             ...(config.catererName ? [new word.Paragraph({ text: config.catererName, heading: word.HeadingLevel.HEADING_2 })] : []),
             new word.Paragraph({ text: `Generated ${config.generatedAt || new Date().toLocaleString()}${(config.metadata || []).length ? ` · ${(config.metadata || []).join(' · ')}` : ''}`, spacing: { after: 240 } })
         ];
-        appendWordSummary(word, children, config);
         const pageWidth = 16838;
         const margins = { top: 600, right: 540, bottom: 600, left: 540 };
         const tableWidth = pageWidth - margins.left - margins.right;
@@ -534,17 +451,6 @@
             }]
         });
         saveBlob(await word.Packer.toBlob(document), `${fileBase(config)}.docx`);
-    }
-
-    function appendWordSummary(word, children, config) {
-        const summary = config.summary;
-        if (!summary || (!summary.items?.length && !summary.statusBreakdown?.length)) return;
-        children.push(new word.Paragraph({ text: 'Report summary', heading: word.HeadingLevel.HEADING_1, spacing: { before: 240, after: 120 } }));
-        (summary.items || []).forEach(item => children.push(new word.Paragraph({ text: `${item.label}: ${item.value}` })));
-        if (summary.statusBreakdown?.length) {
-            children.push(new word.Paragraph({ text: 'Payment status breakdown', heading: word.HeadingLevel.HEADING_2, spacing: { before: 160, after: 80 } }));
-            summary.statusBreakdown.forEach(item => children.push(new word.Paragraph({ text: `${item.label}: ${item.count}` })));
-        }
     }
 
     function makeWordCell(word, value, header = false, width) {
@@ -607,54 +513,47 @@
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'OccaServe';
         workbook.created = new Date();
-        if (config.summary) {
-            const summarySheet = workbook.addWorksheet('Summary');
-            summarySheet.addRows([
-                [config.title || 'OccaServe Report'],
-                ...(config.catererName ? [['Caterer', config.catererName]] : []),
-                ['Generated', config.generatedAt || new Date().toLocaleString()],
-                ...(config.metadata || []).map(item => ['Filter', item]),
-                [],
-                ['Report summary'],
-                ['Metric', 'Value'],
-                ...(config.summary.items || []).map(item => [item.label, item.value]),
-                ...(config.summary.statusBreakdown?.length ? [[], ['Payment status breakdown'], ['Status', 'Count']] : []),
-                ...(config.summary.statusBreakdown || []).map(item => [item.label, item.count])
-            ]);
-            summarySheet.columns = [{ width: 30 }, { width: 28 }];
-            summarySheet.pageSetup = {
-                paperSize: 9,
-                orientation: 'landscape',
-                fitToPage: true,
-                fitToWidth: 1,
-                fitToHeight: 1,
-                margins: { left: 0.35, right: 0.35, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
-            };
-            summarySheet.getRow(1).font = { bold: true, size: 16, color: { argb: 'FF0F172A' } };
-            summarySheet.eachRow((row, rowNumber) => {
-                row.eachCell(cell => {
-                    if (rowNumber !== 1) cell.border = { bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } } };
-                    cell.alignment = { vertical: 'middle', wrapText: true };
-                });
-            });
-            summarySheet.eachRow(row => {
-                if (['Report summary', 'Metric', 'Payment status breakdown', 'Status'].includes(String(row.getCell(1).value || ''))) {
-                    row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-                    row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
-                }
-            });
-        }
         sections.forEach((section, sectionIndex) => {
             const worksheetName = (section.title || 'Report').replace(/[\\/?*:[\]]/g, '').slice(0, 31) || `Report ${sectionIndex + 1}`;
             const worksheet = workbook.addWorksheet(worksheetName);
             worksheet.columns = section.columns.map((column, index) => ({
-                header: column.label,
                 key: `field${index}`,
                 width: Math.min(48, Math.max(14, String(column.label).length + 4, ...section.rows.slice(0, 150).map(row => safeText(valueFor(row, column, index)).length + 2))),
-                style: column.type === 'currency' ? { numFmt: '"PHP "#,##0.00' } : column.type === 'number' ? { numFmt: '#,##0.##' } : {}
+                style: {
+                    font: { name: 'Arial', size: 8 },
+                    ...(column.type === 'currency' ? { numFmt: '"₱"#,##0.00' } : {}),
+                    ...(column.type === 'number' ? { numFmt: '#,##0.##' } : {})
+                }
             }));
-            section.rows.forEach(row => worksheet.addRow(Object.fromEntries(section.columns.map((column, index) => [`field${index}`, valueFor(row, column, index)]))));
-            worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+            const columnCount = Math.max(1, section.columns.length);
+            const addMergedLine = (text, style = {}) => {
+                const row = worksheet.addRow([text]);
+                if (columnCount > 1) worksheet.mergeCells(row.number, 1, row.number, columnCount);
+                row.alignment = { vertical: 'middle', wrapText: true };
+                row.height = 22;
+                row.font = {
+                    ...(style.font || {}),
+                    ...(style.color ? { color: { argb: style.color } } : {})
+                };
+                return row;
+            };
+            addMergedLine('OCCASERVE', { font: { bold: true, size: 10 }, color: 'FFF07835' });
+            addMergedLine(config.title || 'OccaServe Report', { font: { bold: true, size: 16 }, color: 'FF0F172A' });
+            if (config.catererName) addMergedLine(config.catererName, { font: { bold: true, size: 11 }, color: 'FF334155' });
+            const metadata = [`Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])];
+            addMergedLine(metadata.filter(Boolean).join(' · '), { font: { size: 9 }, color: 'FF64748B' });
+            if (section.title) addMergedLine(section.title, { font: { bold: true, size: 11 }, color: 'FF263449' });
+            worksheet.addRow([]);
+            const headerRow = worksheet.addRow(section.columns.map(column => column.label));
+            const headerRowNumber = headerRow.number;
+            if (section.columns.length) {
+                section.rows.forEach(row => worksheet.addRow(
+                    section.columns.map((column, index) => valueFor(row, column, index))
+                ));
+            } else {
+                worksheet.addRow(['No matching records.']);
+            }
+            worksheet.views = [{ state: 'frozen', ySplit: headerRowNumber }];
             worksheet.pageSetup = {
                 paperSize: 9,
                 orientation: 'landscape',
@@ -663,17 +562,24 @@
                 fitToHeight: 0,
                 margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
             };
-            worksheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, worksheet.rowCount), column: Math.max(1, section.columns.length) } };
-            const heading = worksheet.getRow(1);
-            heading.height = 24;
-            heading.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            heading.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
-            heading.alignment = { vertical: 'middle', wrapText: true };
+            if (section.columns.length) {
+                worksheet.autoFilter = {
+                    from: { row: headerRowNumber, column: 1 },
+                    to: { row: Math.max(headerRowNumber, worksheet.rowCount), column: section.columns.length }
+                };
+            }
+            headerRow.height = 24;
+            headerRow.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF176B43' } };
+            headerRow.alignment = { vertical: 'middle', wrapText: true };
             worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber < headerRowNumber) return;
                 let rowLines = 1;
                 row.eachCell(cell => {
                     cell.border = { bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } } };
-                    if (rowNumber > 1 && rowNumber % 2 === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    if (rowNumber > headerRowNumber && (rowNumber - headerRowNumber) % 2 === 0) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+                    }
                     cell.alignment = { vertical: 'top', wrapText: true };
                     const columnWidth = worksheet.getColumn(cell.col).width || 14;
                     const value = cell.value && typeof cell.value === 'object' && 'text' in cell.value
@@ -716,28 +622,6 @@
             const subtitleY = 56 + titleLines.length * 20 + 4;
             doc.text(subtitleLines, margin, subtitleY);
             let tableStartY = subtitleY + subtitleLines.length * 10 + 12;
-            if (!index && config.summary) {
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(9);
-                doc.setTextColor(51, 65, 85);
-                doc.text('REPORT SUMMARY', margin, tableStartY);
-                tableStartY += 14;
-                const summaryRows = [
-                    ...(config.summary.items || []).map(item => [item.label, item.value]),
-                    ...(config.summary.statusBreakdown || []).map(item => [`Payment status · ${item.label}`, String(item.count)])
-                ];
-                if (summaryRows.length) {
-                    doc.autoTable({
-                        startY: tableStartY,
-                        body: summaryRows,
-                        margin: { left: margin, right: margin, bottom: 30 },
-                        theme: 'plain',
-                        styles: { font: 'helvetica', fontSize: 8, cellPadding: 2, textColor: [51, 65, 85] },
-                        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 150 } }
-                    });
-                    tableStartY = doc.lastAutoTable.finalY + 8;
-                }
-            }
             if (section.title) {
                 doc.setFontSize(11);
                 doc.setTextColor(51, 65, 85);
@@ -787,8 +671,7 @@
     function printReport(config, sections) {
         const win = window.open('', '_blank');
         if (!win) throw new Error('Allow pop-ups to print this report.');
-        const summaryHtml = config.summary ? `<section><h2>Report summary</h2><p>${(config.summary.items || []).map(item => `<strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}`).join(' · ')}</p>${config.summary.statusBreakdown?.length ? `<p><strong>Payment status:</strong> ${config.summary.statusBreakdown.map(item => `${escapeHtml(item.label)} (${item.count})`).join(' · ')}</p>` : ''}</section>` : '';
-        const sectionHtml = summaryHtml + sections.map(section => `<section><h2>${escapeHtml(section.title)}</h2><table><thead><tr>${section.columns.map(column => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead><tbody>${section.rows.map(row => `<tr>${section.columns.map((column, index) => `<td>${escapeHtml(column.type === 'currency' ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`).join('');
+        const sectionHtml = sections.map(section => `<section><h2>${escapeHtml(section.title)}</h2><table><thead><tr>${section.columns.map(column => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead><tbody>${section.rows.map(row => `<tr>${section.columns.map((column, index) => `<td>${escapeHtml(column.type === 'currency' ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`).join('');
         win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(config.title || 'OccaServe Report')}</title><style>@page{size:landscape;margin:15mm}body{font:11px/1.5 Arial,sans-serif;color:#0f172a}header{border-bottom:3px solid #F07835;padding-bottom:12px;margin-bottom:20px}header strong{color:#F07835}h1{font-size:22px;margin:10px 0 4px}small{color:#64748b}section{margin:20px 0;break-inside:avoid}h2{font-size:14px}table{width:100%;border-collapse:collapse;font-size:9px}th,td{border:1px solid #dbe3ec;padding:6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#0f172a;color:white}tr:nth-child(even){background:#f8fafc}footer{position:fixed;bottom:0;color:#64748b;font-size:9px}</style></head><body><header><strong>OCCASERVE</strong><h1>${escapeHtml(config.title || 'Report')}</h1><small>${escapeHtml([config.catererName, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · '))}</small></header>${sectionHtml}<footer>OccaServe · Confidential report</footer><script>window.onload=()=>window.print()<\/script></body></html>`);
         const printStyles = win.document.createElement('style');
         printStyles.textContent = 'section{break-inside:auto!important}h2{break-after:avoid}thead{display:table-header-group}tr{break-inside:avoid}th,td{white-space:pre-wrap;overflow-wrap:anywhere}';

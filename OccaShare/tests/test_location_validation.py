@@ -77,9 +77,14 @@ def test_caterer_accepts_exact_street_without_barangay():
     ) is None
 
 
-def test_caterer_requires_barangay_and_nearby_landmark_without_street():
-    assert "nearby landmark" in validate_caterer(street_address="", landmark="")
-    assert validate_caterer(street_address="", landmark="Near the city hall") is None
+def test_caterer_requires_barangay_but_not_nearby_landmark_without_street():
+    assert validate_caterer(street_address="", landmark="") is None
+    assert validate_caterer(
+        street_address="",
+        barangay="",
+        barangay_status="unavailable",
+        landmark="",
+    )
 
 
 def test_caterer_rejects_water_pin_even_with_complete_address():

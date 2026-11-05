@@ -168,8 +168,6 @@ def validate_location_details(
     if street_address:
         return None
     if not barangay or status == "unavailable":
-        return "Enter an exact street address, or provide a barangay and nearby landmark."
-    if not nearby_landmark and not landmark:
-        return "Enter a nearby landmark when no exact street address is available."
+        return "Enter an exact street address, or provide a barangay."
 
     return None

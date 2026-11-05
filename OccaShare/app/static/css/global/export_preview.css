@@ -253,118 +253,11 @@
     overflow-wrap: anywhere;
 }
 
-.occa-export-summary {
-    margin: 0 0 22px;
-    padding: 16px;
-    border: 1px solid #e6eaf0;
-    border-radius: 11px;
-    background: #fbfcfe;
-}
-
 .occa-export-section h2,
-.occa-export-summary h2,
 .occa-export-sheet > h2 {
     margin: 0 0 10px;
     color: #263449;
     font-size: 14px;
-}
-
-.occa-export-summary-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.occa-export-summary-card {
-    display: grid;
-    min-width: 0;
-    gap: 4px;
-    padding: 11px 12px;
-    border: 1px solid #e7ebf1;
-    border-radius: 9px;
-    background: #fff;
-}
-
-.occa-export-summary-card span {
-    color: #64748b;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-}
-
-.occa-export-summary-card strong {
-    color: #0f172a;
-    font-size: 17px;
-    overflow-wrap: anywhere;
-}
-
-.occa-export-summary-table {
-    width: min(100%, 520px);
-    table-layout: fixed;
-    border-collapse: collapse;
-    color: #334155;
-    font-size: 11px;
-}
-
-.occa-export-summary-table th:first-child,
-.occa-export-summary-table td:first-child {
-    width: 68%;
-}
-
-.occa-export-summary-table th:last-child,
-.occa-export-summary-table td:last-child {
-    width: 32%;
-}
-
-.occa-export-summary-table th,
-.occa-export-summary-table td {
-    padding: 6px 8px;
-    border-bottom: 1px solid #dbe3ec;
-    text-align: left;
-    vertical-align: top;
-}
-
-.occa-export-summary-table th {
-    color: #475569;
-    font-weight: 750;
-}
-
-.occa-export-summary h3 {
-    margin: 14px 0 7px;
-    color: #475569;
-    font-size: 11px;
-}
-
-.occa-export-summary p {
-    margin: 4px 0;
-    color: #334155;
-    font-size: 11px;
-}
-
-.occa-export-status-breakdown {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 7px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.occa-export-status-breakdown li {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 9px;
-    border: 1px solid #e2e8f0;
-    border-radius: 999px;
-    background: #fff;
-    color: #475569;
-    font-size: 11px;
-}
-
-.occa-export-status-breakdown strong {
-    color: #0f172a;
 }
 
 .occa-export-section {
@@ -425,11 +318,6 @@
     background: #176b43;
 }
 
-.occa-export-sheet-xlsx .occa-export-summary-table th {
-    background: #176b43;
-    color: #fff;
-}
-
 .occa-export-sheet-pdf {
     width: min(100%, 1120px);
     min-height: 100%;
@@ -440,31 +328,16 @@
     margin-bottom: 14px;
 }
 
-.occa-export-sheet-pdf .occa-export-summary {
-    margin-bottom: 14px;
-    padding: 10px 12px;
-    border-radius: 0;
-    background: #fff;
-}
-
 .occa-export-sheet-pdf .occa-export-section {
     margin: 12px 0 16px;
 }
 
-.occa-export-sheet-pdf .occa-export-table,
-.occa-export-sheet-pdf .occa-export-summary-table {
+.occa-export-sheet-pdf .occa-export-table {
     font-size: 9px;
 }
 
-.occa-export-sheet-pdf .occa-export-summary-table th:first-child,
-.occa-export-sheet-pdf .occa-export-summary-table td:first-child {
-    width: 40%;
-    font-weight: 700;
-}
-
-.occa-export-sheet-pdf .occa-export-summary-table th:last-child,
-.occa-export-sheet-pdf .occa-export-summary-table td:last-child {
-    width: 60%;
+.occa-export-sheet-pdf .occa-export-table th {
+    background: #0f172a;
 }
 
 .occa-export-sheet-pdf .occa-export-table th,
@@ -670,24 +543,6 @@
 
     .occa-export-preview-label small {
         max-width: 45%;
-        text-align: right;
-    }
-
-    .occa-export-summary {
-        padding: 11px;
-    }
-
-    .occa-export-summary-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .occa-export-summary-card {
-        grid-template-columns: 1fr auto;
-        align-items: center;
-    }
-
-    .occa-export-summary-card strong {
-        font-size: 14px;
         text-align: right;
     }
 

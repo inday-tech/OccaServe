@@ -176,7 +176,6 @@
             const response = await fetch('/admin/reports/export?format=preview', { credentials: 'same-origin' });
             if (!response.ok) throw new Error('Unable to load the current analytics report.');
             const report = await response.json();
-            report.wordUrl = '/admin/reports/export?format=word';
             window.OccaExportPreview.open(report);
         } catch (error) {
             if (window.showError) window.showError(error.message);

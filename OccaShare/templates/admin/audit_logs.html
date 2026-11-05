@@ -1003,8 +1003,6 @@
             const response = await fetch(`/admin/api/audit-logs/export?${params.toString()}`, { credentials: 'same-origin' });
             if (!response.ok) throw new Error('Unable to load matching audit entries.');
             const report = await response.json();
-            params.set('format', 'word');
-            report.wordUrl = `/admin/api/audit-logs/export?${params.toString()}`;
             window.OccaExportPreview.open(report);
         } catch (error) {
             if (window.showError) window.showError(error.message);
