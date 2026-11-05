@@ -1298,6 +1298,7 @@ async function loadCancellationDetails(bookingId) {
     status.textContent = 'Checking cancellation options…';
     status.dataset.state = '';
     stage.textContent = '';
+    stage.hidden = true;
     reasonDisplay.hidden = true;
     reasonDisplay.textContent = '';
     policy.hidden = true;
@@ -1305,11 +1306,17 @@ async function loadCancellationDetails(bookingId) {
     form.style.display = 'none';
     form.reset();
     toggleCancellationOtherReason();
+    const controller = new AbortController();
+    const requestTimeout = window.setTimeout(() => controller.abort(), 15000);
     try {
-        const response = await fetch(`/customer/bookings/${bookingId}/cancellation-quote`, { headers: { Accept: 'application/json' } });
+        const response = await fetch(`/customer/bookings/${bookingId}/cancellation-quote`, {
+            headers: { Accept: 'application/json' },
+            signal: controller.signal
+        });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Cancellation details could not be loaded.');
         if (String(currentModalBookingId) !== String(bookingId)) return;
+        stage.hidden = false;
         const request = data.request;
         const preparation = data.preparation || {};
         const cancellationReason = data.cancellation_reason || request?.reason || '';
@@ -1347,7 +1354,11 @@ async function loadCancellationDetails(bookingId) {
         }
     } catch (error) {
         status.dataset.state = 'blocked';
-        status.textContent = error instanceof Error ? error.message : 'Cancellation details could not be loaded.';
+        status.textContent = error instanceof DOMException && error.name === 'AbortError'
+            ? 'Cancellation details took too long to load. Please close and reopen the booking.'
+            : error instanceof Error ? error.message : 'Cancellation details could not be loaded.';
+    } finally {
+        window.clearTimeout(requestTimeout);
     }
 }
 

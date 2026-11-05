@@ -615,11 +615,7 @@ async def maintenance_middleware(request: Request, call_next):
     if path.startswith("/static") or path.startswith("/admin") or path.startswith("/api/admin") or path == "/favicon.ico":
         return await call_next(request)
 
-    # Reuse the request DB session so config checks do not open a second connection.
-    db = getattr(request.state, "db", None)
-    owns_db = db is None
-    if owns_db:
-        db = SessionLocal()
+    db = SessionLocal()
     try:
         config = db.query(models.WebsiteConfig).first()
         if config:
@@ -657,17 +653,9 @@ async def maintenance_middleware(request: Request, call_next):
     except Exception as e:
         print(f"[MAINTENANCE CHECK ERROR] Non-fatal config query error: {e}")
     finally:
-        if owns_db:
-            db.close()
+        db.close()
 
     return await call_next(request)
-
-@app.middleware("http")
-async def db_session_middleware(request: Request, call_next):
-    request.state.db = SessionLocal()
-    response = await call_next(request)
-    request.state.db.close()
-    return response
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
