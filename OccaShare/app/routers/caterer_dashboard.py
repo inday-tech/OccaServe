@@ -1792,13 +1792,21 @@ async def upload_dispatch_proof(
     user: models.User = Depends(caterer_only)
 ):
     numeric_id = sanitize_booking_id(booking_id)
-    booking = db.query(models.Booking).get(numeric_id)
-    if not booking or booking.caterer_id != user.caterer_profile.id:
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == numeric_id,
+        models.Booking.caterer_id == user.caterer_profile.id,
+    ).with_for_update().first()
+    if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
     current_status = (booking.status or "").lower()
     if booking.is_archived or current_status in ["completed", "delivered", "cancelled", "expired"]:
         raise HTTPException(status_code=400, detail="This booking is closed and cannot be dispatched.")
+    if db.query(models.BookingCancellationRequest.id).filter(
+        models.BookingCancellationRequest.booking_id == booking.id,
+        models.BookingCancellationRequest.status == "pending",
+    ).first():
+        raise HTTPException(status_code=409, detail="Resolve the pending customer cancellation request before changing preparation.")
 
     if not proof_image.filename:
         raise HTTPException(status_code=400, detail="No file selected")
@@ -1815,6 +1823,15 @@ async def upload_dispatch_proof(
             status_code=409,
             detail=f"Cannot mark this booking as {stage.replace('_', ' ')} while it is {current_status.replace('_', ' ')}.",
         )
+    if stage in {"ready_for_delivery", "ready_for_pickup"}:
+        from app.services.preparation_service import PREP_STATUSES, normalize_prep_status
+        current_preparation = normalize_prep_status(booking.preparation_status, booking.status)
+        preparation_order = [status["key"] for status in PREP_STATUSES]
+        if preparation_order.index(current_preparation) != preparation_order.index("preparing"):
+            raise HTTPException(
+                status_code=409,
+                detail="Update the preparation tracker through its stages before marking this booking ready for delivery or pickup.",
+            )
 
     from app.services.payment_service import PaymentService
     payment_summary = PaymentService.get_payment_summary(booking)
@@ -1831,7 +1848,6 @@ async def upload_dispatch_proof(
         raise HTTPException(status_code=500, detail="Failed to upload dispatch proof to Cloudinary.")
     booking.dispatch_proof_url = c_url
 
-    
     booking.status = stage
     if stage in {"ready_for_delivery", "ready_for_pickup"}:
         booking.preparation_status = "ready_for_delivery"
@@ -1865,7 +1881,7 @@ def ensure_booking_cancellation_has_no_verified_payment(booking: models.Booking)
     if PaymentService.has_payment_requiring_cancellation_review(booking):
         raise HTTPException(
             status_code=409,
-            detail="This booking has a verified payment or a payment under review. Cancellation and any refund must be reviewed by support or an administrator.",
+            detail="This booking has a verified payment or a payment under review. Cancellation and payment resolution must be reviewed by support or an administrator.",
         )
 
 
@@ -1937,8 +1953,11 @@ async def update_booking_status(
     user: models.User = Depends(caterer_only)
 ):
     numeric_id = sanitize_booking_id(booking_id)
-    booking = db.query(models.Booking).get(numeric_id)
-    if not booking or booking.caterer_id != user.caterer_profile.id:
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == numeric_id,
+        models.Booking.caterer_id == user.caterer_profile.id,
+    ).with_for_update().first()
+    if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
     if booking.is_archived:
@@ -2017,10 +2036,6 @@ async def update_booking_status(
     if new_status not in allowed_next:
         raise HTTPException(status_code=400, detail=f"Cannot transition directly from '{current_status}' to '{new_status}'. Please follow proper status progression.")
 
-    # Gate removed: preparation is status-based, not checklist-based
-    if new_status == "ready_for_delivery":
-        booking.preparation_status = "ready_for_delivery"
-
     # --- COMPLETION GATE: must be Fully Paid (no remaining balance), all methods ---
     if new_status == "completed":
         from app.services.payment_service import PaymentService
@@ -2029,12 +2044,6 @@ async def update_booking_status(
             raise HTTPException(status_code=400, detail=gate["message"])
         # Align status flag once amounts confirm full settlement
         booking.payment_status = "paid"
-
-    if new_status == "preparing":
-        booking.preparation_status = "preparing"
-
-    if new_status == "setup_ongoing":
-        booking.preparation_status = "setup_in_progress"
 
     if new_status == "completed":
         booking.preparation_status = "completed"
@@ -4950,6 +4959,7 @@ async def get_booking_details_api(
     )
     cancellation_rows = sorted(booking.cancellation_requests or [], key=lambda row: row.requested_at.isoformat() if row.requested_at else "")
     latest_cancellation = cancellation_rows[-1] if cancellation_rows else None
+    prep_summary = build_prep_summary(booking)
 
     return {
         "id": booking.id,
@@ -5016,21 +5026,13 @@ async def get_booking_details_api(
             "status": latest_cancellation.status,
             "reason": latest_cancellation.reason,
             "requested_at": latest_cancellation.requested_at.isoformat() if latest_cancellation.requested_at else None,
-            "estimated_refund_amount": latest_cancellation.estimated_refund_amount,
-            "refund_percent": latest_cancellation.refund_percent,
             "decision_remarks": latest_cancellation.decision_remarks,
             "decided_at": latest_cancellation.decided_at.isoformat() if latest_cancellation.decided_at else None,
-            "refund": ({
-                "id": latest_cancellation.refund.id,
-                "amount": latest_cancellation.refund.amount,
-                "reason": latest_cancellation.refund.reason,
-                "method": latest_cancellation.refund.method,
-                "status": latest_cancellation.refund.status,
-                "processed_at": latest_cancellation.refund.processed_at.isoformat() if latest_cancellation.refund.processed_at else None,
-                "transaction_reference": latest_cancellation.refund.transaction_reference,
-                "proof_url": latest_cancellation.refund.proof_url,
-                "customer_dispute_reason": latest_cancellation.refund.customer_dispute_reason,
-            } if latest_cancellation.refund else None),
+            "preparation_status": prep_summary["status"],
+            "preparation_label": prep_summary["label"],
+            "preparation_progress": prep_summary["progress"],
+            "event_date": booking.event_date.isoformat() if booking.event_date else None,
+            "event_time": booking.event_time.strftime("%H:%M") if booking.event_time else None,
         } if latest_cancellation else None),
         "computed_payment_status": computed_payment_status,
         "payment_method": booking.payment_method,
@@ -5211,7 +5213,7 @@ async def create_customer_document_link(
     booking = db.query(models.Booking).filter(
         models.Booking.id == numeric_id,
         models.Booking.caterer_id == user.caterer_profile.id
-    ).first()
+    ).with_for_update().first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     account_email = (booking.user.email if booking.user else "") or ""
@@ -5765,9 +5767,17 @@ async def complete_booking(
 ):
     """Mark a confirmed booking as completed."""
     numeric_id = sanitize_booking_id(booking_id)
-    booking = db.query(models.Booking).get(numeric_id)
-    if not booking or booking.caterer_id != user.caterer_profile.id:
+    booking = db.query(models.Booking).filter(
+        models.Booking.id == numeric_id,
+        models.Booking.caterer_id == user.caterer_profile.id,
+    ).with_for_update().first()
+    if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if db.query(models.BookingCancellationRequest.id).filter(
+        models.BookingCancellationRequest.booking_id == booking.id,
+        models.BookingCancellationRequest.status == "pending",
+    ).first():
+        raise HTTPException(status_code=409, detail="Resolve the pending customer cancellation request before completing this booking.")
 
     if booking.is_archived:
         raise HTTPException(status_code=400, detail="Cannot modify an archived booking.")
@@ -10815,7 +10825,7 @@ async def update_booking_preparation_status(
     booking = db.query(models.Booking).filter(
         models.Booking.id == numeric_id,
         models.Booking.caterer_id == user.caterer_profile.id
-    ).first()
+    ).with_for_update().first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     if booking.is_archived or booking.status in ["cancelled", "expired", "completed", "delivered"]:
@@ -10923,21 +10933,7 @@ async def update_booking_preparation_status(
         booking.preparation_status = new_key
         booking.preparation_updated_at = datetime.now(timezone.utc)
 
-    # Sync related booking lifecycle status when safe / meaningful
-    mapped_booking_status = new_meta.get("booking_status")
     old_booking_status = booking.status
-    if mapped_booking_status and mapped_booking_status != booking.status:
-        # Allow forward-ish operational updates without forcing completed
-        allowed_from = {
-            "preparing": ["confirmed", "preparing"],
-            "ready_for_delivery": ["preparing", "ready_for_delivery"],
-            "setup_ongoing": [
-                "arrived", "setup_ongoing"
-            ],
-        }
-        sources = allowed_from.get(mapped_booking_status, [])
-        if not sources or booking.status in sources or booking.status == mapped_booking_status:
-            booking.status = mapped_booking_status
 
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -10948,7 +10944,11 @@ async def update_booking_preparation_status(
         )
     )
     db.add(history)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(booking)
 
     # Notify the customer immediately so they can see preparation progress from
@@ -11251,8 +11251,12 @@ async def decide_booking_cancellation(
     remarks = str(payload.get("remarks") or "").strip()
     from ..core.text_limits import enforce_text_limit
     enforce_text_limit(remarks, "Cancellation decision remarks")
-    if decision not in {"approve", "reject"} or len(remarks) < 4:
-        raise HTTPException(status_code=400, detail="Choose approve or reject and provide remarks (4–300 characters).")
+    if decision not in {"approve", "reject"}:
+        raise HTTPException(status_code=400, detail="Choose approve or reject.")
+    if decision == "reject" and len(remarks) < 4:
+        raise HTTPException(status_code=400, detail="Provide a rejection reason (at least 4 characters).")
+    if len(remarks) > 300:
+        raise HTTPException(status_code=400, detail="Decision remarks must be 300 characters or fewer.")
     booking = db.query(models.Booking).filter(
         models.Booking.id == booking_id,
         models.Booking.caterer_id == user.caterer_profile.id,
@@ -11266,51 +11270,50 @@ async def decide_booking_cancellation(
         raise HTTPException(status_code=404, detail="Cancellation request not found")
     if booking.is_archived or cancellation.status != "pending":
         raise HTTPException(status_code=409, detail="This cancellation request is no longer pending.")
-    from ..services.booking_cancellation import event_has_started
-    if decision == "approve" and (
-        (booking.status or "").strip().lower() in {"cancelled", "completed", "delivered", "expired"}
-        or event_has_started(booking)
-    ):
-        raise HTTPException(status_code=409, detail="This booking can no longer be cancelled through the normal process.")
-    from ..services.payment_service import PaymentService
-    payment_summary = PaymentService.get_payment_summary(booking)
-    cash_request_pending = (booking.payment_status or "").strip().lower() in {"cash_payment_requested", "cash_balance_requested"}
-    if decision == "approve" and not cash_request_pending and payment_summary.get("pending_review", 0) > 0.009:
-        raise HTTPException(status_code=409, detail="Resolve the pending payment proof before approving cancellation.")
+    from ..services.preparation_service import get_prep_meta, normalize_prep_status
+    preparation_key = normalize_prep_status(booking.preparation_status, booking.status)
+    preparation_meta = get_prep_meta(preparation_key)
+    if decision == "approve":
+        from ..services.booking_cancellation import cancellation_mode_for_booking
+        if cancellation_mode_for_booking(booking) != "request":
+            raise HTTPException(
+                status_code=409,
+                detail="Cancellation cannot be approved after Setup in Progress begins or when the event cutoff has passed.",
+            )
+        if preparation_key == "ready_for_delivery" and len(remarks) < 4:
+            raise HTTPException(
+                status_code=400,
+                detail="Preparation is complete. Provide at least 4 characters of review remarks before approving.",
+            )
     from datetime import datetime, timezone
     cancellation.status = "approved" if decision == "approve" else "rejected"
     cancellation.decision_remarks = remarks
     cancellation.decided_by = user.id
     cancellation.decided_at = datetime.now(timezone.utc)
-    refund_data = None
     if decision == "approve":
         booking.status = "cancelled"
-        cap = round(float(payment_summary.get("verified_paid") or 0) * cancellation.refund_percent / 100, 2)
-        original_estimate = cancellation.estimated_refund_amount
-        cancellation.estimated_refund_amount = cap
-        cancellation.verified_paid_amount_at_request = float(payment_summary.get("verified_paid") or 0)
-        method = (booking.payment_method or "").strip()
-        refund_status = "pending" if cap > 0.009 else "no_refund"
-        if method.lower() == "cash" and cancellation.verified_paid_amount_at_request <= 0.009:
-            refund_status = "no_refund"
-        refund = models.BookingRefund(
+        db.add(models.BookingHistory(
             booking_id=booking.id,
-            cancellation_request_id=cancellation.id,
-            amount=round(cap, 2),
-            reason=cancellation.reason,
-            method=method or None,
-            status=refund_status,
-        )
-        db.add(refund)
-        db.add(models.BookingHistory(booking_id=booking.id, status="cancelled", notes=f"Caterer approved customer cancellation request #{cancellation.id}. Estimate updated from ₱{original_estimate:.2f} to ₱{cap:.2f} based on verified payments at decision. Remarks: {remarks}"))
-        refund_data = {"amount": round(cap, 2), "status": refund_status}
+            status="cancelled",
+            notes=(
+                f"Caterer approved customer cancellation request #{cancellation.id}. "
+                f"Last preparation stage: {preparation_meta['label']} "
+                f"({preparation_meta['progress']}%). No refund is provided for customer-initiated cancellation. "
+                f"Remarks: {remarks or '—'}"
+            ),
+        ))
     else:
-        db.add(models.BookingHistory(booking_id=booking.id, status=booking.status, notes=f"Caterer rejected cancellation request #{cancellation.id}. Remarks: {remarks}"))
+        db.add(models.BookingHistory(
+            booking_id=booking.id,
+            status=booking.status,
+            notes=(
+                f"Caterer rejected customer cancellation request #{cancellation.id} during "
+                f"{preparation_meta['label']} ({preparation_meta['progress']}%). "
+                f"Rejection reason: {remarks}"
+            ),
+        ))
     try:
         db.commit()
-        if decision == "approve":
-            refund = db.query(models.BookingRefund).filter_by(cancellation_request_id=cancellation.id).first()
-            refund_data["id"] = refund.id if refund else None
     except Exception:
         db.rollback()
         raise
@@ -11324,72 +11327,7 @@ async def decide_booking_cancellation(
         f"Your decision for cancellation request #{cancellation.id} on booking #{booking.id} was recorded.",
         f"/caterer/bookings?open_booking={booking.id}", "booking_update"
     )
-    return {"status": "success", "decision": cancellation.status, "refund": refund_data}
-
-
-@router.post("/api/bookings/{booking_id}/refunds/{refund_id}/process")
-async def process_booking_refund(
-    booking_id: int,
-    refund_id: int,
-    amount: float = Form(...),
-    method: str = Form(...),
-    transaction_reference: str = Form(""),
-    proof: Optional[UploadFile] = File(None),
-    db: Session = Depends(database.get_db),
-    user: models.User = Depends(caterer_only),
-):
-    booking = db.query(models.Booking).filter(
-        models.Booking.id == booking_id,
-        models.Booking.caterer_id == user.caterer_profile.id,
-    ).with_for_update().first()
-    refund = db.query(models.BookingRefund).filter(
-        models.BookingRefund.id == refund_id,
-        models.BookingRefund.booking_id == booking_id,
-    ).with_for_update().first()
-    if not booking or not refund:
-        raise HTTPException(status_code=404, detail="Refund record not found")
-    if booking.status != "cancelled" or refund.status not in {"pending", "disputed"}:
-        raise HTTPException(status_code=409, detail="This refund cannot be processed in its current state.")
-    if not math.isfinite(amount) or amount < 0.01 or amount > refund.cancellation_request.estimated_refund_amount + 0.009:
-        raise HTTPException(status_code=400, detail="Refund amount must be positive and cannot exceed the approved estimate.")
-    method = method.strip()
-    if method.lower() not in {"gcash", "maya", "cash", "bank transfer"}:
-        raise HTTPException(status_code=400, detail="Choose GCash, Maya, Cash, or Bank Transfer.")
-    reference = transaction_reference.strip()
-    if len(reference) > 120:
-        raise HTTPException(status_code=400, detail="Transaction reference must be 120 characters or fewer.")
-    proof_url = None
-    if method.lower() in {"gcash", "maya", "bank transfer"}:
-        if not reference and not proof:
-            raise HTTPException(status_code=400, detail="Online refunds need a transaction reference or proof.")
-        if proof:
-            if proof.content_type not in {"image/jpeg", "image/png", "image/webp", "application/pdf"}:
-                raise HTTPException(status_code=400, detail="Refund proof must be JPG, PNG, WEBP, or PDF.")
-            content = await proof.read(5 * 1024 * 1024 + 1)
-            if len(content) > 5 * 1024 * 1024:
-                raise HTTPException(status_code=400, detail="Refund proof must be no larger than 5 MB.")
-            from app.services.storage import upload_file_to_cloudinary
-            proof_url = upload_file_to_cloudinary(content, folder="refund_proofs")
-            if not proof_url:
-                raise HTTPException(status_code=502, detail="Refund proof upload failed.")
-    from datetime import datetime, timezone
-    refund.amount = round(amount, 2)
-    refund.method = method
-    refund.transaction_reference = reference or None
-    refund.proof_url = proof_url
-    refund.processed_by = user.id
-    refund.processed_at = datetime.now(timezone.utc)
-    refund.status = "awaiting_customer_confirmation"
-    refund.customer_dispute_reason = None
-    refund.customer_confirmed_at = None
-    db.add(models.BookingHistory(booking_id=booking.id, status="cancelled", notes=f"Caterer recorded refund #{refund.id}: ₱{refund.amount:.2f} via {method}; reference {reference or 'not applicable'}; proof {proof_url or 'not applicable'}; awaiting customer confirmation."))
-    db.commit()
-    await NotificationService.notify_status_update(
-        db, booking.user_id, "Refund Sent for Confirmation",
-        f"The caterer recorded a ₱{refund.amount:.2f} refund for booking #{booking.id}. Confirm receipt or report an issue in booking details.",
-        f"/customer/bookings?open_detail={booking.id}", "booking_update"
-    )
-    return {"status": "success", "refund_status": refund.status, "proof_url": refund.proof_url}
+    return {"status": "success", "decision": cancellation.status}
 
 
 @router.post("/bookings/{booking_id}/cancel")
@@ -13644,10 +13582,17 @@ async def set_preparation_date(
     booking = db.query(models.Booking).filter(
         models.Booking.id == booking_id,
         models.Booking.caterer_id == caterer.id
-    ).first()
+    ).with_for_update().first()
     
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.is_archived or (booking.status or "").lower() in {"cancelled", "completed", "expired"}:
+        raise HTTPException(status_code=409, detail="Preparation dates cannot be changed for a closed booking.")
+    if db.query(models.BookingCancellationRequest.id).filter(
+        models.BookingCancellationRequest.booking_id == booking.id,
+        models.BookingCancellationRequest.status == "pending",
+    ).first():
+        raise HTTPException(status_code=409, detail="Resolve the pending customer cancellation request before changing preparation.")
         
     data = await request.json()
     prep_date = data.get("preparation_date")

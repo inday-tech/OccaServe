@@ -433,8 +433,6 @@ class PaymentService:
             reopen_status = "preparing"
         else:
             reopen_status = "confirmed"
-            if prep in {"", "not_started", "completed"}:
-                booking.preparation_status = "not_started" if reopen_status == "confirmed" else prep
 
         old_status = booking.status
         booking.status = reopen_status

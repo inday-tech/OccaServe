@@ -1602,7 +1602,7 @@ function _syncFooterButtons(cleanId, normStatus, hasPaymentRequiringReview) {
         if (paymentStatus === 'cash_payment_requested' || paymentStatus === 'cash_balance_requested') {
             cancelBlockedNote.textContent = 'Cash payment was requested but has not been confirmed. Confirm receipt only after you have physically received the cash.';
         } else {
-            cancelBlockedNote.textContent = 'A payment is verified or under review. Contact support or an administrator to review cancellation and any refund.';
+            cancelBlockedNote.textContent = 'A payment is verified or under review. Contact support or an administrator to review the cancellation and customer resolution.';
         }
     }
     if (cancelBtn) {
@@ -1866,20 +1866,15 @@ function showBookingDetails(btn) {
     const cancellationBadge = document.getElementById('modalCancellationStatusBadge');
     if (cancellationBadge) {
         const cancellationState = String(cancellationHeader?.status || '').toLowerCase();
-        const refundState = String(cancellationHeader?.refund?.status || '').toLowerCase();
         cancellationBadge.style.display = cancellationHeader ? 'inline-flex' : 'none';
         cancellationBadge.textContent = cancellationState === 'pending'
             ? 'Cancellation Review Pending'
-            : cancellationState === 'approved' && ['pending', 'disputed'].includes(refundState)
-                ? 'Cancellation Approved – Refund Pending'
-                : cancellationState === 'approved' ? 'Cancellation Approved' : cancellationState.replace(/_/g, ' ');
-        cancellationBadge.style.background = cancellationState === 'pending' || refundState === 'pending' ? '#fff7ed' : '#f0fdf4';
-        cancellationBadge.style.color = cancellationState === 'pending' || refundState === 'pending' ? '#9a3412' : '#166534';
-        cancellationBadge.style.borderColor = cancellationState === 'pending' || refundState === 'pending' ? '#fed7aa' : '#bbf7d0';
+            : cancellationState === 'approved' ? 'Cancellation Approved' : cancellationState.replace(/_/g, ' ');
+        cancellationBadge.style.background = cancellationState === 'pending' ? '#fff7ed' : '#f0fdf4';
+        cancellationBadge.style.color = cancellationState === 'pending' ? '#9a3412' : '#166534';
+        cancellationBadge.style.borderColor = cancellationState === 'pending' ? '#fed7aa' : '#bbf7d0';
         if (cancellationState === 'pending') {
             if (statusAction) statusAction.textContent = 'Cancellation Review Pending';
-        } else if (cancellationState === 'approved' && ['pending', 'disputed'].includes(refundState)) {
-            if (statusAction) statusAction.textContent = 'Cancellation Approved – Refund Pending';
         }
     }
 
@@ -2708,45 +2703,57 @@ function renderCancellationWorkflow(data, bookingId) {
     };
     addText('Request', cancellation.status);
     addText('Requested at', cancellation.requested_at ? new Date(cancellation.requested_at).toLocaleString() : '');
-    addText('Reason', cancellation.reason);
-    const estimatedAmount = Number(cancellation.estimated_refund_amount || 0);
-    const refundPercent = Number(cancellation.refund_percent || 0);
-    addText('Estimated refund', estimatedAmount <= 0 && refundPercent > 0
-        ? `₱0.00 (${refundPercent}% policy rate). No verified payment has been received, so the current estimated refund is ₱0.00.`
-        : `₱${estimatedAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${refundPercent}% of verified payments)`);
-    if (cancellation.decision_remarks) addText('Decision remarks', cancellation.decision_remarks);
-    const refund = cancellation.refund;
-    if (refund) {
-        addText('Refund status', refund.status);
-        addText('Refund amount / method', `₱${Number(refund.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} · ${refund.method || 'Not selected'}`);
-        addText('Processed at', refund.processed_at ? new Date(refund.processed_at).toLocaleString() : '');
-        if (refund.transaction_reference) addText('Transaction reference', refund.transaction_reference);
-        if (refund.customer_dispute_reason) addText('Customer issue', refund.customer_dispute_reason);
-        if (refund.proof_url) {
-            const link = document.createElement('a');
-            link.href = refund.proof_url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Open refund proof';
-            details.appendChild(link);
-        }
+    const preparationStatus = String(cancellation.preparation_status || '').toLowerCase();
+    const stricterReview = preparationStatus === 'ready_for_delivery';
+    addText(
+        'Current preparation stage',
+        `${cancellation.preparation_label || 'Not Started'} (${Number(cancellation.preparation_progress || 0)}%)${stricterReview ? ' — stricter review; approval remarks required' : ''}`
+    );
+    if (cancellation.event_date) {
+        const eventDate = new Date(`${cancellation.event_date}T${cancellation.event_time || '00:00'}:00+08:00`);
+        const remainingMs = eventDate.getTime() - Date.now();
+        const remainingDays = Math.max(0, Math.ceil(remainingMs / 86400000));
+        const remainingLabel = remainingMs <= 0
+            ? 'Event time has passed'
+            : remainingDays === 0
+                ? 'Less than 1 day remaining'
+                : `${remainingDays} day${remainingDays === 1 ? '' : 's'} remaining`;
+        const formattedEventDate = new Intl.DateTimeFormat(undefined, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+                timeZone: 'Asia/Manila'
+        }).format(eventDate);
+        addText('Event date', `${formattedEventDate} (Asia/Manila) · ${remainingLabel}`);
     }
+    addText('Reason', cancellation.reason);
+    addText('Refund policy', 'Customer-initiated cancellations are not refundable.');
+    if (cancellation.decision_remarks) addText('Decision remarks', cancellation.decision_remarks);
     if (cancellation.status === 'pending') {
         const remarksField = document.createElement('div');
         remarksField.className = 'refund-field cancellation-remarks-field';
         const remarksLabel = document.createElement('label');
         remarksLabel.htmlFor = 'cancellationDecisionRemarks';
-        remarksLabel.textContent = 'Decision remarks (required; 4–2000 characters)';
+        remarksLabel.textContent = stricterReview
+            ? 'Decision remarks (required for rejection and approval at this stage; 4–300 characters)'
+            : 'Decision remarks (required for rejection; 4–300 characters)';
         const remarks = document.createElement('textarea');
-        remarks.id = 'cancellationDecisionRemarks'; remarks.required = true; remarks.minLength = 4; remarks.maxLength = 2000;
-        remarks.rows = 3; remarks.placeholder = 'Explain the reason for your decision';
+        remarks.id = 'cancellationDecisionRemarks'; remarks.required = false; remarks.maxLength = 300;
+        remarks.dataset.approvalRemarksRequired = String(stricterReview);
+        remarks.rows = 3;
+        remarks.placeholder = stricterReview
+            ? 'Explain your review before approving or rejecting this request'
+            : 'A rejection reason is required; approval remarks are optional';
         const remarksCounter = document.createElement('small');
         remarksCounter.className = 'refund-field-help';
-        remarksCounter.textContent = '0/2000';
+        remarksCounter.textContent = '0/300';
         const remarksError = document.createElement('small');
         remarksError.className = 'refund-inline-error'; remarksError.setAttribute('aria-live', 'polite');
         remarksField.append(remarksLabel, remarks, remarksCounter, remarksError);
         remarks.addEventListener('input', () => {
-            remarksCounter.textContent = `${remarks.value.length}/2000`;
-            remarksError.textContent = remarks.value.length >= 2000 ? 'Maximum length reached.' : '';
+            remarksCounter.textContent = `${remarks.value.length}/300`;
+            remarksError.textContent = remarks.value.length >= 300 ? 'Maximum length reached.' : '';
         });
+        remarks.dataset.cancellationRequestId = String(cancellation.id);
         actions.appendChild(remarksField);
         const buttons = document.createElement('div'); buttons.style.cssText = 'display:flex;gap:.5rem;flex-wrap:wrap;';
         ['approve', 'reject'].forEach(decision => {
@@ -2756,29 +2763,6 @@ function renderCancellationWorkflow(data, bookingId) {
             buttons.appendChild(button);
         });
         actions.appendChild(buttons);
-    }
-    if (refund && ['pending', 'disputed'].includes(refund.status)) {
-        const form = document.createElement('form');
-        form.className = 'refund-form';
-        form.innerHTML = '<strong class="refund-form-title">Record refund sent</strong><p class="refund-form-intro">Enter the amount actually returned. It cannot exceed the estimated refundable amount.</p><label class="refund-field">Actual refund amount <span class="refund-required">Required</span><input name="amount" type="number" min="0.01" step="0.01" required><small class="refund-field-help refund-amount-limit"></small></label><label class="refund-field">Refund method <span class="refund-required">Required</span><select name="method" required><option>GCash</option><option>Maya</option><option>Cash</option><option>Bank Transfer</option></select></label><div class="refund-online-fields"><label class="refund-field">Transaction reference <span class="refund-optional">Optional if proof is attached</span><input name="transaction_reference" maxlength="120"><small class="refund-field-help">Provide a reference or upload proof for online refunds.</small></label><label class="refund-field">Refund proof <span class="refund-optional">Optional if reference is entered</span><input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small class="refund-field-help">JPG, PNG, WEBP, or PDF; maximum 5 MB.</small></label></div><small class="refund-inline-error refund-form-error" aria-live="polite"></small><button type="submit" class="btn-primary refund-submit">Submit refund details</button>';
-        form.querySelector('[name="amount"]').max = String(Number(cancellation.estimated_refund_amount || 0));
-        form.querySelector('[name="amount"]').value = String(Number(refund.amount || cancellation.estimated_refund_amount || 0));
-        form.querySelector('.refund-amount-limit').textContent = `Maximum estimated refund: ₱${estimatedAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}.`;
-        if (refund.method) form.querySelector('[name="method"]').value = refund.method;
-        const onlineFields = form.querySelector('.refund-online-fields');
-        const methodSelect = form.querySelector('[name="method"]');
-        const toggleOnlineFields = () => {
-            const cashMethod = methodSelect.value.toLowerCase() === 'cash';
-            onlineFields.hidden = cashMethod;
-            if (cashMethod) {
-                form.querySelector('[name="transaction_reference"]').value = '';
-                form.querySelector('[name="proof"]').value = '';
-            }
-        };
-        methodSelect.addEventListener('change', toggleOnlineFields);
-        toggleOnlineFields();
-        form.addEventListener('submit', event => submitCatererRefund(event, bookingId, refund.id));
-        actions.appendChild(form);
     }
 }
 
@@ -2802,8 +2786,18 @@ async function decideCancellationRequest(bookingId, requestId, decision) {
     const remarksInput = document.getElementById('cancellationDecisionRemarks');
     const remarks = remarksInput?.value.trim();
     const remarksError = remarksInput?.parentElement.querySelector('.refund-inline-error');
-    if (!remarks || remarks.length < 4) {
-        if (remarksError) remarksError.textContent = 'Enter at least 4 characters of decision remarks.';
+    const approvalRemarksRequired = decision === 'approve'
+        && remarksInput?.dataset.approvalRemarksRequired === 'true';
+    if ((decision === 'reject' || approvalRemarksRequired) && (!remarks || remarks.length < 4)) {
+        if (remarksError) {
+            remarksError.textContent = decision === 'reject'
+                ? 'Enter at least 4 characters explaining why the request is rejected.'
+                : 'Enter at least 4 characters of review remarks before approving.';
+        }
+        remarksInput?.focus(); return;
+    }
+    if (remarks && remarks.length > 300) {
+        if (remarksError) remarksError.textContent = 'Decision remarks must be 300 characters or fewer.';
         remarksInput?.focus(); return;
     }
     if (remarksError) remarksError.textContent = '';
@@ -2816,26 +2810,6 @@ async function decideCancellationRequest(bookingId, requestId, decision) {
         if (!response.ok) throw new Error(result.detail || 'Decision could not be saved.');
         await refreshCancellationWorkspace(bookingId);
     } catch (error) { window.showError(error instanceof Error ? error.message : 'Decision could not be saved.'); }
-}
-
-async function submitCatererRefund(event, bookingId, refundId) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const payload = new FormData(form);
-    const method = String(payload.get('method') || '').toLowerCase();
-    if (['gcash', 'maya', 'bank transfer'].includes(method) && !String(payload.get('transaction_reference') || '').trim() && !payload.get('proof')?.size) {
-        const inlineError = form.querySelector('.refund-form-error');
-        if (inlineError) inlineError.textContent = 'For GCash, Maya, or bank transfer, enter a transaction reference or attach refund proof.';
-        return;
-    }
-    const inlineError = form.querySelector('.refund-form-error');
-    if (inlineError) inlineError.textContent = '';
-    try {
-        const response = await fetch(`/caterer/api/bookings/${bookingId}/refunds/${refundId}/process`, { method: 'POST', body: payload, headers: { Accept: 'application/json' } });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.detail || 'Refund details could not be saved.');
-        await refreshCancellationWorkspace(bookingId);
-    } catch (error) { window.showError(error instanceof Error ? error.message : 'Refund details could not be saved.'); }
 }
 
 // End of showBookingDetails
@@ -4202,7 +4176,7 @@ function confirmRejectBooking(bookingId) {
     const paidAmount = Math.max(parseFloat(viewBtn?.dataset?.amountPaid) || 0, 0);
     const paymentStatus = String(viewBtn?.dataset?.paymentStatus || '').toLowerCase();
     if (paidAmount > 0.009 || ['deposit_paid', 'paid', 'fully_paid', 'partially_paid', 'proof_submitted', 'balance_proof_submitted', 'cash_payment_requested', 'cash_balance_requested', 'pending_verification'].includes(paymentStatus)) {
-        window.showError('This booking has a verified payment or a payment under review. Contact support or an administrator to review cancellation and any refund.');
+        window.showError('This booking has a verified payment or a payment under review. Contact support or an administrator to review the cancellation and payment resolution.');
         return;
     }
     rejectionBookingId = targetId;

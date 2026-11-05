@@ -425,7 +425,7 @@ async def alacarte_checkout_page(
     verified: Optional[int] = None,
     db: Session = Depends(database.get_db)
 ):
-    from ..services.booking_cancellation import format_refund_policy
+    from ..services.booking_cancellation import format_cancellation_policy
 
     if caterer_id == "None" or not caterer_id.isdigit():
         return RedirectResponse(url="/customer/marketplace?error_msg=Invalid caterer selected.", status_code=303)
@@ -591,7 +591,7 @@ async def alacarte_checkout_page(
         "booking": booking,
         "requires_kyc": requires_kyc,
         "is_user_verified": is_user_verified,
-        "cancellation_policy": format_refund_policy(),
+        "cancellation_policy": format_cancellation_policy(),
         "current_step": 1
     })
 
@@ -898,7 +898,7 @@ async def alacarte_checkout_submit(
     if user.role != "customer":
         raise HTTPException(status_code=403, detail="Only customers can create online bookings.")
     if cancellation_policy_agreement not in {"on", "true", "1"}:
-        raise HTTPException(status_code=400, detail="Please accept the cancellation and refund policy before submitting.")
+        raise HTTPException(status_code=400, detail="Please accept the no-refund cancellation policy before submitting.")
 
     has_food, has_equipment, has_service = _cart_item_types(cart_data, items)
     if has_food or not has_equipment and not has_service:
@@ -3218,7 +3218,7 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
 
     template_name = "customer/booking_wizard/step_payment.html"
     verified_paid = float(payment_summary.get("verified_paid") or 0.0)
-    from ..services.booking_cancellation import format_refund_policy
+    from ..services.booking_cancellation import format_cancellation_policy
     
     return templates.TemplateResponse(template_name, {
         "request": request,
@@ -3239,7 +3239,7 @@ async def step_payment_page(booking_id: str, request: Request, db: Session = Dep
         "payment_deadline_hours": booking.payment_deadline_hours_snapshot or 48,
         "extension_eligible": extension_eligible,
         "extension_unavailable_reason": extension_unavailable_reason,
-        "cancellation_policy": format_refund_policy(),
+        "cancellation_policy": format_cancellation_policy(),
     })
 
 @router.post("/step/payment/{path_booking_id}")
@@ -3369,8 +3369,8 @@ async def step_payment_submit(
         raise HTTPException(status_code=400, detail="Please agree to the payment terms before submitting.")
 
     from ..services.booking_cancellation import CANCELLATION_POLICY_VERSION
-    if not booking.cancellation_policy_version and cancellation_policy_agreement not in {"on", "true", "1"}:
-        raise HTTPException(status_code=400, detail="Please review and accept the cancellation and refund policy before submitting payment.")
+    if booking.cancellation_policy_version != CANCELLATION_POLICY_VERSION and cancellation_policy_agreement not in {"on", "true", "1"}:
+        raise HTTPException(status_code=400, detail="Please review and accept the no-refund cancellation policy before submitting payment.")
     if cancellation_policy_agreement in {"on", "true", "1"}:
         booking.cancellation_policy_version = CANCELLATION_POLICY_VERSION
         booking.cancellation_policy_accepted_at = datetime.now(timezone.utc)

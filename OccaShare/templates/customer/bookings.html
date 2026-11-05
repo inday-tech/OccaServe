@@ -580,20 +580,14 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             <div class="bk-detail-item wide" id="bkModalNotesItem"><span class="bk-detail-label">Special requests</span><span class="bk-detail-value" id="bkModalNotes"></span></div>
             <div class="bk-detail-item wide"><span class="bk-detail-label">What happens next</span><span class="bk-detail-value" id="bkModalGuidance"></span></div>
             <section id="bkCancellationPanel" class="bk-detail-item wide" style="display:none;align-items:stretch;flex-direction:column;gap:.65rem;padding:1rem;border:1px solid #fed7aa;border-radius:12px;background:#fffaf5;">
-                <strong style="color:#9a3412;">Cancellation and refund</strong>
+                <strong style="color:#9a3412;">Booking cancellation</strong>
                 <div id="bkCancellationStatus" role="status" aria-live="polite"></div>
                 <div id="bkCancellationQuote" style="font-size:.88rem;color:#475569;"></div>
                 <form id="bkModalCancelForm" method="post" action="#" onsubmit="submitCancellationRequest(event)" style="display:none;">
                     <label for="bkCancellationReason" style="display:block;font-weight:700;margin-bottom:.35rem;">Reason for cancellation</label>
                     <textarea id="bkCancellationReason" name="reason" minlength="4" maxlength="2000" required rows="3" style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:.65rem;font:inherit;"></textarea>
-                    <button type="submit" class="bk-btn" style="margin-top:.6rem;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;">Send cancellation request</button>
+                    <button type="submit" class="bk-btn" style="margin-top:.6rem;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;">Request Cancellation</button>
                 </form>
-                <form id="bkRefundDisputeForm" onsubmit="submitRefundDispute(event)" style="display:none;">
-                    <label for="bkRefundDisputeReason" style="display:block;font-weight:700;margin-bottom:.35rem;">Report a refund issue</label>
-                    <textarea id="bkRefundDisputeReason" name="reason" minlength="4" maxlength="1000" rows="2" required style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:.65rem;font:inherit;"></textarea>
-                    <button type="submit" class="bk-btn" style="margin-top:.5rem;">Report issue</button>
-                </form>
-                <button type="button" id="bkRefundConfirmButton" class="bk-btn btn-resume" onclick="confirmRefundReceived()" style="display:none;">Confirm I received the refund</button>
             </section>
         </div>
         <div class="bk-modal-body" id="bkPaneItems" data-booking-pane-content="items">
@@ -1262,58 +1256,35 @@ async function loadCancellationDetails(bookingId) {
     const status = document.getElementById('bkCancellationStatus');
     const quote = document.getElementById('bkCancellationQuote');
     const form = document.getElementById('bkModalCancelForm');
-    const disputeForm = document.getElementById('bkRefundDisputeForm');
-    const confirmButton = document.getElementById('bkRefundConfirmButton');
     if (!panel || !status || !quote || !form) return;
     if (String(currentModalBookingId) !== String(bookingId)) return;
     panel.style.display = 'flex';
     status.textContent = 'Checking cancellation options…';
     quote.textContent = '';
     form.style.display = 'none';
-    disputeForm.style.display = 'none';
-    confirmButton.style.display = 'none';
     try {
         const response = await fetch(`/customer/bookings/${bookingId}/cancellation-quote`, { headers: { Accept: 'application/json' } });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Cancellation details could not be loaded.');
         if (String(currentModalBookingId) !== String(bookingId)) return;
         const request = data.request;
-        if (request) {
-            status.textContent = `Request ${request.status.replaceAll('_', ' ')}: ${request.reason}${request.decision_remarks ? ` · Caterer: ${request.decision_remarks}` : ''}`;
-            if (request.refund) {
-                quote.textContent = `Refund: ₱${Number(request.refund.amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} · ${request.refund.status.replaceAll('_', ' ')}${request.refund.method ? ` via ${request.refund.method}` : ''}${request.refund.transaction_reference ? ` · Ref ${request.refund.transaction_reference}` : ''}`;
-                if (request.refund.proof_url) {
-                    const proof = document.createElement('a');
-                    proof.href = request.refund.proof_url;
-                    proof.target = '_blank'; proof.rel = 'noopener'; proof.textContent = 'View refund proof';
-                    quote.append(document.createTextNode(' '), proof);
-                }
-                if (request.refund.status === 'awaiting_customer_confirmation') {
-                    confirmButton.dataset.refundId = request.refund.id;
-                    confirmButton.dataset.bookingId = bookingId;
-                    confirmButton.style.display = 'inline-flex';
-                    disputeForm.dataset.refundId = request.refund.id;
-                    disputeForm.dataset.bookingId = bookingId;
-                    disputeForm.style.display = 'block';
-                }
-            }
+        if (data.cancellation_mode === 'pending') {
+            status.textContent = `Pending Cancellation Request${request?.reason ? ` · Reason: ${request.reason}` : ''}`;
+            if (request?.decision_remarks) status.textContent += ` · Caterer: ${request.decision_remarks}`;
+        } else if (request) {
+            status.textContent = `Previous request ${request.status.replaceAll('_', ' ')}: ${request.reason}${request.decision_remarks ? ` · Caterer: ${request.decision_remarks}` : ''}`;
         } else {
-            status.textContent = data.event_started ? 'The event has started. Contact support to report a dispute.' : 'Cancellation requests are reviewed by the caterer. Your booking stays active while the request is pending.';
-            if (data.event_started) {
-                const contact = document.createElement('button');
-                contact.type = 'button'; contact.className = 'bk-btn'; contact.textContent = 'Contact caterer about this event';
-                contact.addEventListener('click', () => switchBookingDetailTab('chat', document.querySelector('.bk-modal-tab[data-booking-pane="chat"]')));
-                status.append(document.createTextNode(' '), contact);
-            }
+            status.textContent = data.event_started
+                ? 'The event has started. Ordinary cancellation is no longer available.'
+                : 'Cancellation is controlled by the caterer’s current preparation stage.';
         }
-        const estimatedAmount = request ? request.estimated_refund_amount : data.estimated_refund_amount;
-        const refundPercent = request ? request.refund_percent : data.refund_percent;
-        const estimateText = Number(estimatedAmount || 0) <= 0 && Number(refundPercent || 0) > 0
-            ? `Applicable refund policy rate: ${Number(refundPercent)}%. Estimated refund: ₱0.00 because no verified payment has been received.`
-            : `Estimated refund: ₱${Number(estimatedAmount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} (${Number(refundPercent || 0)}% of verified payments).`;
-        quote.append(document.createTextNode(`${quote.textContent ? ' · ' : ''}${estimateText}`));
+        const preparation = data.preparation || {};
+        quote.textContent = `Preparation: ${preparation.label || 'Not Started'} (${Number(preparation.progress || 0)}%). Customer-initiated cancellation is not refundable.`;
         if (data.can_request) {
             form.action = `/customer/bookings/manage/${bookingId}/cancel`;
+            form.querySelector('button[type="submit"]').textContent = data.cancellation_mode === 'cancel'
+                ? 'Cancel Booking'
+                : 'Request Cancellation';
             form.style.display = 'block';
         }
     } catch (error) {
@@ -1328,6 +1299,7 @@ async function submitCancellationRequest(event) {
     const button = form.querySelector('button[type="submit"]');
     button.disabled = true;
     try {
+        if (button.textContent.trim() === 'Cancel Booking' && !window.confirm('Cancel this booking now? Customer-initiated cancellations are not refundable.')) return;
         const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Could not submit the request.');
@@ -1337,38 +1309,6 @@ async function submitCancellationRequest(event) {
     } catch (error) {
         if (window.showToast) window.showToast(error instanceof Error ? error.message : 'Could not submit the request.', 'error');
     } finally { button.disabled = false; }
-}
-
-async function confirmRefundReceived() {
-    const button = document.getElementById('bkRefundConfirmButton');
-    const bookingId = button.dataset.bookingId;
-    const refundId = button.dataset.refundId;
-    if (!bookingId || !refundId) return;
-    button.disabled = true;
-    try {
-        const response = await fetch(`/customer/bookings/${bookingId}/refunds/${refundId}/confirm`, { method: 'POST', headers: { Accept: 'application/json' } });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Could not confirm the refund.');
-        await loadCancellationDetails(bookingId);
-    } catch (error) {
-        if (window.showToast) window.showToast(error instanceof Error ? error.message : 'Could not confirm the refund.', 'error');
-    } finally { button.disabled = false; }
-}
-
-async function submitRefundDispute(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.reportValidity()) return;
-    const bookingId = form.dataset.bookingId;
-    const refundId = form.dataset.refundId;
-    try {
-        const response = await fetch(`/customer/bookings/${bookingId}/refunds/${refundId}/dispute`, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Could not report the refund issue.');
-        await loadCancellationDetails(bookingId);
-    } catch (error) {
-        if (window.showToast) window.showToast(error instanceof Error ? error.message : 'Could not report the refund issue.', 'error');
-    }
 }
 
 document.addEventListener('keydown', event => {

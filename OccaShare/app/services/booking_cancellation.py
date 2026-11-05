@@ -1,24 +1,38 @@
 from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
-from .payment_service import PaymentService
+from .preparation_service import PREP_STATUSES, PREP_STATUS_KEYS, normalize_prep_status
 
 
-CANCELLATION_POLICY_VERSION = "2026-11-v1"
-CANCELLATION_REFUND_TIERS = (
-    (30, 100.0),
-    (15, 75.0),
-    (7, 50.0),
-    (0, 0.0),
-)
-CANCELLATION_POLICY_TEXT = (
-    "Customer cancellation requests are reviewed by the caterer. For requests made "
-    "30 or more days before the event, the estimated refund is 100% of verified "
-    "payments; 15–29 days, 75%; 7–14 days, 50%; under 7 days, 0%. Unverified "
-    "payment proofs and cash not yet received are excluded. Cancellation is not "
-    "effective until the caterer approves the request."
-)
 MANILA = ZoneInfo("Asia/Manila")
+CANCELLATION_POLICY_VERSION = "2026-11-no-refund-v1"
+CANCELLATION_POLICY_TEXT = (
+    "Customer-initiated booking cancellations are not refundable. Before preparation "
+    "starts, an eligible booking may be cancelled directly. Once preparation has "
+    "started or is complete, the customer may request cancellation for caterer review. "
+    "Cancellation is not available after Setup in Progress begins or after the event cutoff."
+)
+ACTIVE_BOOKING_STATUSES = {
+    "pending",
+    "confirmed",
+    "preparing",
+    "ready_for_delivery",
+    "ready_for_pickup",
+    "on_the_way",
+    "arrived",
+    "setup_ongoing",
+    "in_progress",
+    "ready_for_event",
+}
+LEGACY_PREPARATION_STATUSES = {
+    "scheduled",
+    "in_preparation",
+    "ready",
+    "ready_for_pickup",
+    "setup_ongoing",
+    "arrived",
+    "in_progress",
+}
 
 
 def event_has_started(booking, now=None):
@@ -29,38 +43,27 @@ def event_has_started(booking, now=None):
     return (now or datetime.now(MANILA)) >= event_start
 
 
-def refund_percent_for_booking(booking, requested_at=None):
-    if not booking.event_date:
-        return 0.0
-    now = requested_at or datetime.now(MANILA)
-    local_today = now.astimezone(MANILA).date() if now.tzinfo else now.date()
-    days_before_event = (booking.event_date - local_today).days
-    for minimum_days, percentage in CANCELLATION_REFUND_TIERS:
-        if days_before_event >= minimum_days:
-            return percentage
-    return 0.0
+def cancellation_mode_for_booking(booking, now=None):
+    """Return cancel, request, or None based on lifecycle, preparation, and event cutoff."""
+    booking_status = (booking.status or "").strip().lower()
+    if booking_status not in ACTIVE_BOOKING_STATUSES or event_has_started(booking, now):
+        return None
+
+    raw_preparation = (booking.preparation_status or "").strip().lower()
+    if raw_preparation and raw_preparation not in PREP_STATUS_KEYS | LEGACY_PREPARATION_STATUSES:
+        return None
+    preparation = normalize_prep_status(raw_preparation, booking_status)
+    stage_order = [stage["key"] for stage in PREP_STATUSES]
+    stage_index = stage_order.index(preparation)
+    if stage_index == 0:
+        return "cancel"
+    if preparation in {"preparing", "ready_for_delivery"}:
+        return "request"
+    return None
 
 
-def verified_paid_amount(booking):
-    return round(float(PaymentService.get_payment_summary(booking).get("verified_paid") or 0), 2)
-
-
-def estimate_refund(booking, requested_at=None):
-    paid = verified_paid_amount(booking)
-    percentage = refund_percent_for_booking(booking, requested_at)
-    return {
-        "verified_paid_amount": paid,
-        "refund_percent": percentage,
-        "estimated_refund_amount": round(paid * percentage / 100, 2),
-    }
-
-
-def format_refund_policy():
+def format_cancellation_policy():
     return {
         "version": CANCELLATION_POLICY_VERSION,
         "text": CANCELLATION_POLICY_TEXT,
-        "tiers": [
-            {"minimum_days": days, "percentage": percentage}
-            for days, percentage in CANCELLATION_REFUND_TIERS
-        ],
     }
