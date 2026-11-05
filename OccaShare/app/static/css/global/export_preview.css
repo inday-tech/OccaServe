@@ -191,6 +191,7 @@
     display: flex;
     min-height: 0;
     flex: 1 1 0;
+    align-items: flex-start;
     justify-content: center;
     overflow: auto;
     padding: clamp(14px, 2.4vw, 28px);
@@ -201,8 +202,11 @@
 }
 
 .occa-export-sheet {
+    box-sizing: border-box;
     width: min(100%, 1020px);
     min-height: 100%;
+    height: auto;
+    align-self: flex-start;
     flex: 0 0 auto;
     margin: 0 auto;
     padding: clamp(22px, 3.2vw, 40px);
@@ -296,10 +300,21 @@
 }
 
 .occa-export-summary-table {
-    width: 100%;
+    width: min(100%, 520px);
+    table-layout: fixed;
     border-collapse: collapse;
     color: #334155;
     font-size: 11px;
+}
+
+.occa-export-summary-table th:first-child,
+.occa-export-summary-table td:first-child {
+    width: 68%;
+}
+
+.occa-export-summary-table th:last-child,
+.occa-export-summary-table td:last-child {
+    width: 32%;
 }
 
 .occa-export-summary-table th,
@@ -402,8 +417,8 @@
 
 .occa-export-sheet-xlsx .occa-export-table {
     border: 1px solid #cbd5e1;
-    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
 }
 
 .occa-export-sheet-xlsx .occa-export-table th {
@@ -417,8 +432,7 @@
 
 .occa-export-sheet-pdf {
     width: min(100%, 1120px);
-    min-height: 0;
-    aspect-ratio: 297 / 210;
+    min-height: 100%;
     padding: clamp(18px, 2.5vw, 32px);
 }
 
@@ -440,6 +454,17 @@
 .occa-export-sheet-pdf .occa-export-table,
 .occa-export-sheet-pdf .occa-export-summary-table {
     font-size: 9px;
+}
+
+.occa-export-sheet-pdf .occa-export-summary-table th:first-child,
+.occa-export-sheet-pdf .occa-export-summary-table td:first-child {
+    width: 40%;
+    font-weight: 700;
+}
+
+.occa-export-sheet-pdf .occa-export-summary-table th:last-child,
+.occa-export-sheet-pdf .occa-export-summary-table td:last-child {
+    width: 60%;
 }
 
 .occa-export-sheet-pdf .occa-export-table th,
@@ -471,8 +496,9 @@
 }
 
 .occa-export-csv-preview {
+    box-sizing: border-box;
+    width: 100%;
     max-width: 100%;
-    overflow: auto;
     margin: 0 0 24px;
     padding: 14px;
     border: 1px solid #dbe3ec;
@@ -480,7 +506,8 @@
     background: #f8fafc;
     color: #334155;
     font: 11px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace;
-    white-space: pre;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .occa-export-footer {

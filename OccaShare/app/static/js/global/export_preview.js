@@ -134,15 +134,18 @@
         }
         const summaryTable = document.createElement('table');
         summaryTable.className = 'occa-export-summary-table';
-        const summaryHead = document.createElement('thead');
-        const summaryHeadRow = document.createElement('tr');
-        ['Metric', 'Value'].forEach(label => {
-            const cell = document.createElement('th');
-            cell.textContent = label;
-            summaryHeadRow.appendChild(cell);
-        });
-        summaryHead.appendChild(summaryHeadRow);
         const summaryBody = document.createElement('tbody');
+        if (format !== 'pdf') {
+            const summaryHead = document.createElement('thead');
+            const summaryHeadRow = document.createElement('tr');
+            ['Metric', 'Value'].forEach(label => {
+                const cell = document.createElement('th');
+                cell.textContent = label;
+                summaryHeadRow.appendChild(cell);
+            });
+            summaryHead.appendChild(summaryHeadRow);
+            summaryTable.appendChild(summaryHead);
+        }
         [...(summary.items || []), ...(summary.statusBreakdown || []).map(item => ({
             label: `Payment status · ${item.label}`,
             value: String(item.count)
@@ -155,7 +158,7 @@
             });
             summaryBody.appendChild(row);
         });
-        summaryTable.append(summaryHead, summaryBody);
+        summaryTable.appendChild(summaryBody);
         section.appendChild(summaryTable);
         sheet.appendChild(section);
     }
@@ -175,9 +178,9 @@
         sections.forEach(section => {
             const sectionEl = document.createElement('section');
             sectionEl.className = 'occa-export-section';
-            if (section.title || format === 'csv') {
+            if (section.title) {
                 const sectionTitle = document.createElement('h2');
-                sectionTitle.textContent = section.title || config.title || 'Data';
+                sectionTitle.textContent = section.title;
                 sectionEl.appendChild(sectionTitle);
             }
             if (!section.columns.length || !section.rows.length) {
@@ -195,7 +198,7 @@
                 } else {
                     table.style.width = '100%';
                 }
-                if (format === 'word') {
+                if (format === 'word' || format === 'pdf') {
                     table.style.tableLayout = 'fixed';
                     const weights = wordColumnWeights(section);
                     const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
@@ -303,6 +306,7 @@
             downloadButton.innerHTML = `<i class="fas fa-download" aria-hidden="true"></i><span>Download ${option.label}</span>`;
             previewHost.replaceChildren(renderFormatPreview(config, sections, format));
             previewHost.scrollTop = 0;
+            previewHost.scrollLeft = 0;
         }
         content.replaceChildren(formatNav, previewLabel, previewHost);
 
