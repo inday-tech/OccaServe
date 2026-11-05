@@ -10,7 +10,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="payments-wrapper">
+<div class="payments-wrapper" data-caterer-name="{{ user.caterer_profile.business_name if user.caterer_profile else 'Caterer' }}">
 
     <!-- ─────────────────────────────────────────────────────────── -->
     <!-- 1. PAGE HEADER & TIMEFRAME CONTROLS                        -->

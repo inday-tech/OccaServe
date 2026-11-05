@@ -127,10 +127,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function getRowStatusText(row) {
-        const badges = row.querySelectorAll('.badge-pstatus, .badge-ptype');
-        if (badges && badges.length > 0) {
-            return Array.from(badges).map(b => b.textContent.trim()).filter(Boolean).join(' | ');
-        }
+        const statusBadge = row.querySelector('.badge-pstatus');
+        if (statusBadge) return statusBadge.textContent.trim();
         return row.getAttribute('data-status') || '';
     }
 
@@ -172,9 +170,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.openPaymentsExportPreview = function() {
         const rows = getExportPaymentRows();
+        const statusCounts = new Map();
+        rows.forEach(row => {
+            const status = row.status || 'Unknown';
+            statusCounts.set(status, (statusCounts.get(status) || 0) + 1);
+        });
+        const totalReceived = rows.reduce((total, row) => {
+            const status = row.status.toLowerCase();
+            return status === 'fully paid' || status === 'partially paid'
+                ? total + row.amount
+                : total;
+        }, 0);
+        const metadata = [];
+        const periodSelect = document.getElementById('periodSelect');
+        const periodLabel = periodSelect?.selectedOptions[0]?.textContent.trim();
+        if (periodLabel) metadata.push(`Period: ${periodLabel}`);
+        const typeSelect = document.getElementById('typeFilter');
+        const typeLabel = typeSelect?.selectedOptions[0]?.textContent.trim();
+        if (typeLabel && typeSelect.value !== 'all') metadata.push(`Payment type: ${typeLabel}`);
+        const statusSelect = document.getElementById('statusFilter');
+        const statusLabel = statusSelect?.selectedOptions[0]?.textContent.trim();
+        if (statusLabel && statusSelect.value !== 'all') metadata.push(`Status: ${statusLabel}`);
+        const searchTerm = document.getElementById('paymentSearch')?.value.trim();
+        if (searchTerm) metadata.push(`Search: ${searchTerm}`);
+        if (periodSelect?.value === 'custom') {
+            const startDate = document.getElementById('startDateInput')?.value;
+            const endDate = document.getElementById('endDateInput')?.value;
+            if (startDate || endDate) metadata.push(`Dates: ${startDate || '—'} to ${endDate || '—'}`);
+        }
+        metadata.push(`${rows.length} payment${rows.length === 1 ? '' : 's'} matching current filters`);
+        const catererName = document.querySelector('.payments-wrapper')?.dataset.catererName || '';
         window.OccaExportPreview.open({
             title: 'Payments & Earnings Report',
             filename: 'payments-earnings-report',
+            catererName,
+            generatedAt: new Date().toLocaleString('en-PH'),
+            summary: {
+                items: [
+                    { label: 'Total payments', value: String(rows.length) },
+                    { label: 'Amount received', value: formatPeso(totalReceived) }
+                ],
+                statusBreakdown: Array.from(statusCounts, ([label, count]) => ({ label, count }))
+            },
             columns: [
                 { label: 'Payment ID', key: 'paymentId' },
                 { label: 'Booking Ref', key: 'bookingRef' },
@@ -186,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 { label: 'Status', key: 'status' }
             ],
             rows,
-            metadata: [`${rows.length} payments matching current filters`]
+            metadata
         });
     };
 
