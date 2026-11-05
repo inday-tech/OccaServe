@@ -184,6 +184,7 @@ async def register(
     barangay: Optional[str] = Form(None),
     barangay_status: Optional[str] = Form(None),
     street_address: Optional[str] = Form(None),
+    nearby_landmark: Optional[str] = Form(None),
     dob: Optional[str] = Form(None),
     password: str = Form(...),
     confirm_password: str = Form(...),
@@ -331,9 +332,11 @@ async def register(
             city_municipality,
             barangay,
             barangay_status,
-            street_address,
+            nearby_landmark,
             latitude,
             longitude,
+            location_type="caterer",
+            street_address=street_address,
         )
         if location_error:
             errors["location"] = location_error

@@ -11,6 +11,9 @@
     let catererRegistrationGeocoder;
     let catererRegistrationMapLoading = false;
     let catererRegistrationGeocodeRequest = 0;
+    let catererRegistrationLandRequest = 0;
+    let catererRegistrationLandCheckComplete = false;
+    let catererRegistrationLandValid = false;
     let catererRegistrationPinSaved = false;
 
     function setCatererLocationStatus(message) {
@@ -37,13 +40,13 @@
         if (street) {
             street.required = mode === 'unavailable';
             street.placeholder = mode === 'unavailable'
-                ? 'Required when barangay is unavailable'
-                : 'Enter a street, building, subdivision, or landmark (optional)';
+                ? 'Required exact street address when barangay is unavailable'
+                : 'Enter the exact street, building, or subdivision if available';
         }
         if (label) {
             label.innerHTML = mode === 'unavailable'
-                ? 'Street / Building / Subdivision / Landmark <span style="color:#ef4444;">*</span>'
-                : 'Street / Building / Subdivision / Landmark <span class="optional-label">(Optional)</span>';
+                ? 'Exact Street / Building / Subdivision <span style="color:#ef4444;">*</span>'
+                : 'Exact Street / Building / Subdivision <span class="optional-label">(Optional)</span>';
         }
     }
 
@@ -51,11 +54,12 @@
         const barangay = document.getElementById('barangay_cat')?.value.trim() || '';
         const status = document.getElementById('barangayStatusCat')?.value || '';
         const street = document.getElementById('street_cat')?.value.trim() || '';
+        const nearbyLandmark = document.getElementById('nearby_landmark_cat')?.value.trim() || '';
         const province = document.getElementById('province_cat')?.value.trim() || '';
         const city = document.getElementById('city_cat')?.value.trim() || '';
         return Boolean(province && city && (
-            (barangay && ['identified', 'manual'].includes(status)) ||
-            (!barangay && status === 'unavailable' && street)
+            street ||
+            (barangay && ['identified', 'manual'].includes(status) && nearbyLandmark)
         ));
     }
 
@@ -63,7 +67,7 @@
         const latitude = Number(document.getElementById('catererLocationLatitude')?.value);
         const longitude = Number(document.getElementById('catererLocationLongitude')?.value);
         const hasPin = Number.isFinite(latitude) && Number.isFinite(longitude) &&
-            latitude >= 4.2 && latitude <= 21.6 && longitude >= 116.7 && longitude <= 127.2;
+            catererRegistrationLandValid;
         const button = document.getElementById('catererSaveLocation');
         if (button) button.disabled = !(hasPin && catererAddressIsComplete());
     }
@@ -96,7 +100,10 @@
         document.getElementById('city_cat').value = '';
         document.getElementById('barangay_cat').value = '';
         document.getElementById('street_cat').value = '';
+        document.getElementById('nearby_landmark_cat').value = '';
         document.getElementById('address_cat_hidden').value = '';
+        const search = document.getElementById('catererLocationSearch');
+        if (search) search.value = '';
         setCatererBarangayMode('', false);
         catererRegistrationPinSaved = false;
         const saveButton = document.getElementById('catererSaveLocation');
@@ -119,13 +126,17 @@
                 }
                 if (!addressApplied) setCatererBarangayMode('', true);
                 refreshCatererLocationSaveButton();
-                setCatererLocationStatus(addressApplied
+                setCatererLocationStatus(!catererRegistrationLandCheckComplete
+                    ? 'Checking whether this pin is on valid land...'
+                    : !catererRegistrationLandValid
+                    ? 'The selected location is in water or outside mapped land.'
+                    : addressApplied
                     ? document.getElementById('barangayStatusCat')?.value === 'identified'
                         ? 'Address found. Save this location to attach it to your registration.'
-                        : 'Province and city found. Confirm the barangay, or mark it unavailable and enter a street or landmark.'
+                        : 'Province and city found. Add an exact street address or a barangay and nearby landmark.'
                     : status === 'REQUEST_DENIED'
                         ? 'Google Maps could not verify the address. Please contact support to check the Maps API configuration.'
-                        : 'Address not found. Enter the province and city manually; if there is no barangay, add a street or landmark and mark it unavailable.');
+                        : 'Address not found. Enter province and city manually, then add an exact street or a barangay and nearby landmark.');
                 resolve(addressApplied);
             });
         });
@@ -160,12 +171,58 @@
 
         const setPin = (position, selectedPlace = null) => {
             if (position.lat() < 4.2 || position.lat() > 21.6 || position.lng() < 116.7 || position.lng() > 127.2) {
+                ++catererRegistrationGeocodeRequest;
+                ++catererRegistrationLandRequest;
+                catererRegistrationPinSaved = false;
+                catererRegistrationLandCheckComplete = true;
+                catererRegistrationLandValid = false;
+                catererRegistrationMarker?.setMap(null);
+                document.getElementById('catererLocationLatitude').value = '';
+                document.getElementById('catererLocationLongitude').value = '';
+                document.getElementById('province_cat').value = '';
+                document.getElementById('city_cat').value = '';
+                document.getElementById('barangay_cat').value = '';
+                document.getElementById('street_cat').value = '';
+                document.getElementById('nearby_landmark_cat').value = '';
+                document.getElementById('address_cat_hidden').value = '';
+                setCatererBarangayMode('', false);
+                refreshCatererLocationSaveButton();
                 setCatererLocationError('Choose a map pin within the Philippines.');
                 return;
             }
             catererRegistrationMarker.setMap(catererRegistrationMap);
             catererRegistrationMarker.setPosition(position);
             catererRegistrationMap.panTo(position);
+            const landRequestId = ++catererRegistrationLandRequest;
+            catererRegistrationLandCheckComplete = false;
+            catererRegistrationLandValid = false;
+            refreshCatererLocationSaveButton();
+            setCatererLocationError('');
+            window.catererRegistrationLandPromise = window.OccaServeLocationAddress
+                .isValidPhilippineLandCoordinate(position.lat(), position.lng())
+                .then(isValid => {
+                    if (landRequestId !== catererRegistrationLandRequest) return false;
+                    catererRegistrationLandCheckComplete = true;
+                    catererRegistrationLandValid = isValid;
+                    if (!isValid) {
+                        catererRegistrationPinSaved = false;
+                        setCatererLocationError('This pin is not on a valid land location. Move it onto the business property.');
+                        setCatererLocationStatus('The selected location is in water or outside mapped land.');
+                    } else {
+                        setCatererLocationStatus('Valid land pin. Confirm the business address details to save.');
+                    }
+                    refreshCatererLocationSaveButton();
+                    return isValid;
+                }).catch(error => {
+                    if (landRequestId !== catererRegistrationLandRequest) return false;
+                    console.error('Could not validate caterer land location:', error);
+                    catererRegistrationLandCheckComplete = true;
+                    catererRegistrationLandValid = false;
+                    setCatererLocationError('The land-location check could not be completed. Please try again or contact support.');
+                    setCatererLocationStatus('Location validation is unavailable.');
+                    refreshCatererLocationSaveButton();
+                    return false;
+                });
             reverseGeocodeCatererLocation(position, selectedPlace);
         };
 
@@ -195,6 +252,9 @@
                 // submitting cannot silently save the previous pin.
                 catererRegistrationPinSaved = false;
                 ++catererRegistrationGeocodeRequest;
+                ++catererRegistrationLandRequest;
+                catererRegistrationLandCheckComplete = false;
+                catererRegistrationLandValid = false;
                 catererRegistrationMarker?.setMap(null);
                 document.getElementById('catererLocationLatitude').value = '';
                 document.getElementById('catererLocationLongitude').value = '';
@@ -202,6 +262,7 @@
                 document.getElementById('city_cat').value = '';
                 document.getElementById('barangay_cat').value = '';
                 document.getElementById('street_cat').value = '';
+                document.getElementById('nearby_landmark_cat').value = '';
                 document.getElementById('address_cat_hidden').value = '';
                 setCatererBarangayMode('', false);
                 const saveButton = document.getElementById('catererSaveLocation');
@@ -245,6 +306,7 @@
             const button = event.currentTarget;
             button.disabled = true;
             if (window.catererRegistrationAddressPromise) await window.catererRegistrationAddressPromise;
+            if (window.catererRegistrationLandPromise) await window.catererRegistrationLandPromise;
             // Read the final marker position at confirmation time, so the
             // coordinates persisted by the form always match the visible pin.
             const markerPosition = catererRegistrationMarker?.getPosition();
@@ -253,12 +315,15 @@
                 document.getElementById('catererLocationLongitude').value = markerPosition.lng().toFixed(7);
             }
             updateAddressCat();
-            const saved = catererAddressIsComplete()
+            const saved = catererRegistrationLandValid
+                && catererAddressIsComplete()
                 && document.getElementById('address_cat_hidden')?.value
                 && document.getElementById('catererLocationLatitude')?.value
                 && document.getElementById('catererLocationLongitude')?.value;
             if (!saved) {
-                setCatererLocationError('Enter the province and city. Add a barangay, or mark it unavailable and enter a street or landmark.');
+                setCatererLocationError(catererRegistrationLandValid
+                    ? 'Enter the province and city, then provide an exact street address or a barangay and nearby landmark.'
+                    : 'Choose a valid land-based location for your business.');
                 refreshCatererLocationSaveButton();
                 return;
             }
@@ -275,7 +340,8 @@
             document.getElementById('province_cat'),
             document.getElementById('city_cat'),
             barangayInput,
-            streetInput
+            streetInput,
+            document.getElementById('nearby_landmark_cat')
         ];
         addressInputs.forEach(input => input?.addEventListener('input', () => {
             if (input === barangayInput) {
@@ -578,8 +644,8 @@
             const latitude = document.getElementById('catererLocationLatitude')?.value;
             const longitude = document.getElementById('catererLocationLongitude')?.value;
             const address = document.getElementById('address_cat_hidden')?.value;
-            if (!catererRegistrationPinSaved || !latitude || !longitude || !address || !catererAddressIsComplete()) {
-                setCatererLocationError('Set your business pin and confirm the province, city, and barangay—or provide a street or landmark when unavailable.');
+            if (!catererRegistrationPinSaved || !catererRegistrationLandValid || !latitude || !longitude || !address || !catererAddressIsComplete()) {
+                setCatererLocationError('Set a valid land pin and enter the province and city, then provide an exact street address or a barangay and nearby landmark.');
                 valid = false;
             } else {
                 setCatererLocationError('');
@@ -726,10 +792,12 @@
 
     function updateAddressCat() {
         const street = document.getElementById('street_cat')?.value || '';
+        const nearbyLandmark = document.getElementById('nearby_landmark_cat')?.value || '';
         const hiddenAddress = document.getElementById('address_cat_hidden');
         if (!hiddenAddress) return;
         hiddenAddress.value = window.OccaServeLocationAddress?.composeAddress({
-            landmark: street,
+            street,
+            landmark: nearbyLandmark,
             barangay: document.getElementById('barangay_cat')?.value,
             municipality: document.getElementById('city_cat')?.value,
             province: document.getElementById('province_cat')?.value

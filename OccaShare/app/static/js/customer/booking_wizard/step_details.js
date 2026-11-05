@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const savedVenuePanel = document.getElementById('saved-venue-address');
         const savedVenueText = document.getElementById('saved-venue-address-text');
         const venuePinStatus = document.getElementById('venue-pin-status');
+        let validatedVenueCoordinateKey = '';
         const eventTypeSelect = document.getElementById('event_type_select');
         const otherEventWrap = document.getElementById('other-event-wrap');
         const otherEventInput = document.getElementById('other_event_type');
@@ -984,28 +985,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (barangayUnavailableCheckbox) barangayUnavailableCheckbox.checked = mode === 'unavailable';
         if (barangayUnavailableChoice) barangayUnavailableChoice.style.display = showUnavailableChoice ? 'block' : 'none';
         if (venueLandmark) {
-            venueLandmark.required = mode === 'unavailable';
-            venueLandmark.placeholder = mode === 'unavailable'
-                ? 'Required when barangay is unavailable'
-                : 'Enter a street, building, subdivision, or landmark (optional)';
+            venueLandmark.required = false;
+            venueLandmark.placeholder = 'Enter a venue name or nearby landmark (optional)';
         }
         if (venueLandmarkLabel) {
-            venueLandmarkLabel.innerHTML = mode === 'unavailable'
-                ? 'Street / Building / Subdivision / Landmark <span style="color:#ef4444;">*</span>'
-                : 'Street / Building / Subdivision / Landmark <small>(Optional)</small>';
+            venueLandmarkLabel.innerHTML = 'Venue name / Nearby landmark <small>(Optional)</small>';
         }
-    }
-
-    function venueAddressFieldsComplete() {
-        const province = provinceSelect?.value.trim() || '';
-        const city = citySelect?.value.trim() || '';
-        const barangay = barangaySelect?.value.trim() || '';
-        const status = venueBarangayStatus?.value || '';
-        const landmark = venueLandmark?.value.trim() || '';
-        return Boolean(province && city && (
-            (barangay && ['identified', 'manual'].includes(status)) ||
-            (!barangay && status === 'unavailable' && landmark)
-        ));
     }
 
     function initVenueMap() {
@@ -1021,6 +1006,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const marker = new google.maps.Marker({ map: hasSavedPin ? map : null, position: savedPoint, draggable: true });
         let pendingLocation = null;
         let geocodeRequest = 0;
+        let landValidationRequest = 0;
+        let venueLandValid = false;
         if (hasSavedPin && venueBarangayStatus && !venueBarangayStatus.value && barangaySelect?.value.trim()) {
             venueBarangayStatus.value = 'identified';
         }
@@ -1029,20 +1016,21 @@ document.addEventListener('DOMContentLoaded', function () {
             venueBarangayStatus?.value === 'unavailable' || !barangaySelect?.value.trim()
         );
         const refreshSaveButton = () => {
-            if (saveVenueButton) saveVenueButton.disabled = !(pendingLocation && venueAddressFieldsComplete());
+            if (saveVenueButton) saveVenueButton.disabled = !(pendingLocation && venueLandValid);
         };
-        const clearSavedLocation = () => {
+        const clearSavedLocation = (clearSearch = false) => {
             if (venueHidden) venueHidden.value = '';
             if (venueLat) venueLat.value = '';
             if (venueLng) venueLng.value = '';
             if (savedVenuePanel) savedVenuePanel.style.display = 'none';
+            if (clearSearch && venueSearch) venueSearch.value = '';
         };
         const savePendingLocation = () => {
             const province = provinceSelect?.value.trim() || '';
             const city = citySelect?.value.trim() || '';
             const barangay = barangaySelect?.value.trim() || '';
-            if (!pendingLocation || !venueAddressFieldsComplete()) {
-                if (venuePinStatus) venuePinStatus.textContent = 'Enter the province and city, then add a barangay or mark it unavailable and provide a street or landmark.';
+            if (!pendingLocation || !venueLandValid) {
+                if (venuePinStatus) venuePinStatus.textContent = 'Choose a valid land-based event location before saving the pin.';
                 return;
             }
             const address = window.OccaServeLocationAddress.composeAddress({
@@ -1050,12 +1038,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 barangay,
                 municipality: city,
                 province
-            });
-            if (!address) return;
+            }) || `Pinned venue (${pendingLocation.lat}, ${pendingLocation.lng})`;
             venueLat.value = pendingLocation.lat;
             venueLng.value = pendingLocation.lng;
             venueHidden.value = address;
-            venueSearch.value = address;
+            if (venueSearch) venueSearch.value = address;
             if (venueBarangayStatus && !venueBarangayStatus.value) venueBarangayStatus.value = 'identified';
             if (savedVenueText) savedVenueText.textContent = address;
             if (savedVenuePanel) savedVenuePanel.style.display = 'block';
@@ -1083,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', function () {
             refreshSaveButton();
             if (venuePinStatus) venuePinStatus.textContent = province && city
                 ? 'Address details changed. Save the pinned location again to confirm the update.'
-                : 'Complete the province and municipality/city before saving the pin.';
+                : 'Address details are optional. Save the valid land pin again to confirm the update.';
         };
         [provinceSelect, citySelect, barangaySelect, venueLandmark].forEach(input => {
             input?.addEventListener('input', onAddressFieldChange);
@@ -1118,29 +1105,49 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         const setLocation = point => {
             const requestId = ++geocodeRequest;
+            const landRequestId = ++landValidationRequest;
             pendingLocation = {
                 lat: point.lat().toFixed(7),
                 lng: point.lng().toFixed(7)
             };
-            clearSavedLocation();
+            venueLandValid = false;
+            clearSavedLocation(true);
             if (venueLandmark) venueLandmark.value = '';
             if (provinceSelect) provinceSelect.value = '';
             if (citySelect) citySelect.value = '';
             if (barangaySelect) barangaySelect.value = '';
             setVenueBarangayMode('', false);
             refreshSaveButton();
-            if (venuePinStatus) venuePinStatus.textContent = 'Finding the complete address…';
+            if (venuePinStatus) venuePinStatus.textContent = 'Checking the pin and updating the address…';
             marker.setPosition(point);
             marker.setMap(map);
+            window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(point.lat(), point.lng())
+                .then(isValid => {
+                    if (landRequestId !== landValidationRequest) return;
+                    venueLandValid = isValid;
+                    if (!isValid) {
+                        if (venuePinStatus) venuePinStatus.textContent = 'This pin is in water or outside mapped land. Move it onto a valid event venue.';
+                    } else if (venuePinStatus) {
+                        venuePinStatus.textContent = 'Valid land location. Address details are optional; save the pin to continue.';
+                    }
+                    refreshSaveButton();
+                })
+                .catch(error => {
+                    if (landRequestId !== landValidationRequest) return;
+                    console.error('Could not validate event land location:', error);
+                    venueLandValid = false;
+                    if (venuePinStatus) venuePinStatus.textContent = 'The land-location check could not be completed. Please try again.';
+                    refreshSaveButton();
+                });
             geocoder.geocode({ location: point, region: 'PH' }, (results, status) => {
                 if (requestId !== geocodeRequest) return;
                 const address = status === 'OK'
                     ? window.OccaServeLocationAddress.parseResults(results)
                     : null;
                 if (!address) {
-                    setVenueBarangayMode('', true);
+                    if (venueSearch) venueSearch.value = '';
                     refreshSaveButton();
-                    if (venuePinStatus) venuePinStatus.textContent = 'Address not found. Enter province and city manually; if no barangay is available, mark it unavailable and add a street or landmark.';
+                    if (venuePinStatus && venueLandValid) venuePinStatus.textContent = 'Valid land location. No registered address was found; you may add a venue name or landmark.';
                     return;
                 }
                 const { province, city, barangay: brgy } = address;
@@ -1148,12 +1155,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (citySelect) citySelect.value = city;
                 if (barangaySelect) barangaySelect.value = brgy;
                 setVenueBarangayMode(brgy ? 'identified' : '', !brgy);
-                refreshSaveButton();
-                if (!province || !city || !brgy) {
-                    if (venuePinStatus) venuePinStatus.textContent = 'Address partly found. Confirm the province and city; if the barangay is missing, mark it unavailable and add a street or landmark.';
-                    return;
+                if (venueSearch) {
+                    venueSearch.value = results?.[0]?.formatted_address || '';
                 }
-                if (venuePinStatus) venuePinStatus.textContent = 'Address found. Save this pinned location to use it for your booking.';
+                refreshSaveButton();
+                if (venuePinStatus && venueLandValid) venuePinStatus.textContent = 'Address details updated. Save the valid land pin to use it for your booking.';
             });
         };
         marker.addListener('dragend', () => setLocation(marker.getPosition()));
@@ -1768,6 +1774,29 @@ document.addEventListener('DOMContentLoaded', function () {
     if (form) {
         form.addEventListener('submit', function (e) {
             try {
+                const latitude = venueLat?.value || '';
+                const longitude = venueLng?.value || '';
+                const coordinateKey = `${latitude},${longitude}`;
+                if (latitude && longitude && coordinateKey !== validatedVenueCoordinateKey) {
+                    e.preventDefault();
+                    window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(latitude, longitude)
+                        .then(isValid => {
+                            if (!isValid) {
+                                validatedVenueCoordinateKey = '';
+                                if (venuePinStatus) venuePinStatus.textContent = 'This pin is not on valid land. Choose another venue location.';
+                                document.getElementById('err-venue')?.classList.add('show');
+                                return;
+                            }
+                            validatedVenueCoordinateKey = coordinateKey;
+                            form.requestSubmit(e.submitter || undefined);
+                        })
+                        .catch(error => {
+                            console.error('Could not validate event pin before submit:', error);
+                            if (venuePinStatus) venuePinStatus.textContent = 'The land-location check could not be completed. Please try again.';
+                            document.getElementById('err-venue')?.classList.add('show');
+                        });
+                    return;
+                }
                 saveDetailsFormState();
                 console.log('[BookingWizard] Form submit triggered');
                 let isValid = true;
@@ -1819,8 +1848,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const pinValid = !!(
                     venueHidden?.value &&
                     venueLat?.value &&
-                    venueLng?.value &&
-                    venueAddressFieldsComplete()
+                    venueLng?.value
                 );
                 check('venue_pin', pinValid || window.localDevelopment);
                 if (!pinValid && !window.localDevelopment) document.getElementById('err-venue')?.classList.add('show');

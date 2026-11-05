@@ -177,9 +177,15 @@
                     </div>
                 </div>
                 <div class="form-group full-width">
-                    <label for="street_cat" id="streetCatLabel">Street / Building / Subdivision / Landmark <span class="optional-label">(Optional)</span></label>
+                    <label for="street_cat" id="streetCatLabel">Exact Street / Building / Subdivision <span class="optional-label">(Optional)</span></label>
                     <div class="input-wrapper" id="streetCatWrapper" style="width:100%;">
-                        <input type="text" id="street_cat" name="street_address" class="minimal-input" placeholder="Enter a street, building, subdivision, or landmark (optional)">
+                        <input type="text" id="street_cat" name="street_address" class="minimal-input" placeholder="Enter the exact street, building, or subdivision if available">
+                    </div>
+                </div>
+                <div class="form-group full-width">
+                    <label for="nearby_landmark_cat">Nearby Landmark <span class="optional-label">(Required with barangay when no exact street address is available)</span></label>
+                    <div class="input-wrapper" style="width:100%;">
+                        <input type="text" id="nearby_landmark_cat" name="nearby_landmark" class="minimal-input" placeholder="Enter a nearby landmark">
                     </div>
                 </div>
                 <input type="hidden" name="barangay_status" id="barangayStatusCat" value="">

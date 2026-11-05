@@ -232,6 +232,23 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .bk-detail-item.wide { grid-column:1 / -1; }
 .bk-detail-label { display:block; color:#94a3b8; font-size:.65rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; margin-bottom:.25rem; }
 .bk-detail-value { display:block; color:var(--bk-text); font-size:.82rem; font-weight:650; overflow-wrap:anywhere; }
+.bk-cancellation-panel { display:flex; flex-direction:column; gap:.65rem; padding:.9rem 1rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; }
+.bk-cancellation-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem; }
+.bk-cancellation-title { margin:0; color:#0f172a; font-size:.84rem; font-weight:800; }
+.bk-cancellation-stage { display:inline-flex; align-items:center; padding:.22rem .55rem; border:1px solid #e2e8f0; border-radius:999px; background:#f8fafc; color:#475569; font-size:.68rem; font-weight:700; }
+.bk-cancellation-status { margin:0; color:#334155; font-size:.78rem; line-height:1.45; }
+.bk-cancellation-status[data-state="blocked"] { color:#64748b; }
+.bk-cancellation-status[data-state="pending"] { color:#92400e; }
+.bk-cancellation-policy { margin:0; color:#64748b; font-size:.7rem; line-height:1.4; }
+.bk-cancellation-form { display:grid; gap:.5rem; }
+.bk-cancellation-form label { display:block; color:#475569; font-size:.72rem; font-weight:700; }
+.bk-cancellation-form select,
+.bk-cancellation-form textarea { width:100%; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:8px; padding:.6rem .65rem; background:#fff; color:#0f172a; font:inherit; font-size:.78rem; }
+.bk-cancellation-form select:focus,
+.bk-cancellation-form textarea:focus { outline:2px solid rgb(240 120 53 / 24%); border-color:#f07835; }
+.bk-cancellation-form textarea { resize:vertical; }
+.bk-cancellation-form .bk-btn { justify-self:start; margin-top:.15rem; background:#fff1f2; color:#be123c; border-color:#fecdd3; }
+.bk-cancellation-form .bk-btn:hover { background:#ffe4e6; border-color:#fda4af; }
 .bk-detail-section-title { grid-column:1/-1; margin:.15rem 0 -.2rem; color:#334155; font-size:.75rem; font-weight:800; }
 .bk-detail-list { grid-column:1/-1; display:grid; gap:0; }
 .bk-detail-list-item { display:flex; justify-content:space-between; gap:.75rem; padding:.65rem .15rem; border:0; border-bottom:1px solid #edf1f5; border-radius:0; background:transparent; font-size:.77rem; }
@@ -568,6 +585,31 @@ body, .customer-page-content { background: #f1f5f9 !important; }
         </nav>
         <div class="bk-modal-body is-active" id="bkPaneOverview" data-booking-pane-content="overview">
             <div class="bk-detail-item"><span class="bk-detail-label">Status</span><span class="bk-detail-value" id="bkModalStatus"></span></div>
+            <section id="bkCancellationPanel" class="bk-detail-item wide bk-cancellation-panel" style="display:none;">
+                <div class="bk-cancellation-head">
+                    <h3 class="bk-cancellation-title">Cancellation</h3>
+                    <span id="bkCancellationStage" class="bk-cancellation-stage"></span>
+                </div>
+                <p id="bkCancellationStatus" class="bk-cancellation-status" role="status" aria-live="polite"></p>
+                <p id="bkCancellationPolicy" class="bk-cancellation-policy" hidden></p>
+                <form id="bkModalCancelForm" class="bk-cancellation-form" method="post" action="#" onsubmit="submitCancellationRequest(event)" style="display:none;">
+                    <label for="bkCancellationReason">Reason for cancellation</label>
+                    <select id="bkCancellationReason" name="reason" required onchange="toggleCancellationOtherReason()">
+                        <option value="">Select a reason</option>
+                        <option value="Change of plans">Change of plans</option>
+                        <option value="Event postponed or cancelled">Event postponed or cancelled</option>
+                        <option value="Budget constraints">Budget constraints</option>
+                        <option value="Found another caterer">Found another caterer</option>
+                        <option value="Booking made by mistake">Booking made by mistake</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <div id="bkCancellationOtherReasonWrap" style="display:none;">
+                        <label for="bkCancellationOtherReason">Please specify</label>
+                        <textarea id="bkCancellationOtherReason" name="other_reason" minlength="4" maxlength="2000" rows="3" placeholder="Tell us why you need to cancel"></textarea>
+                    </div>
+                    <button type="submit" class="bk-btn">Request Cancellation</button>
+                </form>
+            </section>
             <div class="bk-detail-item"><span class="bk-detail-label">Event type</span><span class="bk-detail-value" id="bkModalType"></span></div>
             <div class="bk-detail-item"><span class="bk-detail-label">Event name</span><span class="bk-detail-value" id="bkModalEventName"></span></div>
             <div class="bk-detail-item"><span class="bk-detail-label">Celebrant</span><span class="bk-detail-value" id="bkModalCelebrant"></span></div>
@@ -579,16 +621,6 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             <div class="bk-detail-item wide"><span class="bk-detail-label">Venue address</span><span class="bk-detail-value" id="bkModalVenue"></span></div>
             <div class="bk-detail-item wide" id="bkModalNotesItem"><span class="bk-detail-label">Special requests</span><span class="bk-detail-value" id="bkModalNotes"></span></div>
             <div class="bk-detail-item wide"><span class="bk-detail-label">What happens next</span><span class="bk-detail-value" id="bkModalGuidance"></span></div>
-            <section id="bkCancellationPanel" class="bk-detail-item wide" style="display:none;align-items:stretch;flex-direction:column;gap:.65rem;padding:1rem;border:1px solid #fed7aa;border-radius:12px;background:#fffaf5;">
-                <strong style="color:#9a3412;">Booking cancellation</strong>
-                <div id="bkCancellationStatus" role="status" aria-live="polite"></div>
-                <div id="bkCancellationQuote" style="font-size:.88rem;color:#475569;"></div>
-                <form id="bkModalCancelForm" method="post" action="#" onsubmit="submitCancellationRequest(event)" style="display:none;">
-                    <label for="bkCancellationReason" style="display:block;font-weight:700;margin-bottom:.35rem;">Reason for cancellation</label>
-                    <textarea id="bkCancellationReason" name="reason" minlength="4" maxlength="2000" required rows="3" style="width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:.65rem;font:inherit;"></textarea>
-                    <button type="submit" class="bk-btn" style="margin-top:.6rem;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;">Request Cancellation</button>
-                </form>
-            </section>
         </div>
         <div class="bk-modal-body" id="bkPaneItems" data-booking-pane-content="items">
             <div class="bk-detail-item wide"><span class="bk-detail-label">Selected package / service</span><span class="bk-detail-value" id="bkModalPackage"></span></div>
@@ -1254,42 +1286,70 @@ function closeBookingDetails() {
 async function loadCancellationDetails(bookingId) {
     const panel = document.getElementById('bkCancellationPanel');
     const status = document.getElementById('bkCancellationStatus');
-    const quote = document.getElementById('bkCancellationQuote');
+    const stage = document.getElementById('bkCancellationStage');
+    const policy = document.getElementById('bkCancellationPolicy');
     const form = document.getElementById('bkModalCancelForm');
-    if (!panel || !status || !quote || !form) return;
+    if (!panel || !status || !stage || !policy || !form) return;
     if (String(currentModalBookingId) !== String(bookingId)) return;
     panel.style.display = 'flex';
     status.textContent = 'Checking cancellation options…';
-    quote.textContent = '';
+    status.dataset.state = '';
+    stage.textContent = '';
+    policy.hidden = true;
+    policy.textContent = '';
     form.style.display = 'none';
+    form.reset();
+    toggleCancellationOtherReason();
     try {
         const response = await fetch(`/customer/bookings/${bookingId}/cancellation-quote`, { headers: { Accept: 'application/json' } });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Cancellation details could not be loaded.');
         if (String(currentModalBookingId) !== String(bookingId)) return;
         const request = data.request;
+        const preparation = data.preparation || {};
+        stage.textContent = `Preparation · ${preparation.label || 'Not Started'}${Number.isFinite(Number(preparation.progress)) ? ` · ${Number(preparation.progress)}%` : ''}`;
         if (data.cancellation_mode === 'pending') {
-            status.textContent = `Pending Cancellation Request${request?.reason ? ` · Reason: ${request.reason}` : ''}`;
+            status.dataset.state = 'pending';
+            status.textContent = `Cancellation request pending review${request?.reason ? ` · ${request.reason}` : ''}.`;
             if (request?.decision_remarks) status.textContent += ` · Caterer: ${request.decision_remarks}`;
         } else if (request) {
-            status.textContent = `Previous request ${request.status.replaceAll('_', ' ')}: ${request.reason}${request.decision_remarks ? ` · Caterer: ${request.decision_remarks}` : ''}`;
+            status.dataset.state = data.can_request ? '' : 'blocked';
+            status.textContent = `Previous request ${request.status.replaceAll('_', ' ')}${request.reason ? ` · ${request.reason}` : ''}${request.decision_remarks ? ` · Caterer: ${request.decision_remarks}` : ''}.`;
+        } else if (data.cancellation_mode === 'cancel') {
+            status.textContent = 'You can cancel this booking before preparation begins.';
+        } else if (data.cancellation_mode === 'request') {
+            status.textContent = 'You can request cancellation for the caterer’s review.';
+        } else if (data.event_started) {
+            status.dataset.state = 'blocked';
+            status.textContent = 'The event has started. Cancellation is no longer available.';
         } else {
-            status.textContent = data.event_started
-                ? 'The event has started. Ordinary cancellation is no longer available.'
-                : 'Cancellation is controlled by the caterer’s current preparation stage.';
+            status.dataset.state = 'blocked';
+            status.textContent = 'Cancellation is unavailable at this preparation stage.';
         }
-        const preparation = data.preparation || {};
-        quote.textContent = `Preparation: ${preparation.label || 'Not Started'} (${Number(preparation.progress || 0)}%). Customer-initiated cancellation is not refundable.`;
         if (data.can_request) {
             form.action = `/customer/bookings/manage/${bookingId}/cancel`;
             form.querySelector('button[type="submit"]').textContent = data.cancellation_mode === 'cancel'
                 ? 'Cancel Booking'
                 : 'Request Cancellation';
             form.style.display = 'block';
+            policy.textContent = 'Customer-initiated cancellations are not refundable.';
+            policy.hidden = false;
         }
     } catch (error) {
+        status.dataset.state = 'blocked';
         status.textContent = error instanceof Error ? error.message : 'Cancellation details could not be loaded.';
     }
+}
+
+function toggleCancellationOtherReason() {
+    const reason = document.getElementById('bkCancellationReason');
+    const otherWrap = document.getElementById('bkCancellationOtherReasonWrap');
+    const otherReason = document.getElementById('bkCancellationOtherReason');
+    if (!reason || !otherWrap || !otherReason) return;
+    const isOther = reason.value === 'Other';
+    otherWrap.style.display = isOther ? 'block' : 'none';
+    otherReason.required = isOther;
+    if (!isOther) otherReason.value = '';
 }
 
 async function submitCancellationRequest(event) {
@@ -1300,7 +1360,12 @@ async function submitCancellationRequest(event) {
     button.disabled = true;
     try {
         if (button.textContent.trim() === 'Cancel Booking' && !window.confirm('Cancel this booking now? Customer-initiated cancellations are not refundable.')) return;
-        const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
+        const formData = new FormData(form);
+        if (formData.get('reason') === 'Other') {
+            formData.set('reason', String(formData.get('other_reason') || '').trim());
+        }
+        formData.delete('other_reason');
+        const response = await fetch(form.action, { method: 'POST', body: formData, headers: { Accept: 'application/json' } });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'Could not submit the request.');
         form.reset();

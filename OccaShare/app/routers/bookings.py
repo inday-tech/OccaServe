@@ -2330,6 +2330,7 @@ async def step_details_submit(
         venue_landmark,
         venue_latitude,
         venue_longitude,
+        location_type="event",
     )
     if location_error:
         return RedirectResponse(
@@ -2342,11 +2343,8 @@ async def step_details_submit(
         part.strip() for part in (venue_landmark, barangay, city, province)
         if part and part.strip()
     ))
-    venue_location_valid = bool(
-        venue_address and is_valid_ph_coordinates(venue_latitude, venue_longitude)
-    )
-    if not venue_location_valid:
-        return RedirectResponse(url=f"{redirect_base}?booking_error=Please+pin+the+exact+venue+location+on+the+map.", status_code=303)
+    if not venue_address:
+        venue_address = f"Pinned venue ({venue_latitude:.7f}, {venue_longitude:.7f})"
 
     today = date.today()
     
