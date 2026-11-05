@@ -5128,7 +5128,7 @@ document.addEventListener('click', function(e) {
     }
 });
 
-window.exportBookings = function(format) {
+window.exportBookings = function() {
     const menu = document.getElementById('bookingExportMenu');
     if (menu) menu.style.display = 'none';
     
@@ -5202,95 +5202,13 @@ window.exportBookings = function(format) {
 
     if (data.length === 0) return;
 
-    if (format === 'preview') {
-        window.OccaExportPreview.open({
-            title: 'Bookings Database Report',
-            filename: 'caterer-bookings',
-            columns: ['Booking ID', 'Customer Ref', 'Event', 'Date & Time', 'Status & Billing'],
-            rows: data.map(item => [item.idText, item.customerRef, item.eventInfo, item.dateTime, item.statusBilling]),
-            metadata: [`${data.length} bookings matching current search and filters`]
-        });
-        return;
-    }
-
-    if (format === 'excel') {
-        const csvRows = [["Booking ID", "Customer Ref", "Event", "Date & Time", "Status & Billing"]];
-        
-        data.forEach(d => {
-            csvRows.push([d.idText, d.customerRef, d.eventInfo, d.dateTime, d.statusBilling]);
-        });
-        const escapeCSV = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-        const csvContent = csvRows.map(row => row.map(escapeCSV).join(',')).join('\r\n');
-        const fileUrl = URL.createObjectURL(new Blob(['\ufeff', csvContent], { type: 'text/csv;charset=utf-8;' }));
-        const link = document.createElement("a");
-        link.setAttribute("href", fileUrl);
-        link.setAttribute("download", `bookings_export_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
-    } 
-    else if (format === 'pdf' || format === 'word') {
-        let html = `
-        <html><head><title>Bookings Report</title>
-        <style>
-            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 2rem; color: #333; }
-            h2 { border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; color: #0f172a; margin-bottom: 25px; }
-            .meta-info { margin-bottom: 20px; font-size: 14px; color: #64748b; }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th, td { border: 1px solid #cbd5e1; padding: 12px 8px; text-align: left; vertical-align: top; }
-            th { background: #f8fafc; font-weight: 700; color: #475569; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
-            tr:nth-child(even) { background: #fcfcfd; }
-            .amount { font-weight: bold; color: #0f172a; white-space: nowrap; }
-            .status { font-weight: bold; color: #64748b; }
-        </style></head><body>
-        <h2>Bookings Database Report</h2>
-        <div class="meta-info"><strong>Generated on:</strong> ${new Date().toLocaleString()}</div>
-        <table>
-            <thead>
-                <tr>
-                    <th width="12%">Booking Ref</th>
-                    <th width="18%">Customer Ref</th>
-                    <th width="22%">Event Info</th>
-                    <th width="18%">Date & Time</th>
-                    <th width="30%">Status & Billing</th>
-                </tr>
-            </thead>
-            <tbody>
-        `;
-        
-        data.forEach(d => {
-            html += `<tr>
-                <td><strong>${d.idText}</strong></td>
-                <td>${d.customerRef}</td>
-                <td>${d.eventInfo}</td>
-                <td>${d.dateTime}</td>
-                <td class="status">${d.statusBilling}</td>
-            </tr>`;
-        });
-        
-        html += `</tbody></table></body></html>`;
-
-        if (format === 'word') {
-            const blob = new Blob(['\ufeff', html], {
-                type: 'application/msword'
-            });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `bookings_export_${new Date().toISOString().split('T')[0]}.doc`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } else {
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(html);
-            printWindow.document.close();
-            setTimeout(() => {
-                printWindow.print();
-            }, 500);
-        }
-    }
+    window.OccaExportPreview.open({
+        title: 'Bookings Database Report',
+        filename: 'caterer-bookings',
+        columns: ['Booking ID', 'Customer Ref', 'Event', 'Date & Time', 'Status & Billing'],
+        rows: data.map(item => [item.idText, item.customerRef, item.eventInfo, item.dateTime, item.statusBilling]),
+        metadata: [`${data.length} bookings matching current search and filters`]
+    });
 };
 
 // ─── CONSULTATION CHAT ───────────────────────────────────────────────────────
