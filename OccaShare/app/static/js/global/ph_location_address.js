@@ -18,7 +18,6 @@
             'sublocality_level_2',
             'sublocality_level_3',
             'administrative_area_level_3',
-            'neighborhood',
             'sublocality'
         );
         return { province, city, barangay };

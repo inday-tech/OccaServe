@@ -37,6 +37,68 @@ def test_customer_cancellation_eligibility_for_all_preparation_stages(
     assert cancellation_mode_for_booking(booking, NOW) == expected_mode
 
 
+@pytest.mark.parametrize(
+    "booking_status",
+    [
+        "draft",
+        "pending_review",
+        "inquiry",
+        "pending_quotation",
+        "quoted",
+        "awaiting_caterer",
+        "awaiting_customer",
+        "awaiting_payment",
+        "pending_payment",
+        "pending",
+        "confirmed",
+    ],
+)
+def test_not_started_booking_can_be_cancelled_before_preparation(booking_status):
+    booking = SimpleNamespace(
+        status=booking_status,
+        preparation_status="not_started",
+        event_date=NOW.date() + timedelta(days=10),
+        event_time=None,
+    )
+
+    assert cancellation_mode_for_booking(booking, NOW) == "cancel"
+
+
+def test_both_signed_agreement_awaiting_payment_can_be_cancelled_before_preparation():
+    booking = SimpleNamespace(
+        status="awaiting_payment",
+        preparation_status="not_started",
+        event_date=NOW.date() + timedelta(days=10),
+        event_time=None,
+    )
+
+    assert cancellation_mode_for_booking(booking, NOW) == "cancel"
+
+
+@pytest.mark.parametrize(
+    ("preparation_status", "expected_mode"),
+    [
+        ("preparing", "request"),
+        ("ready_for_delivery", "request"),
+        ("setup_in_progress", None),
+        ("ready_for_event", None),
+        ("post_event_cleanup", None),
+        ("completed", None),
+    ],
+)
+def test_cancellation_after_preparation_follows_stage_policy(
+    preparation_status, expected_mode
+):
+    booking = SimpleNamespace(
+        status="awaiting_payment",
+        preparation_status=preparation_status,
+        event_date=NOW.date() + timedelta(days=10),
+        event_time=None,
+    )
+
+    assert cancellation_mode_for_booking(booking, NOW) == expected_mode
+
+
 def test_cancellation_rules_cover_the_existing_seven_preparation_stages():
     assert [stage["key"] for stage in PREP_STATUSES] == [
         "not_started",
@@ -49,7 +111,9 @@ def test_cancellation_rules_cover_the_existing_seven_preparation_stages():
     ]
 
 
-@pytest.mark.parametrize("booking_status", ["cancelled", "completed", "draft", "expired"])
+@pytest.mark.parametrize(
+    "booking_status", ["cancelled", "completed", "rejected", "expired"]
+)
 def test_inactive_booking_status_never_allows_customer_cancellation(booking_status):
     booking = SimpleNamespace(
         status=booking_status,

@@ -389,13 +389,23 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
         phone_digits = phone_digits[2:]
     if phone_digits.startswith("0"):
         phone_digits = phone_digits[1:]
+    barangay_resolved = bool(
+        profile.brgy_code
+        or (
+            profile.barangay_status == "unavailable"
+            and (
+                (profile.user and (profile.user.street_address or "").strip())
+                or (profile.address_details or "").strip()
+            )
+        )
+    )
     location_complete = bool(
         re.fullmatch(r"9\d{9}", phone_digits)
         and (profile.contact_address or "").strip()
         and (profile.city or "").strip()
         and profile.province_code
         and profile.city_code
-        and profile.brgy_code
+        and barangay_resolved
         and profile.location_pin_confirmed
         and is_valid_ph_coordinates(profile.latitude, profile.longitude)
         and (profile.coverage_area or "").strip()
@@ -494,7 +504,7 @@ def _caterer_setup_requirements(db: Session, profile: models.CatererProfile) -> 
         location_url = "/caterer/profile#location-province"
     elif not profile.city_code:
         location_url = "/caterer/profile#location-city"
-    elif not profile.brgy_code:
+    elif not barangay_resolved:
         location_url = "/caterer/profile#location-barangay"
     elif not (profile.coverage_area or "").strip():
         location_url = "/caterer/profile#service-areas"

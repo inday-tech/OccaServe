@@ -120,8 +120,16 @@ def build_sectioned_report_docx(
         if not rows:
             body.append(_docx_paragraph("No data available."))
             continue
-        column_width = 15100 // len(headers)
-        widths = [column_width] * len(headers)
+        weights = [
+            min(36, max(
+                8,
+                len(header) * 0.8,
+                min(30, max((len(str(row[index])) for row in rows if index < len(row)), default=0) * 0.35),
+            ))
+            for index, header in enumerate(headers)
+        ]
+        total_weight = sum(weights) or 1
+        widths = [int(15100 * weight / total_weight) for weight in weights]
         widths[-1] += 15100 - sum(widths)
         table_rows = [
             "<w:tr><w:trPr><w:tblHeader/></w:trPr>"
@@ -143,6 +151,7 @@ def build_sectioned_report_docx(
         grid_columns = [f'<w:gridCol w:w="{width}"/>' for width in widths]
         table = (
             '<w:tbl><w:tblPr><w:tblW w:w="15100" w:type="dxa"/>'
+            '<w:tblLayout w:type="fixed"/>'
             '<w:tblBorders>'
             '<w:top w:val="single" w:sz="4" w:color="CBD5E1"/>'
             '<w:left w:val="single" w:sz="4" w:color="CBD5E1"/>'
@@ -258,8 +267,12 @@ def _docx_cell(value: str, width: int, header: bool = False) -> str:
     color = '<w:color w:val="FFFFFF"/>' if header else ""
     bold = "<w:b/>" if header else ""
     return (
-        f'<w:tc><w:tcPr><w:tcW w:w="{width}" w:type="dxa"/>{shade}</w:tcPr>'
-        f'<w:p><w:r><w:rPr>{bold}{color}</w:rPr>'
+        f'<w:tc><w:tcPr><w:tcW w:w="{width}" w:type="dxa"/>{shade}'
+        '<w:tcMar><w:top w:w="70" w:type="dxa"/><w:left w:w="90" w:type="dxa"/>'
+        '<w:bottom w:w="70" w:type="dxa"/><w:right w:w="90" w:type="dxa"/></w:tcMar></w:tcPr>'
+        '<w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r><w:rPr>'
+        '<w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="16"/>'
+        f'{bold}{color}</w:rPr>'
         f'<w:t xml:space="preserve">{_docx_text(value)}</w:t></w:r></w:p></w:tc>'
     )
 
@@ -281,6 +294,7 @@ def _docx_document(rows: list[dict], report_date: str, generated_by: str, filter
     grid = "".join(f'<w:gridCol w:w="{width}"/>' for width in widths)
     table = (
         '<w:tbl><w:tblPr><w:tblW w:w="15100" w:type="dxa"/>'
+        '<w:tblLayout w:type="fixed"/>'
         '<w:tblBorders>'
         '<w:top w:val="single" w:sz="4" w:color="CBD5E1"/>'
         '<w:left w:val="single" w:sz="4" w:color="CBD5E1"/>'

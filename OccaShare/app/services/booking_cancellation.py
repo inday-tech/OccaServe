@@ -8,12 +8,25 @@ MANILA = ZoneInfo("Asia/Manila")
 CANCELLATION_POLICY_VERSION = "2026-11-no-refund-v1"
 CANCELLATION_POLICY_TEXT = (
     "Customer-initiated booking cancellations are not refundable. Before preparation "
-    "starts, an eligible booking may be cancelled directly. Once preparation has "
-    "started or is complete, the customer may request cancellation for caterer review. "
-    "Cancellation is not available after Setup in Progress begins or after the event cutoff."
+    "starts, a booking may be cancelled directly, including while a quotation or signed "
+    "agreement is awaiting payment. During preparation or after preparation is complete, "
+    "the customer may request cancellation for caterer review. Cancellation is not "
+    "available once Setup in Progress begins or after the event cutoff."
 )
 ACTIVE_BOOKING_STATUSES = {
+    "draft",
+    "pending_review",
+    "under_review",
+    "inquiry",
+    "pending_quotation",
+    "quoted",
+    "quotation_phase",
+    "awaiting_caterer",
+    "awaiting_customer",
+    "pending_payment",
+    "awaiting_payment",
     "pending",
+    "tentative",
     "confirmed",
     "preparing",
     "ready_for_delivery",

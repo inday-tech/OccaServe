@@ -136,6 +136,7 @@ class CatererProfile(Base):
     province_code = Column(String, nullable=True)
     city_code = Column(String, nullable=True)
     brgy_code = Column(String, nullable=True)
+    barangay_status = Column(String, nullable=True)
     address_details = Column(Text, nullable=True)
     
     # NEW: Refined Registration Fields
@@ -614,6 +615,7 @@ class Booking(Base):
     venue_address = Column(Text, nullable=True) # Legacy, keeping for backwards compatibility
     venue_latitude = Column(Float, nullable=True)
     venue_longitude = Column(Float, nullable=True)
+    venue_barangay_status = Column(String, nullable=True)
     
     # --- SECTION A: Event Details ---
     event_address = Column(Text, nullable=True) # The actual venue/location of the event

@@ -32,6 +32,9 @@ def test_analytics_word_export_is_valid_and_includes_all_report_sections():
     assert "Monthly booking trend" in document
     assert "Jan 2026" in document
     assert "Feb 2026" in document
+    assert 'w:orient="landscape"' in document
+    assert '<w:tblLayout w:type="fixed"/>' in document
+    assert "<w:tcMar>" in document
 
 
 def test_analytics_pdf_export_has_valid_xref_and_includes_all_report_sections():

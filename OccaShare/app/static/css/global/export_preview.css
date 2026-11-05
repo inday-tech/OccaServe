@@ -332,6 +332,8 @@
 
 .occa-export-table-wrap {
     max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
 }
 
 .occa-export-table {
@@ -353,6 +355,7 @@
     border: 1px solid #dbe3ec;
     vertical-align: top;
     overflow-wrap: anywhere;
+    white-space: pre-wrap;
 }
 
 .occa-export-table td.is-currency {
@@ -382,8 +385,8 @@
 }
 
 .occa-export-sheet-word {
-    max-width: 850px;
-    padding: clamp(24px, 5vw, 54px);
+    max-width: 1020px;
+    padding: clamp(22px, 3.2vw, 40px);
 }
 
 .occa-export-sheet-word > h1 {
@@ -596,6 +599,11 @@
     }
 }
 
+@page occa-report {
+    size: A4 landscape;
+    margin: 12mm;
+}
+
 @media print {
     .occa-export-overlay {
         position: static;
@@ -636,6 +644,7 @@
     }
 
     .occa-export-sheet {
+        page: occa-report;
         width: 100%;
         max-width: none;
         padding: 0;
@@ -644,18 +653,37 @@
     }
 
     .occa-export-section {
-        break-inside: avoid;
+        margin: 12px 0;
+    }
+
+    .occa-export-section h2 {
+        break-after: avoid;
     }
 
     .occa-export-table {
         min-width: 0;
-        font-size: 9px;
+        width: 100%;
+        font-size: 8px;
+    }
+
+    .occa-export-table thead {
+        display: table-header-group;
+    }
+
+    .occa-export-table tr {
+        break-inside: avoid;
     }
 
     .occa-export-table th {
+        padding: 5px;
         background: #172033 !important;
         color: #fff !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+
+    .occa-export-table td {
+        padding: 4px 5px;
+        overflow-wrap: anywhere;
     }
 }

@@ -25,6 +25,7 @@ from ..services.payment_deadline import format_payment_deadline
 from ..services.package_pricing import PackagePricingError, load_and_calculate_customization
 from ..services.booking_duration import expected_same_day_end_time
 from ..core.utils import is_customer_profile_complete, is_valid_ph_coordinates
+from ..core.location_validation import validate_location_details
 from PIL import Image
 try:
     import pytesseract
@@ -2125,6 +2126,7 @@ async def step_details_submit(
     guest_count: Optional[str] = Form("0"),
     venue_address: Optional[str] = Form(""),
     venue_landmark: Optional[str] = Form(None),
+    venue_barangay_status: Optional[str] = Form(None),
     venue_latitude: Optional[str] = Form(None),
     venue_longitude: Optional[str] = Form(None),
     total_price: Optional[float] = Form(0.0),
@@ -2161,6 +2163,10 @@ async def step_details_submit(
         return None
 
     venue_landmark = _clean_str(venue_landmark)
+    province = _clean_str(province)
+    city = _clean_str(city)
+    barangay = _clean_str(barangay)
+    venue_barangay_status = (_clean_str(venue_barangay_status) or "").lower()
 
     # Safely parse IDs and numbers
     cleaned_pkg_str = _clean_str(package_id)
@@ -2316,14 +2322,26 @@ async def step_details_submit(
         print("[StepDetails REJECT] final_event_type is empty!")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-type:Event+type+is+required", status_code=303)
 
-    # Construct venue address if missing from hidden field
-    if venue_landmark and province and city and barangay:
-        venue_address = ", ".join(dict.fromkeys(
-            part.strip() for part in (venue_landmark, barangay, city, province)
-            if part and part.strip()
-        ))
-    elif not venue_address and province and city and barangay:
-        venue_address = f"{barangay}, {city}, {province}"
+    location_error = validate_location_details(
+        province,
+        city,
+        barangay,
+        venue_barangay_status,
+        venue_landmark,
+        venue_latitude,
+        venue_longitude,
+    )
+    if location_error:
+        return RedirectResponse(
+            url=f"{redirect_base}?booking_error={quote_plus(location_error)}",
+            status_code=303,
+        )
+
+    venue_barangay_status = venue_barangay_status or ("identified" if barangay else "unavailable")
+    venue_address = ", ".join(dict.fromkeys(
+        part.strip() for part in (venue_landmark, barangay, city, province)
+        if part and part.strip()
+    ))
     venue_location_valid = bool(
         venue_address and is_valid_ph_coordinates(venue_latitude, venue_longitude)
     )
@@ -2445,6 +2463,7 @@ async def step_details_submit(
         booking.venue_address = venue_address
         booking.venue_latitude = venue_latitude
         booking.venue_longitude = venue_longitude
+        booking.venue_barangay_status = venue_barangay_status
         booking.event_address = venue_address
         booking.guest_count = guest_count_int
         booking.total_price = total_price
@@ -2499,6 +2518,7 @@ async def step_details_submit(
             venue_address=venue_address,
             venue_latitude=venue_latitude,
             venue_longitude=venue_longitude,
+            venue_barangay_status=venue_barangay_status,
             event_address=venue_address,
             guest_count=guest_count_int,
             total_price=total_price,

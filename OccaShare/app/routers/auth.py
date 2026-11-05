@@ -12,6 +12,7 @@ from pydantic import EmailStr, ValidationError
 
 from ..db import database, schemas, models
 from ..core import security as security_auth, utils
+from ..core.location_validation import validate_location_details
 from ..core.encryption import encrypt_data
 from ..services.verification import verification_service
 from ..services.email import EmailService
@@ -181,6 +182,7 @@ async def register(
     province: Optional[str] = Form(None),
     city_municipality: Optional[str] = Form(None),
     barangay: Optional[str] = Form(None),
+    barangay_status: Optional[str] = Form(None),
     street_address: Optional[str] = Form(None),
     dob: Optional[str] = Form(None),
     password: str = Form(...),
@@ -316,6 +318,7 @@ async def register(
             errors["confirm_password"] = "Passwords do not match"
 
     if role == "caterer":
+        barangay_status = (barangay_status or "").strip().lower()
         if not address or not address.strip():
             errors["address"] = "Business Address is required"
         else:
@@ -323,18 +326,17 @@ async def register(
             if addr_error:
                 errors["address"] = addr_error
 
-        for field, value, label in (
-            ("province", province, "Province"),
-            ("city_municipality", city_municipality, "City / Municipality"),
-            ("barangay", barangay, "Barangay"),
-        ):
-            if not value or not value.strip():
-                errors[field] = f"{label} is required"
-
-        if latitude is None or longitude is None:
-            errors["location"] = "Choose your business location on the map."
-        elif not utils.is_valid_ph_coordinates(latitude, longitude):
-            errors["location"] = "Choose a valid business location pin in the Philippines."
+        location_error = validate_location_details(
+            province,
+            city_municipality,
+            barangay,
+            barangay_status,
+            street_address,
+            latitude,
+            longitude,
+        )
+        if location_error:
+            errors["location"] = location_error
 
         if not coverage_area or not coverage_area.strip():
             errors["coverage_area"] = "Service areas are required"
@@ -415,9 +417,11 @@ async def register(
                 "province_code": (province or "").strip(),
                 "city_code": (city_municipality or "").strip(),
                 "brgy_code": (barangay or "").strip(),
+                "barangay_status": barangay_status or ("identified" if barangay else None),
                 "event_types": [item.strip() for item in (event_types or "").split(",") if item.strip()],
                 "latitude": latitude,
                 "longitude": longitude,
+                "location_pin_confirmed": True,
                 "status": "Pending Approval",
             }
             if profile:
@@ -598,6 +602,7 @@ async def register(
                 province_code=(province or "").strip(),
                 city_code=(city_municipality or "").strip(),
                 brgy_code=(barangay or "").strip(),
+                barangay_status=barangay_status or ("identified" if barangay else None),
                 sample_menu_url=sample_menu_url,
                 permit_url=permit_url,
                 gov_id_url=gov_id_url,

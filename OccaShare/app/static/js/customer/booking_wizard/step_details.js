@@ -53,6 +53,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const venueLandmark = document.getElementById('venue-landmark');
         const venueLat = document.getElementById('venue_latitude');
         const venueLng = document.getElementById('venue_longitude');
+        const venueBarangayStatus = document.getElementById('venue_barangay_status');
+        const barangayUnavailableCheckbox = document.getElementById('barangayUnavailable');
+        const barangayUnavailableChoice = document.getElementById('barangayUnavailableChoice');
+        const venueLandmarkLabel = document.getElementById('venueLandmarkLabel');
         const saveVenueButton = document.getElementById('save-venue-location');
         const savedVenuePanel = document.getElementById('saved-venue-address');
         const savedVenueText = document.getElementById('saved-venue-address-text');
@@ -930,8 +934,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const c = cityEl ? (cityEl.tagName === 'SELECT' ? (cityEl.options[cityEl.selectedIndex]?.value || cityEl.value || '') : cityEl.value) : '';
         const b = brgyEl ? (brgyEl.tagName === 'SELECT' ? (brgyEl.options[brgyEl.selectedIndex]?.value || brgyEl.value || '') : brgyEl.value) : '';
         
-        if (p && c && b && !p.startsWith('--') && !c.startsWith('--') && !b.startsWith('--')) {
-            if (venueHidden && !venueHidden.value) venueHidden.value = `${b}, ${c}, ${p}`;
+        if (p && c && !p.startsWith('--') && !c.startsWith('--')) {
+            if (venueHidden && !venueHidden.value) venueHidden.value = [b, c, p].filter(Boolean).join(', ');
             
             // Fetch dynamic delivery fee
             try {
@@ -975,6 +979,35 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     window.updateHiddenVenue = updateHiddenVenue;
 
+    function setVenueBarangayMode(mode, showUnavailableChoice = mode === '') {
+        if (venueBarangayStatus) venueBarangayStatus.value = mode;
+        if (barangayUnavailableCheckbox) barangayUnavailableCheckbox.checked = mode === 'unavailable';
+        if (barangayUnavailableChoice) barangayUnavailableChoice.style.display = showUnavailableChoice ? 'block' : 'none';
+        if (venueLandmark) {
+            venueLandmark.required = mode === 'unavailable';
+            venueLandmark.placeholder = mode === 'unavailable'
+                ? 'Required when barangay is unavailable'
+                : 'Enter a street, building, subdivision, or landmark (optional)';
+        }
+        if (venueLandmarkLabel) {
+            venueLandmarkLabel.innerHTML = mode === 'unavailable'
+                ? 'Street / Building / Subdivision / Landmark <span style="color:#ef4444;">*</span>'
+                : 'Street / Building / Subdivision / Landmark <small>(Optional)</small>';
+        }
+    }
+
+    function venueAddressFieldsComplete() {
+        const province = provinceSelect?.value.trim() || '';
+        const city = citySelect?.value.trim() || '';
+        const barangay = barangaySelect?.value.trim() || '';
+        const status = venueBarangayStatus?.value || '';
+        const landmark = venueLandmark?.value.trim() || '';
+        return Boolean(province && city && (
+            (barangay && ['identified', 'manual'].includes(status)) ||
+            (!barangay && status === 'unavailable' && landmark)
+        ));
+    }
+
     function initVenueMap() {
         const mapEl = document.getElementById('venue-map');
         if (!mapEl || !window.google?.maps) return;
@@ -988,6 +1021,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const marker = new google.maps.Marker({ map: hasSavedPin ? map : null, position: savedPoint, draggable: true });
         let pendingLocation = null;
         let geocodeRequest = 0;
+        if (hasSavedPin && venueBarangayStatus && !venueBarangayStatus.value && barangaySelect?.value.trim()) {
+            venueBarangayStatus.value = 'identified';
+        }
+        setVenueBarangayMode(
+            venueBarangayStatus?.value || '',
+            venueBarangayStatus?.value === 'unavailable' || !barangaySelect?.value.trim()
+        );
+        const refreshSaveButton = () => {
+            if (saveVenueButton) saveVenueButton.disabled = !(pendingLocation && venueAddressFieldsComplete());
+        };
         const clearSavedLocation = () => {
             if (venueHidden) venueHidden.value = '';
             if (venueLat) venueLat.value = '';
@@ -998,8 +1041,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const province = provinceSelect?.value.trim() || '';
             const city = citySelect?.value.trim() || '';
             const barangay = barangaySelect?.value.trim() || '';
-            if (!pendingLocation || !province || !city || !barangay) {
-                if (venuePinStatus) venuePinStatus.textContent = 'Enter the province, municipality/city, and barangay before saving this pin.';
+            if (!pendingLocation || !venueAddressFieldsComplete()) {
+                if (venuePinStatus) venuePinStatus.textContent = 'Enter the province and city, then add a barangay or mark it unavailable and provide a street or landmark.';
                 return;
             }
             const address = window.OccaServeLocationAddress.composeAddress({
@@ -1013,6 +1056,7 @@ document.addEventListener('DOMContentLoaded', function () {
             venueLng.value = pendingLocation.lng;
             venueHidden.value = address;
             venueSearch.value = address;
+            if (venueBarangayStatus && !venueBarangayStatus.value) venueBarangayStatus.value = 'identified';
             if (savedVenueText) savedVenueText.textContent = address;
             if (savedVenuePanel) savedVenuePanel.style.display = 'block';
             if (venuePinStatus) venuePinStatus.textContent = 'Venue location saved.';
@@ -1031,19 +1075,36 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!position) return;
             const province = provinceSelect?.value.trim() || '';
             const city = citySelect?.value.trim() || '';
-            const barangay = barangaySelect?.value.trim() || '';
             pendingLocation = {
                 lat: position.lat().toFixed(7),
                 lng: position.lng().toFixed(7)
             };
             clearSavedLocation();
-            if (saveVenueButton) saveVenueButton.disabled = !(province && city && barangay);
-            if (venuePinStatus) venuePinStatus.textContent = province && city && barangay
+            refreshSaveButton();
+            if (venuePinStatus) venuePinStatus.textContent = province && city
                 ? 'Address details changed. Save the pinned location again to confirm the update.'
-                : 'Complete the province, municipality/city, and barangay before saving the pin.';
+                : 'Complete the province and municipality/city before saving the pin.';
         };
         [provinceSelect, citySelect, barangaySelect, venueLandmark].forEach(input => {
             input?.addEventListener('input', onAddressFieldChange);
+            input?.addEventListener('change', onAddressFieldChange);
+        });
+        [provinceSelect, citySelect].forEach(input => input?.addEventListener('input', () => {
+            if (venueBarangayStatus?.value) {
+                if (barangaySelect) barangaySelect.value = '';
+                setVenueBarangayMode('', true);
+                refreshSaveButton();
+            }
+        }));
+        barangaySelect?.addEventListener('input', () => {
+            const hasBarangay = Boolean(barangaySelect.value.trim());
+            setVenueBarangayMode(hasBarangay ? 'manual' : '', !hasBarangay);
+            refreshSaveButton();
+        });
+        barangayUnavailableCheckbox?.addEventListener('change', () => {
+            if (barangayUnavailableCheckbox.checked && barangaySelect) barangaySelect.value = '';
+            setVenueBarangayMode(barangayUnavailableCheckbox.checked ? 'unavailable' : '', true);
+            onAddressFieldChange();
         });
         venueSearch?.addEventListener('input', () => {
             if (venueSearch.value.trim() === (venueHidden?.value || '').trim()) return;
@@ -1057,13 +1118,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         const setLocation = point => {
             const requestId = ++geocodeRequest;
-            pendingLocation = null;
+            pendingLocation = {
+                lat: point.lat().toFixed(7),
+                lng: point.lng().toFixed(7)
+            };
             clearSavedLocation();
             if (venueLandmark) venueLandmark.value = '';
             if (provinceSelect) provinceSelect.value = '';
             if (citySelect) citySelect.value = '';
             if (barangaySelect) barangaySelect.value = '';
-            if (saveVenueButton) saveVenueButton.disabled = true;
+            setVenueBarangayMode('', false);
+            refreshSaveButton();
             if (venuePinStatus) venuePinStatus.textContent = 'Finding the complete address…';
             marker.setPosition(point);
             marker.setMap(map);
@@ -1073,30 +1138,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     ? window.OccaServeLocationAddress.parseResults(results)
                     : null;
                 if (!address) {
-                    if (venuePinStatus) venuePinStatus.textContent = 'Could not find an address for this pin. Move it slightly or search for the venue.';
+                    setVenueBarangayMode('', true);
+                    refreshSaveButton();
+                    if (venuePinStatus) venuePinStatus.textContent = 'Address not found. Enter province and city manually; if no barangay is available, mark it unavailable and add a street or landmark.';
                     return;
                 }
                 const { province, city, barangay: brgy } = address;
-                if (!province || !city || !brgy) {
-                    if (provinceSelect) provinceSelect.value = province;
-                    if (citySelect) citySelect.value = city;
-                    if (barangaySelect) barangaySelect.value = brgy;
-                    if (venuePinStatus) venuePinStatus.textContent = 'Address partly found. Complete the highlighted province, municipality/city, and barangay fields before saving.';
-                    pendingLocation = {
-                        lat: point.lat().toFixed(7),
-                        lng: point.lng().toFixed(7)
-                    };
-                    if (saveVenueButton) saveVenueButton.disabled = true;
-                    return;
-                }
                 if (provinceSelect) provinceSelect.value = province;
                 if (citySelect) citySelect.value = city;
                 if (barangaySelect) barangaySelect.value = brgy;
-                pendingLocation = {
-                    lat: point.lat().toFixed(7),
-                    lng: point.lng().toFixed(7)
-                };
-                if (saveVenueButton) saveVenueButton.disabled = false;
+                setVenueBarangayMode(brgy ? 'identified' : '', !brgy);
+                refreshSaveButton();
+                if (!province || !city || !brgy) {
+                    if (venuePinStatus) venuePinStatus.textContent = 'Address partly found. Confirm the province and city; if the barangay is missing, mark it unavailable and add a street or landmark.';
+                    return;
+                }
                 if (venuePinStatus) venuePinStatus.textContent = 'Address found. Save this pinned location to use it for your booking.';
             });
         };
@@ -1659,7 +1715,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const validateBarangay = () => {
         if (!barangaySelect) return true;
         const v = (barangaySelect.value || '').trim();
-        const isValid = !!v && !v.startsWith('--');
+        const barangayUnavailable = venueBarangayStatus?.value === 'unavailable' &&
+            !v && Boolean(venueLandmark?.value.trim());
+        const isValid = (Boolean(v) && !v.startsWith('--')) || barangayUnavailable;
         const errEl = document.getElementById('err-barangay');
         if (isValid) {
             barangaySelect.classList.remove('error');
@@ -1758,7 +1816,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 // 6. Exact venue pin and reverse-geocoded address
-                const pinValid = !!(venueHidden?.value && venueLat?.value && venueLng?.value);
+                const pinValid = !!(
+                    venueHidden?.value &&
+                    venueLat?.value &&
+                    venueLng?.value &&
+                    venueAddressFieldsComplete()
+                );
                 check('venue_pin', pinValid || window.localDevelopment);
                 if (!pinValid && !window.localDevelopment) document.getElementById('err-venue')?.classList.add('show');
 

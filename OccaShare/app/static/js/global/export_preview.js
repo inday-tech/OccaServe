@@ -149,26 +149,12 @@
         sheet.className = `occa-export-sheet occa-export-sheet-${format}`;
         appendReportHeader(sheet, config);
         appendReportSummary(sheet, config);
-        if (format === 'csv') {
-            sections.forEach(section => {
-                const title = document.createElement('h2');
-                title.textContent = section.title || config.title || 'Data';
-                sheet.appendChild(title);
-                const raw = document.createElement('pre');
-                raw.className = 'occa-export-csv-preview';
-                const rows = [section.columns.map(column => column.label)];
-                section.rows.forEach(row => rows.push(section.columns.map((column, index) => valueFor(row, column, index))));
-                raw.textContent = rows.map(row => row.map(csvCell).join(',')).join('\n');
-                sheet.appendChild(raw);
-            });
-            return sheet;
-        }
         sections.forEach(section => {
             const sectionEl = document.createElement('section');
             sectionEl.className = 'occa-export-section';
-            if (section.title) {
+            if (section.title || format === 'csv') {
                 const sectionTitle = document.createElement('h2');
-                sectionTitle.textContent = section.title;
+                sectionTitle.textContent = section.title || config.title || 'Data';
                 sectionEl.appendChild(sectionTitle);
             }
             if (!section.columns.length || !section.rows.length) {
@@ -181,6 +167,7 @@
                 wrap.className = 'occa-export-table-wrap';
                 const table = document.createElement('table');
                 table.className = 'occa-export-table';
+                table.style.minWidth = `${Math.max(760, section.columns.length * 112)}px`;
                 const head = document.createElement('thead');
                 const headRow = document.createElement('tr');
                 section.columns.forEach(column => {
@@ -444,12 +431,33 @@
             new word.Paragraph({ text: `Generated ${config.generatedAt || new Date().toLocaleString()}${(config.metadata || []).length ? ` · ${(config.metadata || []).join(' · ')}` : ''}`, spacing: { after: 240 } })
         ];
         appendWordSummary(word, children, config);
+        const pageWidth = 16838;
+        const margins = { top: 600, right: 540, bottom: 600, left: 540 };
+        const tableWidth = pageWidth - margins.left - margins.right;
         sections.forEach(section => {
             if (section.title) children.push(new word.Paragraph({ text: section.title, heading: word.HeadingLevel.HEADING_1, spacing: { before: 240, after: 120 } }));
-            const rows = [new word.TableRow({ children: section.columns.map(column => makeWordCell(word, column.label, true)), tableHeader: true })];
-            section.rows.forEach(row => rows.push(new word.TableRow({ children: section.columns.map((column, index) => makeWordCell(word, column.type === 'currency' ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index))) })));
+            const widths = wordColumnWidths(section, tableWidth);
+            const rows = [new word.TableRow({
+                children: section.columns.map((column, index) => makeWordCell(word, column.label, true, widths[index])),
+                tableHeader: true
+            })];
+            section.rows.forEach(row => rows.push(new word.TableRow({
+                cantSplit: true,
+                children: section.columns.map((column, index) => makeWordCell(
+                    word,
+                    column.type === 'currency' ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index),
+                    false,
+                    widths[index]
+                ))
+            })));
             if (!section.columns.length) children.push(new word.Paragraph({ text: 'No matching records.' }));
-            else children.push(new word.Table({ rows, width: { size: 100, type: word.WidthType.PERCENTAGE }, borders: Object.fromEntries(['top', 'bottom', 'left', 'right', 'insideHorizontal', 'insideVertical'].map(edge => [edge, { style: word.BorderStyle.SINGLE, size: 1, color: 'D7DEE8' }])) }));
+            else children.push(new word.Table({
+                rows,
+                width: { size: tableWidth, type: word.WidthType.DXA },
+                columnWidths: widths,
+                layout: word.TableLayoutType.FIXED,
+                borders: Object.fromEntries(['top', 'bottom', 'left', 'right', 'insideHorizontal', 'insideVertical'].map(edge => [edge, { style: word.BorderStyle.SINGLE, size: 1, color: 'D7DEE8' }]))
+            }));
         });
         const pageNumber = word.PageNumber;
         const footer = word.Footer && pageNumber ? {
@@ -468,7 +476,12 @@
             creator: 'OccaServe',
             title: config.title || 'OccaServe Report',
             sections: [{
-                properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 720 } } },
+                properties: {
+                    page: {
+                        size: { width: pageWidth, height: 11906, orientation: word.PageOrientation.LANDSCAPE },
+                        margin: margins
+                    }
+                },
                 ...(footer ? { footers: footer } : {}),
                 children
             }]
@@ -487,12 +500,43 @@
         }
     }
 
-    function makeWordCell(word, value, header = false) {
+    function makeWordCell(word, value, header = false, width) {
         return new word.TableCell({
-            children: [new word.Paragraph({ children: [new word.TextRun({ text: safeText(value), bold: header, color: header ? 'FFFFFF' : '1E293B', size: 18 })] })],
+            children: [new word.Paragraph({
+                spacing: { before: 0, after: 0 },
+                children: [new word.TextRun({
+                    text: safeText(value),
+                    bold: header,
+                    color: header ? 'FFFFFF' : '1E293B',
+                    size: header ? 17 : 16
+                })]
+            })],
             shading: header ? { fill: '172033', type: word.ShadingType.CLEAR } : undefined,
-            margins: { top: 80, bottom: 80, left: 100, right: 100 }
+            margins: { top: 70, bottom: 70, left: 90, right: 90 },
+            verticalAlign: word.VerticalAlign.TOP,
+            ...(width ? { width: { size: width, type: word.WidthType.DXA } } : {})
         });
+    }
+
+    function wordColumnWidths(section, totalWidth) {
+        const weights = section.columns.map((column, index) => {
+            const longestValue = section.rows.slice(0, 100).reduce((longest, row) => (
+                Math.max(longest, safeText(valueFor(row, column, index)).split(/\r?\n/).reduce(
+                    (maxLine, line) => Math.max(maxLine, line.length), 0
+                ))
+            ), 0);
+            return Math.min(36, Math.max(8, String(column.label).length * 0.8, Math.min(30, longestValue * 0.35)));
+        });
+        const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
+        const widths = weights.map(weight => Math.floor(totalWidth * weight / totalWeight));
+        if (widths.length) widths[widths.length - 1] += totalWidth - widths.reduce((sum, width) => sum + width, 0);
+        return widths;
+    }
+
+    function estimateWrappedLines(value, width) {
+        return safeText(value).split(/\r?\n/).reduce((total, line) => (
+            total + Math.max(1, Math.ceil(line.length / Math.max(1, width - 2)))
+        ), 0);
     }
 
     function downloadText(config, sections) {
@@ -527,6 +571,14 @@
                 ...(config.summary.statusBreakdown || []).map(item => [item.label, item.count])
             ]);
             summarySheet.columns = [{ width: 30 }, { width: 28 }];
+            summarySheet.pageSetup = {
+                paperSize: 9,
+                orientation: 'landscape',
+                fitToPage: true,
+                fitToWidth: 1,
+                fitToHeight: 1,
+                margins: { left: 0.35, right: 0.35, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
+            };
             summarySheet.getRow(1).font = { bold: true, size: 16, color: { argb: 'FF0F172A' } };
             summarySheet.eachRow((row, rowNumber) => {
                 row.eachCell(cell => {
@@ -547,10 +599,19 @@
             worksheet.columns = section.columns.map((column, index) => ({
                 header: column.label,
                 key: `field${index}`,
-                width: Math.min(42, Math.max(14, String(column.label).length + 4, ...section.rows.slice(0, 150).map(row => safeText(valueFor(row, column, index)).length + 2))),
+                width: Math.min(48, Math.max(14, String(column.label).length + 4, ...section.rows.slice(0, 150).map(row => safeText(valueFor(row, column, index)).length + 2))),
                 style: column.type === 'currency' ? { numFmt: '"PHP "#,##0.00' } : column.type === 'number' ? { numFmt: '#,##0.##' } : {}
             }));
             section.rows.forEach(row => worksheet.addRow(Object.fromEntries(section.columns.map((column, index) => [`field${index}`, valueFor(row, column, index)]))));
+            worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+            worksheet.pageSetup = {
+                paperSize: 9,
+                orientation: 'landscape',
+                fitToPage: true,
+                fitToWidth: 1,
+                fitToHeight: 0,
+                margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
+            };
             worksheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, worksheet.rowCount), column: Math.max(1, section.columns.length) } };
             const heading = worksheet.getRow(1);
             heading.height = 24;
@@ -558,11 +619,18 @@
             heading.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
             heading.alignment = { vertical: 'middle', wrapText: true };
             worksheet.eachRow((row, rowNumber) => {
+                let rowLines = 1;
                 row.eachCell(cell => {
                     cell.border = { bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } } };
                     if (rowNumber > 1 && rowNumber % 2 === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
                     cell.alignment = { vertical: 'top', wrapText: true };
+                    const columnWidth = worksheet.getColumn(cell.col).width || 14;
+                    const value = cell.value && typeof cell.value === 'object' && 'text' in cell.value
+                        ? cell.value.text
+                        : cell.value;
+                    rowLines = Math.max(rowLines, estimateWrappedLines(value, columnWidth));
                 });
+                row.height = Math.min(409, Math.max(22, rowLines * 14 + 8));
             });
         });
         const buffer = await workbook.xlsx.writeBuffer();
@@ -587,13 +655,16 @@
             doc.text('OCCASERVE', margin + 22, 30);
             doc.setFontSize(19);
             doc.setTextColor(15, 23, 42);
-            doc.text(config.title || 'Report', margin, 56);
+            const titleLines = doc.splitTextToSize(config.title || 'Report', doc.internal.pageSize.getWidth() - margin * 2);
+            doc.text(titleLines, margin, 56);
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
             doc.setTextColor(100, 116, 139);
             const subtitle = [config.catererName, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · ');
-            doc.text(subtitle, margin, 72, { maxWidth: 750 });
-            let tableStartY = 88;
+            const subtitleLines = doc.splitTextToSize(subtitle, doc.internal.pageSize.getWidth() - margin * 2);
+            const subtitleY = 56 + titleLines.length * 20 + 4;
+            doc.text(subtitleLines, margin, subtitleY);
+            let tableStartY = subtitleY + subtitleLines.length * 10 + 12;
             if (!index && config.summary) {
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(9);
@@ -619,9 +690,11 @@
             if (section.title) {
                 doc.setFontSize(11);
                 doc.setTextColor(51, 65, 85);
-                doc.text(section.title, margin, tableStartY);
-                tableStartY += 10;
+                const titleLines = doc.splitTextToSize(section.title, doc.internal.pageSize.getWidth() - margin * 2);
+                doc.text(titleLines, margin, tableStartY);
+                tableStartY += titleLines.length * 13 + 4;
             }
+            const columnCount = Math.max(1, section.columns.length);
             doc.autoTable({
                 startY: tableStartY,
                 head: [section.columns.map(column => column.label)],
@@ -630,8 +703,15 @@
                     : safeText(valueFor(row, column, columnIndex)))),
                 margin: { left: margin, right: margin, bottom: 30 },
                 theme: 'grid',
-                styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 5, overflow: 'linebreak', textColor: [30, 41, 59] },
-                headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+                styles: {
+                    font: 'helvetica',
+                    fontSize: Math.max(5.5, Math.min(8, 8 - Math.max(0, columnCount - 5) * 0.35)),
+                    cellPadding: columnCount > 8 ? 3 : 5,
+                    overflow: 'linebreak',
+                    valign: 'top',
+                    textColor: [30, 41, 59]
+                },
+                headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', valign: 'middle' },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
                 didDrawPage: () => {
                     const pageHeight = doc.internal.pageSize.getHeight();
@@ -659,6 +739,9 @@
         const summaryHtml = config.summary ? `<section><h2>Report summary</h2><p>${(config.summary.items || []).map(item => `<strong>${escapeHtml(item.label)}:</strong> ${escapeHtml(item.value)}`).join(' · ')}</p>${config.summary.statusBreakdown?.length ? `<p><strong>Payment status:</strong> ${config.summary.statusBreakdown.map(item => `${escapeHtml(item.label)} (${item.count})`).join(' · ')}</p>` : ''}</section>` : '';
         const sectionHtml = summaryHtml + sections.map(section => `<section><h2>${escapeHtml(section.title)}</h2><table><thead><tr>${section.columns.map(column => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead><tbody>${section.rows.map(row => `<tr>${section.columns.map((column, index) => `<td>${escapeHtml(column.type === 'currency' ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`).join('');
         win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(config.title || 'OccaServe Report')}</title><style>@page{size:landscape;margin:15mm}body{font:11px/1.5 Arial,sans-serif;color:#0f172a}header{border-bottom:3px solid #F07835;padding-bottom:12px;margin-bottom:20px}header strong{color:#F07835}h1{font-size:22px;margin:10px 0 4px}small{color:#64748b}section{margin:20px 0;break-inside:avoid}h2{font-size:14px}table{width:100%;border-collapse:collapse;font-size:9px}th,td{border:1px solid #dbe3ec;padding:6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#0f172a;color:white}tr:nth-child(even){background:#f8fafc}footer{position:fixed;bottom:0;color:#64748b;font-size:9px}</style></head><body><header><strong>OCCASERVE</strong><h1>${escapeHtml(config.title || 'Report')}</h1><small>${escapeHtml([config.catererName, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · '))}</small></header>${sectionHtml}<footer>OccaServe · Confidential report</footer><script>window.onload=()=>window.print()<\/script></body></html>`);
+        const printStyles = win.document.createElement('style');
+        printStyles.textContent = 'section{break-inside:auto!important}h2{break-after:avoid}thead{display:table-header-group}tr{break-inside:avoid}th,td{white-space:pre-wrap;overflow-wrap:anywhere}';
+        win.document.head.appendChild(printStyles);
         win.document.close();
     }
 
