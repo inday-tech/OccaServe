@@ -7718,6 +7718,8 @@ async def add_package(
 
     if not name.strip():
         errors.append("Package name is required.")
+    elif len(name) > 100:
+        errors.append("Package name must be 100 characters or fewer.")
 
     if pricing_mode == 'customizable':
         price_per_head = float(price_per_head or 0.0)
@@ -8945,6 +8947,8 @@ async def update_package(
 
     if not name.strip():
         errors.append("Package name is required.")
+    elif len(name) > 100:
+        errors.append("Package name must be 100 characters or fewer.")
 
     if pricing_mode == 'customizable':
         price_per_head = float(price_per_head or 0.0)

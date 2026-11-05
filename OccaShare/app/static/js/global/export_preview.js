@@ -106,13 +106,6 @@
     function renderFormatPreview(config, sections, format) {
         const sheet = document.createElement('article');
         sheet.className = `occa-export-sheet occa-export-sheet-${format}`;
-        if (format === 'csv') {
-            const preview = document.createElement('pre');
-            preview.className = 'occa-export-csv-preview';
-            preview.textContent = buildCsvContent(config, sections).replace(/^\uFEFF/, '');
-            sheet.appendChild(preview);
-            return sheet;
-        }
         appendReportHeader(sheet, config);
         sections.forEach(section => {
             const sectionEl = document.createElement('section');
@@ -205,7 +198,6 @@
         const formatOptions = [
             ['pdf', 'PDF', '.pdf', 'fa-file-pdf'],
             ['xlsx', 'Excel', '.xlsx', 'fa-file-excel'],
-            ['csv', 'CSV', '.csv', 'fa-file-csv'],
             ['word', 'Word', '.docx', 'fa-file-word']
         ];
         const previewHost = document.createElement('div');
@@ -299,32 +291,6 @@
         closeButton.focus();
     }
 
-    function csvCell(value) {
-        let text = safeText(value);
-        if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
-        return `"${text.replace(/"/g, '""')}"`;
-    }
-
-    function buildCsvContent(config, sections) {
-        const lines = [[config.title || 'OccaServe Report']];
-        if (config.catererName) lines.push(['Caterer', config.catererName]);
-        lines.push([`Generated ${config.generatedAt || new Date().toLocaleString()}`]);
-        (config.metadata || []).forEach(item => lines.push([item]));
-        lines.push([]);
-        sections.forEach(section => {
-            if (sections.length > 1 && section.title) lines.push([section.title]);
-            lines.push(section.columns.map(column => column.label));
-            section.rows.forEach(row => lines.push(section.columns.map((column, index) => valueFor(row, column, index))));
-            lines.push([]);
-        });
-        return '\ufeff' + lines.map(row => row.map(csvCell).join(',')).join('\r\n');
-    }
-
-    function downloadCsv(config, sections) {
-        const csv = buildCsvContent(config, sections);
-        saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `${fileBase(config)}.csv`);
-    }
-
     function fileBase(config) {
         return (config.filename || config.title || 'occaserve-report')
             .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'occaserve-report';
@@ -365,8 +331,7 @@
         status.textContent = `Preparing ${label} report…`;
         status.classList.remove('is-success', 'is-error');
         try {
-            if (format === 'csv') downloadCsv(config, sections);
-            else if (format === 'xlsx') await downloadXlsx(config, sections);
+            if (format === 'xlsx') await downloadXlsx(config, sections);
             else if (format === 'word') await downloadWordDocument(config, sections);
             else await downloadPdf(config, sections);
             status.textContent = `${label} report downloaded successfully.`;

@@ -5,8 +5,6 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from ..core.templates import templates
 from sqlalchemy.orm import Session
 import os, secrets, string, logging
-import csv
-import io
 from ..db import database, models
 from ..core import security as auth
 from ..core.utils import is_dummy_email, is_dummy_name, is_dummy_phone, is_dummy_address, is_valid_person_name, is_valid_business_name, is_valid_ph_coordinates
@@ -369,19 +367,6 @@ def _admin_report_export_sections(report: dict) -> list[tuple[str, list[str], li
             ],
         ),
     ]
-
-
-def _admin_report_csv(report: dict) -> bytes:
-    output = io.StringIO(newline="")
-    writer = csv.writer(output)
-    writer.writerow(["OccaServe Analytics Report"])
-    writer.writerow(["Report date", report["report_date"]])
-    for section_title, headers, rows in _admin_report_export_sections(report):
-        writer.writerow([])
-        writer.writerow([section_title])
-        writer.writerow(headers)
-        writer.writerows(rows)
-    return output.getvalue().encode("utf-8-sig")
 
 
 def _admin_report_docx(report: dict) -> bytes:
@@ -897,19 +882,19 @@ def _audit_report_rows(logs) -> list[dict]:
 
 @router.get("/api/audit-logs/export")
 async def export_audit_logs(
-    format: str = "csv",
+    format: str = "pdf",
     q: Optional[str] = None,
     category: Optional[str] = None,
     date: Optional[str] = None,
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only)
 ):
-    from ..services.audit_report import build_audit_csv, build_audit_docx, build_audit_pdf
+    from ..services.audit_report import build_audit_docx, build_audit_pdf
 
     file_format = format.strip().lower()
-    supported_formats = {"csv", "pdf", "word", "docx", "preview"}
+    supported_formats = {"pdf", "word", "docx", "preview"}
     if file_format not in supported_formats:
-        raise HTTPException(status_code=400, detail="Unsupported format. Choose csv, pdf, or word.")
+        raise HTTPException(status_code=400, detail="Unsupported format. Choose pdf or word.")
 
     query, q, category, date = _audit_log_query(db, q, category, date)
     logs = query.order_by(
@@ -940,11 +925,7 @@ async def export_audit_logs(
             }],
         })
 
-    if file_format == "csv":
-        content = build_audit_csv(rows, generated_on, generated_by, filter_summary)
-        media_type = "text/csv; charset=utf-8"
-        filename = f"system_audit_logs_{filename_date}.csv"
-    elif file_format == "pdf":
+    if file_format == "pdf":
         content = build_audit_pdf(rows, generated_on, generated_by, filter_summary)
         media_type = "application/pdf"
         filename = f"system_audit_logs_{filename_date}.pdf"
@@ -3267,7 +3248,7 @@ async def admin_reports(
 
 @router.get("/reports/export")
 async def export_admin_report(
-    format: str = "csv",
+    format: str = "pdf",
     db: Session = Depends(database.get_db),
     user: models.User = Depends(admin_only),
 ):
@@ -3285,11 +3266,7 @@ async def export_admin_report(
                 for title, headers, rows in sections
             ],
         })
-    if file_format == "csv":
-        content = _admin_report_csv(report)
-        media_type = "text/csv; charset=utf-8"
-        filename = f"occaserve-report-{report_date}.csv"
-    elif file_format == "pdf":
+    if file_format == "pdf":
         content = _admin_report_pdf(report)
         media_type = "application/pdf"
         filename = f"occaserve-report-{report_date}.pdf"
@@ -3298,7 +3275,7 @@ async def export_admin_report(
         media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         filename = f"occaserve-report-{report_date}.docx"
     else:
-        raise HTTPException(status_code=400, detail="Unsupported report format. Choose csv, pdf, or word.")
+        raise HTTPException(status_code=400, detail="Unsupported report format. Choose pdf or word.")
 
     return Response(
         content=content,

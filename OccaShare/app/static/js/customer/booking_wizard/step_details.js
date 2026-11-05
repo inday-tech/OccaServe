@@ -1350,6 +1350,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 errSpan.classList.add('show');
             }
             return false;
+        } else if (Array.from(val).length > 100) {
+            eventName.classList.add('error');
+            eventName.classList.remove('is-valid');
+            if (errSpan) {
+                errSpan.innerText = 'Event name must be 100 characters or fewer.';
+                errSpan.classList.add('show');
+            }
+            return false;
         } else {
             eventName.classList.remove('error');
             eventName.classList.add('is-valid');

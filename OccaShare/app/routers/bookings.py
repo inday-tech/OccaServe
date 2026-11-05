@@ -2318,6 +2318,21 @@ async def step_details_submit(
     if not event_name_clean:
         print(f"[StepDetails REJECT] event_name_clean is empty! raw={event_name!r}")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-name:Event+name+is+required", status_code=303)
+    if len(event_name_clean) > 100:
+        return RedirectResponse(
+            url=f"{redirect_base}?booking_error={quote_plus('Event name must be 100 characters or fewer.')}",
+            status_code=303,
+        )
+    if len(celebrant_name) > 100:
+        return RedirectResponse(
+            url=f"{redirect_base}?booking_error={quote_plus('Guest of honor name must be 100 characters or fewer.')}",
+            status_code=303,
+        )
+    if len(theme_motif) > 100:
+        return RedirectResponse(
+            url=f"{redirect_base}?booking_error={quote_plus('Theme / motif must be 100 characters or fewer.')}",
+            status_code=303,
+        )
     if not final_event_type:
         print("[StepDetails REJECT] final_event_type is empty!")
         return RedirectResponse(url=f"{redirect_base}?booking_error=err-type:Event+type+is+required", status_code=303)

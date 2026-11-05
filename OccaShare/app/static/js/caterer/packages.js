@@ -143,6 +143,10 @@ async function validatePackageName(name) {
         setPackageNameValidation('idle');
         return;
     }
+    if (Array.from(normalizedName).length > 100) {
+        setPackageNameValidation('error', 'Package name must be 100 characters or fewer.');
+        return;
+    }
 
     setPackageNameValidation('checking', 'Checking package name...');
     try {
@@ -171,6 +175,10 @@ function schedulePackageNameValidation(name) {
     packageNameValidationSequence++;
     if (!name.trim()) {
         setPackageNameValidation('idle');
+        return;
+    }
+    if (Array.from(name.trim()).length > 100) {
+        setPackageNameValidation('error', 'Package name must be 100 characters or fewer.');
         return;
     }
     packageNameValidationStatus = 'checking';
@@ -1049,6 +1057,7 @@ function validateTab(tabName) {
         const nameInput = form.elements.namedItem('name');
         const nameVal = nameInput ? nameInput.value.trim() : '';
         if (!nameVal) addError(nameInput, "Package Name is required.");
+        else if (Array.from(nameVal).length > 100) addError(nameInput, "Package name must be 100 characters or fewer.");
         else if (packageNameValidationStatus !== 'valid') {
             const nameMessage = packageNameValidationStatus === 'duplicate'
                 ? 'Choose a different package name.'
@@ -1133,7 +1142,7 @@ function packageStepIsReady(tabName) {
         const capacity = mode === 'fixed'
             ? Number(value('base_pax')) >= globalMinPax
             : Number(value('min_guests')) >= globalMinPax;
-        return Boolean(value('name')) && packageNameValidationStatus === 'valid'
+        return Boolean(value('name')) && Array.from(value('name')).length <= 100 && packageNameValidationStatus === 'valid'
             && Number.isInteger(duration) && duration >= 1 && duration <= 24
             && Boolean(rawPrice) && Number.isFinite(price) && price > 0
             && capacity;

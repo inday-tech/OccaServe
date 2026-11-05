@@ -230,6 +230,7 @@
                 <div class="form-group">
                     <label class="form-label">Event Name</label>
                     <input type="text" name="event_name" id="event_name" class="form-input"
+                        data-char-limit="100"
                         value="{{ booking_data.get('event_name', booking.event_name if booking else '') }}" required>
                     <span class="field-error" id="err-name">Please enter a memorable name for your event (e.g., Ana's 18th Birthday).</span>
                 </div>
@@ -276,12 +277,12 @@
                 
                 <div class="form-group" style="margin-top: 1rem;">
                     <label class="form-label">Celebrant / Guest of Honor <small>(Optional)</small></label>
-                    <input type="text" name="celebrant_name" class="form-input" value="{{ booking_data.get('celebrant_name', booking.custom_requirements.get('celebrant_name', '') if booking and booking.custom_requirements else '') }}">
+                    <input type="text" name="celebrant_name" class="form-input" data-char-limit="100" value="{{ booking_data.get('celebrant_name', booking.custom_requirements.get('celebrant_name', '') if booking and booking.custom_requirements else '') }}">
                 </div>
 
                 <div class="form-group" style="margin-top: 1rem;">
                     <label class="form-label">Theme / Motif <small>(Optional)</small></label>
-                    <input type="text" name="theme_motif" class="form-input" value="{{ booking_data.get('theme_motif', ((booking.custom_requirements.get('theme_motif') or booking.custom_requirements.get('motif_theme', '')) if booking and booking.custom_requirements else '')) }}">
+                    <input type="text" name="theme_motif" class="form-input" data-char-limit="100" value="{{ booking_data.get('theme_motif', ((booking.custom_requirements.get('theme_motif') or booking.custom_requirements.get('motif_theme', '')) if booking and booking.custom_requirements else '')) }}">
                 </div>
 
                 <section class="event-schedule-fields" aria-label="Event schedule">

@@ -1,10 +1,9 @@
-import csv
 import io
 import re
 import zipfile
 from xml.etree import ElementTree
 
-from app.services.audit_report import build_audit_csv, build_audit_docx, build_audit_pdf
+from app.services.audit_report import build_audit_docx, build_audit_pdf
 
 
 def make_audit_row(row_id: int) -> dict:
@@ -20,18 +19,6 @@ def make_audit_row(row_id: int) -> dict:
         "ip_address": "192.0.2.1",
         "notes": f"Full audit details for entry {row_id}.",
     }
-
-
-def test_csv_export_contains_metadata_and_every_matching_record():
-    rows = [make_audit_row(row_id) for row_id in range(1, 26)]
-
-    content = build_audit_csv(rows, "Nov 01, 2026 10:00 AM PHT", "Admin User", "Action: Account Updated")
-    parsed = list(csv.reader(io.StringIO(content.decode("utf-8-sig"))))
-
-    assert ["Applied filters", "Action: Account Updated"] in parsed
-    assert ["Matching log entries", "25"] in parsed
-    assert len(parsed) == 7 + len(rows)
-    assert parsed[-1][0:3] == ["25", "2026-11-01 10:25:00", "Admin 25"]
 
 
 def test_word_export_is_valid_docx_and_contains_every_record():
