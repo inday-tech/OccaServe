@@ -2233,6 +2233,189 @@ body.modal-open {
     }
 }
 
+#authModalCaterer .caterer-location-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+#authModalCaterer .caterer-location-section > .field-hint {
+    margin: -0.3rem 0 0;
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+#authModalCaterer .caterer-location-wrapper {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.8rem !important;
+    border: 1px solid #dbe3ee !important;
+    border-radius: 14px !important;
+    background: #f8fafc !important;
+}
+
+#authModalCaterer .caterer-location-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    align-items: center;
+}
+
+#authModalCaterer #catererLocationSearch,
+#authModalCaterer #catererUseMyLocation {
+    height: 46px;
+    min-height: 46px;
+    padding: 0 0.85rem;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    font-size: 0.85rem;
+}
+
+#authModalCaterer #catererRegistrationMap {
+    height: 300px !important;
+    margin-top: 0.65rem !important;
+    border: 1px solid #dbe3ee !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+#authModalCaterer .caterer-address-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    width: 100%;
+}
+
+#authModalCaterer .caterer-address-grid .form-group,
+#authModalCaterer .caterer-address-extra {
+    min-width: 0;
+    margin: 0 !important;
+}
+
+#authModalCaterer .caterer-address-grid .form-group label,
+#authModalCaterer .caterer-address-extra > label {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+#authModalCaterer .caterer-address-grid .minimal-input,
+#authModalCaterer .caterer-address-extra .input-wrapper,
+#authModalCaterer .caterer-address-extra .minimal-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+}
+
+#authModalCaterer .caterer-address-grid .minimal-input,
+#authModalCaterer .caterer-address-extra .minimal-input {
+    height: 46px;
+    padding: 0 0.85rem;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    background: #fff !important;
+    color: #0f172a;
+    font-size: 0.86rem;
+}
+
+#authModalCaterer .caterer-barangay-field {
+    grid-column: 1 / -1;
+}
+
+#authModalCaterer .caterer-address-extra .input-wrapper {
+    min-height: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+#authModalCaterer .caterer-address-extra .minimal-input:focus,
+#authModalCaterer .caterer-address-grid .minimal-input:focus {
+    border-color: #f97316 !important;
+    outline: 2px solid rgba(249, 115, 22, 0.16);
+    outline-offset: 1px;
+}
+
+#authModalCaterer .caterer-location-confirmation {
+    min-width: 0;
+    margin: 0 !important;
+}
+
+#authModalCaterer .caterer-location-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+#authModalCaterer #catererSaveLocation {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: 0 1.1rem;
+    border-radius: 10px !important;
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+#authModalCaterer #catererLocationStatus {
+    min-width: 0;
+    margin: 0 !important;
+    color: #64748b;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+#authModalCaterer .caterer-saved-location:not([hidden]) {
+    display: grid;
+    gap: 0.2rem;
+    margin-top: 0.65rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid #bbf7d0;
+    border-radius: 11px;
+    background: #f0fdf4;
+    color: #166534;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+#authModalCaterer .caterer-saved-location strong {
+    font-size: 0.76rem;
+}
+
+#authModalCaterer .caterer-saved-location span:empty {
+    display: none;
+}
+
+#authModalCaterer #catererLocationError {
+    margin-top: 0.35rem;
+}
+
+@media (max-width: 560px) {
+    #authModalCaterer .caterer-address-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.65rem;
+    }
+
+    #authModalCaterer .caterer-barangay-field {
+        grid-column: auto;
+    }
+
+    #authModalCaterer #catererRegistrationMap {
+        height: 240px !important;
+    }
+
+    #authModalCaterer .caterer-location-actions {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+}
+
 /* Caterer registration Step 2: keep the map and its controls inside the
    scrollable modal on narrow screens (including short landscape phones). */
 #authModalCaterer,

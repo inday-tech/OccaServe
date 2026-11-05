@@ -146,6 +146,12 @@ def validate_location_details(
     if not is_valid_ph_land_coordinates(latitude, longitude):
         return "Choose a valid land-based location pin in the Philippines, not a body of water."
     if location_type == "event":
+        if not province:
+            return "Province is required for the event venue."
+        if not municipality:
+            return "City or municipality is required for the event venue."
+        if not barangay:
+            return "Barangay is required for the event venue."
         return None
 
     if not province:

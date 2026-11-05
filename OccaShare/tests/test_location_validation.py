@@ -24,11 +24,11 @@ def validate_caterer(**overrides):
 
 def validate_event(**overrides):
     values = {
-        "province": "",
-        "municipality": "",
-        "barangay": "",
-        "barangay_status": "",
-        "landmark": "",
+        "province": "Laguna",
+        "municipality": "Cavinti",
+        "barangay": "Bukal",
+        "barangay_status": "identified",
+        "landmark": "BLOC Camp",
         "latitude": MANILA[0],
         "longitude": MANILA[1],
         "location_type": "event",
@@ -48,12 +48,19 @@ def test_rejects_water_and_out_of_country_pins():
     assert not is_valid_ph_land_coordinates(0, 0)
 
 
-def test_event_pin_does_not_require_a_registered_address():
+def test_event_accepts_required_venue_details_without_a_registered_street():
     assert validate_event() is None
 
 
-def test_event_still_rejects_water_pins_without_address():
+def test_event_rejects_water_pins_even_with_address_details():
     assert "land-based" in validate_event(latitude=14.5, longitude=120.9)
+
+
+def test_event_requires_province_city_and_barangay_but_not_landmark():
+    assert validate_event(landmark="") is None
+    assert "Province" in validate_event(province="")
+    assert "City" in validate_event(municipality="")
+    assert "Barangay" in validate_event(barangay="")
 
 
 def test_caterer_requires_province_and_city():

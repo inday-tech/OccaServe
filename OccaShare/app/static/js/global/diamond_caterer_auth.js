@@ -21,6 +21,17 @@
         if (status) status.textContent = message;
     }
 
+    function setCatererSavedLocation(visible, address = '') {
+        const panel = document.getElementById('catererSavedLocation');
+        const addressText = document.getElementById('catererSavedLocationAddress');
+        const saveButton = document.getElementById('catererSaveLocation');
+        if (panel) panel.hidden = !visible;
+        if (addressText) addressText.textContent = address;
+        if (!visible && saveButton) {
+            saveButton.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Save Business Location';
+        }
+    }
+
     function setCatererLocationError(message) {
         const error = document.getElementById('catererLocationError');
         if (!error) return;
@@ -104,6 +115,7 @@
         document.getElementById('address_cat_hidden').value = '';
         const search = document.getElementById('catererLocationSearch');
         if (search) search.value = '';
+        setCatererSavedLocation(false);
         setCatererBarangayMode('', false);
         catererRegistrationPinSaved = false;
         const saveButton = document.getElementById('catererSaveLocation');
@@ -124,6 +136,12 @@
                 if (!addressApplied && selectedPlace) {
                     addressApplied = applyCatererAddress([selectedPlace]);
                 }
+                const detectedLandmark = status === 'OK'
+                    ? window.OccaServeLocationAddress?.findLandmark(results || [])
+                    : '';
+                const nearbyLandmark = document.getElementById('nearby_landmark_cat');
+                if (nearbyLandmark) nearbyLandmark.value = detectedLandmark || selectedPlace?.name || '';
+                updateAddressCat();
                 if (!addressApplied) setCatererBarangayMode('', true);
                 refreshCatererLocationSaveButton();
                 setCatererLocationStatus(!catererRegistrationLandCheckComplete
@@ -176,6 +194,7 @@
                 catererRegistrationPinSaved = false;
                 catererRegistrationLandCheckComplete = true;
                 catererRegistrationLandValid = false;
+                setCatererSavedLocation(false);
                 catererRegistrationMarker?.setMap(null);
                 document.getElementById('catererLocationLatitude').value = '';
                 document.getElementById('catererLocationLongitude').value = '';
@@ -193,6 +212,7 @@
             catererRegistrationMarker.setMap(catererRegistrationMap);
             catererRegistrationMarker.setPosition(position);
             catererRegistrationMap.panTo(position);
+            setCatererSavedLocation(false);
             const landRequestId = ++catererRegistrationLandRequest;
             catererRegistrationLandCheckComplete = false;
             catererRegistrationLandValid = false;
@@ -264,6 +284,7 @@
                 document.getElementById('street_cat').value = '';
                 document.getElementById('nearby_landmark_cat').value = '';
                 document.getElementById('address_cat_hidden').value = '';
+                setCatererSavedLocation(false);
                 setCatererBarangayMode('', false);
                 const saveButton = document.getElementById('catererSaveLocation');
                 if (saveButton) {
@@ -330,6 +351,7 @@
             catererRegistrationPinSaved = true;
             setCatererLocationError('');
             setCatererLocationStatus('Business location saved. It will be stored when you submit your registration.');
+            setCatererSavedLocation(true, document.getElementById('address_cat_hidden')?.value || '');
             button.innerHTML = '<i class="fas fa-check-circle" aria-hidden="true"></i> Location Saved';
         });
 
@@ -355,6 +377,7 @@
                 setCatererBarangayMode('', true);
             }
             catererRegistrationPinSaved = false;
+            setCatererSavedLocation(false);
             const saveButton = document.getElementById('catererSaveLocation');
             if (saveButton) saveButton.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Save Business Location';
             updateAddressCat();
@@ -368,6 +391,7 @@
             if (checkbox.checked && barangayInput) barangayInput.value = '';
             setCatererBarangayMode(checkbox.checked ? 'unavailable' : '', true);
             catererRegistrationPinSaved = false;
+            setCatererSavedLocation(false);
             const saveButton = document.getElementById('catererSaveLocation');
             if (saveButton) saveButton.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i> Save Business Location';
             updateAddressCat();

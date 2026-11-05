@@ -1,5 +1,26 @@
 (function () {
     let locationBoundariesPromise;
+    const PHILIPPINE_REGIONS = new Set([
+        'bicol region',
+        'bangsamoro autonomous region in muslim mindanao',
+        'calabarzon',
+        'cagayan valley',
+        'caraga',
+        'central luzon',
+        'central visayas',
+        'cordillera administrative region',
+        'davao region',
+        'eastern visayas',
+        'ilocos region',
+        'mimaropa',
+        'metro manila',
+        'national capital region',
+        'ncr',
+        'northern mindanao',
+        'soccsksargen',
+        'western visayas',
+        'zamboanga peninsula'
+    ]);
 
     function addressComponent(result, ...types) {
         const components = result?.address_components || [];
@@ -11,8 +32,18 @@
     }
 
     function parseResult(result) {
-        const province = addressComponent(result, 'administrative_area_level_1');
-        const city = addressComponent(result, 'locality', 'postal_town', 'administrative_area_level_2');
+        const region = addressComponent(result, 'administrative_area_level_1');
+        const levelTwo = addressComponent(result, 'administrative_area_level_2');
+        const locality = addressComponent(result, 'locality', 'postal_town');
+        const normalize = value => String(value || '').toLowerCase().replace(/^(city of|municipality of)\s+/, '').trim();
+        const levelTwoIsCity = levelTwo && locality && normalize(levelTwo) === normalize(locality);
+        const regionIsRegion = PHILIPPINE_REGIONS.has(normalize(region));
+        const province = levelTwo && !levelTwoIsCity
+            ? levelTwo
+            : regionIsRegion && normalize(region) !== 'metro manila'
+                ? ''
+                : region;
+        const city = locality || (levelTwo && normalize(levelTwo) !== normalize(province) ? levelTwo : '');
         const barangay = addressComponent(
             result,
             'administrative_area_level_4',
@@ -35,6 +66,38 @@
                     Number(Boolean(address.province)) * 5;
                 return score(b.address) - score(a.address);
             })[0]?.address || null;
+    }
+
+    function findLandmark(results) {
+        const landmarkTypes = new Set([
+            'establishment',
+            'point_of_interest',
+            'tourist_attraction',
+            'park',
+            'lodging',
+            'campground',
+            'amusement_park',
+            'shopping_mall',
+            'stadium',
+            'university',
+            'school',
+            'place_of_worship',
+            'natural_feature'
+        ]);
+        for (const result of results || []) {
+            const component = (result.address_components || []).find(item =>
+                item.types.some(type => landmarkTypes.has(type))
+            );
+            if (component?.long_name) return component.long_name;
+            if ((result.types || []).some(type => landmarkTypes.has(type))) {
+                const formattedAddress = String(result.formatted_address || '').trim();
+                const firstPart = formattedAddress.split(',')[0]?.trim();
+                if (firstPart && !/^[A-Z0-9]{2,6}\+[A-Z0-9]{2,4}$/i.test(firstPart)) {
+                    return firstPart;
+                }
+            }
+        }
+        return '';
     }
 
     function composeAddress({ street = '', landmark = '', barangay = '', municipality = '', province = '' } = {}) {
@@ -151,6 +214,7 @@
 
     window.OccaServeLocationAddress = {
         parseResults,
+        findLandmark,
         composeAddress,
         isValidPhilippineLandCoordinate
     };
