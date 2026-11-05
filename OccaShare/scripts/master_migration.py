@@ -24,6 +24,8 @@ def master_migration():
             ("event_end_time", "TIME"),
             ("celebrant_name", "VARCHAR"),
             ("motif_theme", "VARCHAR"),
+            ("venue_street", "TEXT"),
+            ("venue_landmark", "TEXT"),
             ("venue_province", "VARCHAR"),
             ("venue_city", "VARCHAR"),
             ("venue_barangay", "VARCHAR"),
