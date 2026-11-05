@@ -563,22 +563,29 @@
                         </div>
                         <div class="venue-landmark-field">
                             <label class="form-label" for="venue-landmark" id="venueLandmarkLabel">Venue name / Nearby landmark <small>(Optional)</small></label>
-                            <input type="text" class="form-input" name="venue_landmark" id="venue-landmark" value="{{ booking_data.get('venue_landmark', '') }}" placeholder="e.g. resort, covered court, or nearby landmark">
+                            <input type="text" class="form-input" name="venue_landmark" id="venue-landmark" list="venue-landmark-suggestions" value="{{ booking_data.get('venue_landmark', booking.venue_landmark if booking else '') }}" placeholder="e.g. resort, covered court, or nearby landmark" aria-describedby="venue-landmark-suggestion-status">
+                            <datalist id="venue-landmark-suggestions"></datalist>
+                            <small id="venue-landmark-suggestion-status" class="venue-landmark-suggestion-status" aria-live="polite"></small>
                         </div>
                         <div class="venue-address-grid">
                             <div>
+                                <label class="form-label" for="venue-street">Street / House Number</label>
+                                <input type="text" class="form-input" name="venue_street" id="venue-street" value="{{ booking_data.get('venue_street', booking.venue_street if booking else '') }}" autocomplete="address-line1" placeholder="e.g. 132 Daang Bakal Road">
+                                <small>Enter the street or house number manually if it is not detected.</small>
+                            </div>
+                            <div>
                                 <label class="form-label" for="province_select">Province <span class="venue-field-required">*</span></label>
-                                <input type="text" class="form-input" name="province" id="province_select" value="{{ booking_data.get('province', '') }}" autocomplete="address-level1" required>
+                                <input type="text" class="form-input" name="province" id="province_select" value="{{ booking_data.get('province', booking.venue_province if booking else '') }}" autocomplete="address-level1" required>
                                 <span class="field-error" id="err-province">Please enter the venue province.</span>
                             </div>
                             <div>
                                 <label class="form-label" for="city_select">Municipality / City <span class="venue-field-required">*</span></label>
-                                <input type="text" class="form-input" name="city" id="city_select" value="{{ booking_data.get('city', '') }}" autocomplete="address-level2" required>
+                                <input type="text" class="form-input" name="city" id="city_select" value="{{ booking_data.get('city', booking.venue_city if booking else '') }}" autocomplete="address-level2" required>
                                 <span class="field-error" id="err-city">Please enter the venue municipality or city.</span>
                             </div>
                             <div>
                                 <label class="form-label" for="barangay_select">Barangay <span class="venue-field-required">*</span></label>
-                                <input type="text" class="form-input" name="barangay" id="barangay_select" value="{{ booking_data.get('barangay', '') }}" autocomplete="address-level3" required>
+                                <input type="text" class="form-input" name="barangay" id="barangay_select" value="{{ booking_data.get('barangay', booking.venue_barangay if booking else '') }}" autocomplete="address-level3" required>
                                 <span class="field-error" id="err-barangay">Please enter the venue barangay.</span>
                             </div>
                         </div>

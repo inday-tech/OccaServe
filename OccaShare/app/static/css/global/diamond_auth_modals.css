@@ -2247,6 +2247,27 @@ body.modal-open {
     line-height: 1.45;
 }
 
+#authModalCaterer .caterer-address-details {
+    min-width: 0;
+    padding: 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+#authModalCaterer .caterer-address-details.is-location-invalid {
+    border-color: #fecaca;
+    background: #fffafa;
+}
+
+#authModalCaterer .caterer-address-details.is-location-invalid input:disabled {
+    border-color: #e2e8f0 !important;
+    background: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
 #authModalCaterer .caterer-location-wrapper {
     box-sizing: border-box;
     width: 100%;

@@ -2125,6 +2125,7 @@ async def step_details_submit(
     event_end_time: Optional[str] = Form(None),
     guest_count: Optional[str] = Form("0"),
     venue_address: Optional[str] = Form(""),
+    venue_street: Optional[str] = Form(None),
     venue_landmark: Optional[str] = Form(None),
     venue_barangay_status: Optional[str] = Form(None),
     venue_latitude: Optional[str] = Form(None),
@@ -2162,6 +2163,8 @@ async def step_details_submit(
             return str(val).strip() or None
         return None
 
+    confirmed_venue_address = _clean_str(venue_address)
+    venue_street = _clean_str(venue_street)
     venue_landmark = _clean_str(venue_landmark)
     province = _clean_str(province)
     city = _clean_str(city)
@@ -2352,14 +2355,32 @@ async def step_details_submit(
             url=f"{redirect_base}?booking_error={quote_plus(location_error)}",
             status_code=303,
         )
+    if venue_landmark and venue_landmark.casefold() in {
+        province.casefold(), city.casefold(), barangay.casefold()
+    }:
+        return RedirectResponse(
+            url=f"{redirect_base}?booking_error={quote_plus('Enter an establishment or venue name as the landmark, not an administrative area.')}",
+            status_code=303,
+        )
 
     venue_barangay_status = venue_barangay_status or ("identified" if barangay else "unavailable")
-    venue_address = ", ".join(dict.fromkeys(
-        part.strip() for part in (venue_landmark, barangay, city, province)
+    address_parts = [
+        part.strip() for part in (venue_street, venue_landmark, barangay, city, province)
         if part and part.strip()
-    ))
-    if not venue_address:
-        venue_address = f"Pinned venue ({venue_latitude:.7f}, {venue_longitude:.7f})"
+    ]
+    seen_address_parts = set()
+    unique_address_parts = []
+    for part in address_parts:
+        normalized_part = part.casefold()
+        if normalized_part not in seen_address_parts:
+            unique_address_parts.append(part)
+            seen_address_parts.add(normalized_part)
+    venue_address = ", ".join(unique_address_parts)
+    if not venue_address or confirmed_venue_address != venue_address:
+        return RedirectResponse(
+            url=f"{redirect_base}?booking_error={quote_plus('Save and confirm the exact venue pin after updating its address details.')}",
+            status_code=303,
+        )
 
     today = date.today()
     
@@ -2477,6 +2498,11 @@ async def step_details_submit(
         booking.venue_latitude = venue_latitude
         booking.venue_longitude = venue_longitude
         booking.venue_barangay_status = venue_barangay_status
+        booking.venue_street = venue_street
+        booking.venue_landmark = venue_landmark
+        booking.venue_barangay = barangay
+        booking.venue_city = city
+        booking.venue_province = province
         booking.event_address = venue_address
         booking.guest_count = guest_count_int
         booking.total_price = total_price
@@ -2532,6 +2558,11 @@ async def step_details_submit(
             venue_latitude=venue_latitude,
             venue_longitude=venue_longitude,
             venue_barangay_status=venue_barangay_status,
+            venue_street=venue_street,
+            venue_landmark=venue_landmark,
+            venue_barangay=barangay,
+            venue_city=city,
+            venue_province=province,
             event_address=venue_address,
             guest_count=guest_count_int,
             total_price=total_price,

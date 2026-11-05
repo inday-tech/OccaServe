@@ -11,6 +11,7 @@
     let catererRegistrationGeocoder;
     let catererRegistrationMapLoading = false;
     let catererRegistrationGeocodeRequest = 0;
+    let catererRegistrationPlacesRequest = 0;
     let catererRegistrationGeocodeComplete = false;
     let catererRegistrationLandRequest = 0;
     let catererRegistrationLandCheckComplete = false;
@@ -53,8 +54,11 @@
         ].forEach(input => {
             if (input) input.disabled = disabled;
         });
-        document.querySelector('#step-2 .caterer-location-section')
-            ?.classList.toggle('is-location-invalid', disabled);
+    }
+
+    function setCatererLocationInvalid(invalid) {
+        document.querySelector('#step-2 .caterer-address-details')
+            ?.classList.toggle('is-location-invalid', invalid);
     }
 
     function setCatererBarangayMode(mode, showUnavailableChoice = mode === '') {
@@ -127,11 +131,22 @@
     function applyCatererAddress(results) {
         const result = window.OccaServeLocationAddress?.parseResults(results);
         if (!result) return false;
+        const components = (results || []).flatMap(item => item.address_components || []);
+        const component = type => components.find(item => item.types.includes(type))?.long_name || '';
+        const startsWithBarangay = value => /^(barangay|brgy\.?)\s+/i.test(String(value || '').trim());
+        const barangay = component('administrative_area_level_4')
+            || components.find(item =>
+                item.types.includes('administrative_area_level_3') && startsWithBarangay(item.long_name)
+            )?.long_name
+            || components.find(item =>
+                item.types.some(type => type.startsWith('sublocality')) && startsWithBarangay(item.long_name)
+            )?.long_name
+            || '';
 
         document.getElementById('province_cat').value = result.province;
         document.getElementById('city_cat').value = result.city;
-        document.getElementById('barangay_cat').value = result.barangay;
-        setCatererBarangayMode(result.barangay ? 'identified' : '', !result.barangay);
+        document.getElementById('barangay_cat').value = barangay;
+        setCatererBarangayMode(barangay ? 'identified' : '', !barangay);
         updateAddressCat();
         const search = document.getElementById('catererLocationSearch');
         if (search) search.value = document.getElementById('address_cat_hidden').value;
@@ -140,13 +155,87 @@
         return Boolean(result.province && result.city && document.getElementById('address_cat_hidden').value);
     }
 
-    function reverseGeocodeCatererLocation(position, requestId, selectedPlace = null) {
+    function isGooglePlusCode(value) {
+        return /^[A-Z0-9]{2,8}\+[A-Z0-9]{2,3}$/i.test(String(value || '').trim());
+    }
+
+    function detectedCatererStreet(results) {
+        for (const result of results || []) {
+            const components = result.address_components || [];
+            const component = type => components.find(item => item.types.includes(type))?.long_name || '';
+            const route = component('route').trim();
+            const number = component('street_number').trim();
+            if (route && !isGooglePlusCode(route)) {
+                return [number, route].filter(Boolean).join(' ');
+            }
+        }
+        return '';
+    }
+
+    function findNearbyCatererLandmarks(placesService, position, address) {
+        const requestId = ++catererRegistrationPlacesRequest;
+        const suggestions = document.getElementById('nearbyLandmarkCatSuggestions');
+        const status = document.getElementById('nearbyLandmarkCatStatus');
+        if (suggestions) suggestions.replaceChildren();
+        if (status) status.textContent = 'Finding nearby establishments...';
+        if (!placesService) {
+            if (status) status.textContent = 'Nearby suggestions are unavailable. You can enter a landmark manually.';
+            return;
+        }
+        placesService.nearbySearch({ location: position, radius: 500 }, (results, resultStatus) => {
+            if (requestId !== catererRegistrationPlacesRequest) return;
+            const places = google.maps.places;
+            if (resultStatus !== places.PlacesServiceStatus.OK && resultStatus !== places.PlacesServiceStatus.ZERO_RESULTS) {
+                console.warn('Could not load nearby caterer location suggestions:', resultStatus);
+                if (status) status.textContent = 'Nearby suggestions are unavailable. You can enter a landmark manually.';
+                return;
+            }
+            const administrativeTypes = new Set([
+                'administrative_area_level_1',
+                'administrative_area_level_2',
+                'administrative_area_level_3',
+                'administrative_area_level_4',
+                'locality',
+                'postal_town',
+                'sublocality',
+                'sublocality_level_1',
+                'sublocality_level_2',
+                'sublocality_level_3'
+            ]);
+            const administrativeNames = new Set([
+                address.province,
+                address.city,
+                address.barangay
+            ].filter(Boolean).map(value => value.trim().toLocaleLowerCase()));
+            const names = [...new Set((results || [])
+                .filter(place => !(place.types || []).some(type => administrativeTypes.has(type)))
+                .map(place => String(place.name || '').trim())
+                .filter(name => name && !isGooglePlusCode(name) && !administrativeNames.has(name.toLocaleLowerCase())))]
+                .slice(0, 8);
+            names.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                suggestions?.append(option);
+            });
+            if (status) {
+                status.textContent = names.length
+                    ? 'Suggestions are optional. Select a name only if it is your nearby landmark.'
+                    : 'No nearby establishments found. You can enter a landmark manually.';
+            }
+        });
+    }
+
+    function reverseGeocodeCatererLocation(position, requestId, placesService) {
         document.getElementById('province_cat').value = '';
         document.getElementById('city_cat').value = '';
         document.getElementById('barangay_cat').value = '';
         document.getElementById('street_cat').value = '';
         document.getElementById('nearby_landmark_cat').value = '';
         document.getElementById('address_cat_hidden').value = '';
+        const landmarkSuggestions = document.getElementById('nearbyLandmarkCatSuggestions');
+        if (landmarkSuggestions) landmarkSuggestions.replaceChildren();
+        const landmarkStatus = document.getElementById('nearbyLandmarkCatStatus');
+        if (landmarkStatus) landmarkStatus.textContent = '';
         const search = document.getElementById('catererLocationSearch');
         if (search) search.value = '';
         setCatererSavedLocation(false);
@@ -166,18 +255,19 @@
                 if (status !== 'OK') {
                     console.error('Google Maps reverse geocoding failed:', status);
                 }
-                let addressApplied = status === 'OK' && applyCatererAddress(results || []);
-                if (!addressApplied && selectedPlace) {
-                    addressApplied = applyCatererAddress([selectedPlace]);
-                }
-                const detectedLandmark = status === 'OK'
-                    ? window.OccaServeLocationAddress?.findLandmark(results || [])
-                    : '';
-                const nearbyLandmark = document.getElementById('nearby_landmark_cat');
-                if (nearbyLandmark) nearbyLandmark.value = detectedLandmark || selectedPlace?.name || '';
+                const addressApplied = status === 'OK' && applyCatererAddress(results || []);
+                const street = document.getElementById('street_cat');
+                if (street) street.value = status === 'OK' ? detectedCatererStreet(results || []) : '';
                 updateAddressCat();
                 const search = document.getElementById('catererLocationSearch');
-                if (search) search.value = results?.[0]?.formatted_address || selectedPlace?.formatted_address || '';
+                if (search) search.value = addressApplied ? document.getElementById('address_cat_hidden').value : '';
+                const parsedAddress = status === 'OK'
+                    ? window.OccaServeLocationAddress?.parseResults(results || [])
+                    : null;
+                if (parsedAddress) findNearbyCatererLandmarks(placesService, position, {
+                    ...parsedAddress,
+                    barangay: document.getElementById('barangay_cat').value
+                });
                 if (!addressApplied) setCatererBarangayMode('', true);
                 refreshCatererLocationSaveButton();
                 setCatererLocationStatus(!catererRegistrationLandCheckComplete || !catererRegistrationGeocodeComplete
@@ -187,10 +277,12 @@
                     : !catererRegistrationLandValid
                     ? 'The selected location is in water or outside mapped land.'
                     : addressApplied
-                    ? getCatererAddressStatus()
+                    ? document.getElementById('barangay_cat').value
+                        ? getCatererAddressStatus()
+                        : 'Barangay could not be confidently detected. Enter it manually or confirm that it is unavailable.'
                     : status === 'REQUEST_DENIED'
                         ? 'Google Maps could not verify the address. Please contact support to check the Maps API configuration.'
-                        : 'Address not found. Enter province and city manually, then add an exact street address or barangay.');
+                        : 'Address not found. Enter province and city manually; street and barangay can also be entered manually.');
                 resolve(addressApplied);
             });
         });
@@ -222,12 +314,15 @@
             title: 'Drag to set your business location'
         });
         catererRegistrationGeocoder = new google.maps.Geocoder();
+        const placesService = google.maps.places ? new google.maps.places.PlacesService(catererRegistrationMap) : null;
         setCatererAddressFieldsDisabled(false);
+        setCatererLocationInvalid(false);
         setCatererLocationStatus('Drag the pin or click the map to confirm your business location.');
 
-        const setPin = (position, selectedPlace = null) => {
+        const setPin = position => {
             if (position.lat() < 4.2 || position.lat() > 21.6 || position.lng() < 116.7 || position.lng() > 127.2) {
                 ++catererRegistrationGeocodeRequest;
+                ++catererRegistrationPlacesRequest;
                 ++catererRegistrationLandRequest;
                 catererRegistrationPinSaved = false;
                 catererRegistrationLandCheckComplete = true;
@@ -248,11 +343,13 @@
                 setCatererBarangayMode('', false);
                 setCatererAddressFieldsDisabled(true);
                 refreshCatererLocationSaveButton();
-                setCatererLocationError('Choose a map pin within the Philippines.');
-                setCatererLocationStatus('Choose a valid business location on the map.');
+                setCatererLocationInvalid(true);
+                setCatererLocationError('This pin is in water or outside mapped land. Move it onto a valid business location.');
+                setCatererLocationStatus('This pin is in water or outside mapped land. Move it onto a valid business location.');
                 return;
             }
             const requestId = ++catererRegistrationGeocodeRequest;
+            ++catererRegistrationPlacesRequest;
             catererRegistrationPendingLocation = {
                 lat: position.lat().toFixed(7),
                 lng: position.lng().toFixed(7)
@@ -275,6 +372,7 @@
             catererRegistrationMarker.setPosition(position);
             catererRegistrationMap.setCenter(position);
             setCatererSavedLocation(false);
+            setCatererLocationInvalid(false);
             const landRequestId = ++catererRegistrationLandRequest;
             setCatererAddressFieldsDisabled(true);
             refreshCatererLocationSaveButton();
@@ -286,12 +384,15 @@
                     catererRegistrationLandCheckComplete = true;
                     catererRegistrationLandCheckFailed = false;
                     catererRegistrationLandValid = isValid;
-                    setCatererAddressFieldsDisabled(!isValid);
+                    setCatererAddressFieldsDisabled(!isValid || !catererRegistrationGeocodeComplete);
                     if (!isValid) {
                         catererRegistrationPinSaved = false;
-                        setCatererLocationError('This pin is not on a valid land location. Move it onto the business property.');
-                        setCatererLocationStatus('The selected location is in water or outside mapped land.');
+                        setCatererLocationInvalid(true);
+                        setCatererLocationError('This pin is in water or outside mapped land. Move it onto a valid business location.');
+                        setCatererLocationStatus('This pin is in water or outside mapped land. Move it onto a valid business location.');
                     } else if (catererRegistrationGeocodeComplete) {
+                        setCatererLocationInvalid(false);
+                        setCatererLocationError('');
                         setCatererLocationStatus(getCatererAddressStatus());
                     } else {
                         setCatererLocationStatus('Checking the pin and updating the address...');
@@ -305,29 +406,33 @@
                     catererRegistrationLandCheckFailed = true;
                     catererRegistrationLandValid = false;
                     setCatererAddressFieldsDisabled(true);
+                    setCatererLocationInvalid(false);
                     setCatererLocationError('The land-location check could not be completed. Please try again or contact support.');
                     setCatererLocationStatus('Location validation is unavailable.');
                     refreshCatererLocationSaveButton();
                     return false;
                 });
             setCatererLocationStatus('Checking the pin and updating the address...');
-            window.catererRegistrationAddressPromise = reverseGeocodeCatererLocation(position, requestId, selectedPlace);
+            window.catererRegistrationAddressPromise = reverseGeocodeCatererLocation(position, requestId, placesService);
             window.catererRegistrationAddressPromise = window.catererRegistrationAddressPromise.finally(() => {
                 if (requestId === catererRegistrationGeocodeRequest) {
                     catererRegistrationGeocodeComplete = true;
+                    setCatererAddressFieldsDisabled(
+                        !catererRegistrationLandValid || !catererRegistrationLandCheckComplete
+                    );
                     if (catererRegistrationLandCheckComplete) {
                         setCatererLocationStatus(catererRegistrationLandValid
                             ? getCatererAddressStatus()
                             : catererRegistrationLandCheckFailed
                                 ? 'Location validation is unavailable.'
-                                : 'The selected location is in water or outside mapped land.');
+                                : 'This pin is in water or outside mapped land. Move it onto a valid business location.');
                     }
                 }
             });
         };
 
         catererRegistrationMap.addListener('click', event => setPin(event.latLng));
-        catererRegistrationMarker.addListener('dragend', event => setPin(event.latLng));
+        catererRegistrationMarker.addListener('dragend', () => setPin(catererRegistrationMarker.getPosition()));
 
         const search = document.getElementById('catererLocationSearch');
         if (google.maps.places && search) {
@@ -343,7 +448,7 @@
                     return;
                 }
                 catererRegistrationMap.setZoom(17);
-                setPin(place.geometry.location, place);
+                setPin(place.geometry.location);
             });
             search.addEventListener('keydown', event => {
                 if (event.key === 'Enter') event.preventDefault();
@@ -353,6 +458,7 @@
                 // submitting cannot silently save the previous pin.
                 catererRegistrationPinSaved = false;
                 ++catererRegistrationGeocodeRequest;
+                ++catererRegistrationPlacesRequest;
                 catererRegistrationGeocodeComplete = false;
                 ++catererRegistrationLandRequest;
                 catererRegistrationLandCheckComplete = false;
@@ -371,6 +477,7 @@
                 setCatererSavedLocation(false);
                 setCatererBarangayMode('', false);
                 setCatererAddressFieldsDisabled(false);
+                setCatererLocationInvalid(false);
                 setCatererLocationError('');
                 const saveButton = document.getElementById('catererSaveLocation');
                 if (saveButton) {
@@ -430,6 +537,17 @@
                 markerPosition.lat().toFixed(7) !== location.lat ||
                 markerPosition.lng().toFixed(7) !== location.lng) {
                 setCatererLocationError('The map pin changed. Confirm the current location again.');
+                refreshCatererLocationSaveButton();
+                return;
+            }
+            const landmark = document.getElementById('nearby_landmark_cat')?.value.trim() || '';
+            const administrativeNames = [
+                document.getElementById('province_cat')?.value,
+                document.getElementById('city_cat')?.value,
+                document.getElementById('barangay_cat')?.value
+            ].filter(Boolean).map(value => value.trim().toLocaleLowerCase());
+            if (isGooglePlusCode(landmark) || administrativeNames.includes(landmark.toLocaleLowerCase())) {
+                setCatererLocationError('Enter an establishment name as the landmark, not a province, city, barangay, or Plus Code.');
                 refreshCatererLocationSaveButton();
                 return;
             }

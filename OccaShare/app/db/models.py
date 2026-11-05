@@ -616,6 +616,11 @@ class Booking(Base):
     venue_latitude = Column(Float, nullable=True)
     venue_longitude = Column(Float, nullable=True)
     venue_barangay_status = Column(String, nullable=True)
+    venue_street = Column(Text, nullable=True)
+    venue_landmark = Column(Text, nullable=True)
+    venue_barangay = Column(String, nullable=True)
+    venue_city = Column(String, nullable=True)
+    venue_province = Column(String, nullable=True)
     
     # --- SECTION A: Event Details ---
     event_address = Column(Text, nullable=True) # The actual venue/location of the event

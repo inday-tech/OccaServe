@@ -320,6 +320,7 @@ async def register(
 
     if role == "caterer":
         barangay_status = (barangay_status or "").strip().lower()
+        nearby_landmark = (nearby_landmark or "").strip()
         if not address or not address.strip():
             errors["address"] = "Business Address is required"
         else:
@@ -340,6 +341,15 @@ async def register(
         )
         if location_error:
             errors["location"] = location_error
+        elif nearby_landmark and (
+            re.fullmatch(r"[A-Z0-9]{2,8}\+[A-Z0-9]{2,3}", nearby_landmark, re.IGNORECASE)
+            or nearby_landmark.casefold() in {
+                (province or "").strip().casefold(),
+                (city_municipality or "").strip().casefold(),
+                (barangay or "").strip().casefold(),
+            }
+        ):
+            errors["location"] = "Enter an establishment name as the landmark, not a province, city, barangay, or Plus Code."
 
         if not coverage_area or not coverage_area.strip():
             errors["coverage_area"] = "Service areas are required"
@@ -414,6 +424,7 @@ async def register(
                 "payout_account_name": payout_account_name,
                 "payout_account_number": account_number,
                 "contact_address": address.strip() if address else None,
+                "address_details": address.strip() if address else None,
                 "contact_phone": mobile_number.strip().replace(" ", ""),
                 "min_pax": min_pax,
                 "city": (city or city_municipality or "").strip(),
@@ -597,6 +608,7 @@ async def register(
                 payout_account_name=payout_account_name,
                 payout_account_number=account_number,
                 contact_address=address,
+                address_details=address,
                 contact_phone=mobile_number,
                 logo_url=logo_url,
                 event_types=event_list,

@@ -192,10 +192,6 @@
     min-width: 0;
 }
 
-.venue-address-grid > div:last-child {
-    grid-column: 1 / -1;
-}
-
 .venue-address-grid .form-input,
 .venue-landmark-field .form-input {
     min-width: 0;
@@ -963,7 +959,6 @@ textarea.form-input {
     #venue-map { height:240px; border-radius:11px; }
     .venue-address-details { padding:.75rem; border-radius:11px; }
     .venue-address-grid { grid-template-columns:minmax(0,1fr); gap:.65rem; }
-    .venue-address-grid > div:last-child { grid-column:auto; }
     .venue-location-heading { align-items:flex-start; flex-wrap:wrap; }
     .venue-required-badge { margin-left:auto; }
     .venue-location-actions { gap:.45rem; }
