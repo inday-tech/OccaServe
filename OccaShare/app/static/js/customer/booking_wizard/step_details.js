@@ -1038,6 +1038,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let landValidationRequest = 0;
         let venueLandValid = false;
         let detectedAddress = null;
+        let nearbyAddressFallback = false;
         let addressDetectionMessage = '';
         let addressDetectionState = 'neutral';
         if (hasSavedPin && venueBarangayStatus && !venueBarangayStatus.value && barangaySelect?.value.trim()) {
@@ -1079,7 +1080,17 @@ document.addEventListener('DOMContentLoaded', function () {
             ['municipality or city', address?.city],
             ['barangay', address?.barangay]
         ].filter(([, value]) => !value).map(([label]) => label);
-        const findNearbyLandmarks = (point, address) => {
+        const distanceBetweenPointsMeters = (first, second) => {
+            const radians = value => value * Math.PI / 180;
+            const latitudeDelta = radians(second.lat() - first.lat());
+            const longitudeDelta = radians(second.lng() - first.lng());
+            const firstLatitude = radians(first.lat());
+            const secondLatitude = radians(second.lat());
+            const haversine = Math.sin(latitudeDelta / 2) ** 2
+                + Math.cos(firstLatitude) * Math.cos(secondLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+            return 6371000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+        };
+        const findNearbyLandmarks = (point, address, onNearbyAddress = null) => {
             const requestId = ++nearbySearchRequest;
             if (venueLandmarkSuggestions) venueLandmarkSuggestions.replaceChildren();
             if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Finding nearby venues…';
@@ -1125,6 +1136,20 @@ document.addEventListener('DOMContentLoaded', function () {
                         ? 'Nearby suggestions are optional. Select a name only if it is your event venue or a landmark you confirm.'
                         : 'No nearby venue names found. You can enter a landmark manually.';
                 }
+                if (!onNearbyAddress) return;
+                const nearestPlace = (results || [])
+                    .filter(place => place.place_id && place.geometry?.location
+                        && !(place.types || []).some(type => administrativeTypes.has(type)))
+                    .map(place => ({ place, distance: distanceBetweenPointsMeters(point, place.geometry.location) }))
+                    .filter(candidate => candidate.distance <= 250)
+                    .sort((first, second) => first.distance - second.distance)[0]?.place;
+                if (!nearestPlace) return;
+                geocoder.geocode({ placeId: nearestPlace.place_id, region: 'PH' }, (placeResults, placeStatus) => {
+                    if (requestId !== nearbySearchRequest || placeStatus !== 'OK') return;
+                    const nearbyAddress = window.OccaServeLocationAddress.parseResults(placeResults);
+                    if (!nearbyAddress) return;
+                    onNearbyAddress({ address: nearbyAddress, results: placeResults, place: nearestPlace });
+                });
             });
         };
         const savePendingLocation = () => {
@@ -1135,7 +1160,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 setVenuePinStatus('A valid land pin, province, city, and barangay are required.', 'invalid');
                 return;
             }
-            const addressMismatch = [
+            const addressMismatch = !nearbyAddressFallback && [
                 [provinceSelect, detectedAddress?.province],
                 [citySelect, detectedAddress?.city],
                 [barangaySelect, detectedAddress?.barangay]
@@ -1252,6 +1277,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
             venueLandValid = false;
             detectedAddress = null;
+            nearbyAddressFallback = false;
             addressDetectionMessage = '';
             addressDetectionState = 'neutral';
             setVenueAddressFieldsDisabled(true);
@@ -1304,7 +1330,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (barangaySelect) barangaySelect.value = '';
                     setVenueBarangayMode('', false);
                     if (venueSearch) venueSearch.value = '';
-                    findNearbyLandmarks(point, null);
+                    findNearbyLandmarks(point, null, ({ address: nearbyAddress, place }) => {
+                        if (requestId !== geocodeRequest) return;
+                        detectedAddress = nearbyAddress;
+                        nearbyAddressFallback = true;
+                        if (venueStreet) venueStreet.value = '';
+                        if (venueLandmark) venueLandmark.value = '';
+                        if (provinceSelect) provinceSelect.value = nearbyAddress.province || '';
+                        if (citySelect) citySelect.value = nearbyAddress.city || '';
+                        if (barangaySelect) barangaySelect.value = nearbyAddress.barangay || '';
+                        setVenueBarangayMode(nearbyAddress.barangay ? 'identified' : '', !nearbyAddress.barangay);
+                        if (venueSearch) venueSearch.value = '';
+                        addressDetectionMessage = `No exact address was returned for the pin. A nearby place (${place.name || 'landmark'}) was found; confirm the address details before saving.`;
+                        addressDetectionState = 'valid';
+                        if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby address filled from a place within 250 m. Confirm that it matches your event venue.';
+                        refreshSaveButton();
+                        if (venueLandValid) setVenuePinStatus(addressDetectionMessage, addressDetectionState);
+                    });
                     refreshSaveButton();
                     detectedAddress = null;
                     addressDetectionMessage = 'Google Maps could not identify this address. Enter the province, city, and barangay manually; street can also be entered manually.';

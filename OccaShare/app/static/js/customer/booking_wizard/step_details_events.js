@@ -43,13 +43,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const date = dateFromIso(value);
         return date ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Choose a date';
     };
-    const renderEventCalendar = event => {
+    const shiftIsoDate = (value, days) => {
+        const date = dateFromIso(value);
+        if (!date) return '';
+        date.setDate(date.getDate() + days);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+    const renderEventCalendar = (event, eventIndex) => {
         const monthDate = dateFromIso(event.calendarMonth || event.event_date || minimumEventDate(getPackage(event.package_id))) || new Date();
         const year = monthDate.getFullYear();
         const month = monthDate.getMonth();
         const firstDay = new Date(year, month, 1);
         const offset = (firstDay.getDay() + 6) % 7;
-        const minDate = minimumEventDate(getPackage(event.package_id));
+        const { min: minDate, max: maxDate } = eventDateBounds(event, eventIndex);
         const datesUsedElsewhere = new Set(events.filter(item => item.id !== event.id && item.event_date).map(item => item.event_date));
         const cellCount = offset + new Date(year, month + 1, 0).getDate() > 35 ? 42 : 35;
         const days = Array.from({ length: cellCount }, (_, index) => {
@@ -57,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
             const outsideMonth = date.getMonth() !== month;
             if (outsideMonth) return '<span class="booking-calendar-empty" aria-hidden="true"></span>';
-            const disabled = outsideMonth || iso < minDate || datesUsedElsewhere.has(iso);
+            const disabled = outsideMonth || iso < minDate || (maxDate && iso > maxDate) || datesUsedElsewhere.has(iso);
             const selected = iso === event.event_date;
             return `<button type="button" class="booking-calendar-day${selected ? ' is-selected' : ''}" data-action="select-event-date" data-date="${iso}" ${disabled ? 'disabled' : ''} aria-pressed="${selected}">${date.getDate()}</button>`;
         }).join('');
@@ -73,6 +79,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const leadTime = Math.max(0, Number(pkg?.booking_lead_time ?? window.bookingLeadTime ?? 0));
         now.setDate(now.getDate() + leadTime);
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    };
+    const eventDateBounds = (event, index = events.indexOf(event)) => {
+        const previousDate = events.slice(0, index).map(item => item.event_date).filter(Boolean).sort().at(-1) || '';
+        const nextDate = events.slice(index + 1).map(item => item.event_date).filter(Boolean).sort()[0] || '';
+        const packageMinimum = minimumEventDate(getPackage(event.package_id));
+        const afterPrevious = previousDate ? shiftIsoDate(previousDate, 1) : packageMinimum;
+        return {
+            min: afterPrevious > packageMinimum ? afterPrevious : packageMinimum,
+            max: nextDate ? shiftIsoDate(nextDate, -1) : ''
+        };
     };
     const getPackage = id => packages.find(item => String(item.id) === String(id));
     const getSelected = (event, key) => new Set((Array.isArray(event[key]) ? event[key] : []).map(Number));
@@ -407,13 +423,13 @@ document.addEventListener('DOMContentLoaded', function () {
             ? `<div class="booking-event-schedule-summary"><strong>Day 1</strong><span>${escapeHtml(event.event_date || 'Choose a date above')} · ${escapeHtml(formatDisplayTime(event.ingress) || 'Select ingress')}${event.egress ? ` – ${escapeHtml(formatDisplayTime(event.egress))}` : ''}</span></div>`
             : `<div class="booking-event-fields">
                 <div class="booking-field booking-date-field"><label>Event date</label>
-                    <div class="booking-date-picker"><button id="${escapeHtml(event.id)}-date-trigger" class="booking-date-picker-trigger" type="button" data-action="toggle-date-calendar" aria-expanded="${Boolean(event.calendarOpen)}">${escapeHtml(formatDisplayDate(event.event_date))}</button>${renderEventCalendar(event)}</div></div>
+                    <div class="booking-date-picker"><button id="${escapeHtml(event.id)}-date-trigger" class="booking-date-picker-trigger" type="button" data-action="toggle-date-calendar" aria-expanded="${Boolean(event.calendarOpen)}">${escapeHtml(formatDisplayDate(event.event_date))}</button>${renderEventCalendar(event, index)}</div></div>
                 <div class="booking-field"><label for="${escapeHtml(event.id)}-ingress">Ingress</label>
                     <select id="${escapeHtml(event.id)}-ingress" data-field="ingress" required><option value="">Select time</option>${times}</select></div>
                 <div class="booking-field"><label for="${escapeHtml(event.id)}-egress">Egress (automatic)</label>
                     <input id="${escapeHtml(event.id)}-egress" type="time" value="${escapeHtml(event.egress)}" readonly aria-readonly="true"></div>
             </div>`;
-        return `<article class="booking-event-card" data-event-id="${escapeHtml(event.id)}">
+        return `<article class="booking-event-card" data-event-id="${escapeHtml(event.id)}" data-event-index="${index}">
             <div class="booking-event-heading">
                 <h4 class="booking-event-title">Day ${index + 1}</h4>
                 <button class="booking-event-remove" type="button" data-action="remove-event" ${events.length === 1 ? 'disabled' : ''}>Remove event</button>
@@ -524,6 +540,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const panel = document.getElementById('booking-events-panel');
         if (panel) panel.hidden = !events[0]?.event_date;
         if (legacyDate) legacyDate.min = minimumEventDate(getPackage(events[0]?.package_id));
+        if (legacyDate && events[0]) legacyDate.max = eventDateBounds(events[0], 0).max;
         updateEventTotals();
         const addEventButton = form.querySelector('[data-action="add-event"]');
         if (addEventButton) {
@@ -655,7 +672,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (calendarButton) {
             event.preventDefault();
             const card = calendarButton.closest('.booking-event-card');
-            const current = events.find(item => item.id === card?.dataset.eventId);
+            const currentIndex = Number(card?.dataset.eventIndex);
+            const current = Number.isInteger(currentIndex) ? events[currentIndex] : null;
             if (!current) return;
             if (calendarButton.dataset.action === 'toggle-date-calendar') {
                 current.calendarOpen = !current.calendarOpen;
@@ -666,8 +684,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 current.calendarMonth = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-01`;
             } else {
                 const chosenDate = calendarButton.dataset.date;
+                const { min, max } = eventDateBounds(current, currentIndex);
                 const duplicate = events.some(item => item.id !== current.id && item.event_date === chosenDate);
-                if (duplicate || chosenDate < minimumEventDate(getPackage(current.package_id))) return;
+                if (duplicate || chosenDate < min || (max && chosenDate > max)) return;
                 current.event_date = chosenDate;
                 current.calendarOpen = false;
                 current.calendarMonth = chosenDate;
@@ -726,8 +745,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const first = events[0];
         if (!first) return;
         const selectedDate = legacyDate?.value || '';
-        if (selectedDate && events.some(item => item !== first && item.event_date === selectedDate)) {
-            legacyDate.setCustomValidity('This date is already selected for another event. Choose a different date.');
+        const firstDateBounds = eventDateBounds(first, 0);
+        const duplicateDate = selectedDate && events.some(item => item !== first && item.event_date === selectedDate);
+        const outOfOrder = selectedDate && (selectedDate < firstDateBounds.min || (firstDateBounds.max && selectedDate > firstDateBounds.max));
+        if (duplicateDate || outOfOrder) {
+            legacyDate.setCustomValidity(duplicateDate
+                ? 'This date is already selected for another event. Choose a different date.'
+                : 'Keep event dates in order: Day 1 must be before the next event date.');
             legacyDate.reportValidity();
             legacyDate.value = first.event_date || '';
             return;
