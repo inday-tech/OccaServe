@@ -153,10 +153,170 @@ class QuotationService:
         if existing_quote and existing_quote.status in ['signed', 'quoted', 'awaiting_caterer', 'awaiting_customer']:
             return existing_quote
 
+        saved_events = (booking.custom_requirements or {}).get("events", [])
+        if isinstance(saved_events, list) and saved_events:
+            return self._create_multi_event_quotation(
+                db, booking, saved_events, downpayment_percent, existing_quote
+            )
         if is_customizable:
             return self._create_customizable_quotation(db, booking, downpayment_percent, existing_quote)
         else:
             return self._create_fixed_quotation(db, booking, downpayment_percent, existing_quote)
+
+    def _create_multi_event_quotation(
+        self, db: Session, booking: models.Booking, saved_events: list,
+        downpayment_percent: int, existing_quote: models.Quotation = None
+    ) -> models.Quotation:
+        """Create an event-by-event quote from the booking's validated selections."""
+        event_details = []
+        event_subtotal = Decimal("0")
+        has_customizable_event = False
+        for index, saved in enumerate(saved_events, start=1):
+            if not isinstance(saved, dict):
+                continue
+            try:
+                package_id = int(saved.get("package_id") or 0)
+            except (TypeError, ValueError):
+                package_id = 0
+            package = db.query(models.CateringPackage).filter(
+                models.CateringPackage.id == package_id,
+                models.CateringPackage.caterer_id == booking.caterer_id,
+            ).first()
+            if not package:
+                continue
+            guest_count = max(1, int(saved.get("guest_count") or 1))
+            pricing_mode = str(package.pricing_mode or "fixed").lower()
+            customizable = pricing_mode == "customizable"
+            has_customizable_event = has_customizable_event or customizable
+            customization = saved.get("customization") if isinstance(saved.get("customization"), dict) else {}
+            included_ids = {item.id for item in (package.menu_items or [])}
+            try:
+                selected_ids = {int(value) for value in (saved.get("menu_ids") or [])}
+            except (TypeError, ValueError):
+                selected_ids = set()
+            selected_items = db.query(models.MenuItem).filter(
+                models.MenuItem.caterer_id == booking.caterer_id,
+                models.MenuItem.id.in_(selected_ids or {-1}),
+            ).all()
+            menu_addon_prices = {
+                link.menu_item_id: float(link.price or 0)
+                for link in package.menu_addons or [] if link.is_enabled
+            }
+            optional_food = []
+            for item in selected_items:
+                if item.id in included_ids:
+                    continue
+                rate = menu_addon_prices.get(item.id)
+                if rate is None:
+                    rate = float(item.addon_price or item.price or 0)
+                optional_food.append({
+                    "id": item.id, "name": item.name,
+                    "category": item.category or "Menu", "price": rate, "qty": 1,
+                })
+            raw_inclusions = package.inclusions or []
+            if isinstance(raw_inclusions, list):
+                package_inclusions = list(raw_inclusions)
+            elif isinstance(raw_inclusions, dict):
+                package_inclusions = [
+                    {"name": name, "category": "Included"}
+                    for name, included in raw_inclusions.items() if included
+                ]
+            else:
+                package_inclusions = []
+            package_inclusions.extend({"name": item.name, "category": "Food", "quantity": "Included"} for item in package.menu_items or [])
+            package_inclusions.extend(
+                {"name": link.service.name, "category": "Service", "quantity": link.quantity or 1}
+                for link in package.service_links or [] if link.service
+            )
+            package_inclusions.extend(
+                {"name": link.equipment.name, "category": "Equipment", "quantity": link.quantity or 1}
+                for link in package.equipment_links or [] if link.equipment
+            )
+            def get_selected_addons(key, model, addon_links, default_price_field):
+                try:
+                    ids = {int(value) for value in (saved.get(key) or [])}
+                except (TypeError, ValueError):
+                    ids = set()
+                if not ids:
+                    return []
+                records = db.query(model).filter(
+                    model.caterer_id == booking.caterer_id, model.id.in_(ids)
+                ).all()
+                configured_prices = {
+                    link.menu_item_id if hasattr(link, "menu_item_id") else (
+                        link.service_id if hasattr(link, "service_id") else link.equipment_id
+                    ): float(link.price or 0)
+                    for link in addon_links or [] if link.is_enabled
+                }
+                return [{
+                    "id": record.id,
+                    "name": record.name,
+                    "price": configured_prices.get(record.id, float(getattr(record, "addon_price", 0) or getattr(record, default_price_field, 0) or 0)),
+                } for record in records]
+            optional_services = get_selected_addons("service_ids", models.Service, package.service_addons, "selling_price")
+            optional_equipment = get_selected_addons("equipment_ids", models.Equipment, package.equipment_addons, "rental_price")
+            breakdown = saved.get("price_breakdown") if isinstance(saved.get("price_breakdown"), dict) else {}
+            try:
+                subtotal = Decimal(str(saved.get("estimated_subtotal", breakdown.get("subtotal", 0)) or 0))
+            except Exception:
+                subtotal = Decimal("0")
+            event_subtotal += subtotal
+            event_details.append({
+                "day": index,
+                "event_name": str(saved.get("event_name") or f"Day {index}"),
+                "event_date": str(saved.get("event_date") or ""),
+                "ingress": str(saved.get("ingress") or ""),
+                "egress": str(saved.get("egress") or ""),
+                "guest_count": guest_count,
+                "package_id": package.id,
+                "package_name": package.name,
+                "package_type": "customizable" if customizable else "fixed",
+                "package_description": package.description or "",
+                "package_inclusions": package_inclusions,
+                "customization": customization,
+                "optional_food": optional_food,
+                "optional_services": optional_services,
+                "optional_equipment": optional_equipment,
+                "price_breakdown": breakdown,
+                "subtotal": float(subtotal),
+            })
+
+        transportation = Decimal(str(booking.travel_fee or 0)) if booking.travel_fee_status == "calculated" else Decimal("0")
+        total = event_subtotal + transportation
+        if downpayment_percent < 20 or downpayment_percent > 100 or downpayment_percent % 5:
+            downpayment_percent = 30
+        details = {
+            "package_type": "customizable" if has_customizable_event else "fixed",
+            "multi_event": True,
+            "name": booking.package.name if booking.package else "Event package selection",
+            "guest_count": booking.guest_count or 1,
+            "events": event_details,
+            "event_subtotal": float(event_subtotal),
+            "transportation_total": float(transportation),
+            "transportation_status": booking.travel_fee_status or "pending",
+            "base_amount": float(total),
+            "agreement_terms": self._agreement_terms_for_booking(booking),
+            "accepted_payment_terms": self._payment_terms_for_booking(booking),
+        }
+        if existing_quote:
+            quotation = existing_quote
+            quotation.package_details = details
+            quotation.addons = []
+            quotation.total_amount = float(total)
+            quotation.downpayment_percent = downpayment_percent
+        else:
+            quotation = models.Quotation(
+                booking_id=booking.id, package_details=details, addons=[],
+                total_amount=float(total), downpayment_percent=downpayment_percent, status="draft"
+            )
+            db.add(quotation)
+        db.flush()
+        booking.reservation_fee = total * Decimal(str(downpayment_percent / 100))
+        booking.total_amount = float(total)
+        booking.total_price = float(total)
+        db.commit()
+        db.refresh(quotation)
+        return quotation
 
     def _create_customizable_quotation(
         self, db: Session, booking: models.Booking, downpayment_percent: int, existing_quote: models.Quotation = None

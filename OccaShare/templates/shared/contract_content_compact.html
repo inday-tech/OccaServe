@@ -63,7 +63,33 @@
             {% if details.get('transportation_status') == 'manual_quote' %}
             <p class="compact-empty-note">Transportation fee is not included in the quoted total and must be coordinated separately with the caterer.</p>
             {% endif %}
-            {% if is_customizable %}
+            {% if details.get('events') %}
+                {% for event in details.get('events') %}
+                <div class="compact-scope-group">
+                    <h4>Day {{ event.get('day') }} · {{ event.get('event_name') }} · {{ event.get('package_name') }}</h4>
+                    <p>{{ event.get('event_date') }} · {{ event.get('ingress') }}–{{ event.get('egress') }} · {{ event.get('guest_count') }} guests · ₱{{ "{:,.2f}".format(event.get('subtotal', 0)|float) }}</p>
+                    {% if event.get('package_type') == 'customizable' %}
+                        {% set custom = event.get('customization') or {} %}
+                        {% for group_name, key in [('Menu', 'selected_food'), ('Extra dishes', 'selected_menu_extras'), ('Services', 'selected_services'), ('Equipment', 'selected_equipment')] %}
+                            {% set selections = custom.get(key) or [] %}
+                            {% if selections %}<p><strong>{{ group_name }}:</strong> {{ selections|map(attribute='name')|join(', ') }}</p>{% endif %}
+                        {% endfor %}
+                        {% for item in event.get('optional_food') or [] %}<p><strong>Food add-on:</strong> {{ item.get('name') }}</p>{% endfor %}
+                        {% for item in event.get('optional_services') or [] %}<p><strong>Service add-on:</strong> {{ item.get('name') }}</p>{% endfor %}
+                        {% for item in event.get('optional_equipment') or [] %}<p><strong>Equipment add-on:</strong> {{ item.get('name') }}</p>{% endfor %}
+                    {% else %}
+                        <ul class="compact-item-list">
+                            {% for inclusion in event.get('package_inclusions') or [] %}
+                                {% if inclusion is mapping %}<li><span><strong>{{ inclusion.get('name') or inclusion.get('label') or inclusion.get('description') or 'Package item' }}</strong></span><span class="compact-item-price">Included</span></li>{% elif inclusion %}<li><span><strong>{{ inclusion }}</strong></span><span class="compact-item-price">Included</span></li>{% endif %}
+                            {% endfor %}
+                            {% for item in event.get('optional_food') or [] %}<li><span><strong>{{ item.get('name') }}</strong> · Optional food add-on</span></li>{% endfor %}
+                            {% for item in event.get('optional_services') or [] %}<li><span><strong>{{ item.get('name') }}</strong> · Optional service</span></li>{% endfor %}
+                            {% for item in event.get('optional_equipment') or [] %}<li><span><strong>{{ item.get('name') }}</strong> · Optional equipment</span></li>{% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% elif is_customizable %}
                 {% set selection_groups = [
                     ('Menu', details.get('selected_food') or []),
                     ('Extra dishes', details.get('selected_menu_extras') or []),

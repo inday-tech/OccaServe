@@ -1031,6 +1031,7 @@
 <form id="customizationForm" method="POST" action="/bookings/customize/save">
     <input type="hidden" name="caterer_id" value="{{ caterer.id }}">
     <input type="hidden" name="package_id" value="{{ package.id }}">
+    <input type="hidden" name="event_id" value="{{ event_id or '' }}">
     <input type="hidden" name="customization_json" id="customization_json" value="">
 
     <div class="cust-layout-grid">

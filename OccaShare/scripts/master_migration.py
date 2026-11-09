@@ -33,6 +33,7 @@ def master_migration():
             ("balance_due_date", "TIMESTAMP WITH TIME ZONE"),
             ("event_location", "TEXT"),
             ("is_archived", "BOOLEAN DEFAULT FALSE"),
+            ("preparation_updated_at", "TIMESTAMP WITH TIME ZONE"),
             ("actual_cost", "FLOAT DEFAULT 0.0"),
             ("balance_proof_url", "VARCHAR"),
             ("reservation_fee", "DECIMAL"),

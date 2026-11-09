@@ -424,6 +424,31 @@
     {% set quotation_details = quotation.package_details if quotation and quotation.package_details else {} %}
     {% set is_cust_inv = quotation_details.get('package_type') == 'customizable' or (booking.package and booking.package.pricing_mode == 'customizable') or (booking.custom_requirements and booking.custom_requirements.get('package_type') == 'customizable') %}
     {% set has_item_rows = (is_cust_inv and ((quotation_details.get('base_package_total', 0)|float > 0) or quotation_details.get('transportation_total', 0)|float > 0 or quotation_details.get('selected_food') or quotation_details.get('selected_menu_extras') or quotation_details.get('selected_services') or quotation_details.get('selected_equipment'))) or (not is_cust_inv and ((quotation_details.get('base_amount', 0)|float > 0) or (quotation and quotation.addons))) or (quotation_details.get('revision_number', 1)|int > 1) or not quotation %}
+    {% if quotation_details.get('events') %}
+    <section style="margin: 0 0 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
+        <h3 style="margin: 0 0 .7rem;">Event schedule and customer selections</h3>
+        {% for event in quotation_details.get('events') %}
+        <div style="padding: .65rem 0;{% if not loop.last %} border-bottom: 1px solid #e2e8f0;{% endif %}">
+            <strong>Day {{ event.get('day') }} · {{ event.get('event_name') }} · {{ event.get('package_name') }}</strong>
+            <div style="color:#475569;font-size:.86rem;">{{ event.get('event_date') }} · {{ event.get('ingress') }}–{{ event.get('egress') }} · {{ event.get('guest_count') }} guests · ₱{{ "{:,.2f}".format(event.get('subtotal', 0)|float) }}</div>
+            {% if event.get('package_type') == 'customizable' %}
+                {% set custom = event.get('customization') or {} %}
+                {% for label, key in [('Menu', 'selected_food'), ('Extra dishes', 'selected_menu_extras'), ('Services', 'selected_services'), ('Equipment', 'selected_equipment')] %}
+                    {% set selections = custom.get(key) or [] %}{% if selections %}<div style="margin-top:.3rem;"><b>{{ label }}:</b> {{ selections|map(attribute='name')|join(', ') }}</div>{% endif %}
+                {% endfor %}
+                {% for item in event.get('optional_food') or [] %}<div style="margin-top:.3rem;"><b>Food add-on:</b> {{ item.get('name') }}</div>{% endfor %}
+                {% for item in event.get('optional_services') or [] %}<div style="margin-top:.3rem;"><b>Service add-on:</b> {{ item.get('name') }}</div>{% endfor %}
+                {% for item in event.get('optional_equipment') or [] %}<div style="margin-top:.3rem;"><b>Equipment add-on:</b> {{ item.get('name') }}</div>{% endfor %}
+            {% else %}
+                {% for item in event.get('package_inclusions') or [] %}{% if item is mapping %}<div style="margin-top:.3rem;"><b>Included:</b> {{ item.get('name') or item.get('label') or item.get('description') or 'Package item' }}</div>{% elif item %}<div style="margin-top:.3rem;"><b>Included:</b> {{ item }}</div>{% endif %}{% endfor %}
+                {% for item in event.get('optional_food') or [] %}<div style="margin-top:.3rem;"><b>Food add-on:</b> {{ item.get('name') }}</div>{% endfor %}
+                {% for item in event.get('optional_services') or [] %}<div style="margin-top:.3rem;"><b>Service add-on:</b> {{ item.get('name') }}</div>{% endfor %}
+                {% for item in event.get('optional_equipment') or [] %}<div style="margin-top:.3rem;"><b>Equipment add-on:</b> {{ item.get('name') }}</div>{% endfor %}
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
     {% if has_item_rows %}
     <div class="item-table-wrap">
     <table class="item-table">
@@ -436,7 +461,12 @@
             </tr>
         </thead>
         <tbody>
-            {% if is_cust_inv and quotation_details.get('revision_number', 1)|int <= 1 %}
+            {% if quotation_details.get('events') %}
+                {% for event in quotation_details.get('events') %}
+                <tr><td><div class="item-name">Day {{ event.get('day') }} · {{ event.get('event_name') }} · {{ event.get('package_name') }}</div><div class="item-desc">{{ event.get('event_date') }} · {{ event.get('ingress') }}–{{ event.get('egress') }} · {{ event.get('guest_count') }} guests</div></td><td style="text-align:center;">1</td><td style="text-align:right;">—</td><td style="text-align:right;font-weight:700;">₱{{ "{:,.2f}".format(event.get('subtotal', 0)|float) }}</td></tr>
+                {% endfor %}
+                {% if quotation_details.get('transportation_total', 0)|float > 0 %}<tr><td>Transportation</td><td style="text-align:center;">1</td><td style="text-align:right;">—</td><td style="text-align:right;font-weight:700;">₱{{ "{:,.2f}".format(quotation_details.get('transportation_total')|float) }}</td></tr>{% endif %}
+            {% elif is_cust_inv and quotation_details.get('revision_number', 1)|int <= 1 %}
                 <!-- CUSTOMIZABLE PACKAGE INVOICE ITEMS -->
                 {% if quotation_details.get('base_package_total', 0)|float > 0 %}
                 <tr>

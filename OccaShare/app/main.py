@@ -81,6 +81,7 @@ async def lifespan(app: FastAPI):
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS payment_method VARCHAR",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS amount_paid FLOAT DEFAULT 0.0",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS preparation_status VARCHAR DEFAULT 'not_started'",
+        "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS preparation_updated_at TIMESTAMP WITH TIME ZONE",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS preparation_date DATE",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_archived BOOLEAN DEFAULT FALSE",
         "ALTER TABLE bookings ADD COLUMN IF NOT EXISTS customer_deleted BOOLEAN DEFAULT FALSE",

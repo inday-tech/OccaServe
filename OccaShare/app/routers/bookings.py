@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import Optional
 from datetime import date, time, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from ..db import database, models
 from ..core import security as auth
 from ..services.verification import verification_service
@@ -1455,6 +1456,8 @@ async def customize_package_page(
     caterer_id: int,
     package_id: Optional[int] = None,
     guest_count: Optional[int] = None,
+    event_id: Optional[str] = None,
+    reuse_from: Optional[str] = None,
     db: Session = Depends(database.get_db)
 ):
     caterer = db.query(models.CatererProfile).filter(models.CatererProfile.id == caterer_id).first()
@@ -1463,7 +1466,10 @@ async def customize_package_page(
 
     user = get_current_user_from_session(request, db)
     if not user:
-        return RedirectResponse(url=f"/auth/login?next=/bookings/customize/{caterer_id}?package_id={package_id or ''}")
+        customize_next = f"/bookings/customize/{caterer_id}?package_id={package_id or ''}"
+        if event_id:
+            customize_next += f"&event_id={quote_plus(str(event_id))}"
+        return RedirectResponse(url=f"/auth/login?next={quote_plus(customize_next)}")
 
     if user.role == 'customer':
         is_complete, _, missing = is_customer_profile_complete(user)
@@ -1479,20 +1485,26 @@ async def customize_package_page(
     if not actual_pkg_id:
         return RedirectResponse(url=f"/customer/caterer/{caterer_id}", status_code=303)
 
-    # This CTA starts a new package-selection flow. Do not let a stale
-    # booking_id from a previous draft override the package in this URL.
-    sess_data["caterer_id"] = caterer_id
-    sess_data["package_id"] = actual_pkg_id
-    sess_data["user_id"] = user.id
-    sess_data.pop("booking_id", None)
-    request.session["booking_data"] = sess_data
+    if not event_id:
+        # Legacy single-package customization updates the booking's primary package.
+        sess_data["caterer_id"] = caterer_id
+        sess_data["package_id"] = actual_pkg_id
+        sess_data["user_id"] = user.id
+        sess_data.pop("booking_id", None)
+        request.session["booking_data"] = sess_data
 
     package = db.query(models.CateringPackage).get(actual_pkg_id)
     if not package or package.caterer_id != caterer.id:
         return RedirectResponse(url=f"/customer/caterer/{caterer_id}", status_code=303)
     if package.pricing_mode != "customizable":
-        sess_data.pop("customization", None)
-        sess_data.pop("custom_estimated_total", None)
+        if event_id:
+            event_customizations = sess_data.get("event_customizations", {})
+            if isinstance(event_customizations, dict):
+                event_customizations.pop(str(event_id), None)
+                sess_data["event_customizations"] = event_customizations
+        else:
+            sess_data.pop("customization", None)
+            sess_data.pop("custom_estimated_total", None)
         request.session["booking_data"] = sess_data
         return RedirectResponse(url="/bookings/step/details", status_code=303)
 
@@ -1623,7 +1635,16 @@ async def customize_package_page(
         )
     except (ValueError, TypeError):
         initial_guest_count = 50
-    saved_customization = sess_data.get("customization", {})
+    event_customizations = sess_data.get("event_customizations", {})
+    saved_customization = {}
+    if event_id and isinstance(event_customizations, dict):
+        saved_customization = event_customizations.get(str(event_id)) or event_customizations.get(str(reuse_from or "")) or {}
+        if not saved_customization and reuse_from == "__initial__":
+            saved_customization = sess_data.get("customization", {})
+    elif not event_id:
+        saved_customization = sess_data.get("customization", {})
+    if isinstance(saved_customization, dict) and int(saved_customization.get("package_id") or 0) != int(package.id):
+        saved_customization = {}
 
     return templates.TemplateResponse("customer/booking_wizard/customizable_package.html", {
         "request": request,
@@ -1646,6 +1667,7 @@ async def customize_package_page(
         "grouped_inclusions": grouped_inclusions,
         "initial_guest_count": initial_guest_count,
         "saved_customization": saved_customization,
+        "event_id": event_id or "",
         "selection_rules": rules,
         "user": user,
         "current_step": 1,
@@ -1658,11 +1680,15 @@ async def save_customization_selection(
     caterer_id: int = Form(...),
     package_id: int = Form(...),
     customization_json: str = Form(...),
+    event_id: Optional[str] = Form(None),
     db: Session = Depends(database.get_db)
 ):
     user = get_current_user_from_session(request, db)
     if not user:
-        return RedirectResponse(url=f"/auth/login?next=/bookings/customize/{caterer_id}?package_id={package_id}", status_code=303)
+        customize_next = f"/bookings/customize/{caterer_id}?package_id={package_id}"
+        if event_id:
+            customize_next += f"&event_id={quote_plus(str(event_id))}"
+        return RedirectResponse(url=f"/auth/login?next={quote_plus(customize_next)}", status_code=303)
     if user.role != "customer":
         raise HTTPException(status_code=403, detail="Only customers can customize a package.")
 
@@ -1672,9 +1698,15 @@ async def save_customization_selection(
     ).first()
     if not package or package.pricing_mode != "customizable":
         booking_data = request.session.get("booking_data", {})
-        booking_data.update({"caterer_id": caterer_id, "package_id": package_id, "user_id": user.id})
-        booking_data.pop("customization", None)
-        booking_data.pop("custom_estimated_total", None)
+        if event_id:
+            event_customizations = booking_data.get("event_customizations", {})
+            if isinstance(event_customizations, dict):
+                event_customizations.pop(str(event_id), None)
+                booking_data["event_customizations"] = event_customizations
+        else:
+            booking_data.update({"caterer_id": caterer_id, "package_id": package_id, "user_id": user.id})
+            booking_data.pop("customization", None)
+            booking_data.pop("custom_estimated_total", None)
         request.session["booking_data"] = booking_data
         return RedirectResponse(url="/bookings/step/details", status_code=303)
 
@@ -1683,11 +1715,20 @@ async def save_customization_selection(
         parsed_customization = load_and_calculate_customization(db, package, submitted_customization)
     except (json.JSONDecodeError, PackagePricingError) as exc:
         return RedirectResponse(
-            url=f"/bookings/customize/{caterer_id}?package_id={package_id}&error_msg={quote_plus(str(exc))}",
+            url=f"/bookings/customize/{caterer_id}?package_id={package_id}{'&event_id=' + quote_plus(str(event_id)) if event_id else ''}&error_msg={quote_plus(str(exc))}",
             status_code=303,
         )
 
     booking_data = request.session.get("booking_data", {})
+    if event_id:
+        event_customizations = booking_data.get("event_customizations", {})
+        if not isinstance(event_customizations, dict):
+            event_customizations = {}
+        event_customizations[str(event_id)] = parsed_customization
+        booking_data["event_customizations"] = event_customizations
+        request.session["booking_data"] = booking_data
+        return RedirectResponse(url="/bookings/step/details", status_code=303)
+
     booking_data["caterer_id"] = caterer_id
     booking_data["package_id"] = package_id
     booking_data["user_id"] = user.id
@@ -2015,9 +2056,6 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     package_id = data.get("package_id")
     if package_id:
         package = db.query(models.CateringPackage).get(package_id)
-    elif caterer_packages:
-        package = caterer_packages[0]
-
     # Pre-map all caterer packages with their dynamic grouped inclusions for seamless instant UI switching
     packages_map = {}
     for p in caterer_packages:
@@ -2114,6 +2152,8 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
 
     event_options = {
         "packages": list(packages_map.values()),
+        "event_customizations": data.get("event_customizations", {}) if isinstance(data.get("event_customizations", {}), dict) else {},
+        "initial_customization": data.get("customization") if package and package.pricing_mode == "customizable" else None,
         "menu_items": [{
             "id": item.id,
             "name": item.name,
@@ -2272,6 +2312,7 @@ async def step_details_submit(
             if not all(isinstance(item, dict) for item in submitted_events):
                 raise ValueError("Event details are invalid.")
             first_event = submitted_events[0]
+            event_name = first_event.get("event_name") or event_name
             package_id = str(first_event.get("package_id") or "")
             event_date = first_event.get("event_date")
             event_time = first_event.get("ingress")
@@ -2455,6 +2496,11 @@ async def step_details_submit(
         occupied_intervals = []
         events_per_day = {}
         for index, event_data in enumerate(submitted_events, start=1):
+            event_name_for_day = str(event_data.get("event_name") or "").strip()
+            if not event_name_for_day:
+                return _event_error(f"Day {index} needs an event name.")
+            if len(event_name_for_day) > 100:
+                return _event_error(f"Day {index} event name must be 100 characters or fewer.")
             try:
                 event_date_value = date.fromisoformat(str(event_data.get("event_date") or ""))
                 event_ingress = time.fromisoformat(str(event_data.get("ingress") or ""))
@@ -2477,6 +2523,43 @@ async def step_details_submit(
             ).first()
             if not event_package:
                 return _event_error(f"Event {index} package is no longer available.")
+            if package_id_int and event_package.id != package_id_int:
+                return _event_error("All event dates must use the selected main package.")
+            event_key = str(event_data.get("id") or f"event-{index}")
+            event_customization = event_data.get("customization")
+            if not isinstance(event_customization, dict):
+                booking_data_for_events = request.session.get("booking_data", {})
+                saved_event_customizations = booking_data_for_events.get("event_customizations", {})
+                if isinstance(saved_event_customizations, dict):
+                    event_customization = saved_event_customizations.get(event_key)
+                if not isinstance(event_customization, dict) and index == 1:
+                    event_customization = booking_data_for_events.get("customization")
+            if isinstance(event_customization, dict) and int(event_customization.get("package_id") or 0) != event_package.id:
+                event_customization = None
+            if str(event_package.pricing_mode or "").lower() == "customizable":
+                if not isinstance(event_customization, dict):
+                    return RedirectResponse(
+                        url=(
+                            f"/bookings/customize/{caterer_id}?package_id={event_package.id}"
+                            f"&event_id={quote_plus(event_key)}&guest_count={event_guests}"
+                            f"&error_msg=Customize+this+event+before+continuing."
+                        ),
+                        status_code=303,
+                    )
+                event_customization["guest_count"] = event_guests
+                try:
+                    event_customization = load_and_calculate_customization(db, event_package, event_customization)
+                except PackagePricingError as exc:
+                    return RedirectResponse(
+                        url=(
+                            f"/bookings/customize/{caterer_id}?package_id={event_package.id}"
+                            f"&event_id={quote_plus(event_key)}&guest_count={event_guests}"
+                            f"&error_msg={quote_plus(str(exc))}"
+                        ),
+                        status_code=303,
+                    )
+            else:
+                event_customization = None
             minimum_guests = int(event_package.min_guests or caterer.min_pax or 1)
             maximum_guests = int(event_package.max_guests or 999999)
             if event_guests < minimum_guests or event_guests > maximum_guests:
@@ -2507,8 +2590,9 @@ async def step_details_submit(
                 return _event_error(
                     f"Event {index}: {availability_check.get('message', 'This date and time is unavailable.')}"
                 )
-            package_lead_time = int(event_package.booking_lead_time or caterer.booking_lead_time or 0)
-            if event_date_value < date.today() + timedelta(days=package_lead_time):
+            package_lead_time = max(0, int(event_package.booking_lead_time or caterer.booking_lead_time or 0))
+            manila_today = datetime.now(ZoneInfo("Asia/Manila")).date()
+            if event_date_value < manila_today + timedelta(days=package_lead_time):
                 return _event_error(
                     f"Event {index} must be scheduled at least {package_lead_time} days in advance for this package."
                 )
@@ -2649,8 +2733,27 @@ async def step_details_submit(
                 if not capacity_valid:
                     return _event_error(f"Event {index}: {capacity_message}")
 
+            if event_customization and event_customization.get("selected_services"):
+                from ..services.capacity_service import CapacityService
+                custom_service_capacity = [
+                    (int(item["id"]), int(item.get("capacity_qty", item.get("qty", 1))))
+                    for item in event_customization["selected_services"]
+                ]
+                capacity_valid, capacity_message = CapacityService.validate_booking_capacity(
+                    db,
+                    caterer_id,
+                    event_date_value,
+                    event_ingress,
+                    event_egress,
+                    custom_service_capacity,
+                    booking_id_int,
+                )
+                if not capacity_valid:
+                    return _event_error(f"Event {index}: {capacity_message}")
+
             validated_event_selections.append({
-                "id": str(event_data.get("id") or f"event-{index}"),
+                "id": event_key,
+                "event_name": event_name_for_day,
                 "event_date": event_date_value.isoformat(),
                 "ingress": event_ingress.strftime("%H:%M"),
                 "egress": event_egress.strftime("%H:%M"),
@@ -2659,10 +2762,12 @@ async def step_details_submit(
                 "menu_ids": menu_ids,
                 "equipment_ids": equipment_ids,
                 "service_ids": service_ids,
+                "customization": event_customization,
                 "_package": event_package,
                 "_menu_items": selected_menu_items,
                 "_equipment_items": selected_equipment_items,
                 "_service_items": selected_service_items,
+                "_customization": event_customization,
             })
 
     ingress_error = AvailabilityService.get_operating_hours_error(
@@ -2810,26 +2915,40 @@ async def step_details_submit(
     sess_cust = None
     if package_is_customizable:
         booking_data = request.session.get("booking_data", {})
-        submitted_customization = booking_data.get("customization")
+        first_event_id = str(submitted_events[0].get("id") or "") if submitted_events else ""
+        event_customizations = booking_data.get("event_customizations", {})
+        submitted_customization = (
+            submitted_events[0].get("customization") if submitted_events and isinstance(submitted_events[0], dict) else None
+        )
+        if not isinstance(submitted_customization, dict) and isinstance(event_customizations, dict):
+            submitted_customization = event_customizations.get(first_event_id)
         if not isinstance(submitted_customization, dict):
-            return RedirectResponse(
-                url=f"/bookings/customize/{caterer_id}?package_id={package_id_int}&error_msg=Please+select+your+package+customization+first.",
-                status_code=303,
-            )
-        submitted_customization["guest_count"] = guest_count_int
-        try:
-            sess_cust = load_and_calculate_customization(db, package, submitted_customization)
-        except PackagePricingError as exc:
-            return RedirectResponse(
-                url=f"/bookings/customize/{caterer_id}?package_id={package_id_int}&error_msg={quote_plus(str(exc))}",
-                status_code=303,
-            )
-        booking_data["customization"] = sess_cust
-        booking_data["custom_estimated_total"] = sess_cust["estimated_total"]
-        booking_data["guest_count"] = guest_count_int
-        request.session["booking_data"] = booking_data
-        for service in sess_cust["selected_services"]:
-            requested_services.append((service["id"], service["capacity_qty"]))
+            submitted_customization = booking_data.get("customization")
+        if isinstance(submitted_customization, dict) and int(submitted_customization.get("package_id") or 0) != package_id_int:
+            submitted_customization = None
+        if not isinstance(submitted_customization, dict):
+            if submitted_events is None:
+                return RedirectResponse(
+                    url=f"/bookings/customize/{caterer_id}?package_id={package_id_int}&error_msg=Please+select+your+package+customization+first.",
+                    status_code=303,
+                )
+            # Per-event validation below redirects to the specific event's customization screen.
+            submitted_customization = None
+        if isinstance(submitted_customization, dict):
+            submitted_customization["guest_count"] = guest_count_int
+            try:
+                sess_cust = load_and_calculate_customization(db, package, submitted_customization)
+            except PackagePricingError as exc:
+                return RedirectResponse(
+                    url=f"/bookings/customize/{caterer_id}?package_id={package_id_int}&error_msg={quote_plus(str(exc))}",
+                    status_code=303,
+                )
+            booking_data["customization"] = sess_cust
+            booking_data["custom_estimated_total"] = sess_cust["estimated_total"]
+            booking_data["guest_count"] = guest_count_int
+            request.session["booking_data"] = booking_data
+            for service in sess_cust["selected_services"]:
+                requested_services.append((service["id"], service["capacity_qty"]))
 
     # 1.5. Capacity Check for Addon Services
     for serv_id in selected_service_addons:
@@ -3265,6 +3384,20 @@ async def step_details_submit(
                 event_selection["_equipment_items"],
                 event_selection["_service_items"],
             )
+            event_customization = event_selection.get("_customization")
+            if event_customization:
+                custom_subtotal = float(event_customization.get("estimated_total", 0))
+                estimate = {
+                    "package": float(event_customization.get("base_package_total", 0)),
+                    "menu": (
+                        float(event_customization.get("food_upgrade_total", 0))
+                        + float(event_customization.get("menu_extras_total", 0))
+                        - float(event_customization.get("food_removal_credit", 0))
+                    ),
+                    "equipment": float(event_customization.get("equipment_total", 0)) + estimate["equipment"],
+                    "services": float(event_customization.get("services_total", 0)) + estimate["services"],
+                    "subtotal": custom_subtotal + estimate["equipment"] + estimate["services"],
+                }
             subtotal += estimate["subtotal"]
             persisted_event = {
                 key: value

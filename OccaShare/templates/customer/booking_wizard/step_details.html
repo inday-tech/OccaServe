@@ -151,8 +151,6 @@
     #customize-save-status { flex-basis: 100%; color: #b91c1c; font-size: .76rem; }
     #customize-save-status:empty { display: none; }
     .legacy-package-selection,
-    .legacy-guest-count,
-    .legacy-event-schedule,
     #availability-chip,
     #customizable-package-choices-card,
     #package-inclusions-card { display: none !important; }
@@ -176,6 +174,9 @@
         background: #fff;
     }
     .booking-event-title { margin: 0; color: #172033; font-size: .95rem; font-weight: 800; }
+    .booking-event-schedule-summary { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .65rem 0; color: #475569; font-size: .8rem; }
+    .booking-event-schedule-summary strong { color: #172033; }
+    #booking-events-panel[hidden] { display: none !important; }
     .booking-event-remove,
     .booking-event-add {
         min-height: 38px;
@@ -197,7 +198,14 @@
         gap: .75rem;
         margin-top: .8rem;
     }
-    .booking-event-fields { grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); }
+    .booking-event-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .booking-date-field { grid-column: 1 / -1; }
+    .event-time-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: .75rem !important; }
+    .booking-date-control { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
+    .booking-date-control input { flex: 1 1 150px; min-width: 0; }
+    .booking-date-control .booking-event-add { flex: 0 0 auto; min-height: 42px; padding: .45rem .65rem; font-size: .72rem; }
+    .booking-event-customization { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-top: .8rem; padding: .7rem .8rem; border: 1px solid #fed7aa; border-radius: 9px; background: #fff7ed; color: #7c2d12; font-size: .76rem; }
+    .booking-event-customize { color: #c2410c; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
     .booking-field label { display: block; margin-bottom: .35rem; color: #475569; font-size: .75rem; font-weight: 750; }
     .booking-field input,
     .booking-field select {
@@ -211,15 +219,18 @@
         font: inherit;
     }
     .booking-package-option {
-        display: flex;
-        gap: .75rem;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: .65rem;
+        row-gap: .45rem;
         padding: .7rem;
         border: 1px solid #dbe3ee;
         border-radius: 10px;
-        cursor: pointer;
     }
     .booking-package-option.is-selected { border-color: var(--wiz-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--wiz-primary) 16%, transparent); }
     .booking-package-option.is-unavailable { opacity: .45; cursor: not-allowed; }
+    .booking-package-radio { grid-column: 1; grid-row: 1; margin: .2rem 0 0; accent-color: var(--wiz-primary); }
+    .booking-package-label { grid-column: 2; grid-row: 1; display: flex; min-width: 0; gap: .65rem; cursor: pointer; }
     .booking-package-option img,
     .booking-package-image-placeholder { width: 68px; height: 68px; flex: 0 0 68px; border-radius: 8px; object-fit: cover; background: #f1f5f9; }
     .booking-package-image-placeholder { display: grid; place-items: center; color: #94a3b8; font-size: 1.25rem; }
@@ -229,7 +240,7 @@
     .booking-package-meta,
     .booking-choice-meta { display: block; margin-top: .2rem; color: #64748b; font-size: .72rem; line-height: 1.4; }
     .booking-package-inclusions { margin-top: .35rem; color: #64748b; font-size: .7rem; line-height: 1.4; }
-    .booking-package-details-button { margin-top: .45rem; padding: .35rem .55rem; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: var(--wiz-primary, #c2410c); font: inherit; font-size: .72rem; font-weight: 750; cursor: pointer; }
+    .booking-package-details-button { grid-column: 2; grid-row: 2; justify-self: start; padding: .35rem .55rem; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: var(--wiz-primary, #c2410c); font: inherit; font-size: .72rem; font-weight: 750; cursor: pointer; }
     .booking-package-details-button:hover { background: #fff7ed; border-color: #fdba74; }
     #booking-package-details-modal { width: min(92vw, 640px); max-height: 85vh; padding: 0; border: 0; border-radius: 16px; color: #172033; box-shadow: 0 24px 70px rgba(15, 23, 42, .28); }
     #booking-package-details-modal::backdrop { background: rgba(15, 23, 42, .58); }
@@ -241,6 +252,8 @@
     .booking-package-modal-description { margin: .9rem 0; color: #475569; font-size: .88rem; line-height: 1.55; white-space: pre-line; }
     .booking-package-modal-group { margin-top: .9rem; padding: .85rem; border: 1px solid #e2e8f0; border-radius: 10px; }
     .booking-package-modal-group h4 { margin: 0 0 .55rem; font-size: .9rem; }
+    .booking-package-modal-event { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid #e2e8f0; }
+    .booking-package-modal-event h3 { margin: 0; color: #172033; font-size: .98rem; font-weight: 800; }
     .booking-package-modal-group ul { margin: 0; padding-left: 1.2rem; color: #475569; font-size: .82rem; line-height: 1.5; }
     .booking-package-modal-group li + li { margin-top: .4rem; }
     .booking-package-modal-empty { color: #64748b; font-size: .84rem; }
@@ -264,6 +277,12 @@
     .booking-event-status { margin-top: .65rem; color: #64748b; font-size: .78rem; }
     .booking-event-status.is-error { color: #b91c1c; }
     .booking-event-subtotal { margin-top: .85rem; padding-top: .75rem; border-top: 1px solid #e2e8f0; color: #172033; font-size: .82rem; font-weight: 800; }
+    .booking-event-package { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .9rem; padding: .75rem; border: 1px solid #dbe3ef; border-radius: 10px; background: #f8fafc; }
+    .booking-event-card > .booking-event-package { display: none !important; }
+    .booking-event-package > div { display: grid; gap: .2rem; min-width: 0; }
+    .booking-event-package > div strong { color: #172033; }
+    .booking-event-package > div span { color: #64748b; font-size: .78rem; }
+    .booking-event-package button { flex: 0 0 auto; padding: .45rem .7rem; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #334155; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
     .booking-total-row { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid #e2e8f0; color: #172033; font-weight: 800; }
     .booking-total-row strong { color: #c2410c; font-size: 1.05rem; }
     .booking-events-help { margin: .25rem 0 0; color: #64748b; font-size: .78rem; line-height: 1.5; }
@@ -274,6 +293,8 @@
         .custom-choice-item-detail { max-width: 45%; }
         .booking-event-card { padding: .75rem; }
         .booking-event-heading { align-items: flex-start; }
+        .booking-event-package { align-items: flex-start; flex-direction: column; }
+        .booking-event-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 </style>
 {% endblock %}
@@ -324,6 +345,16 @@
                     <div class="section-icon-wrap"><i class="fas fa-calendar-days"></i></div>
                     <h3 class="form-section-title">Basic Event Info</h3>
                 </div>
+                {% if package %}
+                <div class="booking-main-package-inline" aria-label="Selected main package">
+                    <div class="booking-main-package-label">Selected package</div>
+                    <div class="booking-event-package booking-main-package-card">
+                        <div><strong>{{ package.name }}</strong><span>{% if package.pricing_mode == 'customizable' %}Customizable · starts at ₱{{ "{:,.2f}".format((package.price_per_head or package.price or 0)|float) }}/guest{% elif package.price_unit == 'per_guest' %}₱{{ "{:,.2f}".format((package.price_per_head or package.price or 0)|float) }}/guest{% else %}₱{{ "{:,.2f}".format((package.price or package.price_per_head or 0)|float) }} fixed price{% endif %} · {{ package.service_duration or 0 }}-hour service · {{ package.min_guests or 1 }}–{{ package.max_guests or 'No maximum' }} guests</span></div>
+                        <button type="button" data-action="view-main-package-details" data-package-id="{{ package.id }}">View package details</button>
+                    </div>
+                    <p class="booking-events-help">This package applies to every event date. Menu, services, and equipment choices are managed separately for each event.</p>
+                </div>
+                {% endif %}
 
                 <!-- Package Selection Row -->
                 {% if package %}
@@ -384,7 +415,7 @@
                         <span class="field-error" id="err-type">Please select a valid package.</span>
                     </div>
 
-                    <div class="form-group legacy-guest-count">
+                    <div class="form-group">
                         <label class="form-label">Guest Count <small id="guest_range_label">(min <span id="min_guests_span">{{ package.min_guests or caterer.min_pax or 50 }}</span>, max <span id="max_guests_span">999999</span> pax)</small></label>
                         <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
                             maxlength="6" pattern="[0-9]{1,6}" value="{{ initial_guest_count or 1 }}" oninput="formatGuestCount(this); updateCalculator()">
@@ -404,12 +435,16 @@
                     <input type="text" name="theme_motif" class="form-input" data-char-limit="100" value="{{ booking_data.get('theme_motif', ((booking.custom_requirements.get('theme_motif') or booking.custom_requirements.get('motif_theme', '')) if booking and booking.custom_requirements else '')) }}">
                 </div>
 
-                <section class="event-schedule-fields legacy-event-schedule" aria-label="Event schedule">
+                <section class="event-schedule-fields" aria-label="Day 1 event schedule">
+                    <h4 class="booking-event-title">Day 1 schedule</h4>
                     <div class="form-group event-date-row">
                         <label class="form-label" for="event_date">Event Date</label>
+                        <div class="booking-date-control">
                         <input type="date" name="event_date" id="event_date" class="form-input"
                             value="{{ booking_data.get('event_date', booking.event_date.isoformat() if booking and booking.event_date else '') }}"
-                            required onchange="checkAvailability()">
+                            required>
+                        <button class="booking-event-add" type="button" data-action="add-event" disabled>Add another event date</button>
+                        </div>
                         <span class="field-error" id="err-date">Please select a valid event date.</span>
                     </div>
                     <div class="event-time-grid">
@@ -435,13 +470,12 @@
                 <div id="availability-chip" class="availability-chip" style="margin-top: 0.75rem; width: 100%;"></div>
             </div>
 
-            <section class="c-card-premium" id="booking-events-panel" aria-labelledby="booking-events-title">
+            <section class="c-card-premium" id="booking-events-panel" aria-labelledby="booking-events-title" hidden>
                 <div class="booking-events-heading">
                     <div>
                         <h3 class="form-section-title" id="booking-events-title">Event schedules and choices</h3>
-                        <p class="booking-events-help">Add each event date separately. Schedules, packages, food, and add-ons are priced independently.</p>
+                        <p class="booking-events-help">Day 1 schedule is above. Choose its date to show the event choices; add another date for Day 2, Day 3, and more.</p>
                     </div>
-                    <button class="booking-event-add" type="button" id="add-booking-event">Add event date</button>
                 </div>
                 <div id="booking-event-list" aria-live="polite"></div>
                 <div class="booking-total-row">
