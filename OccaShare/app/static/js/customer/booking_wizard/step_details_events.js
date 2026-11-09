@@ -438,7 +438,9 @@ document.addEventListener('DOMContentLoaded', function () {
             <p class="booking-events-help">Egress is calculated from this event’s selected package duration.</p>
             <div class="booking-event-status${event.availability === false ? ' is-error' : ''}" role="status">${escapeHtml(status)}</div>
             ${pkg ? `<div class="booking-event-package"><div><strong>${escapeHtml(pkg.name)}</strong><span>${packageRate(pkg)} · ${Number(event.guest_count || 1)} guests · ${Number(pkg.service_duration || 0)}-hour service</span></div><button type="button" data-action="view-package-details" data-package-id="${Number(pkg.id)}">View details</button></div>` : '<p class="booking-event-status is-error">Select a package in the previous step before adding event dates.</p>'}
-            ${isCustomizable ? `<div class="booking-event-customization"><span>${event.customization ? 'Custom choices saved for this event.' : 'Select this event’s menu, services, and equipment.'}</span><a class="booking-event-customize" href="${customizeUrl}">${event.customization ? 'Edit choices for this event' : 'Customize this event'}</a></div>` : ''}
+            ${isCustomizable ? `<div class="booking-event-customization"><span>${index === 0
+                ? (event.customization ? 'Day 1 choices are from your Step 1 package selection.' : 'Choose or update Day 1 package choices in Step 1.')
+                : (event.customization ? 'Custom choices saved for this event.' : 'Select this event’s menu, services, and equipment.')}</span>${index > 0 ? `<a class="booking-event-customize" href="${customizeUrl}">${event.customization ? 'Edit choices for this event' : 'Customize this event'}</a>` : ''}</div>` : ''}
             ${!isCustomizable ? `<details class="booking-event-menu">
                 <summary class="booking-menu-heading"><strong>Optional food add-ons</strong><span class="booking-choice-meta">Fixed package inclusions stay unchanged</span></summary>
                 ${renderMenuChoices(event)}
