@@ -204,6 +204,22 @@
     .booking-date-control { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
     .booking-date-control input { flex: 1 1 150px; min-width: 0; }
     .booking-date-control .booking-event-add { flex: 0 0 auto; min-height: 42px; padding: .45rem .65rem; font-size: .72rem; }
+    .booking-date-picker { min-width: 0; }
+    .booking-date-picker-trigger { width: 100%; min-height: 44px; padding: .6rem .75rem; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #172033; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+    .booking-date-picker-trigger:hover, .booking-date-picker-trigger[aria-expanded="true"] { border-color: #fb923c; box-shadow: 0 0 0 3px rgba(251, 146, 60, .12); }
+    .booking-event-calendar { position: relative; z-index: 1; width: min(100%, 360px); margin-top: .55rem; padding: .85rem; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; box-shadow: 0 8px 24px rgba(15, 23, 42, .1); }
+    .booking-event-calendar[hidden] { display: none; }
+    .booking-calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .65rem; }
+    .booking-calendar-header strong { color: #172033; font-size: .88rem; font-weight: 800; }
+    .booking-calendar-header button { width: 34px; height: 34px; border: 1px solid #e2e8f0; border-radius: 9px; background: #f8fafc; color: #334155; font-size: 1.2rem; cursor: pointer; }
+    .booking-calendar-header button:hover { border-color: #fdba74; background: #fff7ed; color: #c2410c; }
+    .booking-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .25rem; }
+    .booking-calendar-weekdays { margin-bottom: .35rem; color: #64748b; font-size: .68rem; font-weight: 750; text-align: center; }
+    .booking-calendar-empty, .booking-calendar-day { min-width: 0; height: 36px; }
+    .booking-calendar-day { border: 0; border-radius: 9px; background: #fff; color: #334155; font: inherit; font-size: .78rem; cursor: pointer; transition: background .12s, color .12s; }
+    .booking-calendar-day:hover:not(:disabled) { background: #fff7ed; color: #c2410c; }
+    .booking-calendar-day.is-selected { background: #ea580c; color: #fff; font-weight: 800; }
+    .booking-calendar-day:disabled { background: #f8fafc; color: #cbd5e1; cursor: not-allowed; }
     .booking-event-customization { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-top: .8rem; padding: .7rem .8rem; border: 1px solid #fed7aa; border-radius: 9px; background: #fff7ed; color: #7c2d12; font-size: .76rem; }
     .booking-event-customize { color: #c2410c; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
     .booking-field label { display: block; margin-bottom: .35rem; color: #475569; font-size: .75rem; font-weight: 750; }
@@ -435,8 +451,7 @@
                     <input type="text" name="theme_motif" class="form-input" data-char-limit="100" value="{{ booking_data.get('theme_motif', ((booking.custom_requirements.get('theme_motif') or booking.custom_requirements.get('motif_theme', '')) if booking and booking.custom_requirements else '')) }}">
                 </div>
 
-                <section class="event-schedule-fields" aria-label="Day 1 event schedule">
-                    <h4 class="booking-event-title">Day 1 schedule</h4>
+                <section class="event-schedule-fields" aria-label="Event date and schedule">
                     <div class="form-group event-date-row">
                         <label class="form-label" for="event_date">Event Date</label>
                         <div class="booking-date-control">
@@ -474,7 +489,7 @@
                 <div class="booking-events-heading">
                     <div>
                         <h3 class="form-section-title" id="booking-events-title">Event schedules and choices</h3>
-                        <p class="booking-events-help">Day 1 schedule is above. Choose its date to show the event choices; add another date for Day 2, Day 3, and more.</p>
+                        <p class="booking-events-help">Choose the event date above to show its choices; add another date for more events.</p>
                     </div>
                 </div>
                 <div id="booking-event-list" aria-live="polite"></div>

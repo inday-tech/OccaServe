@@ -28,6 +28,45 @@ document.addEventListener('DOMContentLoaded', function () {
     })[character]);
     const money = amount => `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const nextEventId = () => `event-${Date.now()}-${++eventSequence}`;
+    const formatDisplayTime = value => {
+        const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
+        if (!match) return value || '';
+        const hour = Number(match[1]);
+        const minute = Number(match[2]);
+        if (hour > 23 || minute > 59) return value;
+        return new Date(2000, 0, 1, hour, minute).toLocaleTimeString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true
+        });
+    };
+    const dateFromIso = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? new Date(`${value}T00:00:00`) : null;
+    const formatDisplayDate = value => {
+        const date = dateFromIso(value);
+        return date ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Choose a date';
+    };
+    const renderEventCalendar = event => {
+        const monthDate = dateFromIso(event.calendarMonth || event.event_date || minimumEventDate(getPackage(event.package_id))) || new Date();
+        const year = monthDate.getFullYear();
+        const month = monthDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const offset = (firstDay.getDay() + 6) % 7;
+        const minDate = minimumEventDate(getPackage(event.package_id));
+        const datesUsedElsewhere = new Set(events.filter(item => item.id !== event.id && item.event_date).map(item => item.event_date));
+        const cellCount = offset + new Date(year, month + 1, 0).getDate() > 35 ? 42 : 35;
+        const days = Array.from({ length: cellCount }, (_, index) => {
+            const date = new Date(year, month, index - offset + 1);
+            const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            const outsideMonth = date.getMonth() !== month;
+            if (outsideMonth) return '<span class="booking-calendar-empty" aria-hidden="true"></span>';
+            const disabled = outsideMonth || iso < minDate || datesUsedElsewhere.has(iso);
+            const selected = iso === event.event_date;
+            return `<button type="button" class="booking-calendar-day${selected ? ' is-selected' : ''}" data-action="select-event-date" data-date="${iso}" ${disabled ? 'disabled' : ''} aria-pressed="${selected}">${date.getDate()}</button>`;
+        }).join('');
+        return `<div class="booking-event-calendar" ${event.calendarOpen ? '' : 'hidden'}>
+            <div class="booking-calendar-header"><button type="button" data-action="calendar-month" data-offset="-1" aria-label="Previous month">‹</button><strong>${monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong><button type="button" data-action="calendar-month" data-offset="1" aria-label="Next month">›</button></div>
+            <div class="booking-calendar-grid booking-calendar-weekdays" aria-hidden="true">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => `<span>${day}</span>`).join('')}</div>
+            <div class="booking-calendar-grid">${days}</div>
+        </div>`;
+    };
     const minimumEventDate = pkg => {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
@@ -365,10 +404,10 @@ document.addEventListener('DOMContentLoaded', function () {
             ? 'Choose a date and ingress time to check availability.'
             : (event.availability ? (event.availabilityMessage || 'This date and time is available.') : (event.availabilityMessage || 'This date and time is unavailable.'));
         const scheduleFields = index === 0
-            ? `<div class="booking-event-schedule-summary"><strong>Day 1</strong><span>${escapeHtml(event.event_date || 'Choose a date above')} · ${escapeHtml(event.ingress || 'Select ingress')}${event.egress ? ` – ${escapeHtml(event.egress)}` : ''}</span></div>`
+            ? `<div class="booking-event-schedule-summary"><strong>Day 1</strong><span>${escapeHtml(event.event_date || 'Choose a date above')} · ${escapeHtml(formatDisplayTime(event.ingress) || 'Select ingress')}${event.egress ? ` – ${escapeHtml(formatDisplayTime(event.egress))}` : ''}</span></div>`
             : `<div class="booking-event-fields">
-                <div class="booking-field booking-date-field"><label for="${escapeHtml(event.id)}-date">Event date</label>
-                    <div class="booking-date-control"><input id="${escapeHtml(event.id)}-date" type="date" data-field="event_date" min="${minimumEventDate(pkg)}" value="${escapeHtml(event.event_date)}" required></div></div>
+                <div class="booking-field booking-date-field"><label>Event date</label>
+                    <div class="booking-date-picker"><button id="${escapeHtml(event.id)}-date-trigger" class="booking-date-picker-trigger" type="button" data-action="toggle-date-calendar" aria-expanded="${Boolean(event.calendarOpen)}">${escapeHtml(formatDisplayDate(event.event_date))}</button>${renderEventCalendar(event)}</div></div>
                 <div class="booking-field"><label for="${escapeHtml(event.id)}-ingress">Ingress</label>
                     <select id="${escapeHtml(event.id)}-ingress" data-field="ingress" required><option value="">Select time</option>${times}</select></div>
                 <div class="booking-field"><label for="${escapeHtml(event.id)}-egress">Egress (automatic)</label>
@@ -612,6 +651,36 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     eventList.addEventListener('click', event => {
+        const calendarButton = event.target.closest('[data-action="toggle-date-calendar"], [data-action="calendar-month"], [data-action="select-event-date"]');
+        if (calendarButton) {
+            event.preventDefault();
+            const card = calendarButton.closest('.booking-event-card');
+            const current = events.find(item => item.id === card?.dataset.eventId);
+            if (!current) return;
+            if (calendarButton.dataset.action === 'toggle-date-calendar') {
+                current.calendarOpen = !current.calendarOpen;
+                current.calendarMonth = current.event_date || minimumEventDate(getPackage(current.package_id));
+            } else if (calendarButton.dataset.action === 'calendar-month') {
+                const month = dateFromIso(current.calendarMonth || current.event_date || minimumEventDate(getPackage(current.package_id)));
+                month.setMonth(month.getMonth() + Number(calendarButton.dataset.offset || 0));
+                current.calendarMonth = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-01`;
+            } else {
+                const chosenDate = calendarButton.dataset.date;
+                const duplicate = events.some(item => item.id !== current.id && item.event_date === chosenDate);
+                if (duplicate || chosenDate < minimumEventDate(getPackage(current.package_id))) return;
+                current.event_date = chosenDate;
+                current.calendarOpen = false;
+                current.calendarMonth = chosenDate;
+                current.availability = null;
+                current.availabilityMessage = '';
+                render();
+                checkAvailability(current);
+                return;
+            }
+            render();
+            document.getElementById(`${current.id}-date-trigger`)?.focus({ preventScroll: true });
+            return;
+        }
         const detailsButton = event.target.closest('[data-action="view-package-details"]');
         if (detailsButton) {
             event.preventDefault();
@@ -646,16 +715,25 @@ document.addEventListener('DOMContentLoaded', function () {
         next.id = nextEventId();
         next.customization = null;
         next.customization_source_event_id = null;
+        next.calendarOpen = true;
         events.push(next);
         render();
-        document.getElementById(`${next.id}-date`)?.focus({ preventScroll: true });
+        document.getElementById(`${next.id}-date-trigger`)?.focus({ preventScroll: true });
     };
 
     form.addEventListener('change', event => {
         if (event.target !== legacyDate && event.target !== legacyTime) return;
         const first = events[0];
         if (!first) return;
-        first.event_date = legacyDate?.value || '';
+        const selectedDate = legacyDate?.value || '';
+        if (selectedDate && events.some(item => item !== first && item.event_date === selectedDate)) {
+            legacyDate.setCustomValidity('This date is already selected for another event. Choose a different date.');
+            legacyDate.reportValidity();
+            legacyDate.value = first.event_date || '';
+            return;
+        }
+        legacyDate?.setCustomValidity('');
+        first.event_date = selectedDate;
         first.ingress = legacyTime?.value || '';
         first.availability = null;
         first.availabilityMessage = '';
