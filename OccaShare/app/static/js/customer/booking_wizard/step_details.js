@@ -5,11 +5,11 @@ document.addEventListener('DOMContentLoaded', function () {
         let minGuests = Number(window.minGuests || 1);
         let maxGuests = Math.min(Number(window.maxGuests || 999999), 999999);
         const phCities = window.PH_CITIES || [];
-        
+
         let parsedRules = {};
         try {
             parsedRules = typeof window.catererRules === 'string' ? JSON.parse(window.catererRules) : (window.catererRules || {});
-        } catch(e) { console.error("Error parsing catererRules", e); }
+        } catch (e) { console.error("Error parsing catererRules", e); }
         window.catererRules = parsedRules;
 
         const evAvail = parsedRules.event_availability || {};
@@ -24,12 +24,12 @@ document.addEventListener('DOMContentLoaded', function () {
             (window.packagesMap && window.currentPackageId && window.packagesMap[window.currentPackageId] && window.packagesMap[window.currentPackageId].booking_lead_time) ||
             rulesLeadTime ||
             window.bookingLeadTime ||
-            3
+            7
         );
-        if (effectiveLeadTime < 0) effectiveLeadTime = 0;
+        if (effectiveLeadTime < 7) effectiveLeadTime = 7;
 
-        const maxAdvVal = Number(evAvail.max_advance_booking_days || evAvail.max_advance_val || (parsedRules.booking_rules && parsedRules.booking_rules.max_advance_booking_days) || 180);
-        const maxAdvUnit = (evAvail.max_advance_unit || ((evAvail.max_advance_booking_days || (parsedRules.booking_rules && parsedRules.booking_rules.max_advance_booking_days)) ? 'days' : 'months')).toLowerCase();
+        const maxAdvVal = 1;
+        const maxAdvUnit = 'years';
 
         let eventEarliest = evAvail.open_time || evAvail.opening_time || bh.open_time || '08:00';
         let eventLatest = evAvail.close_time || evAvail.closing_time || bh.close_time || '20:00';
@@ -230,17 +230,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let minCalendarDate = getMinCalendarDate();
         let minDateString = getLocalISODate(minCalendarDate);
-        
+
         let maxCalendarDate = new Date();
-        if (maxAdvUnit === 'days') {
-            maxCalendarDate.setDate(maxCalendarDate.getDate() + maxAdvVal);
-        } else if (maxAdvUnit === 'years') {
-            maxCalendarDate.setFullYear(maxCalendarDate.getFullYear() + maxAdvVal);
-        } else {
-            maxCalendarDate.setMonth(maxCalendarDate.getMonth() + maxAdvVal);
-        }
+        maxCalendarDate.setFullYear(maxCalendarDate.getFullYear() + 1);
         let maxDateString = getLocalISODate(maxCalendarDate);
-        
+
         const updateDateBounds = () => {
             minCalendarDate = getMinCalendarDate();
             minDateString = getLocalISODate(minCalendarDate);
@@ -251,166 +245,167 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         updateDateBounds();
 
-    // --- 1.5 Format Guest Count ---
-    window.formatGuestCount = function (input) {
-        let rawValue = input.value.replace(/\D/g, '').slice(0, 6);
-        if (!rawValue) {
-            guestInput.value = "";
-            input.value = "";
-            return;
-        }
-        const num = parseInt(rawValue, 10);
-        guestInput.value = num;
-        input.value = num.toLocaleString();
-    };
-
-    const getExpectedEgress = () => {
-        const packageData = window.packagesMap && window.packagesMap[window.currentPackageId];
-        const duration = Number(packageData && packageData.service_duration);
-        const startMinutes = parseTimeStr(timeInput?.value || '');
-        if (!endTimeInput || !packageData || !Number.isInteger(duration) || duration < 1 || duration > 24 || startMinutes === null) {
-            return null;
-        }
-        const endMinutes = startMinutes + duration * 60;
-        if (endMinutes >= 24 * 60) return null;
-        return `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
-    };
-
-    const updateEgressFromDuration = () => {
-        if (!endTimeInput) return null;
-        const packageData = window.packagesMap && window.packagesMap[window.currentPackageId];
-        if (!packageData) {
-            return null;
-        }
-        const expectedEgress = getExpectedEgress();
-        endTimeInput.value = expectedEgress || '';
-        if (expectedEgress) endTimeInput.classList.remove('error');
-        return expectedEgress;
-    };
-
-    // --- 2. Dynamic Package Switching & Inclusions Rendering ---
-    window.switchPackage = function (packageId) {
-        if (!window.packagesMap || !window.packagesMap[packageId]) return;
-        const pkg = window.packagesMap[packageId];
-        window.currentPackageId = packageId;
-        updateEgressFromDuration();
-
-        // 1. Update package_id form control & event_type
-        const pkgSelect = document.getElementById('package_id_select');
-        if (pkgSelect) pkgSelect.value = pkg.id;
-
-        const pkgHidden = document.getElementById('package_id_hidden');
-        if (pkgHidden) pkgHidden.value = pkg.id;
-
-        const eventTypeHidden = document.getElementById('event_type_hidden');
-        if (eventTypeHidden) eventTypeHidden.value = pkg.event_type || 'General Catering';
-
-        const eventTypeTextVal = document.getElementById('event_type_text_val');
-        if (eventTypeTextVal) eventTypeTextVal.innerText = pkg.event_type || 'General Catering';
-
-        // 2. Update pricing & capacity state
-        window.pricingMode = pkg.pricing_mode || 'per_pax';
-        window.pricePerHead = Number(pkg.price_per_head || 0);
-        // Customizable packages use the per-head rate as their base; the
-        // legacy `price` field is only a fallback.
-        window.basePrice = Number(pkg.price_per_head || pkg.price || 0);
-        window.additionalGuestPrice = Number(pkg.additional_guest_price || 0);
-        window.minGuests = Number(pkg.min_guests || 1);
-        window.maxGuests = 999999;
-
-        // 3. Update guest count labels & bounds
-        const minSpan = document.getElementById('min_guests_span');
-        if (minSpan) minSpan.innerText = window.minGuests;
-        const maxSpan = document.getElementById('max_guests_span');
-        if (maxSpan) maxSpan.innerText = window.maxGuests || '999999';
-        const errGuests = document.getElementById('err-guests');
-        if (errGuests) errGuests.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
-
-        // 4. Update sidebar price row
-        const calcPkgPriceLabel = document.getElementById('calc-pkg-price-label');
-        if (calcPkgPriceLabel) {
-            if (window.pricingMode === 'customizable') {
-                const baseRate = Number(window.basePrice || 0);
-                if (baseRate > 0) {
-                    calcPkgPriceLabel.innerText = `₱${baseRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}/pax`;
-                } else {
-                    calcPkgPriceLabel.innerText = 'Pay per selection';
-                }
-            } else if (window.pricingMode === 'per_pax' || pkg.price_unit === 'per_guest') {
-                calcPkgPriceLabel.innerText = `₱${window.pricePerHead.toLocaleString(undefined, { minimumFractionDigits: 2 })}/pax`;
-            } else {
-                calcPkgPriceLabel.innerText = `₱${window.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })} total`;
-            }
-        }
-
-        // 5. Update Inclusions Section & Customizable choices card
-        const choicesCard = document.getElementById('customizable-package-choices-card');
-        const isCustomizable = window.pricingMode === 'customizable';
-        if (choicesCard) {
-            choicesCard.style.display = isCustomizable ? 'block' : 'none';
-            const customizeLink = document.getElementById('customize-package-link');
-            if (customizeLink) {
-                customizeLink.href = `${customizeLink.dataset.customizeBase}?package_id=${encodeURIComponent(pkg.id)}`;
-            }
-            const customizationContent = document.getElementById('customizable-package-content');
-            if (customizationContent && String(pkg.id) !== String(choicesCard.dataset.initialPackageId || '')) {
-                customizationContent.innerHTML = '<p style="margin-top: 1rem; padding: 1rem; color: #9a3412; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 8px;">Customize this package to choose its food, services, and equipment.</p>';
-            }
-        }
-        window.renderInclusions(pkg.grouped_inclusions || { food: [], services: [], equipment: [] });
-
-        // 6. Update lead time & date bounds if package specifies it
-        if (pkg.booking_lead_time) {
-            effectiveLeadTime = Number(pkg.booking_lead_time);
-            updateDateBounds();
-            if (typeof validateEventDate === 'function') validateEventDate();
-        }
-        if (typeof validateGuestCount === 'function') validateGuestCount();
-
-        // 7. Recalculate Total
-        window.updateCalculator();
-    };
-
-    window.renderInclusions = function (inclusions) {
-        const card = document.getElementById('package-inclusions-card');
-        const foodBlock = document.getElementById('inclusions-food-block');
-        const foodGrid = document.getElementById('inclusions-food-grid');
-        const foodCount = document.getElementById('inclusions-food-count');
-
-        const servBlock = document.getElementById('inclusions-services-block');
-        const servGrid = document.getElementById('inclusions-services-grid');
-        const servCount = document.getElementById('inclusions-services-count');
-
-        const equipBlock = document.getElementById('inclusions-equipment-block');
-        const equipGrid = document.getElementById('inclusions-equipment-grid');
-        const equipCount = document.getElementById('inclusions-equipment-count');
-
-        const escapeHtml = (str) => {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        };
-
-        const renderGroup = (items, block, grid, countEl) => {
-            if (!block || !grid) return;
-            if (!items || items.length === 0) {
-                block.style.display = 'none';
-                grid.innerHTML = '';
+        // --- 1.5 Format Guest Count ---
+        window.formatGuestCount = function (input) {
+            let rawValue = input.value.replace(/\D/g, '').slice(0, 6);
+            if (!rawValue) {
+                guestInput.value = "";
+                input.value = "";
                 return;
             }
-            block.style.display = 'block';
-            if (countEl) countEl.innerText = `${items.length} items`;
+            const num = parseInt(rawValue, 10);
+            guestInput.value = num;
+            input.value = num.toLocaleString();
+        };
 
-            let html = '';
-            items.forEach(item => {
-                const qtyText = String(item.quantity || '').trim();
-                const qtyStr = qtyText && !/\bincluded\b|\bper staff\b|^1\s*(per staff)?$/i.test(qtyText) ? ` <span style="color: #64748b; font-weight: 500;"> — ${escapeHtml(qtyText)}</span>` : '';
-                const descStr = item.description ? `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">${escapeHtml(item.description)}</div>` : '';
-                html += `
+        const getExpectedEgress = () => {
+            const packageData = window.packagesMap && window.packagesMap[window.currentPackageId];
+            const duration = Number(packageData && packageData.service_duration);
+            const startMinutes = parseTimeStr(timeInput?.value || '');
+            if (!endTimeInput || !packageData || !Number.isInteger(duration) || duration < 1 || duration > 24 || startMinutes === null) {
+                return null;
+            }
+            const endMinutes = startMinutes + duration * 60;
+            if (endMinutes >= 24 * 60) return null;
+            return `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
+        };
+
+        const updateEgressFromDuration = () => {
+            if (!endTimeInput) return null;
+            const packageData = window.packagesMap && window.packagesMap[window.currentPackageId];
+            if (!packageData) {
+                return null;
+            }
+            const expectedEgress = getExpectedEgress();
+            endTimeInput.value = expectedEgress || '';
+            if (expectedEgress) endTimeInput.classList.remove('error');
+            return expectedEgress;
+        };
+
+        // --- 2. Dynamic Package Switching & Inclusions Rendering ---
+        window.switchPackage = function (packageId) {
+            if (!window.packagesMap || !window.packagesMap[packageId]) return;
+            const pkg = window.packagesMap[packageId];
+            window.currentPackageId = packageId;
+            updateEgressFromDuration();
+
+            // 1. Update package_id form control & event_type
+            const pkgSelect = document.getElementById('package_id_select');
+            if (pkgSelect) pkgSelect.value = pkg.id;
+
+            const pkgHidden = document.getElementById('package_id_hidden');
+            if (pkgHidden) pkgHidden.value = pkg.id;
+
+            const eventTypeHidden = document.getElementById('event_type_hidden');
+            if (eventTypeHidden) eventTypeHidden.value = pkg.event_type || 'General Catering';
+
+            const eventTypeTextVal = document.getElementById('event_type_text_val');
+            if (eventTypeTextVal) eventTypeTextVal.innerText = pkg.event_type || 'General Catering';
+
+            // 2. Update pricing & capacity state
+            window.pricingMode = pkg.pricing_mode || 'per_pax';
+            window.pricePerHead = Number(pkg.price_per_head || 0);
+            // Customizable packages use the per-head rate as their base; the
+            // legacy `price` field is only a fallback.
+            window.basePrice = Number(pkg.price_per_head || pkg.price || 0);
+            window.additionalGuestPrice = Number(pkg.additional_guest_price || 0);
+            window.minGuests = Number(pkg.min_guests || 1);
+            window.maxGuests = 999999;
+
+            // 3. Update guest count labels & bounds
+            const minSpan = document.getElementById('min_guests_span');
+            if (minSpan) minSpan.innerText = window.minGuests;
+            const maxSpan = document.getElementById('max_guests_span');
+            if (maxSpan) maxSpan.innerText = window.maxGuests || '999999';
+            const errGuests = document.getElementById('err-guests');
+            if (errGuests) errGuests.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
+
+            // 4. Update sidebar price row
+            const calcPkgPriceLabel = document.getElementById('calc-pkg-price-label');
+            if (calcPkgPriceLabel) {
+                if (window.pricingMode === 'customizable') {
+                    const baseRate = Number(window.basePrice || 0);
+                    if (baseRate > 0) {
+                        calcPkgPriceLabel.innerText = `₱${baseRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}/pax`;
+                    } else {
+                        calcPkgPriceLabel.innerText = 'Pay per selection';
+                    }
+                } else if (window.pricingMode === 'per_pax' || pkg.price_unit === 'per_guest') {
+                    calcPkgPriceLabel.innerText = `₱${window.pricePerHead.toLocaleString(undefined, { minimumFractionDigits: 2 })}/pax`;
+                } else {
+                    calcPkgPriceLabel.innerText = `₱${window.basePrice.toLocaleString(undefined, { minimumFractionDigits: 2 })} total`;
+                }
+            }
+
+            // 5. Update Inclusions Section & Customizable choices card
+            const choicesCard = document.getElementById('customizable-package-choices-card');
+            const isCustomizable = window.pricingMode === 'customizable';
+            if (choicesCard) {
+                choicesCard.style.display = isCustomizable ? 'block' : 'none';
+                const customizeLink = document.getElementById('customize-package-link');
+                if (customizeLink) {
+                    customizeLink.href = `${customizeLink.dataset.customizeBase}?package_id=${encodeURIComponent(pkg.id)}`;
+                }
+                const customizationContent = document.getElementById('customizable-package-content');
+                if (customizationContent && String(pkg.id) !== String(choicesCard.dataset.initialPackageId || '')) {
+                    customizationContent.innerHTML = '<p style="margin-top: 1rem; padding: 1rem; color: #9a3412; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 8px;">Customize this package to choose its food, services, and equipment.</p>';
+                }
+            }
+            window.renderInclusions(pkg.grouped_inclusions || { food: [], services: [], equipment: [] });
+
+            // 6. Update lead time & date bounds if package specifies it
+            if (pkg.booking_lead_time) {
+                effectiveLeadTime = Number(pkg.booking_lead_time);
+                updateDateBounds();
+                if (typeof validateEventDate === 'function') validateEventDate();
+            }
+            if (typeof validateGuestCount === 'function') validateGuestCount();
+            if (typeof window.renderBookingEvents === 'function') window.renderBookingEvents();
+
+            // 7. Recalculate Total
+            window.updateCalculator();
+        };
+
+        window.renderInclusions = function (inclusions) {
+            const card = document.getElementById('package-inclusions-card');
+            const foodBlock = document.getElementById('inclusions-food-block');
+            const foodGrid = document.getElementById('inclusions-food-grid');
+            const foodCount = document.getElementById('inclusions-food-count');
+
+            const servBlock = document.getElementById('inclusions-services-block');
+            const servGrid = document.getElementById('inclusions-services-grid');
+            const servCount = document.getElementById('inclusions-services-count');
+
+            const equipBlock = document.getElementById('inclusions-equipment-block');
+            const equipGrid = document.getElementById('inclusions-equipment-grid');
+            const equipCount = document.getElementById('inclusions-equipment-count');
+
+            const escapeHtml = (str) => {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            };
+
+            const renderGroup = (items, block, grid, countEl) => {
+                if (!block || !grid) return;
+                if (!items || items.length === 0) {
+                    block.style.display = 'none';
+                    grid.innerHTML = '';
+                    return;
+                }
+                block.style.display = 'block';
+                if (countEl) countEl.innerText = `${items.length} items`;
+
+                let html = '';
+                items.forEach(item => {
+                    const qtyText = String(item.quantity || '').trim();
+                    const qtyStr = qtyText && !/\bincluded\b|\bper staff\b|^1\s*(per staff)?$/i.test(qtyText) ? ` <span style="color: #64748b; font-weight: 500;"> — ${escapeHtml(qtyText)}</span>` : '';
+                    const descStr = item.description ? `<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 1px;">${escapeHtml(item.description)}</div>` : '';
+                    html += `
                 <div class="inclusion-line-item" style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.875rem; line-height: 1.45;">
                     <span style="color: var(--wiz-primary, #FF7B54); font-weight: 900; font-size: 1rem; line-height: 1.2;">•</span>
                     <div style="flex: 1; min-width: 0; word-break: break-word;">
@@ -418,1943 +413,1962 @@ document.addEventListener('DOMContentLoaded', function () {
                         ${descStr}
                     </div>
                 </div>`;
-            });
-            grid.innerHTML = html;
+                });
+                grid.innerHTML = html;
+            };
+
+            renderGroup(inclusions.food, foodBlock, foodGrid, foodCount);
+            renderGroup(inclusions.services, servBlock, servGrid, servCount);
+            renderGroup(inclusions.equipment, equipBlock, equipGrid, equipCount);
+
+            const hasAny = (inclusions.food && inclusions.food.length > 0) ||
+                (inclusions.services && inclusions.services.length > 0) ||
+                (inclusions.equipment && inclusions.equipment.length > 0);
+
+            const isCustomizable = window.pricingMode === 'customizable';
+            if (card) {
+                card.style.display = (!isCustomizable && hasAny) ? 'block' : 'none';
+            }
         };
 
-        renderGroup(inclusions.food, foodBlock, foodGrid, foodCount);
-        renderGroup(inclusions.services, servBlock, servGrid, servCount);
-        renderGroup(inclusions.equipment, equipBlock, equipGrid, equipCount);
+        // --- 2.5. Update Calculator ---
+        window.updateCalculator = function () {
+            const calcGuests = document.getElementById('calc-guests');
+            const calcAddonsCount = document.getElementById('calc-addons-count');
+            const calcAddonsTotal = document.getElementById('calc-addons-total');
+            const calcTotal = document.getElementById('calc-grand-total');
+            const totalPriceInput = document.getElementById('total_price_input');
+            const reservationFeeInput = document.getElementById('reservation_fee_input');
 
-        const hasAny = (inclusions.food && inclusions.food.length > 0) ||
-                       (inclusions.services && inclusions.services.length > 0) ||
-                       (inclusions.equipment && inclusions.equipment.length > 0);
+            if (!guestInput || !calcGuests || !calcTotal) return;
 
-        const isCustomizable = window.pricingMode === 'customizable';
-        if (card) {
-            card.style.display = (!isCustomizable && hasAny) ? 'block' : 'none';
-        }
-    };
+            const guests = parseInt(guestInput.value) || 0;
+            calcGuests.innerText = guests;
 
-    // --- 2.5. Update Calculator ---
-    window.updateCalculator = function () {
-        const calcGuests = document.getElementById('calc-guests');
-        const calcAddonsCount = document.getElementById('calc-addons-count');
-        const calcAddonsTotal = document.getElementById('calc-addons-total');
-        const calcTotal = document.getElementById('calc-grand-total');
-        const totalPriceInput = document.getElementById('total_price_input');
-        const reservationFeeInput = document.getElementById('reservation_fee_input');
+            // Base package price
+            let total = 0;
+            let basePackageTotal = 0;
+            let excessGuestsTotal = 0;
 
-        if (!guestInput || !calcGuests || !calcTotal) return;
+            const activePricePerHead = Number(window.pricePerHead || 0);
+            const activeBasePrice = Number(window.basePrice || 0);
+            const activeMinGuests = Number(window.minGuests || 1);
+            const activeAddPrice = Number(window.additionalGuestPrice || 0);
 
-        const guests = parseInt(guestInput.value) || 0;
-        calcGuests.innerText = guests;
+            if (window.pricingMode === 'fixed') {
+                basePackageTotal = activeBasePrice;
+                if (guests > activeMinGuests && activeAddPrice > 0) {
+                    excessGuestsTotal = (guests - activeMinGuests) * activeAddPrice;
+                }
+                total = basePackageTotal + excessGuestsTotal;
+            } else if (window.pricingMode === 'customizable') {
+                // Customizable total = base package rate + selection upgrade fees
+                // + services/equipment. Keep this identical to QuotationService.
+                const basePrice = Number(window.basePrice || 0);
+                basePackageTotal = basePrice * guests;
+                if (window.customization) {
+                    const saved = window.customization;
+                    const foodTot = Array.isArray(saved.selected_food)
+                        ? saved.selected_food.reduce((sum, item) => sum + Number(item.upgrade_fee || item.price || 0) * guests, 0)
+                        : Number(saved.food_upgrade_total !== undefined ? saved.food_upgrade_total : saved.food_total || 0);
+                    const serviceTotals = (Array.isArray(saved.selected_services) ? saved.selected_services : []).map(service => {
+                        const unit = String(service.unit || '').toLowerCase();
+                        let quantity = Number(service.qty) || 1;
+                        if (/pax|guest|person/.test(unit)) {
+                            quantity = guests;
+                        } else if (String(service.capacity_type || '').toLowerCase() === 'staff_based') {
+                            const ratio = Number(service.staff_ratio) || 0;
+                            const minimum = Number(service.min_staff) || 1;
+                            if (ratio > 0) quantity = Math.max(minimum, Math.ceil(guests / ratio));
+                        }
+                        return { quantity, amount: Number(service.price || 0) * quantity };
+                    });
+                    const srvTot = serviceTotals.reduce((sum, service) => sum + service.amount, 0);
+                    const equipmentItems = Array.isArray(saved.selected_equipment) ? saved.selected_equipment : [];
+                    const eqTot = equipmentItems.reduce((sum, equipment) => sum + Number(equipment.price || 0) * (Number(equipment.qty) || 1), 0);
+                    const previousGuests = Number(saved.guest_count) || guests;
+                    const foodCredit = Number(saved.food_removal_credit || 0) * guests / previousGuests;
+                    const hasSelections = (Array.isArray(saved.selected_food) && saved.selected_food.length > 0) ||
+                        (Array.isArray(saved.selected_services) && saved.selected_services.length > 0) ||
+                        (Array.isArray(saved.selected_equipment) && saved.selected_equipment.length > 0) ||
+                        foodCredit > 0;
 
-        // Base package price
-        let total = 0;
-        let basePackageTotal = 0;
-        let excessGuestsTotal = 0;
-
-        const activePricePerHead = Number(window.pricePerHead || 0);
-        const activeBasePrice = Number(window.basePrice || 0);
-        const activeMinGuests = Number(window.minGuests || 1);
-        const activeAddPrice = Number(window.additionalGuestPrice || 0);
-
-        if (window.pricingMode === 'fixed') {
-            basePackageTotal = activeBasePrice;
-            if (guests > activeMinGuests && activeAddPrice > 0) {
-                excessGuestsTotal = (guests - activeMinGuests) * activeAddPrice;
-            }
-            total = basePackageTotal + excessGuestsTotal;
-        } else if (window.pricingMode === 'customizable') {
-            // Customizable total = base package rate + selection upgrade fees
-            // + services/equipment. Keep this identical to QuotationService.
-            const basePrice = Number(window.basePrice || 0);
-            basePackageTotal = basePrice * guests;
-            if (window.customization) {
-                const saved = window.customization;
-                const foodTot = Array.isArray(saved.selected_food)
-                    ? saved.selected_food.reduce((sum, item) => sum + Number(item.upgrade_fee || item.price || 0) * guests, 0)
-                    : Number(saved.food_upgrade_total !== undefined ? saved.food_upgrade_total : saved.food_total || 0);
-                const serviceTotals = (Array.isArray(saved.selected_services) ? saved.selected_services : []).map(service => {
-                    const unit = String(service.unit || '').toLowerCase();
-                    let quantity = Number(service.qty) || 1;
-                    if (/pax|guest|person/.test(unit)) {
-                        quantity = guests;
-                    } else if (String(service.capacity_type || '').toLowerCase() === 'staff_based') {
-                        const ratio = Number(service.staff_ratio) || 0;
-                        const minimum = Number(service.min_staff) || 1;
-                        if (ratio > 0) quantity = Math.max(minimum, Math.ceil(guests / ratio));
+                    if (hasSelections) {
+                        basePackageTotal = Math.max(0, basePackageTotal + foodTot + srvTot + eqTot - foodCredit);
+                    } else if (Number(saved.estimated_total) > 0) {
+                        basePackageTotal = Number(saved.estimated_total);
                     }
-                    return { quantity, amount: Number(service.price || 0) * quantity };
+
+                    const formatMoney = amount => `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+                    const foodTotalEl = document.getElementById('custom-food-group-total');
+                    const serviceTotalEl = document.getElementById('custom-services-group-total');
+                    const equipmentTotalEl = document.getElementById('custom-equipment-group-total');
+                    const estimateEl = document.getElementById('custom-choice-estimated-total');
+                    const creditEl = document.getElementById('custom-choice-credit');
+                    if (foodTotalEl) foodTotalEl.innerText = `Upgrades ${formatMoney(foodTot)}`;
+                    if (serviceTotalEl) serviceTotalEl.innerText = formatMoney(srvTot);
+                    if (equipmentTotalEl) equipmentTotalEl.innerText = formatMoney(eqTot);
+                    if (estimateEl) estimateEl.innerText = formatMoney(basePackageTotal);
+                    if (creditEl) creditEl.innerText = `Includes ${formatMoney(foodCredit)} menu credit.`;
+                }
+
+                total = basePackageTotal;
+
+                // Keep the package row as the base rate; the total row below shows selections.
+                const calcPkgLabel = document.getElementById('calc-pkg-price-label');
+                const baseRate = Number(window.basePrice || 0);
+                if (calcPkgLabel && baseRate > 0) {
+                    calcPkgLabel.innerText = '\u20b1' + baseRate.toLocaleString(undefined, { minimumFractionDigits: 2 }) + '/pax';
+                } else if (calcPkgLabel) {
+                    calcPkgLabel.innerText = 'Pay per selection';
+                }
+            } else {
+                total = guests * activePricePerHead;
+            }
+
+            // Fixed-package add-ons are separate from customizable selections.
+            // Customizable pricing is already complete above; adding these DOM
+            // values here would make the estimate disagree with the server quote.
+            let addonsTotal = 0;
+            if (window.pricingMode !== 'customizable') {
+                document.querySelectorAll('input[name="selected_addons"]:checked').forEach(cb => {
+                    const price = parseFloat(cb.getAttribute('data-price')) || 0;
+                    addonsTotal += price * guests; // Menu Add-ons are per pax
                 });
-                const srvTot = serviceTotals.reduce((sum, service) => sum + service.amount, 0);
-                const equipmentItems = Array.isArray(saved.selected_equipment) ? saved.selected_equipment : [];
-                const eqTot = equipmentItems.reduce((sum, equipment) => sum + Number(equipment.price || 0) * (Number(equipment.qty) || 1), 0);
-                const previousGuests = Number(saved.guest_count) || guests;
-                const foodCredit = Number(saved.food_removal_credit || 0) * guests / previousGuests;
-                const hasSelections = (Array.isArray(saved.selected_food) && saved.selected_food.length > 0) ||
-                    (Array.isArray(saved.selected_services) && saved.selected_services.length > 0) ||
-                    (Array.isArray(saved.selected_equipment) && saved.selected_equipment.length > 0) ||
-                    foodCredit > 0;
+                document.querySelectorAll('input[name="selected_equipment_addons"]:checked, input[name="selected_service_addons"]:checked').forEach(cb => {
+                    const price = parseFloat(cb.getAttribute('data-price')) || 0;
+                    addonsTotal += price; // Equipment and Services are flat fees
+                });
+            }
 
-                if (hasSelections) {
-                    basePackageTotal = Math.max(0, basePackageTotal + foodTot + srvTot + eqTot - foodCredit);
-                } else if (Number(saved.estimated_total) > 0) {
-                    basePackageTotal = Number(saved.estimated_total);
+            // Upgrades price (Swapped / Premium Items)
+            let upgradesTotal = 0;
+            if (window.pricingMode !== 'customizable') {
+                document.querySelectorAll('.menu-item-card.selectable input[type="checkbox"]:checked').forEach(cb => {
+                    const fee = parseFloat(cb.getAttribute('data-upgrade-fee')) || 0;
+                    upgradesTotal += fee * guests;
+                });
+                document.querySelectorAll('.slot-input').forEach(input => {
+                    const fee = parseFloat(input.getAttribute('data-upgrade-fee')) || 0;
+                    upgradesTotal += fee * guests;
+                });
+            }
+
+            const addonsCount = document.querySelectorAll('.menu-item-card.addon input[type="checkbox"]:checked').length;
+            if (calcAddonsCount) calcAddonsCount.innerText = addonsCount;
+
+            const extraCharges = addonsTotal + upgradesTotal;
+            if (calcAddonsTotal) calcAddonsTotal.innerText = '+₱' + extraCharges.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+            total += extraCharges;
+            total += (window.currentDeliveryFee || 0);
+
+            const calcDeliveryFee = document.getElementById('calc-delivery-fee');
+            if (calcDeliveryFee) {
+                if (window.deliveryFeeStatus === "manual_quote") {
+                    calcDeliveryFee.innerText = "Coordinate with caterer";
+                } else if (window.deliveryFeeStatus === "error") {
+                    calcDeliveryFee.innerText = "Coordinate with caterer";
+                } else if (window.deliveryFeeStatus === "pending") {
+                    calcDeliveryFee.innerText = "Coordinate with caterer";
+                } else {
+                    calcDeliveryFee.innerText = '+₱' + (window.currentDeliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                }
+            }
+
+            calcTotal.innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+            if (totalPriceInput) totalPriceInput.value = total;
+            if (reservationFeeInput) reservationFeeInput.value = total * 0.3; // 30% reservation
+            if (typeof window.updateEventTotals === 'function') window.updateEventTotals();
+        };
+
+        window.toggleCardSelection = function (card) {
+            // If card is disabled due to limit, do nothing
+            if (card.style.cursor === 'not-allowed') return;
+
+            const checkbox = card.querySelector('input[type="checkbox"]');
+            if (!checkbox) return;
+
+            // Only toggle if checkbox is not explicitly disabled (e.g. from limit rules)
+            if (checkbox.disabled && !checkbox.checked) return;
+
+            checkbox.checked = !checkbox.checked;
+
+            if (card.classList.contains('addon')) {
+                window.handleMenuCardToggle(checkbox);
+            } else {
+                window.handleSelectionRuleLimit(checkbox);
+            }
+        };
+
+        window.handleMenuCardToggle = function (checkbox) {
+            const card = checkbox.closest('.menu-item-card');
+            const indicator = card.querySelector('.indicator-circle');
+            if (checkbox.checked) {
+                card.classList.add('selected');
+                if (indicator) {
+                    indicator.classList.add('active');
+                    indicator.innerHTML = '<i class="fas fa-check"></i>';
+                }
+            } else {
+                card.classList.remove('selected');
+                if (indicator) {
+                    indicator.classList.remove('active');
+                    indicator.innerHTML = '';
+                }
+            }
+            updateCalculator();
+        };
+
+        window.handleSelectionRuleLimit = function (checkbox) {
+            const group = checkbox.closest('.selection-group');
+            const limit = parseInt(group.dataset.limit) || 0;
+            const catId = group.dataset.category;
+
+            const card = checkbox.closest('.menu-item-card');
+            const indicator = card.querySelector('.indicator-circle');
+            if (checkbox.checked) {
+                card.classList.add('selected');
+                if (indicator) {
+                    indicator.classList.add('active');
+                    indicator.innerHTML = '<i class="fas fa-check"></i>';
+                }
+            } else {
+                card.classList.remove('selected');
+                if (indicator) {
+                    indicator.classList.remove('active');
+                    indicator.innerHTML = '';
+                }
+            }
+
+            const checkedBoxes = group.querySelectorAll('input[type="checkbox"]:checked');
+            const count = checkedBoxes.length;
+
+            // Update counter UI
+            const counterEl = document.getElementById(`counter-${catId}`);
+            if (counterEl) {
+                counterEl.innerText = `${count} / ${limit} Selected`;
+                if (count === limit) {
+                    counterEl.style.background = '#dcfce7';
+                    counterEl.style.color = '#166534';
+                } else {
+                    counterEl.style.background = '#ccfbf1';
+                    counterEl.style.color = '#0f766e';
+                }
+            }
+
+            // Disable unselected checkboxes if limit is reached
+            const allBoxes = group.querySelectorAll('input[type="checkbox"]');
+            if (count >= limit) {
+                allBoxes.forEach(cb => {
+                    if (!cb.checked) {
+                        cb.disabled = true;
+                        cb.closest('.menu-item-card').style.opacity = '0.5';
+                        cb.closest('.menu-item-card').style.cursor = 'not-allowed';
+                    }
+                });
+            } else {
+                allBoxes.forEach(cb => {
+                    cb.disabled = false;
+                    cb.closest('.menu-item-card').style.opacity = '1';
+                    cb.closest('.menu-item-card').style.cursor = 'pointer';
+                });
+            }
+        };
+
+        // --- 3. Check Date & Time Availability ---
+        let isAvailabilityValid = true;
+
+        window.checkAvailability = async function () {
+            const chip = document.getElementById('availability-chip');
+            if (!chip) return;
+
+            const date = dateInput ? dateInput.value : '';
+            const time = timeInput ? timeInput.value : '';
+
+            if (!date) {
+                chip.style.display = 'none';
+                return;
+            }
+
+            // 1. Client-Side instant checks
+            // 1.1 Caterer temporarily unavailable status
+            if (evAvail.status === 'temporarily_unavailable') {
+                chip.className = 'availability-chip booked';
+                chip.style.display = 'inline-flex';
+                chip.innerHTML = '<i class="fas fa-ban"></i> This caterer is temporarily unavailable and not accepting new bookings.';
+                if (submitBtn) submitBtn.disabled = true;
+                isAvailabilityValid = false;
+                return;
+            }
+
+            // 1.2 Operating days check
+            const parts = date.split('-');
+            if (parts.length === 3) {
+                const selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const selectedDayName = daysOfWeek[selectedDate.getDay()];
+                const operatingDays = evAvail.operating_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+                if (operatingDays.length > 0 && operatingDays.length < 7 && !operatingDays.includes(selectedDayName)) {
+                    chip.className = 'availability-chip booked';
+                    chip.style.display = 'inline-flex';
+                    chip.innerHTML = '<i class="fas fa-calendar-times"></i> The caterer does not accept bookings on this day. Please select another date.';
+                    if (submitBtn) submitBtn.disabled = true;
+                    isAvailabilityValid = false;
+                    return;
                 }
 
-                const formatMoney = amount => `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-                const foodTotalEl = document.getElementById('custom-food-group-total');
-                const serviceTotalEl = document.getElementById('custom-services-group-total');
-                const equipmentTotalEl = document.getElementById('custom-equipment-group-total');
-                const estimateEl = document.getElementById('custom-choice-estimated-total');
-                const creditEl = document.getElementById('custom-choice-credit');
-                if (foodTotalEl) foodTotalEl.innerText = `Upgrades ${formatMoney(foodTot)}`;
-                if (serviceTotalEl) serviceTotalEl.innerText = formatMoney(srvTot);
-                if (equipmentTotalEl) equipmentTotalEl.innerText = formatMoney(eqTot);
-                if (estimateEl) estimateEl.innerText = formatMoney(basePackageTotal);
-                if (creditEl) creditEl.innerText = `Includes ${formatMoney(foodCredit)} menu credit.`;
-            }
-
-            total = basePackageTotal;
-
-            // Keep the package row as the base rate; the total row below shows selections.
-            const calcPkgLabel = document.getElementById('calc-pkg-price-label');
-            const baseRate = Number(window.basePrice || 0);
-            if (calcPkgLabel && baseRate > 0) {
-                calcPkgLabel.innerText = '\u20b1' + baseRate.toLocaleString(undefined, { minimumFractionDigits: 2 }) + '/pax';
-            } else if (calcPkgLabel) {
-                calcPkgLabel.innerText = 'Pay per selection';
-            }
-        } else {
-            total = guests * activePricePerHead;
-        }
-
-        // Fixed-package add-ons are separate from customizable selections.
-        // Customizable pricing is already complete above; adding these DOM
-        // values here would make the estimate disagree with the server quote.
-        let addonsTotal = 0;
-        if (window.pricingMode !== 'customizable') {
-            document.querySelectorAll('input[name="selected_addons"]:checked').forEach(cb => {
-                const price = parseFloat(cb.getAttribute('data-price')) || 0;
-                addonsTotal += price * guests; // Menu Add-ons are per pax
-            });
-            document.querySelectorAll('input[name="selected_equipment_addons"]:checked, input[name="selected_service_addons"]:checked').forEach(cb => {
-                const price = parseFloat(cb.getAttribute('data-price')) || 0;
-                addonsTotal += price; // Equipment and Services are flat fees
-            });
-        }
-
-        // Upgrades price (Swapped / Premium Items)
-        let upgradesTotal = 0;
-        if (window.pricingMode !== 'customizable') {
-            document.querySelectorAll('.menu-item-card.selectable input[type="checkbox"]:checked').forEach(cb => {
-                const fee = parseFloat(cb.getAttribute('data-upgrade-fee')) || 0;
-                upgradesTotal += fee * guests;
-            });
-            document.querySelectorAll('.slot-input').forEach(input => {
-                const fee = parseFloat(input.getAttribute('data-upgrade-fee')) || 0;
-                upgradesTotal += fee * guests;
-            });
-        }
-
-        const addonsCount = document.querySelectorAll('.menu-item-card.addon input[type="checkbox"]:checked').length;
-        if (calcAddonsCount) calcAddonsCount.innerText = addonsCount;
-        
-        const extraCharges = addonsTotal + upgradesTotal;
-        if (calcAddonsTotal) calcAddonsTotal.innerText = '+₱' + extraCharges.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        
-        total += extraCharges;
-        total += (window.currentDeliveryFee || 0);
-
-        const calcDeliveryFee = document.getElementById('calc-delivery-fee');
-        if (calcDeliveryFee) {
-            if (window.deliveryFeeStatus === "manual_quote") {
-                calcDeliveryFee.innerText = "Coordinate with caterer";
-            } else if (window.deliveryFeeStatus === "error") {
-                calcDeliveryFee.innerText = "Coordinate with caterer";
-            } else if (window.deliveryFeeStatus === "pending") {
-                calcDeliveryFee.innerText = "Coordinate with caterer";
-            } else {
-                calcDeliveryFee.innerText = '+₱' + (window.currentDeliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
-            }
-        }
-
-        calcTotal.innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
-
-        if (totalPriceInput) totalPriceInput.value = total;
-        if (reservationFeeInput) reservationFeeInput.value = total * 0.3; // 30% reservation
-        if (typeof window.updateEventTotals === 'function') window.updateEventTotals();
-    };
-
-    window.toggleCardSelection = function(card) {
-        // If card is disabled due to limit, do nothing
-        if (card.style.cursor === 'not-allowed') return;
-        
-        const checkbox = card.querySelector('input[type="checkbox"]');
-        if (!checkbox) return;
-        
-        // Only toggle if checkbox is not explicitly disabled (e.g. from limit rules)
-        if (checkbox.disabled && !checkbox.checked) return;
-        
-        checkbox.checked = !checkbox.checked;
-        
-        if (card.classList.contains('addon')) {
-            window.handleMenuCardToggle(checkbox);
-        } else {
-            window.handleSelectionRuleLimit(checkbox);
-        }
-    };
-
-    window.handleMenuCardToggle = function(checkbox) {
-        const card = checkbox.closest('.menu-item-card');
-        const indicator = card.querySelector('.indicator-circle');
-        if (checkbox.checked) {
-            card.classList.add('selected');
-            if (indicator) {
-                indicator.classList.add('active');
-                indicator.innerHTML = '<i class="fas fa-check"></i>';
-            }
-        } else {
-            card.classList.remove('selected');
-            if (indicator) {
-                indicator.classList.remove('active');
-                indicator.innerHTML = '';
-            }
-        }
-        updateCalculator();
-    };
-
-    window.handleSelectionRuleLimit = function(checkbox) {
-        const group = checkbox.closest('.selection-group');
-        const limit = parseInt(group.dataset.limit) || 0;
-        const catId = group.dataset.category;
-        
-        const card = checkbox.closest('.menu-item-card');
-        const indicator = card.querySelector('.indicator-circle');
-        if (checkbox.checked) {
-            card.classList.add('selected');
-            if (indicator) {
-                indicator.classList.add('active');
-                indicator.innerHTML = '<i class="fas fa-check"></i>';
-            }
-        } else {
-            card.classList.remove('selected');
-            if (indicator) {
-                indicator.classList.remove('active');
-                indicator.innerHTML = '';
-            }
-        }
-
-        const checkedBoxes = group.querySelectorAll('input[type="checkbox"]:checked');
-        const count = checkedBoxes.length;
-
-        // Update counter UI
-        const counterEl = document.getElementById(`counter-${catId}`);
-        if (counterEl) {
-            counterEl.innerText = `${count} / ${limit} Selected`;
-            if (count === limit) {
-                counterEl.style.background = '#dcfce7';
-                counterEl.style.color = '#166534';
-            } else {
-                counterEl.style.background = '#ccfbf1';
-                counterEl.style.color = '#0f766e';
-            }
-        }
-
-        // Disable unselected checkboxes if limit is reached
-        const allBoxes = group.querySelectorAll('input[type="checkbox"]');
-        if (count >= limit) {
-            allBoxes.forEach(cb => {
-                if (!cb.checked) {
-                    cb.disabled = true;
-                    cb.closest('.menu-item-card').style.opacity = '0.5';
-                    cb.closest('.menu-item-card').style.cursor = 'not-allowed';
+                // 1.3 Minimum booking lead time check
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const diffDays = Math.ceil((selectedDate - today) / (1000 * 60 * 60 * 24));
+                if (diffDays < effectiveLeadTime) {
+                    chip.className = 'availability-chip booked';
+                    chip.style.display = 'inline-flex';
+                    chip.innerHTML = `<i class="fas fa-clock"></i> This caterer requires bookings at least ${effectiveLeadTime} days before the event date. Please select a later date.`;
+                    if (submitBtn) submitBtn.disabled = true;
+                    isAvailabilityValid = false;
+                    return;
                 }
-            });
-        } else {
-            allBoxes.forEach(cb => {
-                cb.disabled = false;
-                cb.closest('.menu-item-card').style.opacity = '1';
-                cb.closest('.menu-item-card').style.cursor = 'pointer';
-            });
-        }
-    };
 
-    // --- 3. Check Date & Time Availability ---
-    let isAvailabilityValid = true;
+                // 1.4 Maximum advance booking check
+                const maxBound = new Date(maxCalendarDate);
+                maxBound.setHours(23, 59, 59, 999);
+                if (selectedDate > maxBound) {
+                    chip.className = 'availability-chip booked';
+                    chip.style.display = 'inline-flex';
+                    const advText = maxAdvUnit === 'years' ? (maxAdvVal === 1 ? '1 year' : `${maxAdvVal} years`) : (maxAdvUnit === 'days' ? `${maxAdvVal} days` : (maxAdvVal === 1 ? '1 month' : `${maxAdvVal} months`));
+                    chip.innerHTML = `<i class="fas fa-calendar-times"></i> This caterer only accepts bookings up to ${advText} in advance.`;
+                    if (submitBtn) submitBtn.disabled = true;
+                    isAvailabilityValid = false;
+                    return;
+                }
 
-    window.checkAvailability = async function () {
-        const chip = document.getElementById('availability-chip');
-        if (!chip) return;
+                // 1.5 Blocked dates check from settings
+                const blocked = evAvail.blocked_dates || [];
+                const isBlocked = blocked.some(b => (typeof b === 'string' ? b : b.date) === date);
+                if (isBlocked) {
+                    chip.className = 'availability-chip booked';
+                    chip.style.display = 'inline-flex';
+                    chip.innerHTML = '<i class="fas fa-ban"></i> This date is unavailable for this caterer. Please select another date.';
+                    if (submitBtn) submitBtn.disabled = true;
+                    isAvailabilityValid = false;
+                    return;
+                }
+            }
 
-        const date = dateInput ? dateInput.value : '';
-        const time = timeInput ? timeInput.value : '';
+            // 1.6 Time operating hours check (if time provided)
+            if (time) {
+                const parseMinutes = (tStr) => {
+                    const [h, m] = (tStr || '0:0').split(':').map(Number);
+                    return (h || 0) * 60 + (m || 0);
+                };
+                const selMins = parseMinutes(time);
+                const openMins = parseMinutes(eventEarliest);
+                const closeMins = parseMinutes(eventLatest);
+                if (selMins < openMins || selMins >= closeMins) {
+                    chip.className = 'availability-chip booked';
+                    chip.style.display = 'inline-flex';
+                    chip.innerHTML = selMins >= closeMins
+                        ? `<i class="fas fa-clock"></i> Ingress must be before ${formatAmPmStr(closeMins)}. Choose an earlier time.`
+                        : '<i class="fas fa-clock"></i> The selected event time is outside the caterer’s available hours. Please select another time.';
+                    if (submitBtn) submitBtn.disabled = true;
+                    isAvailabilityValid = false;
+                    return;
+                }
+            }
 
-        if (!date) {
-            chip.style.display = 'none';
-            return;
-        }
-
-        // 1. Client-Side instant checks
-        // 1.1 Caterer temporarily unavailable status
-        if (evAvail.status === 'temporarily_unavailable') {
-            chip.className = 'availability-chip booked';
+            // 2. Query backend API for DB-level checks (capacity, availability table, collisions)
+            chip.className = 'availability-chip checking';
             chip.style.display = 'inline-flex';
-            chip.innerHTML = '<i class="fas fa-ban"></i> This caterer is temporarily unavailable and not accepting new bookings.';
-            if (submitBtn) submitBtn.disabled = true;
-            isAvailabilityValid = false;
-            return;
-        }
+            chip.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking availability...';
 
-        // 1.2 Operating days check
-        const parts = date.split('-');
-        if (parts.length === 3) {
-            const selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-            const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const selectedDayName = daysOfWeek[selectedDate.getDay()];
-            const operatingDays = evAvail.operating_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const bookingIdInput = document.querySelector('input[name="booking_id"]');
+            const bookingIdVal = bookingIdInput ? bookingIdInput.value : '';
 
-            if (operatingDays.length > 0 && operatingDays.length < 7 && !operatingDays.includes(selectedDayName)) {
-                chip.className = 'availability-chip booked';
-                chip.style.display = 'inline-flex';
-                chip.innerHTML = '<i class="fas fa-calendar-times"></i> The caterer does not accept bookings on this day. Please select another date.';
-                if (submitBtn) submitBtn.disabled = true;
-                isAvailabilityValid = false;
-                return;
-            }
+            let apiUrl = `/packages/api/check-availability?caterer_id=${catererId}&date_str=${date}`;
+            if (time) apiUrl += `&time_str=${time}`;
+            if (bookingIdVal) apiUrl += `&booking_id=${bookingIdVal}`;
 
-            // 1.3 Minimum booking lead time check
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const diffDays = Math.ceil((selectedDate - today) / (1000 * 60 * 60 * 24));
-            if (diffDays < effectiveLeadTime) {
-                chip.className = 'availability-chip booked';
-                chip.style.display = 'inline-flex';
-                chip.innerHTML = `<i class="fas fa-clock"></i> This caterer requires bookings at least ${effectiveLeadTime} days before the event date. Please select a later date.`;
-                if (submitBtn) submitBtn.disabled = true;
-                isAvailabilityValid = false;
-                return;
-            }
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error('API request failed');
+                const data = await response.json();
 
-            // 1.4 Maximum advance booking check
-            const maxBound = new Date(maxCalendarDate);
-            maxBound.setHours(23, 59, 59, 999);
-            if (selectedDate > maxBound) {
-                chip.className = 'availability-chip booked';
-                chip.style.display = 'inline-flex';
-                const advText = maxAdvUnit === 'years' ? (maxAdvVal === 1 ? '1 year' : `${maxAdvVal} years`) : (maxAdvUnit === 'days' ? `${maxAdvVal} days` : (maxAdvVal === 1 ? '1 month' : `${maxAdvVal} months`));
-                chip.innerHTML = `<i class="fas fa-calendar-times"></i> This caterer only accepts bookings up to ${advText} in advance.`;
-                if (submitBtn) submitBtn.disabled = true;
-                isAvailabilityValid = false;
-                return;
-            }
-
-            // 1.5 Blocked dates check from settings
-            const blocked = evAvail.blocked_dates || [];
-            const isBlocked = blocked.some(b => (typeof b === 'string' ? b : b.date) === date);
-            if (isBlocked) {
-                chip.className = 'availability-chip booked';
-                chip.style.display = 'inline-flex';
-                chip.innerHTML = '<i class="fas fa-ban"></i> This date is unavailable for this caterer. Please select another date.';
-                if (submitBtn) submitBtn.disabled = true;
-                isAvailabilityValid = false;
-                return;
-            }
-        }
-
-        // 1.6 Time operating hours check (if time provided)
-        if (time) {
-            const parseMinutes = (tStr) => {
-                const [h, m] = (tStr || '0:0').split(':').map(Number);
-                return (h || 0) * 60 + (m || 0);
-            };
-            const selMins = parseMinutes(time);
-            const openMins = parseMinutes(eventEarliest);
-            const closeMins = parseMinutes(eventLatest);
-            if (selMins < openMins || selMins >= closeMins) {
-                chip.className = 'availability-chip booked';
-                chip.style.display = 'inline-flex';
-                chip.innerHTML = selMins >= closeMins
-                    ? `<i class="fas fa-clock"></i> Ingress must be before ${formatAmPmStr(closeMins)}. Choose an earlier time.`
-                    : '<i class="fas fa-clock"></i> The selected event time is outside the caterer’s available hours. Please select another time.';
-                if (submitBtn) submitBtn.disabled = true;
-                isAvailabilityValid = false;
-                return;
-            }
-        }
-
-        // 2. Query backend API for DB-level checks (capacity, availability table, collisions)
-        chip.className = 'availability-chip checking';
-        chip.style.display = 'inline-flex';
-        chip.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking availability...';
-
-        const bookingIdInput = document.querySelector('input[name="booking_id"]');
-        const bookingIdVal = bookingIdInput ? bookingIdInput.value : '';
-
-        let apiUrl = `/packages/api/check-availability?caterer_id=${catererId}&date_str=${date}`;
-        if (time) apiUrl += `&time_str=${time}`;
-        if (bookingIdVal) apiUrl += `&booking_id=${bookingIdVal}`;
-
-        try {
-            const response = await fetch(apiUrl);
-            if (!response.ok) throw new Error('API request failed');
-            const data = await response.json();
-
-            if (data.available) {
+                if (data.available) {
+                    chip.className = 'availability-chip available';
+                    chip.style.display = 'inline-flex';
+                    chip.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'This date and time is available for booking.'}`;
+                    if (submitBtn) submitBtn.disabled = false;
+                    isAvailabilityValid = true;
+                } else {
+                    chip.className = 'availability-chip booked';
+                    chip.style.display = 'inline-flex';
+                    chip.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message || 'This date is unavailable for this caterer. Please select another date.'}`;
+                    if (submitBtn) submitBtn.disabled = true;
+                    isAvailabilityValid = false;
+                }
+            } catch (error) {
+                console.warn('Could not verify availability with server:', error);
                 chip.className = 'availability-chip available';
                 chip.style.display = 'inline-flex';
-                chip.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'This date and time is available for booking.'}`;
+                chip.innerHTML = '<i class="fas fa-check-circle"></i> Date selected (offline check passed)';
                 if (submitBtn) submitBtn.disabled = false;
                 isAvailabilityValid = true;
-            } else {
-                chip.className = 'availability-chip booked';
-                chip.style.display = 'inline-flex';
-                chip.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message || 'This date is unavailable for this caterer. Please select another date.'}`;
-                if (submitBtn) submitBtn.disabled = true;
-                isAvailabilityValid = false;
             }
-        } catch (error) {
-            console.warn('Could not verify availability with server:', error);
-            chip.className = 'availability-chip available';
-            chip.style.display = 'inline-flex';
-            chip.innerHTML = '<i class="fas fa-check-circle"></i> Date selected (offline check passed)';
-            if (submitBtn) submitBtn.disabled = false;
-            isAvailabilityValid = true;
-        }
-    };
+        };
 
-    // --- 4. Other Event Type Toggle ---
-    if (eventTypeSelect) {
-        eventTypeSelect.addEventListener('change', function () {
-            if (this.value === 'Other') {
-                otherEventWrap.classList.add('visible');
-                otherEventInput.required = true;
-                setTimeout(() => otherEventInput.focus(), 100);
-            } else {
-                otherEventWrap.classList.remove('visible');
-                otherEventInput.required = false;
-                otherEventInput.value = '';
-                document.getElementById('err-other-type').classList.remove('show');
-            }
-        });
-    }
-
-    // --- 5. Laguna Location Data & Cascading Dropdowns ---
-    const LAGUNA_LOCATION_DATA = {
-        "Alaminos": ["Barangay I (Pob.)", "Barangay II (Pob.)", "Barangay III (Pob.)", "Barangay IV (Pob.)", "Del Carmen", "Palma", "San Agustin", "San Andres", "San Benito", "San Gregorio", "San Ildefonso", "San Juan", "San Miguel", "San Roque", "Santa Rosa", "Victoria"],
-        "Bay": ["Bitin", "Calo", "Dila", "Maitim", "Masaya", "Paciano Rizal", "Puypuy", "San Agustin (Pob.)", "San Antonio", "San Isidro", "San Nicolas (Pob.)", "Santa Cruz", "Santo Domingo", "Tagumpay", "Tranca"],
-        "Biñan": ["Biñan (Poblacion)", "Bungahan", "Canlalay", "Casile", "De La Paz", "Dela Paz", "Ganado", "Langkiwa", "Loma", "Malaban", "Malamig", "Mamplasan", "Platero", "Poblacion", "San Antonio", "San Francisco", "San Jose", "San Vicente", "Santo Niño", "Santo Tomas", "Soro-soro", "Timbao", "Tubigan", "Zapote"],
-        "Cabuyao": ["Baclaran", "Banay-Banay", "Banlic", "Bigaa", "Butong", "Casile", "Diezmo", "Gulod", "Mamatid", "Marinig", "Niugan", "Pittland", "Pulo", "Sala", "San Isidro"],
-        "Calamba": ["Bagong Kalsada", "Bañadero", "Banlic", "Barandal", "Barangay 1", "Barangay 2", "Barangay 3", "Barangay 4", "Barangay 5", "Barangay 6", "Barangay 7", "Batino", "Bubuyan", "Bucal", "Bunggo", "Burol", "Camaligan", "Canlubang", "Halang", "Hornalan", "Kay-Anlog", "La Mesa", "Laguerta", "Lawa", "Lecheria", "Lingga", "Looc", "Mabato", "Majada Labas", "Makiling", "Mapagong", "Masili", "Maunong", "Mayapa", "Milagrosa", "Paciano Rizal", "Palingon", "Palo-Alto", "Pansol", "Parian", "Prinza", "Punta", "Puting Lupa", "Real", "Saimsim", "Sampiruhan", "San Cristobal", "San Jose", "San Juan", "Sirang Lupa", "Sucol", "Turbina", "Uwisan"],
-        "Calauan": ["Balayhangin", "Bangyas", "Dayap", "Hanggan", "Imok", "Kanluran (Pob.)", "Lamot 1", "Lamot 2", "Limao", "Mabacan", "Masiit", "Paliparan", "Perez", "Prinza", "San Isidro", "Santo Tomas", "Silangan (Pob.)"],
-        "Cavinti": ["Anglas", "Bangco", "Bukal", "Bulajo", "Cansuso", "Duhat", "Inao-Awan", "Kanluran Talaongan", "Labayo", "Layasin", "Layug", "Mahipon", "Paowin", "Poblacion", "Silangan Talaongan", "Sisilmin", "Sumucab", "Tibatib", "Udia"],
-        "Famy": ["Asana (Pob.)", "Bacong-Sigsigan", "Bagong Pag-Asa (Pob.)", "Balitoc", "Cuevas", "Damayan (Pob.)", "Katumpapan (Pob.)", "Liyang", "Maquling", "Minayutan", "Salangbato", "San Antonio", "Tunhac"],
-        "Kalayaan": ["Longos", "San Antonio", "San Juan (Pob.)"],
-        "Liliw": ["Bagong Formas", "Bayate", "Bongkol", "Cabuyew", "Calumpang", "Dita", "Ibabang Palina", "Ibabang San Roque", "Ibabang Sungi", "Ilayang Palina", "Ilayang San Roque", "Ilayang Sungi", "Luquin", "Malabo-Kalantukan", "Maslun (Pob.)", "Mojon", "Novaliches", "Oples", "Pag-Asa (Pob.)", "Palayan", "Rizal (Pob.)", "San Isidro", "Santo Niño (Pob.)", "Tuyu-Tuyu", "Tuyupan", "Vitas"],
-        "Los Baños": ["Anos", "Bagong Silang", "Bambang", "Batong Malake", "Baybayin", "Bayog", "Lalakay", "Maahas", "Malinta", "Mayondon", "Putho Tuntungin", "San Antonio", "Tadlac", "Timugan"],
-        "Luisiana": ["De La Paz", "Barangay Zone I (Pob.)", "Barangay Zone II (Pob.)", "Barangay Zone III (Pob.)", "Barangay Zone IV (Pob.)", "Barangay Zone V (Pob.)", "Barangay Zone VI (Pob.)", "Barangay Zone VII (Pob.)", "Barangay Zone VIII (Pob.)", "San Buenaventura", "San Diego", "San Jose", "San Luis", "San Pablo", "San Pedro", "San Rafael", "San Roque", "Santo Domingo", "Santo Tomas"],
-        "Lumban": ["Bagong Silang", "Balmis", "Cabuyao", "Caliraya", "Concepcion", "Lewin", "Maracta (Pob.)", "Maytalang I", "Maytalang II", "Nagcarlan", "Salac (Pob.)", "San Jose (Pob.)", "Santo Niño (Pob.)"],
-        "Mabitac": ["Amuyong", "Bayanihan (Pob.)", "Libis ng Nayon (Pob.)", "Luang", "Maligaya (Pob.)", "Matalatala", "Nanguma", "Pag-Asa (Pob.)", "San Antonio", "San Jose", "San Miguel", "Sinagtala (Pob.)", "Sipit", "Tulaoc"],
-        "Magdalena": ["Alipata", "Baanan", "Balanac", "Bucal", "Buenavista", "Bungkol", "Burol", "Ibabang Atingay", "Ilayang Atingay", "Ilog", "Malaking Ambling", "Malinao", "Maravilla", "Muncada", "Poblacion", "Salapungan", "San Francisco", "San Jose", "Santa Maria", "Villa Magsaysay"],
-        "Majayjay": ["Ameca", "Bakia", "Balanac", "Balayhangin", "Banilad", "Bumbungan", "Burgos", "Burol", "Gagalot", "Ibabang Banga", "Ilayang Banga", "Isabang", "Malinao", "May-It", "Moolin", "Olla", "Oobi", "Origuel (Pob.)", "Panalaban", "Pangil", "Panglan", "Piit", "Poblacion", "San Francisco", "San Isidro", "San Miguel", "San Roque", "Santa Catalina", "Suba", "Talortor", "Tanawan", "Taytay"],
-        "Nagcarlan": ["Abo", "Alibungbungan", "Allagao", "Balayhangin", "Balinacon", "Bambang", "Banago", "Banca-Banca", "Bangcuro", "Banilad", "Bayaquitos", "Buboy", "Buenavista", "Buhanginan", "Bukal", "Bunga", "Cabubuhayan", "Calumpang", "Kanluran Kabubuhayan", "Kanluran Pob.", "Katuwiran", "Lawi", "Luria", "Maiit", "Malaya", "Malinao", "Manaol", "Maravilla", "Nagcalbang", "Oples", "Palayan", "Palina", "Sabang", "San Francisco", "Sibulan", "Silangan Kabubuhayan", "Silangan Pob.", "Sinipian", "Santa Lucia", "Talahib", "Talangan", "Taytay", "Tipacan", "Wakat"],
-        "Paete": ["Bagumbayan (Pob.)", "Bangkusay (Pob.)", "Ermita (Pob.)", "Ibaba del Sur (Pob.)", "Ibaba del Norte (Pob.)", "Ilaya del Sur (Pob.)", "Ilaya del Norte (Pob.)", "Maytoong (Pob.)", "Quinale (Pob.)"],
-        "Pagsanjan": ["Anibong", "Barangay I (Pob.)", "Barangay II (Pob.)", "Cabuyao", "Calusiche", "Dingin", "Lambac", "Layugan", "Magdapio", "Maulawin", "Pinagsanjan", "Sampaloc", "San Isidro"],
-        "Pakil": ["Baño (Pob.)", "Burgos (Pob.)", "Casa Real (Pob.)", "Casinsin", "Dorado", "Gonzales (Pob.)", "Kabulusan", "Matikiw", "Rizal (Pob.)", "Saray", "Taft (Pob.)", "Tavera (Pob.)", "Vargas (Pob.)"],
-        "Pangil": ["Balian", "Dambo", "Galalan", "Isla (Pob.)", "Mabato-Azufre", "Natividad (Pob.)", "San Jose (Pob.)", "Sulib (Pob.)"],
-        "Pila": ["Aplaya", "Bagong Pook", "Bukal", "Bulilan Sur", "Bulilan Norte", "Concepcion", "Labuin", "Linga", "Masico", "Mojon", "Pansol", "Pinagbayanan", "Poblacion", "San Antonio", "San Lorenzo", "Santa Clara Norte", "Santa Clara Sur", "Tubuan"],
-        "Rizal": ["Antipolo", "Entablado", "Laguan", "Paule 1", "Paule 2", "Poblacion", "Pook", "Tala", "Talaga"],
-        "San Pablo": ["Bagong Bayan", "Barangay I-A", "Barangay I-B", "Barangay II-A", "Barangay II-B", "Barangay II-C", "Barangay II-D", "Barangay II-E", "Barangay II-F", "Barangay III-A", "Barangay III-B", "Barangay III-C", "Barangay III-D", "Barangay III-E", "Barangay III-F", "Barangay IV-A", "Barangay IV-B", "Barangay IV-C", "Barangay V-A", "Barangay V-B", "Barangay VI-A", "Barangay VI-B", "Barangay VII-A", "Barangay VII-B", "Barangay VII-C", "Barangay VII-D", "Barangay VII-E", "Bautista", "Concepcion", "Del Remedio", "Dolores", "San Bartolome", "San Cristobal", "San Francisco", "San Gabriel", "San Gregorio", "San Ignacio", "San Isidro", "San Jose", "San Juan", "San Lucas 1", "San Lucas 2", "San Marcos", "San Mateo", "San Miguel", "San Nicolas", "San Pedro", "San Rafael", "San Roque", "San Vicente", "Santa Ana", "Santa Cruz", "Santa Maria", "Santa Maria Magdalena", "Santa Veronica", "Santiago", "Santisimo Rosario", "Soledad"],
-        "San Pedro": ["Bagong Silang", "Calendola", "Chrysanthemum", "Cuyab", "Estrella", "Fatima", "G.S.I.S.", "Holiday Hills", "Landayan", "Langgam", "Laram", "Magsaysay", "Maharlika", "Narra", "Nueva", "Pacita 1", "Pacita 2", "Poblacion", "Riverside", "Sampaguita Village", "San Antonio", "San Roque", "San Vicente", "Santa Felomina", "Santo Niño", "United Bayanihan", "United Better Living", "Vicente Leyos"],
-        "Santa Cruz": ["Alipit", "Bagumbayan", "Bubukal", "Calios", "Duhat", "Gatid", "Jasaan", "Labuin", "Malinao", "Oogong", "Pagsawitan", "Palasan", "Patimbao", "Poblacion I", "Poblacion II", "Poblacion III", "Poblacion IV", "Poblacion V", "San Jose", "San Juan", "San Pablo Norte", "San Pablo Sur", "Santisima Cruz", "Santo Angel Central", "Santo Angel Norte", "Santo Angel Sur"],
-        "Santa Maria": ["Bagong Pook", "Bagumbayan", "Bubucal", "Cabooan", "Calangay", "Cambuja", "Coralan", "Cansuso", "Inocencio", "J. Santiago", "Lauravel", "Macasipac", "Masinao", "Matalinting", "Pao-o", "Parang Ng Buho", "Poblacion I", "Poblacion II", "Poblacion III", "Poblacion IV", "Real Velasquez", "San Antonio", "Santa Ines"],
-        "Santa Rosa": ["Aplaya", "Balibago", "Caingin", "Dila", "Dita", "Don Jose", "Ibaba", "Kanluran (Pob.)", "Labas", "Macabling", "Malitlit", "Malusak (Pob.)", "Market Area (Pob.)", "Pook", "Pulong Santa Cruz", "Santo Domingo", "Sinalhan", "Tagapo"],
-        "Siniloan": ["Acevida", "Baguio", "Bagumbarangay (Pob.)", "Buhay", "G. Redor (Pob.)", "Gen. Luna", "Halayhayin", "Laguio", "Liyang", "Lluisma", "Mendiola", "Macatad", "P. Burgos", "Pandeño", "Salubungan", "Wawa"],
-        "Victoria": ["Bañaga", "Bankanca", "Daniw", "Masapang", "Nanhaya (Pob.)", "Pagalangan", "San Benito", "San Felix", "San Francisco", "San Roque"]
-    };
-
-    function populateCities(province, selectedCity = null, selectedBrgy = null) {
-        if (!citySelect) return;
-        citySelect.innerHTML = '<option value="" disabled selected hidden>-- Select City / Municipality --</option>';
-        if (barangaySelect) {
-            barangaySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
-            barangaySelect.disabled = true;
-        }
-
-        if (!province) {
-            citySelect.disabled = true;
-            return;
-        }
-
-        const cityNames = Object.keys(LAGUNA_LOCATION_DATA).sort();
-        cityNames.forEach(cityName => {
-            const opt = document.createElement('option');
-            opt.value = cityName;
-            opt.textContent = cityName;
-            if (selectedCity && (selectedCity.toLowerCase() === cityName.toLowerCase() || selectedCity.toLowerCase().includes(cityName.toLowerCase()))) {
-                opt.selected = true;
-            }
-            citySelect.appendChild(opt);
-        });
-
-        citySelect.disabled = false;
-
-        const effectiveCity = citySelect.value || selectedCity;
-        if (effectiveCity) {
-            const matchedKey = Object.keys(LAGUNA_LOCATION_DATA).find(k => k.toLowerCase() === effectiveCity.toLowerCase() || effectiveCity.toLowerCase().includes(k.toLowerCase()));
-            if (matchedKey) {
-                populateBarangays(matchedKey, selectedBrgy);
-            }
-        }
-    }
-
-    function populateBarangays(cityName, selectedBrgy = null) {
-        if (!barangaySelect) return;
-        barangaySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
-
-        if (!cityName) {
-            barangaySelect.disabled = true;
-            return;
-        }
-
-        const matchedKey = Object.keys(LAGUNA_LOCATION_DATA).find(k => k.toLowerCase() === cityName.toLowerCase() || cityName.toLowerCase().includes(k.toLowerCase()));
-        const brgyList = matchedKey ? LAGUNA_LOCATION_DATA[matchedKey] : [];
-
-        if (brgyList.length === 0) {
-            barangaySelect.disabled = true;
-            return;
-        }
-
-        brgyList.forEach(b => {
-            const opt = document.createElement('option');
-            opt.value = b;
-            opt.textContent = b;
-            if (selectedBrgy && selectedBrgy.toLowerCase() === b.toLowerCase()) {
-                opt.selected = true;
-            }
-            barangaySelect.appendChild(opt);
-        });
-
-        barangaySelect.disabled = false;
-    }
-
-    window.currentDeliveryFee = 0;
-    window.deliveryFeeStatus = "pending";
-
-    const updateHiddenVenue = async function() {
-        const provEl = document.getElementById('province_select');
-        const cityEl = document.getElementById('city_select');
-        const brgyEl = document.getElementById('barangay_select');
-        
-        const p = provEl ? (provEl.tagName === 'SELECT' ? (provEl.options[provEl.selectedIndex]?.value || provEl.value || '') : provEl.value) : '';
-        const c = cityEl ? (cityEl.tagName === 'SELECT' ? (cityEl.options[cityEl.selectedIndex]?.value || cityEl.value || '') : cityEl.value) : '';
-        const b = brgyEl ? (brgyEl.tagName === 'SELECT' ? (brgyEl.options[brgyEl.selectedIndex]?.value || brgyEl.value || '') : brgyEl.value) : '';
-        
-        if (p && c && !p.startsWith('--') && !c.startsWith('--')) {
-            if (venueHidden && !venueHidden.value) venueHidden.value = [b, c, p].filter(Boolean).join(', ');
-            
-            // Fetch dynamic delivery fee
-            try {
-                const res = await fetch(`/customer/api/caterer/${catererId}/delivery-fee?province=${encodeURIComponent(p)}&municipality=${encodeURIComponent(c)}`, { cache: 'no-store' });
-                const data = await res.json();
-                
-                if (data.found) {
-                    if (data.is_manual_quote) {
-                        window.currentDeliveryFee = 0;
-                        window.deliveryFeeStatus = "manual_quote";
-                    } else {
-                        window.currentDeliveryFee = data.fee;
-                        window.deliveryFeeStatus = "calculated";
-                    }
+        // --- 4. Other Event Type Toggle ---
+        if (eventTypeSelect) {
+            eventTypeSelect.addEventListener('change', function () {
+                if (this.value === 'Other') {
+                    otherEventWrap.classList.add('visible');
+                    otherEventInput.required = true;
+                    setTimeout(() => otherEventInput.focus(), 100);
                 } else {
-                    if (window.pricingMode === 'customizable' || data.out_of_coverage_action === 'manual') {
-                        window.currentDeliveryFee = 0;
-                        window.deliveryFeeStatus = "manual_quote";
-                    } else if (data.out_of_coverage_action === 'reject' && window.pricingMode === 'fixed') {
-                        window.currentDeliveryFee = 0;
-                        window.deliveryFeeStatus = "manual_quote";
-                    } else if (data.out_of_coverage_action === 'reject') {
-                        window.currentDeliveryFee = 0;
-                        window.deliveryFeeStatus = window.pricingMode === 'fixed' ? "manual_quote" : "error";
+                    otherEventWrap.classList.remove('visible');
+                    otherEventInput.required = false;
+                    otherEventInput.value = '';
+                    document.getElementById('err-other-type').classList.remove('show');
+                }
+            });
+        }
+
+        // --- 5. Laguna Location Data & Cascading Dropdowns ---
+        const LAGUNA_LOCATION_DATA = {
+            "Alaminos": ["Barangay I (Pob.)", "Barangay II (Pob.)", "Barangay III (Pob.)", "Barangay IV (Pob.)", "Del Carmen", "Palma", "San Agustin", "San Andres", "San Benito", "San Gregorio", "San Ildefonso", "San Juan", "San Miguel", "San Roque", "Santa Rosa", "Victoria"],
+            "Bay": ["Bitin", "Calo", "Dila", "Maitim", "Masaya", "Paciano Rizal", "Puypuy", "San Agustin (Pob.)", "San Antonio", "San Isidro", "San Nicolas (Pob.)", "Santa Cruz", "Santo Domingo", "Tagumpay", "Tranca"],
+            "Biñan": ["Biñan (Poblacion)", "Bungahan", "Canlalay", "Casile", "De La Paz", "Dela Paz", "Ganado", "Langkiwa", "Loma", "Malaban", "Malamig", "Mamplasan", "Platero", "Poblacion", "San Antonio", "San Francisco", "San Jose", "San Vicente", "Santo Niño", "Santo Tomas", "Soro-soro", "Timbao", "Tubigan", "Zapote"],
+            "Cabuyao": ["Baclaran", "Banay-Banay", "Banlic", "Bigaa", "Butong", "Casile", "Diezmo", "Gulod", "Mamatid", "Marinig", "Niugan", "Pittland", "Pulo", "Sala", "San Isidro"],
+            "Calamba": ["Bagong Kalsada", "Bañadero", "Banlic", "Barandal", "Barangay 1", "Barangay 2", "Barangay 3", "Barangay 4", "Barangay 5", "Barangay 6", "Barangay 7", "Batino", "Bubuyan", "Bucal", "Bunggo", "Burol", "Camaligan", "Canlubang", "Halang", "Hornalan", "Kay-Anlog", "La Mesa", "Laguerta", "Lawa", "Lecheria", "Lingga", "Looc", "Mabato", "Majada Labas", "Makiling", "Mapagong", "Masili", "Maunong", "Mayapa", "Milagrosa", "Paciano Rizal", "Palingon", "Palo-Alto", "Pansol", "Parian", "Prinza", "Punta", "Puting Lupa", "Real", "Saimsim", "Sampiruhan", "San Cristobal", "San Jose", "San Juan", "Sirang Lupa", "Sucol", "Turbina", "Uwisan"],
+            "Calauan": ["Balayhangin", "Bangyas", "Dayap", "Hanggan", "Imok", "Kanluran (Pob.)", "Lamot 1", "Lamot 2", "Limao", "Mabacan", "Masiit", "Paliparan", "Perez", "Prinza", "San Isidro", "Santo Tomas", "Silangan (Pob.)"],
+            "Cavinti": ["Anglas", "Bangco", "Bukal", "Bulajo", "Cansuso", "Duhat", "Inao-Awan", "Kanluran Talaongan", "Labayo", "Layasin", "Layug", "Mahipon", "Paowin", "Poblacion", "Silangan Talaongan", "Sisilmin", "Sumucab", "Tibatib", "Udia"],
+            "Famy": ["Asana (Pob.)", "Bacong-Sigsigan", "Bagong Pag-Asa (Pob.)", "Balitoc", "Cuevas", "Damayan (Pob.)", "Katumpapan (Pob.)", "Liyang", "Maquling", "Minayutan", "Salangbato", "San Antonio", "Tunhac"],
+            "Kalayaan": ["Longos", "San Antonio", "San Juan (Pob.)"],
+            "Liliw": ["Bagong Formas", "Bayate", "Bongkol", "Cabuyew", "Calumpang", "Dita", "Ibabang Palina", "Ibabang San Roque", "Ibabang Sungi", "Ilayang Palina", "Ilayang San Roque", "Ilayang Sungi", "Luquin", "Malabo-Kalantukan", "Maslun (Pob.)", "Mojon", "Novaliches", "Oples", "Pag-Asa (Pob.)", "Palayan", "Rizal (Pob.)", "San Isidro", "Santo Niño (Pob.)", "Tuyu-Tuyu", "Tuyupan", "Vitas"],
+            "Los Baños": ["Anos", "Bagong Silang", "Bambang", "Batong Malake", "Baybayin", "Bayog", "Lalakay", "Maahas", "Malinta", "Mayondon", "Putho Tuntungin", "San Antonio", "Tadlac", "Timugan"],
+            "Luisiana": ["De La Paz", "Barangay Zone I (Pob.)", "Barangay Zone II (Pob.)", "Barangay Zone III (Pob.)", "Barangay Zone IV (Pob.)", "Barangay Zone V (Pob.)", "Barangay Zone VI (Pob.)", "Barangay Zone VII (Pob.)", "Barangay Zone VIII (Pob.)", "San Buenaventura", "San Diego", "San Jose", "San Luis", "San Pablo", "San Pedro", "San Rafael", "San Roque", "Santo Domingo", "Santo Tomas"],
+            "Lumban": ["Bagong Silang", "Balmis", "Cabuyao", "Caliraya", "Concepcion", "Lewin", "Maracta (Pob.)", "Maytalang I", "Maytalang II", "Nagcarlan", "Salac (Pob.)", "San Jose (Pob.)", "Santo Niño (Pob.)"],
+            "Mabitac": ["Amuyong", "Bayanihan (Pob.)", "Libis ng Nayon (Pob.)", "Luang", "Maligaya (Pob.)", "Matalatala", "Nanguma", "Pag-Asa (Pob.)", "San Antonio", "San Jose", "San Miguel", "Sinagtala (Pob.)", "Sipit", "Tulaoc"],
+            "Magdalena": ["Alipata", "Baanan", "Balanac", "Bucal", "Buenavista", "Bungkol", "Burol", "Ibabang Atingay", "Ilayang Atingay", "Ilog", "Malaking Ambling", "Malinao", "Maravilla", "Muncada", "Poblacion", "Salapungan", "San Francisco", "San Jose", "Santa Maria", "Villa Magsaysay"],
+            "Majayjay": ["Ameca", "Bakia", "Balanac", "Balayhangin", "Banilad", "Bumbungan", "Burgos", "Burol", "Gagalot", "Ibabang Banga", "Ilayang Banga", "Isabang", "Malinao", "May-It", "Moolin", "Olla", "Oobi", "Origuel (Pob.)", "Panalaban", "Pangil", "Panglan", "Piit", "Poblacion", "San Francisco", "San Isidro", "San Miguel", "San Roque", "Santa Catalina", "Suba", "Talortor", "Tanawan", "Taytay"],
+            "Nagcarlan": ["Abo", "Alibungbungan", "Allagao", "Balayhangin", "Balinacon", "Bambang", "Banago", "Banca-Banca", "Bangcuro", "Banilad", "Bayaquitos", "Buboy", "Buenavista", "Buhanginan", "Bukal", "Bunga", "Cabubuhayan", "Calumpang", "Kanluran Kabubuhayan", "Kanluran Pob.", "Katuwiran", "Lawi", "Luria", "Maiit", "Malaya", "Malinao", "Manaol", "Maravilla", "Nagcalbang", "Oples", "Palayan", "Palina", "Sabang", "San Francisco", "Sibulan", "Silangan Kabubuhayan", "Silangan Pob.", "Sinipian", "Santa Lucia", "Talahib", "Talangan", "Taytay", "Tipacan", "Wakat"],
+            "Paete": ["Bagumbayan (Pob.)", "Bangkusay (Pob.)", "Ermita (Pob.)", "Ibaba del Sur (Pob.)", "Ibaba del Norte (Pob.)", "Ilaya del Sur (Pob.)", "Ilaya del Norte (Pob.)", "Maytoong (Pob.)", "Quinale (Pob.)"],
+            "Pagsanjan": ["Anibong", "Barangay I (Pob.)", "Barangay II (Pob.)", "Cabuyao", "Calusiche", "Dingin", "Lambac", "Layugan", "Magdapio", "Maulawin", "Pinagsanjan", "Sampaloc", "San Isidro"],
+            "Pakil": ["Baño (Pob.)", "Burgos (Pob.)", "Casa Real (Pob.)", "Casinsin", "Dorado", "Gonzales (Pob.)", "Kabulusan", "Matikiw", "Rizal (Pob.)", "Saray", "Taft (Pob.)", "Tavera (Pob.)", "Vargas (Pob.)"],
+            "Pangil": ["Balian", "Dambo", "Galalan", "Isla (Pob.)", "Mabato-Azufre", "Natividad (Pob.)", "San Jose (Pob.)", "Sulib (Pob.)"],
+            "Pila": ["Aplaya", "Bagong Pook", "Bukal", "Bulilan Sur", "Bulilan Norte", "Concepcion", "Labuin", "Linga", "Masico", "Mojon", "Pansol", "Pinagbayanan", "Poblacion", "San Antonio", "San Lorenzo", "Santa Clara Norte", "Santa Clara Sur", "Tubuan"],
+            "Rizal": ["Antipolo", "Entablado", "Laguan", "Paule 1", "Paule 2", "Poblacion", "Pook", "Tala", "Talaga"],
+            "San Pablo": ["Bagong Bayan", "Barangay I-A", "Barangay I-B", "Barangay II-A", "Barangay II-B", "Barangay II-C", "Barangay II-D", "Barangay II-E", "Barangay II-F", "Barangay III-A", "Barangay III-B", "Barangay III-C", "Barangay III-D", "Barangay III-E", "Barangay III-F", "Barangay IV-A", "Barangay IV-B", "Barangay IV-C", "Barangay V-A", "Barangay V-B", "Barangay VI-A", "Barangay VI-B", "Barangay VII-A", "Barangay VII-B", "Barangay VII-C", "Barangay VII-D", "Barangay VII-E", "Bautista", "Concepcion", "Del Remedio", "Dolores", "San Bartolome", "San Cristobal", "San Francisco", "San Gabriel", "San Gregorio", "San Ignacio", "San Isidro", "San Jose", "San Juan", "San Lucas 1", "San Lucas 2", "San Marcos", "San Mateo", "San Miguel", "San Nicolas", "San Pedro", "San Rafael", "San Roque", "San Vicente", "Santa Ana", "Santa Cruz", "Santa Maria", "Santa Maria Magdalena", "Santa Veronica", "Santiago", "Santisimo Rosario", "Soledad"],
+            "San Pedro": ["Bagong Silang", "Calendola", "Chrysanthemum", "Cuyab", "Estrella", "Fatima", "G.S.I.S.", "Holiday Hills", "Landayan", "Langgam", "Laram", "Magsaysay", "Maharlika", "Narra", "Nueva", "Pacita 1", "Pacita 2", "Poblacion", "Riverside", "Sampaguita Village", "San Antonio", "San Roque", "San Vicente", "Santa Felomina", "Santo Niño", "United Bayanihan", "United Better Living", "Vicente Leyos"],
+            "Santa Cruz": ["Alipit", "Bagumbayan", "Bubukal", "Calios", "Duhat", "Gatid", "Jasaan", "Labuin", "Malinao", "Oogong", "Pagsawitan", "Palasan", "Patimbao", "Poblacion I", "Poblacion II", "Poblacion III", "Poblacion IV", "Poblacion V", "San Jose", "San Juan", "San Pablo Norte", "San Pablo Sur", "Santisima Cruz", "Santo Angel Central", "Santo Angel Norte", "Santo Angel Sur"],
+            "Santa Maria": ["Bagong Pook", "Bagumbayan", "Bubucal", "Cabooan", "Calangay", "Cambuja", "Coralan", "Cansuso", "Inocencio", "J. Santiago", "Lauravel", "Macasipac", "Masinao", "Matalinting", "Pao-o", "Parang Ng Buho", "Poblacion I", "Poblacion II", "Poblacion III", "Poblacion IV", "Real Velasquez", "San Antonio", "Santa Ines"],
+            "Santa Rosa": ["Aplaya", "Balibago", "Caingin", "Dila", "Dita", "Don Jose", "Ibaba", "Kanluran (Pob.)", "Labas", "Macabling", "Malitlit", "Malusak (Pob.)", "Market Area (Pob.)", "Pook", "Pulong Santa Cruz", "Santo Domingo", "Sinalhan", "Tagapo"],
+            "Siniloan": ["Acevida", "Baguio", "Bagumbarangay (Pob.)", "Buhay", "G. Redor (Pob.)", "Gen. Luna", "Halayhayin", "Laguio", "Liyang", "Lluisma", "Mendiola", "Macatad", "P. Burgos", "Pandeño", "Salubungan", "Wawa"],
+            "Victoria": ["Bañaga", "Bankanca", "Daniw", "Masapang", "Nanhaya (Pob.)", "Pagalangan", "San Benito", "San Felix", "San Francisco", "San Roque"]
+        };
+
+        function populateCities(province, selectedCity = null, selectedBrgy = null) {
+            if (!citySelect) return;
+            citySelect.innerHTML = '<option value="" disabled selected hidden>-- Select City / Municipality --</option>';
+            if (barangaySelect) {
+                barangaySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
+                barangaySelect.disabled = true;
+            }
+
+            if (!province) {
+                citySelect.disabled = true;
+                return;
+            }
+
+            const cityNames = Object.keys(LAGUNA_LOCATION_DATA).sort();
+            cityNames.forEach(cityName => {
+                const opt = document.createElement('option');
+                opt.value = cityName;
+                opt.textContent = cityName;
+                if (selectedCity && (selectedCity.toLowerCase() === cityName.toLowerCase() || selectedCity.toLowerCase().includes(cityName.toLowerCase()))) {
+                    opt.selected = true;
+                }
+                citySelect.appendChild(opt);
+            });
+
+            citySelect.disabled = false;
+
+            const effectiveCity = citySelect.value || selectedCity;
+            if (effectiveCity) {
+                const matchedKey = Object.keys(LAGUNA_LOCATION_DATA).find(k => k.toLowerCase() === effectiveCity.toLowerCase() || effectiveCity.toLowerCase().includes(k.toLowerCase()));
+                if (matchedKey) {
+                    populateBarangays(matchedKey, selectedBrgy);
+                }
+            }
+        }
+
+        function populateBarangays(cityName, selectedBrgy = null) {
+            if (!barangaySelect) return;
+            barangaySelect.innerHTML = '<option value="" disabled selected hidden>-- Select Barangay --</option>';
+
+            if (!cityName) {
+                barangaySelect.disabled = true;
+                return;
+            }
+
+            const matchedKey = Object.keys(LAGUNA_LOCATION_DATA).find(k => k.toLowerCase() === cityName.toLowerCase() || cityName.toLowerCase().includes(k.toLowerCase()));
+            const brgyList = matchedKey ? LAGUNA_LOCATION_DATA[matchedKey] : [];
+
+            if (brgyList.length === 0) {
+                barangaySelect.disabled = true;
+                return;
+            }
+
+            brgyList.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                if (selectedBrgy && selectedBrgy.toLowerCase() === b.toLowerCase()) {
+                    opt.selected = true;
+                }
+                barangaySelect.appendChild(opt);
+            });
+
+            barangaySelect.disabled = false;
+        }
+
+        window.currentDeliveryFee = 0;
+        window.deliveryFeeStatus = "pending";
+
+        const updateHiddenVenue = async function () {
+            const provEl = document.getElementById('province_select');
+            const cityEl = document.getElementById('city_select');
+            const brgyEl = document.getElementById('barangay_select');
+
+            const p = provEl ? (provEl.tagName === 'SELECT' ? (provEl.options[provEl.selectedIndex]?.value || provEl.value || '') : provEl.value) : '';
+            const c = cityEl ? (cityEl.tagName === 'SELECT' ? (cityEl.options[cityEl.selectedIndex]?.value || cityEl.value || '') : cityEl.value) : '';
+            const b = brgyEl ? (brgyEl.tagName === 'SELECT' ? (brgyEl.options[brgyEl.selectedIndex]?.value || brgyEl.value || '') : brgyEl.value) : '';
+
+            if (p && c && !p.startsWith('--') && !c.startsWith('--')) {
+                if (venueHidden && !venueHidden.value) venueHidden.value = [b, c, p].filter(Boolean).join(', ');
+
+                // Fetch dynamic delivery fee
+                try {
+                    const res = await fetch(`/customer/api/caterer/${catererId}/delivery-fee?province=${encodeURIComponent(p)}&municipality=${encodeURIComponent(c)}`, { cache: 'no-store' });
+                    const data = await res.json();
+
+                    if (data.found) {
+                        if (data.is_manual_quote) {
+                            window.currentDeliveryFee = 0;
+                            window.deliveryFeeStatus = "manual_quote";
+                        } else {
+                            window.currentDeliveryFee = data.fee;
+                            window.deliveryFeeStatus = "calculated";
+                        }
                     } else {
-                        window.currentDeliveryFee = data.base_fee || 0;
-                        window.deliveryFeeStatus = "calculated";
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to fetch delivery fee", e);
-                window.currentDeliveryFee = 0;
-                window.deliveryFeeStatus = window.pricingMode === 'customizable' ? "manual_quote" : "error";
-            }
-            updateCalculator();
-        } else {
-            window.currentDeliveryFee = 0;
-            window.deliveryFeeStatus = "pending";
-            updateCalculator();
-        }
-    };
-    window.updateHiddenVenue = updateHiddenVenue;
-
-    function setVenueBarangayMode(mode, showUnavailableChoice = mode === '') {
-        if (venueBarangayStatus) venueBarangayStatus.value = mode;
-        if (barangayUnavailableCheckbox) barangayUnavailableCheckbox.checked = mode === 'unavailable';
-        if (barangayUnavailableChoice) barangayUnavailableChoice.style.display = showUnavailableChoice ? 'block' : 'none';
-        if (venueLandmark) {
-            venueLandmark.required = false;
-            venueLandmark.placeholder = 'Enter a venue name or nearby landmark (optional)';
-        }
-        if (venueLandmarkLabel) {
-            venueLandmarkLabel.innerHTML = 'Venue name / Nearby landmark <small>(Optional)</small>';
-        }
-    }
-
-    function venueAddressFieldsComplete() {
-        return Boolean(
-            provinceSelect?.value.trim()
-            && citySelect?.value.trim()
-            && barangaySelect?.value.trim()
-        );
-    }
-
-    function initVenueMap() {
-        const mapEl = document.getElementById('venue-map');
-        if (!mapEl || !window.google?.maps) return;
-        const geocoder = new google.maps.Geocoder();
-        const fallback = { lat: 14.2811, lng: 121.4150 };
-        const savedPoint = venueLat?.value !== '' && venueLng?.value !== '' && venueLat?.value != null && venueLng?.value != null
-            ? { lat: Number(venueLat.value), lng: Number(venueLng.value) } : fallback;
-        const map = new google.maps.Map(mapEl, { center: savedPoint, zoom: venueLat?.value ? 17 : 11, restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true }, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, clickableIcons: false });
-        const placesService = google.maps.places ? new google.maps.places.PlacesService(map) : null;
-        const hasSavedPin = venueLat?.value !== '' && venueLng?.value !== '' && venueLat?.value != null && venueLng?.value != null &&
-            Number.isFinite(savedPoint.lat) && Number.isFinite(savedPoint.lng) && savedPoint.lat >= 4.2 && savedPoint.lat <= 21.6 && savedPoint.lng >= 116.7 && savedPoint.lng <= 127.2;
-        const marker = new google.maps.Marker({ map: hasSavedPin ? map : null, position: savedPoint, draggable: true });
-        let pendingLocation = hasSavedPin
-            ? { lat: savedPoint.lat.toFixed(7), lng: savedPoint.lng.toFixed(7) }
-            : null;
-        let geocodeRequest = 0;
-        let nearbySearchRequest = 0;
-        let landValidationRequest = 0;
-        let venueLandValid = false;
-        let detectedAddress = null;
-        let nearbyAddressFallback = false;
-        let addressDetectionMessage = '';
-        let addressDetectionState = 'neutral';
-        if (hasSavedPin && venueBarangayStatus && !venueBarangayStatus.value && barangaySelect?.value.trim()) {
-            venueBarangayStatus.value = 'identified';
-        }
-        setVenueBarangayMode(
-            venueBarangayStatus?.value || '',
-            venueBarangayStatus?.value === 'unavailable' || !barangaySelect?.value.trim()
-        );
-        const refreshSaveButton = () => {
-            if (saveVenueButton) {
-                saveVenueButton.disabled = !(pendingLocation && venueLandValid && venueAddressFieldsComplete());
-            }
-        };
-        const clearSavedLocation = (clearSearch = false) => {
-            if (venueHidden) venueHidden.value = '';
-            if (venueLat) venueLat.value = '';
-            if (venueLng) venueLng.value = '';
-            if (savedVenuePanel) savedVenuePanel.style.display = 'none';
-            if (clearSearch && venueSearch) venueSearch.value = '';
-        };
-        const clearLandmarkSuggestions = () => {
-            ++nearbySearchRequest;
-            if (venueLandmarkSuggestions) venueLandmarkSuggestions.replaceChildren();
-            if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = '';
-        };
-        const findStreet = results => {
-            for (const result of results || []) {
-                const components = result.address_components || [];
-                const component = type => components.find(item => item.types.includes(type))?.long_name || '';
-                const number = component('street_number');
-                const route = component('route');
-                if (number || route) return [number, route].filter(Boolean).join(' ');
-            }
-            return '';
-        };
-        const findMissingAddressComponents = address => [
-            ['province', address?.province],
-            ['municipality or city', address?.city],
-            ['barangay', address?.barangay]
-        ].filter(([, value]) => !value).map(([label]) => label);
-        const distanceBetweenPointsMeters = (first, second) => {
-            const radians = value => value * Math.PI / 180;
-            const latitudeDelta = radians(second.lat() - first.lat());
-            const longitudeDelta = radians(second.lng() - first.lng());
-            const firstLatitude = radians(first.lat());
-            const secondLatitude = radians(second.lat());
-            const haversine = Math.sin(latitudeDelta / 2) ** 2
-                + Math.cos(firstLatitude) * Math.cos(secondLatitude) * Math.sin(longitudeDelta / 2) ** 2;
-            return 6371000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
-        };
-        const findNearbyLandmarks = (point, address, onNearbyAddress = null) => {
-            const requestId = ++nearbySearchRequest;
-            if (venueLandmarkSuggestions) venueLandmarkSuggestions.replaceChildren();
-            if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Finding nearby venues…';
-            if (!placesService) {
-                if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby venue suggestions are unavailable.';
-                return;
-            }
-            placesService.nearbySearch({ location: point, radius: 500 }, (results, status) => {
-                if (requestId !== nearbySearchRequest) return;
-                if (status !== google.maps.places.PlacesServiceStatus.OK && status !== google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
-                    console.warn('Could not load nearby event venue suggestions:', status);
-                    if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby venue suggestions are unavailable. You can enter a landmark manually.';
-                    return;
-                }
-                const administrativeTypes = new Set([
-                    'administrative_area_level_1',
-                    'administrative_area_level_2',
-                    'administrative_area_level_3',
-                    'administrative_area_level_4',
-                    'locality',
-                    'postal_town',
-                    'sublocality',
-                    'sublocality_level_1',
-                    'sublocality_level_2'
-                ]);
-                const administrativeNames = new Set([
-                    address?.province,
-                    address?.city,
-                    address?.barangay
-                ].filter(Boolean).map(value => value.trim().toLocaleLowerCase()));
-                const names = [...new Set((results || [])
-                    .filter(place => !(place.types || []).some(type => administrativeTypes.has(type)))
-                    .map(place => String(place.name || '').trim())
-                    .filter(name => name && !administrativeNames.has(name.toLocaleLowerCase())))]
-                    .slice(0, 8);
-                names.forEach(name => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    venueLandmarkSuggestions?.append(option);
-                });
-                if (venueLandmarkSuggestionStatus) {
-                    venueLandmarkSuggestionStatus.textContent = names.length
-                        ? 'Nearby suggestions are optional. Select a name only if it is your event venue or a landmark you confirm.'
-                        : 'No nearby venue names found. You can enter a landmark manually.';
-                }
-                if (!onNearbyAddress) return;
-                const nearestPlace = (results || [])
-                    .filter(place => place.place_id && place.geometry?.location
-                        && !(place.types || []).some(type => administrativeTypes.has(type)))
-                    .map(place => ({ place, distance: distanceBetweenPointsMeters(point, place.geometry.location) }))
-                    .filter(candidate => candidate.distance <= 250)
-                    .sort((first, second) => first.distance - second.distance)[0]?.place;
-                if (!nearestPlace) return;
-                geocoder.geocode({ placeId: nearestPlace.place_id, region: 'PH' }, (placeResults, placeStatus) => {
-                    if (requestId !== nearbySearchRequest || placeStatus !== 'OK') return;
-                    const nearbyAddress = window.OccaServeLocationAddress.parseResults(placeResults);
-                    if (!nearbyAddress) return;
-                    onNearbyAddress({ address: nearbyAddress, results: placeResults, place: nearestPlace });
-                });
-            });
-        };
-        const savePendingLocation = () => {
-            const province = provinceSelect?.value.trim() || '';
-            const city = citySelect?.value.trim() || '';
-            const barangay = barangaySelect?.value.trim() || '';
-            if (!pendingLocation || !venueLandValid || !venueAddressFieldsComplete()) {
-                setVenuePinStatus('A valid land pin, province, city, and barangay are required.', 'invalid');
-                return;
-            }
-            const addressMismatch = !nearbyAddressFallback && [
-                [provinceSelect, detectedAddress?.province],
-                [citySelect, detectedAddress?.city],
-                [barangaySelect, detectedAddress?.barangay]
-            ].some(([input, detectedValue]) => detectedValue
-                && input?.value.trim().toLocaleLowerCase() !== detectedValue.trim().toLocaleLowerCase());
-            if (addressMismatch) {
-                setVenuePinStatus('The province, city, or barangay does not match the selected pin. Correct the address or move the pin to the right location.', 'invalid');
-                return;
-            }
-            const landmarkValue = venueLandmark?.value.trim() || '';
-            const administrativeNames = [province, city, barangay]
-                .map(value => value.toLocaleLowerCase());
-            if (landmarkValue && administrativeNames.includes(landmarkValue.toLocaleLowerCase())) {
-                setVenuePinStatus('A landmark must be a venue or establishment name, not a province, city, or barangay.', 'invalid');
-                return;
-            }
-            const address = window.OccaServeLocationAddress.composeAddress({
-                street: venueStreet?.value,
-                landmark: landmarkValue,
-                barangay,
-                municipality: city,
-                province
-            });
-            venueLat.value = pendingLocation.lat;
-            venueLng.value = pendingLocation.lng;
-            venueHidden.value = address;
-            if (venueSearch) venueSearch.value = address;
-            if (venueBarangayStatus && !venueBarangayStatus.value) venueBarangayStatus.value = 'identified';
-            if (savedVenueText) savedVenueText.textContent = address;
-            if (savedVenuePanel) savedVenuePanel.style.display = 'block';
-            setVenuePinStatus('Venue location saved.', 'saved');
-            if (saveVenueButton) saveVenueButton.disabled = true;
-            document.getElementById('err-venue')?.classList.remove('show');
-            updateHiddenVenue();
-        };
-        if (venueHidden?.value && venueLat?.value && venueLng?.value && savedVenueText) {
-            savedVenueText.textContent = venueHidden.value;
-        }
-        if (hasSavedPin) {
-            setVenueAddressFieldsDisabled(true);
-            const landRequestId = ++landValidationRequest;
-            window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(savedPoint.lat, savedPoint.lng)
-                .then(isValid => {
-                    if (landRequestId !== landValidationRequest) return;
-                    venueLandValid = isValid;
-                    setVenueAddressFieldsDisabled(!isValid);
-                    refreshSaveButton();
-                    if (!isValid) setVenuePinStatus('The saved pin is not on mapped land. Move it to a valid event location.', 'invalid');
-                })
-                .catch(error => {
-                    if (landRequestId !== landValidationRequest) return;
-                    console.error('Could not validate saved event land location:', error);
-                    setVenueAddressFieldsDisabled(true);
-                    setVenuePinStatus('The saved pin could not be validated. Move the pin to check the location again.', 'error');
-                });
-        }
-        saveVenueButton?.addEventListener('click', savePendingLocation);
-        const onAddressFieldChange = () => {
-            if (!marker.getMap()) return;
-            ++geocodeRequest;
-            const position = marker.getPosition();
-            if (!position) return;
-            pendingLocation = {
-                lat: position.lat().toFixed(7),
-                lng: position.lng().toFixed(7)
-            };
-            clearSavedLocation();
-            refreshSaveButton();
-            setVenuePinStatus('Address details changed. Complete all required fields and save the pin again.', 'neutral');
-        };
-        [provinceSelect, citySelect, barangaySelect, venueLandmark].forEach(input => {
-            input?.addEventListener('input', onAddressFieldChange);
-            input?.addEventListener('change', onAddressFieldChange);
-        });
-        venueStreet?.addEventListener('input', onAddressFieldChange);
-        venueStreet?.addEventListener('change', onAddressFieldChange);
-        [provinceSelect, citySelect].forEach(input => input?.addEventListener('input', () => {
-            if (venueBarangayStatus?.value) {
-                if (barangaySelect) barangaySelect.value = '';
-                setVenueBarangayMode('', true);
-                refreshSaveButton();
-            }
-        }));
-        barangaySelect?.addEventListener('input', () => {
-            const hasBarangay = Boolean(barangaySelect.value.trim());
-            setVenueBarangayMode(hasBarangay ? 'manual' : '', !hasBarangay);
-            refreshSaveButton();
-        });
-        barangayUnavailableCheckbox?.addEventListener('change', () => {
-            if (barangayUnavailableCheckbox.checked && barangaySelect) barangaySelect.value = '';
-            setVenueBarangayMode(barangayUnavailableCheckbox.checked ? 'unavailable' : '', true);
-            onAddressFieldChange();
-        });
-        venueSearch?.addEventListener('input', () => {
-            if (venueSearch.value.trim() === (venueHidden?.value || '').trim()) return;
-            // Ignore delayed reverse-geocode responses for the previous pin.
-            ++geocodeRequest;
-            clearLandmarkSuggestions();
-            pendingLocation = null;
-            marker.setMap(null);
-            clearSavedLocation();
-            if (saveVenueButton) saveVenueButton.disabled = true;
-            venueLandValid = false;
-            ++landValidationRequest;
-            setVenueAddressFieldsDisabled(false);
-            setVenuePinStatus('Choose a search result or pin the map, then save the location.', 'neutral');
-        });
-        const setLocation = point => {
-            const requestId = ++geocodeRequest;
-            const landRequestId = ++landValidationRequest;
-            pendingLocation = {
-                lat: point.lat().toFixed(7),
-                lng: point.lng().toFixed(7)
-            };
-            venueLandValid = false;
-            detectedAddress = null;
-            nearbyAddressFallback = false;
-            addressDetectionMessage = '';
-            addressDetectionState = 'neutral';
-            setVenueAddressFieldsDisabled(true);
-            clearSavedLocation(true);
-            clearLandmarkSuggestions();
-            if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby venue suggestions will appear after the address is detected.';
-            if (venueLandmark) venueLandmark.value = '';
-            if (venueStreet) venueStreet.value = '';
-            if (provinceSelect) provinceSelect.value = '';
-            if (citySelect) citySelect.value = '';
-            if (barangaySelect) barangaySelect.value = '';
-            setVenueBarangayMode('', false);
-            refreshSaveButton();
-            setVenuePinStatus('Checking the pin and updating the address…', 'checking');
-            marker.setPosition(point);
-            marker.setMap(map);
-            window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(point.lat(), point.lng())
-                .then(isValid => {
-                    if (landRequestId !== landValidationRequest) return;
-                    venueLandValid = isValid;
-                    setVenueAddressFieldsDisabled(!isValid);
-                    if (!isValid) {
-                        setVenuePinStatus('This pin is in water or outside mapped land. Move it onto a valid event venue.', 'invalid');
-                    } else if (addressDetectionMessage) {
-                        setVenuePinStatus(addressDetectionMessage, addressDetectionState);
-                    } else if (venuePinStatus) {
-                        setVenuePinStatus('Valid land location. Complete the required venue details, then save the pin.', 'valid');
-                    }
-                    refreshSaveButton();
-                })
-                .catch(error => {
-                    if (landRequestId !== landValidationRequest) return;
-                    console.error('Could not validate event land location:', error);
-                    venueLandValid = false;
-                    setVenueAddressFieldsDisabled(true);
-                    setVenuePinStatus('The land-location check could not be completed. Please try again.', 'error');
-                    refreshSaveButton();
-                });
-            geocoder.geocode({ location: point, region: 'PH' }, (results, status) => {
-                if (requestId !== geocodeRequest) return;
-                const address = status === 'OK'
-                    ? window.OccaServeLocationAddress.parseResults(results)
-                    : null;
-                if (!address) {
-                    if (status !== 'ZERO_RESULTS') console.warn('Could not reverse-geocode event venue pin:', status);
-                    if (venueStreet) venueStreet.value = '';
-                    if (venueLandmark) venueLandmark.value = '';
-                    if (provinceSelect) provinceSelect.value = '';
-                    if (citySelect) citySelect.value = '';
-                    if (barangaySelect) barangaySelect.value = '';
-                    setVenueBarangayMode('', false);
-                    if (venueSearch) venueSearch.value = '';
-                    findNearbyLandmarks(point, null, ({ address: nearbyAddress, place }) => {
-                        if (requestId !== geocodeRequest) return;
-                        detectedAddress = nearbyAddress;
-                        nearbyAddressFallback = true;
-                        if (venueStreet) venueStreet.value = '';
-                        if (venueLandmark) venueLandmark.value = '';
-                        if (provinceSelect) provinceSelect.value = nearbyAddress.province || '';
-                        if (citySelect) citySelect.value = nearbyAddress.city || '';
-                        if (barangaySelect) barangaySelect.value = nearbyAddress.barangay || '';
-                        setVenueBarangayMode(nearbyAddress.barangay ? 'identified' : '', !nearbyAddress.barangay);
-                        if (venueSearch) venueSearch.value = '';
-                        addressDetectionMessage = `No exact address was returned for the pin. A nearby place (${place.name || 'landmark'}) was found; confirm the address details before saving.`;
-                        addressDetectionState = 'valid';
-                        if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby address filled from a place within 250 m. Confirm that it matches your event venue.';
-                        refreshSaveButton();
-                        if (venueLandValid) setVenuePinStatus(addressDetectionMessage, addressDetectionState);
-                    });
-                    refreshSaveButton();
-                    detectedAddress = null;
-                    addressDetectionMessage = 'Google Maps could not identify this address. Enter the province, city, and barangay manually; street can also be entered manually.';
-                    addressDetectionState = 'invalid';
-                    if (venueLandValid) setVenuePinStatus(addressDetectionMessage, addressDetectionState);
-                    return;
-                }
-                const { province, city, barangay: brgy } = address;
-                detectedAddress = { province, city, barangay: brgy };
-                if (venueStreet) venueStreet.value = findStreet(results);
-                if (provinceSelect) provinceSelect.value = province;
-                if (citySelect) citySelect.value = city;
-                if (barangaySelect) barangaySelect.value = brgy;
-                if (venueLandmark) venueLandmark.value = '';
-                setVenueBarangayMode(brgy ? 'identified' : '', !brgy);
-                if (venueSearch) {
-                    venueSearch.value = results?.[0]?.formatted_address || '';
-                }
-                findNearbyLandmarks(point, address);
-                refreshSaveButton();
-                const missingComponents = findMissingAddressComponents(address);
-                if (missingComponents.length) {
-                    addressDetectionMessage = `Google Maps could not detect the ${missingComponents.join(', ')}. Enter ${missingComponents.length === 1 ? 'it' : 'them'} manually to continue.`;
-                    addressDetectionState = 'invalid';
-                    if (venueLandValid) setVenuePinStatus(addressDetectionMessage, addressDetectionState);
-                    return;
-                }
-                const streetMessage = venueStreet?.value ? '' : ' Street not detected; enter it manually if needed.';
-                addressDetectionMessage = `Address detected.${streetMessage} Save the pin to confirm the exact event location.`;
-                addressDetectionState = 'valid';
-                if (venueLandValid) {
-                    setVenuePinStatus(addressDetectionMessage, addressDetectionState);
-                }
-            });
-        };
-        marker.addListener('dragend', () => setLocation(marker.getPosition()));
-        map.addListener('click', event => setLocation(event.latLng));
-        if (venueSearch && google.maps.places) {
-            const autocomplete = new google.maps.places.Autocomplete(venueSearch, { componentRestrictions: { country: 'ph' }, fields: ['name', 'formatted_address', 'geometry', 'address_components'] });
-            autocomplete.bindTo('bounds', map);
-            autocomplete.addListener('place_changed', () => {
-                const place = autocomplete.getPlace();
-                if (!place.geometry?.location) return;
-                map.setCenter(place.geometry.location);
-                map.setZoom(17);
-                setLocation(place.geometry.location);
-            });
-        }
-        if (hasSavedPin) {
-            const savedGeocodeRequest = ++geocodeRequest;
-            geocoder.geocode({ location: savedPoint, region: 'PH' }, (results, status) => {
-                if (savedGeocodeRequest !== geocodeRequest) return;
-                if (status !== 'OK') {
-                    if (status !== 'ZERO_RESULTS') console.warn('Could not verify saved event venue address:', status);
-                    if (venueStreet) venueStreet.value = '';
-                    return;
-                }
-                const address = window.OccaServeLocationAddress.parseResults(results);
-                if (!address) return;
-                const { province, city, barangay } = address;
-                detectedAddress = { province, city, barangay };
-                if (provinceSelect && !provinceSelect.value) provinceSelect.value = province;
-                if (citySelect && !citySelect.value) citySelect.value = city;
-                if (barangaySelect && !barangaySelect.value) barangaySelect.value = barangay;
-                if (venueStreet && !venueStreet.value.trim()) venueStreet.value = findStreet(results);
-                findNearbyLandmarks(savedPoint, address);
-                refreshSaveButton();
-                const formattedAddress = window.OccaServeLocationAddress.composeAddress({
-                    street: venueStreet?.value,
-                    landmark: venueLandmark?.value,
-                    barangay: barangaySelect?.value,
-                    municipality: citySelect?.value,
-                    province: provinceSelect?.value
-                });
-                if (formattedAddress && venueHidden && !venueHidden.value.trim()) {
-                    venueHidden.value = formattedAddress;
-                    if (venueSearch) venueSearch.value = formattedAddress;
-                    if (savedVenueText) savedVenueText.textContent = formattedAddress;
-                }
-            });
-        }
-    }
-    const mapWait = window.setInterval(() => {
-        if (window.googleMapsAuthorizationFailed) {
-            window.clearInterval(mapWait);
-            return;
-        }
-        if (!window.google?.maps) return;
-        window.clearInterval(mapWait);
-        try {
-            initVenueMap();
-        } catch (error) {
-            console.error('Could not initialize Google Maps venue picker:', error);
-            setVenuePinStatus('The map could not be initialized. Check the browser console for details.', 'error');
-        }
-    }, 100);
-    window.setTimeout(() => {
-        window.clearInterval(mapWait);
-        if (!window.google?.maps && venuePinStatus && !venuePinStatus.textContent) {
-            window.googleMapsLoadFailed?.();
-        }
-    }, 10000);
-
-    function loadExistingLocation() {
-        if (provinceSelect && provinceSelect.tagName === 'SELECT' && !provinceSelect.value) {
-            provinceSelect.value = "Laguna";
-        }
-        const existing = venueHidden ? venueHidden.value : '';
-        if (provinceSelect?.tagName === 'SELECT' && existing && existing.includes(',')) {
-            const parts = existing.split(',').map(s => s.trim());
-            if (parts.length >= 3) {
-                const brgy = parts[0];
-                const city = parts[1];
-                const prov = parts[2];
-
-                if (provinceSelect) {
-                    for (let i = 0; i < provinceSelect.options.length; i++) {
-                        if (provinceSelect.options[i].value === prov) {
-                            provinceSelect.selectedIndex = i;
-                            break;
+                        if (window.pricingMode === 'customizable' || data.out_of_coverage_action === 'manual') {
+                            window.currentDeliveryFee = 0;
+                            window.deliveryFeeStatus = "manual_quote";
+                        } else if (data.out_of_coverage_action === 'reject' && window.pricingMode === 'fixed') {
+                            window.currentDeliveryFee = 0;
+                            window.deliveryFeeStatus = "manual_quote";
+                        } else if (data.out_of_coverage_action === 'reject') {
+                            window.currentDeliveryFee = 0;
+                            window.deliveryFeeStatus = window.pricingMode === 'fixed' ? "manual_quote" : "error";
+                        } else {
+                            window.currentDeliveryFee = data.base_fee || 0;
+                            window.deliveryFeeStatus = "calculated";
                         }
                     }
+                } catch (e) {
+                    console.error("Failed to fetch delivery fee", e);
+                    window.currentDeliveryFee = 0;
+                    window.deliveryFeeStatus = window.pricingMode === 'customizable' ? "manual_quote" : "error";
                 }
+                updateCalculator();
+            } else {
+                window.currentDeliveryFee = 0;
+                window.deliveryFeeStatus = "pending";
+                updateCalculator();
+            }
+        };
+        window.updateHiddenVenue = updateHiddenVenue;
 
-                populateCities(prov, city, brgy);
+        function setVenueBarangayMode(mode, showUnavailableChoice = mode === '') {
+            if (venueBarangayStatus) venueBarangayStatus.value = mode;
+            if (barangayUnavailableCheckbox) barangayUnavailableCheckbox.checked = mode === 'unavailable';
+            if (barangayUnavailableChoice) barangayUnavailableChoice.style.display = showUnavailableChoice ? 'block' : 'none';
+            if (venueLandmark) {
+                venueLandmark.required = false;
+                venueLandmark.placeholder = 'Enter a venue name or nearby landmark (optional)';
+            }
+            if (venueLandmarkLabel) {
+                venueLandmarkLabel.innerHTML = 'Venue name / Nearby landmark <small>(Optional)</small>';
+            }
+        }
+
+        function venueAddressFieldsComplete() {
+            return Boolean(
+                provinceSelect?.value.trim()
+                && citySelect?.value.trim()
+                && barangaySelect?.value.trim()
+            );
+        }
+
+        function initVenueMap() {
+            const mapEl = document.getElementById('venue-map');
+            if (!mapEl || !window.google?.maps) return;
+            const geocoder = new google.maps.Geocoder();
+            const fallback = { lat: 14.2811, lng: 121.4150 };
+            const savedPoint = venueLat?.value !== '' && venueLng?.value !== '' && venueLat?.value != null && venueLng?.value != null
+                ? { lat: Number(venueLat.value), lng: Number(venueLng.value) } : fallback;
+            const map = new google.maps.Map(mapEl, { center: savedPoint, zoom: venueLat?.value ? 17 : 11, restriction: { latLngBounds: { north: 21.6, south: 4.2, east: 127.2, west: 116.7 }, strictBounds: true }, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, clickableIcons: false });
+            const placesService = google.maps.places ? new google.maps.places.PlacesService(map) : null;
+            const hasSavedPin = venueLat?.value !== '' && venueLng?.value !== '' && venueLat?.value != null && venueLng?.value != null &&
+                Number.isFinite(savedPoint.lat) && Number.isFinite(savedPoint.lng) && savedPoint.lat >= 4.2 && savedPoint.lat <= 21.6 && savedPoint.lng >= 116.7 && savedPoint.lng <= 127.2;
+            const marker = new google.maps.Marker({ map: hasSavedPin ? map : null, position: savedPoint, draggable: true });
+            let pendingLocation = hasSavedPin
+                ? { lat: savedPoint.lat.toFixed(7), lng: savedPoint.lng.toFixed(7) }
+                : null;
+            let geocodeRequest = 0;
+            let nearbySearchRequest = 0;
+            let landValidationRequest = 0;
+            let venueLandValid = false;
+            let detectedAddress = null;
+            let nearbyAddressFallback = false;
+            let addressDetectionMessage = '';
+            let addressDetectionState = 'neutral';
+            if (hasSavedPin && venueBarangayStatus && !venueBarangayStatus.value && barangaySelect?.value.trim()) {
+                venueBarangayStatus.value = 'identified';
+            }
+            setVenueBarangayMode(
+                venueBarangayStatus?.value || '',
+                venueBarangayStatus?.value === 'unavailable' || !barangaySelect?.value.trim()
+            );
+            const refreshSaveButton = () => {
+                if (saveVenueButton) {
+                    saveVenueButton.disabled = !(pendingLocation && venueLandValid && venueAddressFieldsComplete());
+                }
+            };
+            const clearSavedLocation = (clearSearch = false) => {
+                if (venueHidden) venueHidden.value = '';
+                if (venueLat) venueLat.value = '';
+                if (venueLng) venueLng.value = '';
+                if (savedVenuePanel) savedVenuePanel.style.display = 'none';
+                if (clearSearch && venueSearch) venueSearch.value = '';
+            };
+            const clearLandmarkSuggestions = () => {
+                ++nearbySearchRequest;
+                if (venueLandmarkSuggestions) venueLandmarkSuggestions.replaceChildren();
+                if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = '';
+            };
+            const findStreet = results => {
+                for (const result of results || []) {
+                    const components = result.address_components || [];
+                    const component = type => components.find(item => item.types.includes(type))?.long_name || '';
+                    const number = component('street_number');
+                    const route = component('route');
+                    if (number || route) return [number, route].filter(Boolean).join(' ');
+                }
+                return '';
+            };
+            const findMissingAddressComponents = address => [
+                ['province', address?.province],
+                ['municipality or city', address?.city],
+                ['barangay', address?.barangay]
+            ].filter(([, value]) => !value).map(([label]) => label);
+            const distanceBetweenPointsMeters = (first, second) => {
+                const radians = value => value * Math.PI / 180;
+                const latitudeDelta = radians(second.lat() - first.lat());
+                const longitudeDelta = radians(second.lng() - first.lng());
+                const firstLatitude = radians(first.lat());
+                const secondLatitude = radians(second.lat());
+                const haversine = Math.sin(latitudeDelta / 2) ** 2
+                    + Math.cos(firstLatitude) * Math.cos(secondLatitude) * Math.sin(longitudeDelta / 2) ** 2;
+                return 6371000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+            };
+            const findNearbyLandmarks = (point, address, onNearbyAddress = null) => {
+                const requestId = ++nearbySearchRequest;
+                if (venueLandmarkSuggestions) venueLandmarkSuggestions.replaceChildren();
+                if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Finding nearby venues…';
+                if (!placesService) {
+                    if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby venue suggestions are unavailable.';
+                    return;
+                }
+                placesService.nearbySearch({ location: point, radius: 500 }, (results, status) => {
+                    if (requestId !== nearbySearchRequest) return;
+                    if (status !== google.maps.places.PlacesServiceStatus.OK && status !== google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+                        console.warn('Could not load nearby event venue suggestions:', status);
+                        if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby venue suggestions are unavailable. You can enter a landmark manually.';
+                        return;
+                    }
+                    const administrativeTypes = new Set([
+                        'administrative_area_level_1',
+                        'administrative_area_level_2',
+                        'administrative_area_level_3',
+                        'administrative_area_level_4',
+                        'locality',
+                        'postal_town',
+                        'sublocality',
+                        'sublocality_level_1',
+                        'sublocality_level_2'
+                    ]);
+                    const administrativeNames = new Set([
+                        address?.province,
+                        address?.city,
+                        address?.barangay
+                    ].filter(Boolean).map(value => value.trim().toLocaleLowerCase()));
+                    const names = [...new Set((results || [])
+                        .filter(place => !(place.types || []).some(type => administrativeTypes.has(type)))
+                        .map(place => String(place.name || '').trim())
+                        .filter(name => name && !administrativeNames.has(name.toLocaleLowerCase())))]
+                        .slice(0, 8);
+                    names.forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        venueLandmarkSuggestions?.append(option);
+                    });
+                    if (venueLandmarkSuggestionStatus) {
+                        venueLandmarkSuggestionStatus.textContent = names.length
+                            ? 'Nearby suggestions are optional. Select a name only if it is your event venue or a landmark you confirm.'
+                            : 'No nearby venue names found. You can enter a landmark manually.';
+                    }
+                    if (!onNearbyAddress) return;
+                    const nearestPlace = (results || [])
+                        .filter(place => place.place_id && place.geometry?.location
+                            && !(place.types || []).some(type => administrativeTypes.has(type)))
+                        .map(place => ({ place, distance: distanceBetweenPointsMeters(point, place.geometry.location) }))
+                        .filter(candidate => candidate.distance <= 250)
+                        .sort((first, second) => first.distance - second.distance)[0]?.place;
+                    if (!nearestPlace) return;
+                    geocoder.geocode({ placeId: nearestPlace.place_id, region: 'PH' }, (placeResults, placeStatus) => {
+                        if (requestId !== nearbySearchRequest || placeStatus !== 'OK') return;
+                        const nearbyAddress = window.OccaServeLocationAddress.parseResults(placeResults);
+                        if (!nearbyAddress) return;
+                        onNearbyAddress({ address: nearbyAddress, results: placeResults, place: nearestPlace });
+                    });
+                });
+            };
+            const savePendingLocation = () => {
+                const province = provinceSelect?.value.trim() || '';
+                const city = citySelect?.value.trim() || '';
+                const barangay = barangaySelect?.value.trim() || '';
+                if (!pendingLocation || !venueLandValid || !venueAddressFieldsComplete()) {
+                    setVenuePinStatus('A valid land pin, province, city, and barangay are required.', 'invalid');
+                    return;
+                }
+                const addressMismatch = !nearbyAddressFallback && [
+                    [provinceSelect, detectedAddress?.province],
+                    [citySelect, detectedAddress?.city],
+                    [barangaySelect, detectedAddress?.barangay]
+                ].some(([input, detectedValue]) => detectedValue
+                    && input?.value.trim().toLocaleLowerCase() !== detectedValue.trim().toLocaleLowerCase());
+                if (addressMismatch) {
+                    setVenuePinStatus('The province, city, or barangay does not match the selected pin. Correct the address or move the pin to the right location.', 'invalid');
+                    return;
+                }
+                const landmarkValue = venueLandmark?.value.trim() || '';
+                const administrativeNames = [province, city, barangay]
+                    .map(value => value.toLocaleLowerCase());
+                if (landmarkValue && administrativeNames.includes(landmarkValue.toLocaleLowerCase())) {
+                    setVenuePinStatus('A landmark must be a venue or establishment name, not a province, city, or barangay.', 'invalid');
+                    return;
+                }
+                const address = window.OccaServeLocationAddress.composeAddress({
+                    street: venueStreet?.value,
+                    landmark: landmarkValue,
+                    barangay,
+                    municipality: city,
+                    province
+                });
+                venueLat.value = pendingLocation.lat;
+                venueLng.value = pendingLocation.lng;
+                venueHidden.value = address;
+                if (venueSearch) venueSearch.value = address;
+                if (venueBarangayStatus && !venueBarangayStatus.value) venueBarangayStatus.value = 'identified';
+                if (savedVenueText) savedVenueText.textContent = address;
+                if (savedVenuePanel) savedVenuePanel.style.display = 'block';
+                setVenuePinStatus('Venue location saved.', 'saved');
+                if (saveVenueButton) saveVenueButton.disabled = true;
+                document.getElementById('err-venue')?.classList.remove('show');
+                updateHiddenVenue();
+            };
+            if (venueHidden?.value && venueLat?.value && venueLng?.value && savedVenueText) {
+                savedVenueText.textContent = venueHidden.value;
+            }
+            if (hasSavedPin) {
+                setVenueAddressFieldsDisabled(true);
+                const landRequestId = ++landValidationRequest;
+                window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(savedPoint.lat, savedPoint.lng)
+                    .then(isValid => {
+                        if (landRequestId !== landValidationRequest) return;
+                        venueLandValid = isValid;
+                        setVenueAddressFieldsDisabled(!isValid);
+                        refreshSaveButton();
+                        if (!isValid) setVenuePinStatus('The saved pin is not on mapped land. Move it to a valid event location.', 'invalid');
+                    })
+                    .catch(error => {
+                        if (landRequestId !== landValidationRequest) return;
+                        console.error('Could not validate saved event land location:', error);
+                        setVenueAddressFieldsDisabled(true);
+                        setVenuePinStatus('The saved pin could not be validated. Move the pin to check the location again.', 'error');
+                    });
+            }
+            saveVenueButton?.addEventListener('click', savePendingLocation);
+            const onAddressFieldChange = () => {
+                if (!marker.getMap()) return;
+                ++geocodeRequest;
+                const position = marker.getPosition();
+                if (!position) return;
+                pendingLocation = {
+                    lat: position.lat().toFixed(7),
+                    lng: position.lng().toFixed(7)
+                };
+                clearSavedLocation();
+                refreshSaveButton();
+                setVenuePinStatus('Address details changed. Complete all required fields and save the pin again.', 'neutral');
+            };
+            [provinceSelect, citySelect, barangaySelect, venueLandmark].forEach(input => {
+                input?.addEventListener('input', onAddressFieldChange);
+                input?.addEventListener('change', onAddressFieldChange);
+            });
+            venueStreet?.addEventListener('input', onAddressFieldChange);
+            venueStreet?.addEventListener('change', onAddressFieldChange);
+            [provinceSelect, citySelect].forEach(input => input?.addEventListener('input', () => {
+                if (venueBarangayStatus?.value) {
+                    if (barangaySelect) barangaySelect.value = '';
+                    setVenueBarangayMode('', true);
+                    refreshSaveButton();
+                }
+            }));
+            barangaySelect?.addEventListener('input', () => {
+                const hasBarangay = Boolean(barangaySelect.value.trim());
+                setVenueBarangayMode(hasBarangay ? 'manual' : '', !hasBarangay);
+                refreshSaveButton();
+            });
+            barangayUnavailableCheckbox?.addEventListener('change', () => {
+                if (barangayUnavailableCheckbox.checked && barangaySelect) barangaySelect.value = '';
+                setVenueBarangayMode(barangayUnavailableCheckbox.checked ? 'unavailable' : '', true);
+                onAddressFieldChange();
+            });
+            venueSearch?.addEventListener('input', () => {
+                if (venueSearch.value.trim() === (venueHidden?.value || '').trim()) return;
+                // Ignore delayed reverse-geocode responses for the previous pin.
+                ++geocodeRequest;
+                clearLandmarkSuggestions();
+                pendingLocation = null;
+                marker.setMap(null);
+                clearSavedLocation();
+                if (saveVenueButton) saveVenueButton.disabled = true;
+                venueLandValid = false;
+                ++landValidationRequest;
+                setVenueAddressFieldsDisabled(false);
+                setVenuePinStatus('Choose a search result or pin the map, then save the location.', 'neutral');
+            });
+            const setLocation = point => {
+                const requestId = ++geocodeRequest;
+                const landRequestId = ++landValidationRequest;
+                pendingLocation = {
+                    lat: point.lat().toFixed(7),
+                    lng: point.lng().toFixed(7)
+                };
+                venueLandValid = false;
+                detectedAddress = null;
+                nearbyAddressFallback = false;
+                addressDetectionMessage = '';
+                addressDetectionState = 'neutral';
+                setVenueAddressFieldsDisabled(true);
+                clearSavedLocation(true);
+                clearLandmarkSuggestions();
+                if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby venue suggestions will appear after the address is detected.';
+                if (venueLandmark) venueLandmark.value = '';
+                if (venueStreet) venueStreet.value = '';
+                if (provinceSelect) provinceSelect.value = '';
+                if (citySelect) citySelect.value = '';
+                if (barangaySelect) barangaySelect.value = '';
+                setVenueBarangayMode('', false);
+                refreshSaveButton();
+                setVenuePinStatus('Checking the pin and updating the address…', 'checking');
+                marker.setPosition(point);
+                marker.setMap(map);
+                window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(point.lat(), point.lng())
+                    .then(isValid => {
+                        if (landRequestId !== landValidationRequest) return;
+                        venueLandValid = isValid;
+                        setVenueAddressFieldsDisabled(!isValid);
+                        if (!isValid) {
+                            setVenuePinStatus('This pin is in water or outside mapped land. Move it onto a valid event venue.', 'invalid');
+                        } else if (addressDetectionMessage) {
+                            setVenuePinStatus(addressDetectionMessage, addressDetectionState);
+                        } else if (venuePinStatus) {
+                            setVenuePinStatus('Valid land location. Complete the required venue details, then save the pin.', 'valid');
+                        }
+                        refreshSaveButton();
+                    })
+                    .catch(error => {
+                        if (landRequestId !== landValidationRequest) return;
+                        console.error('Could not validate event land location:', error);
+                        venueLandValid = false;
+                        setVenueAddressFieldsDisabled(true);
+                        setVenuePinStatus('The land-location check could not be completed. Please try again.', 'error');
+                        refreshSaveButton();
+                    });
+                geocoder.geocode({ location: point, region: 'PH' }, (results, status) => {
+                    if (requestId !== geocodeRequest) return;
+                    const address = status === 'OK'
+                        ? window.OccaServeLocationAddress.parseResults(results)
+                        : null;
+                    if (!address) {
+                        if (status !== 'ZERO_RESULTS') console.warn('Could not reverse-geocode event venue pin:', status);
+                        if (venueStreet) venueStreet.value = '';
+                        if (venueLandmark) venueLandmark.value = '';
+                        if (provinceSelect) provinceSelect.value = '';
+                        if (citySelect) citySelect.value = '';
+                        if (barangaySelect) barangaySelect.value = '';
+                        setVenueBarangayMode('', false);
+                        if (venueSearch) venueSearch.value = '';
+                        findNearbyLandmarks(point, null, ({ address: nearbyAddress, place }) => {
+                            if (requestId !== geocodeRequest) return;
+                            detectedAddress = nearbyAddress;
+                            nearbyAddressFallback = true;
+                            if (venueStreet) venueStreet.value = '';
+                            if (venueLandmark) venueLandmark.value = '';
+                            if (provinceSelect) provinceSelect.value = nearbyAddress.province || '';
+                            if (citySelect) citySelect.value = nearbyAddress.city || '';
+                            if (barangaySelect) barangaySelect.value = nearbyAddress.barangay || '';
+                            setVenueBarangayMode(nearbyAddress.barangay ? 'identified' : '', !nearbyAddress.barangay);
+                            if (venueSearch) venueSearch.value = '';
+                            addressDetectionMessage = `No exact address was returned for the pin. A nearby place (${place.name || 'landmark'}) was found; confirm the address details before saving.`;
+                            addressDetectionState = 'valid';
+                            if (venueLandmarkSuggestionStatus) venueLandmarkSuggestionStatus.textContent = 'Nearby address filled from a place within 250 m. Confirm that it matches your event venue.';
+                            refreshSaveButton();
+                            if (venueLandValid) setVenuePinStatus(addressDetectionMessage, addressDetectionState);
+                        });
+                        refreshSaveButton();
+                        detectedAddress = null;
+                        addressDetectionMessage = 'Google Maps could not identify this address. Enter the province, city, and barangay manually; street can also be entered manually.';
+                        addressDetectionState = 'invalid';
+                        if (venueLandValid) setVenuePinStatus(addressDetectionMessage, addressDetectionState);
+                        return;
+                    }
+                    const { province, city, barangay: brgy } = address;
+                    detectedAddress = { province, city, barangay: brgy };
+                    if (venueStreet) venueStreet.value = findStreet(results);
+                    if (provinceSelect) provinceSelect.value = province;
+                    if (citySelect) citySelect.value = city;
+                    if (barangaySelect) barangaySelect.value = brgy;
+                    if (venueLandmark) venueLandmark.value = '';
+                    setVenueBarangayMode(brgy ? 'identified' : '', !brgy);
+                    if (venueSearch) {
+                        venueSearch.value = results?.[0]?.formatted_address || '';
+                    }
+                    findNearbyLandmarks(point, address);
+                    refreshSaveButton();
+                    const missingComponents = findMissingAddressComponents(address);
+                    if (missingComponents.length) {
+                        addressDetectionMessage = `Google Maps could not detect the ${missingComponents.join(', ')}. Enter ${missingComponents.length === 1 ? 'it' : 'them'} manually to continue.`;
+                        addressDetectionState = 'invalid';
+                        if (venueLandValid) setVenuePinStatus(addressDetectionMessage, addressDetectionState);
+                        return;
+                    }
+                    const streetMessage = venueStreet?.value ? '' : ' Street not detected; enter it manually if needed.';
+                    addressDetectionMessage = `Address detected.${streetMessage} Save the pin to confirm the exact event location.`;
+                    addressDetectionState = 'valid';
+                    if (venueLandValid) {
+                        setVenuePinStatus(addressDetectionMessage, addressDetectionState);
+                    }
+                });
+            };
+            marker.addListener('dragend', () => setLocation(marker.getPosition()));
+            map.addListener('click', event => setLocation(event.latLng));
+            if (venueSearch && google.maps.places) {
+                const autocomplete = new google.maps.places.Autocomplete(venueSearch, { componentRestrictions: { country: 'ph' }, fields: ['name', 'formatted_address', 'geometry', 'address_components'] });
+                autocomplete.bindTo('bounds', map);
+                autocomplete.addListener('place_changed', () => {
+                    const place = autocomplete.getPlace();
+                    if (!place.geometry?.location) return;
+                    map.setCenter(place.geometry.location);
+                    map.setZoom(17);
+                    setLocation(place.geometry.location);
+                });
+            }
+            if (hasSavedPin) {
+                const savedGeocodeRequest = ++geocodeRequest;
+                geocoder.geocode({ location: savedPoint, region: 'PH' }, (results, status) => {
+                    if (savedGeocodeRequest !== geocodeRequest) return;
+                    if (status !== 'OK') {
+                        if (status !== 'ZERO_RESULTS') console.warn('Could not verify saved event venue address:', status);
+                        if (venueStreet) venueStreet.value = '';
+                        return;
+                    }
+                    const address = window.OccaServeLocationAddress.parseResults(results);
+                    if (!address) return;
+                    const { province, city, barangay } = address;
+                    detectedAddress = { province, city, barangay };
+                    if (provinceSelect && !provinceSelect.value) provinceSelect.value = province;
+                    if (citySelect && !citySelect.value) citySelect.value = city;
+                    if (barangaySelect && !barangaySelect.value) barangaySelect.value = barangay;
+                    if (venueStreet && !venueStreet.value.trim()) venueStreet.value = findStreet(results);
+                    findNearbyLandmarks(savedPoint, address);
+                    refreshSaveButton();
+                    const formattedAddress = window.OccaServeLocationAddress.composeAddress({
+                        street: venueStreet?.value,
+                        landmark: venueLandmark?.value,
+                        barangay: barangaySelect?.value,
+                        municipality: citySelect?.value,
+                        province: provinceSelect?.value
+                    });
+                    if (formattedAddress && venueHidden && !venueHidden.value.trim()) {
+                        venueHidden.value = formattedAddress;
+                        if (venueSearch) venueSearch.value = formattedAddress;
+                        if (savedVenueText) savedVenueText.textContent = formattedAddress;
+                    }
+                });
+            }
+        }
+        const mapWait = window.setInterval(() => {
+            if (window.googleMapsAuthorizationFailed) {
+                window.clearInterval(mapWait);
                 return;
             }
-        }
-        if (provinceSelect?.tagName === 'SELECT' && provinceSelect.value) {
-            populateCities(provinceSelect.value);
-        }
-    }
-    loadExistingLocation();
+            if (!window.google?.maps) return;
+            window.clearInterval(mapWait);
+            try {
+                initVenueMap();
+            } catch (error) {
+                console.error('Could not initialize Google Maps venue picker:', error);
+                setVenuePinStatus('The map could not be initialized. Check the browser console for details.', 'error');
+            }
+        }, 100);
+        window.setTimeout(() => {
+            window.clearInterval(mapWait);
+            if (!window.google?.maps && venuePinStatus && !venuePinStatus.textContent) {
+                window.googleMapsLoadFailed?.();
+            }
+        }, 10000);
 
-    // --- 6. Form Validation & Real-time Feedback ---
-    function validateField(input, errorId, validationFn, customErrorText = null) {
-        if (!input) return true;
-        const errSpan = document.getElementById(errorId);
-        const isValid = validationFn(input.value);
-        if (isValid) {
-            input.classList.remove('error');
-            input.classList.add('is-valid');
-            if (errSpan) {
-                errSpan.classList.remove('show');
+        function loadExistingLocation() {
+            if (provinceSelect && provinceSelect.tagName === 'SELECT' && !provinceSelect.value) {
+                provinceSelect.value = "Laguna";
             }
-        } else {
-            input.classList.add('error');
-            input.classList.remove('is-valid');
-            if (errSpan) {
-                if (customErrorText) errSpan.innerText = customErrorText;
-                errSpan.classList.add('show');
+            const existing = venueHidden ? venueHidden.value : '';
+            if (provinceSelect?.tagName === 'SELECT' && existing && existing.includes(',')) {
+                const parts = existing.split(',').map(s => s.trim());
+                if (parts.length >= 3) {
+                    const brgy = parts[0];
+                    const city = parts[1];
+                    const prov = parts[2];
+
+                    if (provinceSelect) {
+                        for (let i = 0; i < provinceSelect.options.length; i++) {
+                            if (provinceSelect.options[i].value === prov) {
+                                provinceSelect.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+
+                    populateCities(prov, city, brgy);
+                    return;
+                }
+            }
+            if (provinceSelect?.tagName === 'SELECT' && provinceSelect.value) {
+                populateCities(provinceSelect.value);
             }
         }
-        return isValid;
-    }
+        loadExistingLocation();
 
-    const eventName = document.getElementById('event_name');
-    function validateEventName() {
-        if (!eventName) return true;
-        const val = (eventName.value || '').trim();
-        const errSpan = document.getElementById('err-name');
-        if (val.length < 3) {
-            eventName.classList.add('error');
-            eventName.classList.remove('is-valid');
-            if (errSpan) {
-                errSpan.innerText = val.length === 0
-                    ? 'Please enter a name for your event.'
-                    : 'Event name must be at least 3 characters.';
-                errSpan.classList.add('show');
+        // --- 6. Form Validation & Real-time Feedback ---
+        function validateField(input, errorId, validationFn, customErrorText = null) {
+            if (!input) return true;
+            const errSpan = document.getElementById(errorId);
+            const isValid = validationFn(input.value);
+            if (isValid) {
+                input.classList.remove('error');
+                input.classList.add('is-valid');
+                if (errSpan) {
+                    errSpan.classList.remove('show');
+                }
+            } else {
+                input.classList.add('error');
+                input.classList.remove('is-valid');
+                if (errSpan) {
+                    if (customErrorText) errSpan.innerText = customErrorText;
+                    errSpan.classList.add('show');
+                }
             }
-            return false;
-        } else if (Array.from(val).length > 100) {
-            eventName.classList.add('error');
-            eventName.classList.remove('is-valid');
-            if (errSpan) {
-                errSpan.innerText = 'Event name must be 100 characters or fewer.';
-                errSpan.classList.add('show');
+            return isValid;
+        }
+
+        const eventName = document.getElementById('event_name');
+        function validateEventName() {
+            if (!eventName) return true;
+            const val = (eventName.value || '').trim();
+            const errSpan = document.getElementById('err-name');
+            if (val.length < 3) {
+                eventName.classList.add('error');
+                eventName.classList.remove('is-valid');
+                if (errSpan) {
+                    errSpan.innerText = val.length === 0
+                        ? 'Please enter a name for your event.'
+                        : 'Event name must be at least 3 characters.';
+                    errSpan.classList.add('show');
+                }
+                return false;
+            } else if (Array.from(val).length > 100) {
+                eventName.classList.add('error');
+                eventName.classList.remove('is-valid');
+                if (errSpan) {
+                    errSpan.innerText = 'Event name must be 100 characters or fewer.';
+                    errSpan.classList.add('show');
+                }
+                return false;
+            } else {
+                eventName.classList.remove('error');
+                eventName.classList.add('is-valid');
+                if (errSpan) errSpan.classList.remove('show');
+                return true;
             }
-            return false;
-        } else {
-            eventName.classList.remove('error');
-            eventName.classList.add('is-valid');
+        }
+
+        if (eventName) {
+            eventName.addEventListener('input', validateEventName);
+            eventName.addEventListener('keyup', validateEventName);
+            eventName.addEventListener('change', validateEventName);
+            eventName.addEventListener('blur', validateEventName);
+        }
+
+        if (eventTypeSelect) {
+            eventTypeSelect.addEventListener('change', () => {
+                validateField(eventTypeSelect, 'err-type', v => v !== '');
+                if (eventTypeSelect.value === 'Other') {
+                    validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
+                }
+            });
+            eventTypeSelect.addEventListener('blur', () => validateField(eventTypeSelect, 'err-type', v => v !== ''));
+        }
+        if (otherEventInput) {
+            otherEventInput.addEventListener('input', () => {
+                if (eventTypeSelect.value === 'Other') validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
+            });
+            otherEventInput.addEventListener('blur', () => {
+                if (eventTypeSelect.value === 'Other') validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
+            });
+        }
+
+        const validateGuestCount = () => {
+            if (!guestDisplay) return true;
+            const raw = (guestDisplay.value || '').replace(/,/g, '').trim();
+            const g = parseInt(raw, 10);
+            const errSpan = document.getElementById('err-guests');
+
+            if (!/^\d{1,6}$/.test(raw) || !Number.isInteger(g) || g < 1 || g > 999999) {
+                guestDisplay.classList.add('error');
+                guestDisplay.classList.remove('is-valid');
+                if (errSpan) {
+                    errSpan.innerText = 'Enter a guest count between 1 and 999999.';
+                    errSpan.classList.add('show');
+                }
+                return false;
+            }
+
+            if (g < window.minGuests) {
+                guestDisplay.classList.add('error');
+                guestDisplay.classList.remove('is-valid');
+                if (errSpan) {
+                    errSpan.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
+                    errSpan.classList.add('show');
+                }
+                return false;
+            }
+
+            guestDisplay.classList.remove('error');
+            guestDisplay.classList.add('is-valid');
             if (errSpan) errSpan.classList.remove('show');
             return true;
-        }
-    }
-
-    if (eventName) {
-        eventName.addEventListener('input', validateEventName);
-        eventName.addEventListener('keyup', validateEventName);
-        eventName.addEventListener('change', validateEventName);
-        eventName.addEventListener('blur', validateEventName);
-    }
-
-    if (eventTypeSelect) {
-        eventTypeSelect.addEventListener('change', () => {
-            validateField(eventTypeSelect, 'err-type', v => v !== '');
-            if (eventTypeSelect.value === 'Other') {
-                validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
-            }
-        });
-        eventTypeSelect.addEventListener('blur', () => validateField(eventTypeSelect, 'err-type', v => v !== ''));
-    }
-    if (otherEventInput) {
-        otherEventInput.addEventListener('input', () => {
-            if (eventTypeSelect.value === 'Other') validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
-        });
-        otherEventInput.addEventListener('blur', () => {
-            if (eventTypeSelect.value === 'Other') validateField(otherEventInput, 'err-other-type', v => v.trim().length > 0);
-        });
-    }
-
-    const validateGuestCount = () => {
-        if (!guestDisplay) return true;
-        const raw = (guestDisplay.value || '').replace(/,/g, '').trim();
-        const g = parseInt(raw, 10);
-        const errSpan = document.getElementById('err-guests');
-
-        if (!/^\d{1,6}$/.test(raw) || !Number.isInteger(g) || g < 1 || g > 999999) {
-            guestDisplay.classList.add('error');
-            guestDisplay.classList.remove('is-valid');
-            if (errSpan) {
-                errSpan.innerText = 'Enter a guest count between 1 and 999999.';
-                errSpan.classList.add('show');
-            }
-            return false;
+        };
+        if (guestDisplay) {
+            guestDisplay.addEventListener('input', () => {
+                validateGuestCount();
+            });
+            guestDisplay.addEventListener('keyup', validateGuestCount);
+            guestDisplay.addEventListener('change', validateGuestCount);
+            guestDisplay.addEventListener('blur', () => {
+                const count = parseInt((guestDisplay.value || '').replace(/,/g, ''), 10);
+                if (!Number.isInteger(count) || count < window.minGuests) {
+                    guestDisplay.value = Number(window.minGuests || 1).toLocaleString();
+                    if (guestInput) guestInput.value = String(window.minGuests || 1);
+                }
+                validateGuestCount();
+                if (typeof window.updateCalculator === 'function') window.updateCalculator();
+            });
         }
 
-        if (g < window.minGuests) {
-            guestDisplay.classList.add('error');
-            guestDisplay.classList.remove('is-valid');
-            if (errSpan) {
-                errSpan.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
-                errSpan.classList.add('show');
-            }
-            return false;
-        }
+        // --- Real-time Date Validation ---
+        const validateEventDate = () => {
+            if (!dateInput) return true;
+            const errEl = document.getElementById('err-date');
+            const v = (dateInput.value || '').trim();
 
-        guestDisplay.classList.remove('error');
-        guestDisplay.classList.add('is-valid');
-        if (errSpan) errSpan.classList.remove('show');
-        return true;
-    };
-    if (guestDisplay) {
-        guestDisplay.addEventListener('input', () => {
-            validateGuestCount();
-        });
-        guestDisplay.addEventListener('keyup', validateGuestCount);
-        guestDisplay.addEventListener('change', validateGuestCount);
-        guestDisplay.addEventListener('blur', () => {
-            const count = parseInt((guestDisplay.value || '').replace(/,/g, ''), 10);
-            if (!Number.isInteger(count) || count < window.minGuests) {
-                guestDisplay.value = Number(window.minGuests || 1).toLocaleString();
-                if (guestInput) guestInput.value = String(window.minGuests || 1);
-            }
-            validateGuestCount();
-            if (typeof window.updateCalculator === 'function') window.updateCalculator();
-        });
-    }
-
-    // --- Real-time Date Validation ---
-    const validateEventDate = () => {
-        if (!dateInput) return true;
-        const errEl = document.getElementById('err-date');
-        const v = (dateInput.value || '').trim();
-
-        if (!v) {
-            dateInput.classList.add('error');
-            dateInput.classList.remove('is-valid');
-            if (errEl) {
-                errEl.innerText = 'Please select an event date.';
-                errEl.classList.add('show');
-            }
-            return false;
-        }
-
-        const parts = v.split('-');
-        if (parts.length !== 3) {
-            dateInput.classList.add('error');
-            dateInput.classList.remove('is-valid');
-            if (errEl) {
-                errEl.innerText = 'Please enter a valid date.';
-                errEl.classList.add('show');
-            }
-            return false;
-        }
-
-        const selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        selectedDate.setHours(0, 0, 0, 0);
-
-        const minDate = getMinCalendarDate();
-        minDate.setHours(0, 0, 0, 0);
-
-        const maxDate = new Date(maxCalendarDate);
-        maxDate.setHours(23, 59, 59, 999);
-
-        if (selectedDate < minDate) {
-            dateInput.classList.add('error');
-            dateInput.classList.remove('is-valid');
-            const daysWord = effectiveLeadTime === 1 ? '1 day' : `${effectiveLeadTime} days`;
-            if (errEl) {
-                errEl.innerText = `This caterer requires at least ${daysWord} advance notice. Earliest available date is ${minDateString}.`;
-                errEl.classList.add('show');
-            }
-            return false;
-        }
-
-        if (selectedDate > maxDate) {
-            dateInput.classList.add('error');
-            dateInput.classList.remove('is-valid');
-            const advText = maxAdvUnit === 'years' ? (maxAdvVal === 1 ? '1 year' : `${maxAdvVal} years`) : (maxAdvUnit === 'days' ? `${maxAdvVal} days` : (maxAdvVal === 1 ? '1 month' : `${maxAdvVal} months`));
-            if (errEl) {
-                errEl.innerText = `Bookings can only be made up to ${advText} in advance.`;
-                errEl.classList.add('show');
-            }
-            return false;
-        }
-
-        // Operating days check
-        const opDays = evAvail.operating_days || (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days);
-        if (opDays && opDays.length > 0 && opDays.length < 7) {
-            const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const selectedDayName = daysOfWeek[selectedDate.getDay()];
-            if (!opDays.includes(selectedDayName)) {
+            if (!v) {
                 dateInput.classList.add('error');
                 dateInput.classList.remove('is-valid');
                 if (errEl) {
-                    errEl.innerText = `Caterer does not accept bookings on ${selectedDayName}s.`;
+                    errEl.innerText = 'Please select an event date.';
                     errEl.classList.add('show');
                 }
                 return false;
             }
-        }
 
-        dateInput.classList.remove('error');
-        dateInput.classList.add('is-valid');
-        if (errEl) errEl.classList.remove('show');
-        return true;
-    };
-
-    if (dateInput) {
-        dateInput.addEventListener('input', () => {
-            validateEventDate();
-            if (typeof window.checkAvailability === 'function') window.checkAvailability();
-        });
-        dateInput.addEventListener('change', () => {
-            validateEventDate();
-            if (typeof window.checkAvailability === 'function') window.checkAvailability();
-        });
-        dateInput.addEventListener('blur', validateEventDate);
-    }
-
-    // --- Time Parsing & Helpers ---
-    const parseTimeStr = (t) => {
-        if (!t || typeof t !== 'string' || !t.includes(':')) return null;
-        const parts = t.split(':').map(Number);
-        if (isNaN(parts[0]) || isNaN(parts[1])) return null;
-        return parts[0] * 60 + parts[1];
-    };
-    const formatTimeStr = (mins) => {
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-    };
-    const formatAmPmStr = (mins) => {
-        const h = Math.floor(mins / 60);
-        const m = mins % 60;
-        const ampm = h >= 12 ? 'PM' : 'AM';
-        const h12 = h % 12 || 12;
-        return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
-    };
-
-    let eventStartMins = parseTimeStr(eventEarliest);
-    let eventEndMins = parseTimeStr(eventLatest);
-    if (eventStartMins === null) eventStartMins = 8 * 60; // 08:00 AM
-    if (eventEndMins === null) eventEndMins = 20 * 60; // 08:00 PM
-    if (eventEndMins <= eventStartMins) eventEndMins = Math.min(eventStartMins + 12 * 60, 23 * 60 + 30);
-
-    if (timeInput && timeInput.tagName === 'SELECT') {
-        const initialTime = timeInput.dataset.initial || '';
-        timeInput.replaceChildren(new Option('Select ingress time', '', true, !initialTime));
-        timeInput.options[0].disabled = true;
-        for (let minutes = eventStartMins; minutes < eventEndMins; minutes += 30) {
-            const timeValue = formatTimeStr(minutes);
-            timeInput.add(new Option(formatAmPmStr(minutes), timeValue));
-        }
-        if (initialTime && Array.from(timeInput.options).some(option => option.value === initialTime)) {
-            timeInput.value = initialTime;
-        }
-    }
-
-    // --- Real-time Time Validation ---
-    const validateEventTime = () => {
-        if (!timeInput) return true;
-        const triggerBtn = document.getElementById('time-trigger-btn') || timeInput;
-        const errEl = document.getElementById('err-time');
-        const v = (timeInput.value || '').trim();
-
-        if (!v) {
-            if (triggerBtn) {
-                triggerBtn.classList.add('error');
-                triggerBtn.classList.remove('is-valid');
-            }
-            if (errEl) {
-                errEl.innerText = 'Please select a start time for your event.';
-                errEl.classList.add('show');
-            }
-            return false;
-        }
-
-        const mins = parseTimeStr(v);
-        if (mins === null) {
-            if (triggerBtn) {
-                triggerBtn.classList.add('error');
-                triggerBtn.classList.remove('is-valid');
-            }
-            if (errEl) {
-                errEl.innerText = 'Please choose a valid time.';
-                errEl.classList.add('show');
-            }
-            return false;
-        }
-
-        if (mins < eventStartMins || mins >= eventEndMins) {
-            const startFormatted = formatAmPmStr(eventStartMins);
-            const endFormatted = formatAmPmStr(eventEndMins);
-            if (triggerBtn) {
-                triggerBtn.classList.add('error');
-                triggerBtn.classList.remove('is-valid');
-            }
-            if (errEl) {
-                errEl.innerText = mins >= eventEndMins
-                    ? `Ingress must be before ${endFormatted}. Choose an earlier time.`
-                    : `The selected event time is outside caterer's available hours (${startFormatted} - ${endFormatted}).`;
-                errEl.classList.add('show');
-            }
-            return false;
-        }
-
-        if (triggerBtn) {
-            triggerBtn.classList.remove('error');
-            triggerBtn.classList.add('is-valid');
-        }
-        if (errEl) errEl.classList.remove('show');
-        return true;
-    };
-
-    if (timeInput) {
-        const initialVal = timeInput.getAttribute('data-initial') || timeInput.value || '';
-        const triggerBtn = document.getElementById('time-trigger-btn');
-        const triggerText = document.getElementById('time-trigger-text');
-        const triggerIcon = document.getElementById('time-trigger-icon');
-        const dropdownMenu = document.getElementById('time-dropdown-menu');
-        const chipsGrid = document.getElementById('time-chips-grid');
-
-        if (triggerBtn && dropdownMenu && chipsGrid) {
-            if (initialVal) {
-                timeInput.value = initialVal;
-                const mInitial = parseTimeStr(initialVal);
-                if (triggerText && mInitial !== null) {
-                    triggerText.innerText = formatAmPmStr(mInitial);
-                    triggerText.style.color = '#0f172a';
+            const parts = v.split('-');
+            if (parts.length !== 3) {
+                dateInput.classList.add('error');
+                dateInput.classList.remove('is-valid');
+                if (errEl) {
+                    errEl.innerText = 'Please enter a valid date.';
+                    errEl.classList.add('show');
                 }
+                return false;
             }
 
-            // Toggle Dropdown
-            triggerBtn.onclick = (e) => {
-                e.stopPropagation();
-                const isVisible = dropdownMenu.style.display === 'block';
-                dropdownMenu.style.display = isVisible ? 'none' : 'block';
-                if (triggerIcon) triggerIcon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
-            };
+            const selectedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            selectedDate.setHours(0, 0, 0, 0);
 
-            // Prevent dropdown clicks from bubbling
-            dropdownMenu.onclick = (e) => {
-                e.stopPropagation();
-            };
+            const minDate = getMinCalendarDate();
+            minDate.setHours(0, 0, 0, 0);
 
-            // Close on outside click and validate
-            document.addEventListener('click', (e) => {
-                const customSelect = document.getElementById('custom-time-select');
-                if (customSelect && !customSelect.contains(e.target)) {
-                    if (dropdownMenu.style.display === 'block') {
-                        dropdownMenu.style.display = 'none';
-                        if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
-                        validateEventTime();
+            const maxDate = new Date(maxCalendarDate);
+            maxDate.setHours(23, 59, 59, 999);
+
+            if (selectedDate < minDate) {
+                dateInput.classList.add('error');
+                dateInput.classList.remove('is-valid');
+                const daysWord = effectiveLeadTime === 1 ? '1 day' : `${effectiveLeadTime} days`;
+                if (errEl) {
+                    errEl.innerText = `This caterer requires at least ${daysWord} advance notice. Earliest available date is ${minDateString}.`;
+                    errEl.classList.add('show');
+                }
+                return false;
+            }
+
+            if (selectedDate > maxDate) {
+                dateInput.classList.add('error');
+                dateInput.classList.remove('is-valid');
+                const advText = maxAdvUnit === 'years' ? (maxAdvVal === 1 ? '1 year' : `${maxAdvVal} years`) : (maxAdvUnit === 'days' ? `${maxAdvVal} days` : (maxAdvVal === 1 ? '1 month' : `${maxAdvVal} months`));
+                if (errEl) {
+                    errEl.innerText = `Bookings can only be made up to ${advText} in advance.`;
+                    errEl.classList.add('show');
+                }
+                return false;
+            }
+
+            const dateInputMax = dateInput.getAttribute('max');
+            if (dateInputMax && v > dateInputMax) {
+                dateInput.classList.add('error');
+                dateInput.classList.remove('is-valid');
+                if (errEl) {
+                    errEl.innerText = `Keep event dates in order: Day 1 must be on or before ${dateInputMax}.`;
+                    errEl.classList.add('show');
+                }
+                return false;
+            }
+
+            // Operating days check
+            const opDays = evAvail.operating_days || (window.catererRules && window.catererRules.business_hours && window.catererRules.business_hours.operating_days);
+            if (opDays && opDays.length > 0 && opDays.length < 7) {
+                const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                const selectedDayName = daysOfWeek[selectedDate.getDay()];
+                if (!opDays.includes(selectedDayName)) {
+                    dateInput.classList.add('error');
+                    dateInput.classList.remove('is-valid');
+                    if (errEl) {
+                        errEl.innerText = `Caterer does not accept bookings on ${selectedDayName}s.`;
+                        errEl.classList.add('show');
                     }
+                    return false;
                 }
+            }
+
+            dateInput.classList.remove('error');
+            dateInput.classList.add('is-valid');
+            if (errEl) errEl.classList.remove('show');
+            return true;
+        };
+
+        if (dateInput) {
+            dateInput.addEventListener('click', () => {
+                try {
+                    if (typeof dateInput.showPicker === 'function') {
+                        dateInput.showPicker();
+                    }
+                } catch (_) { }
             });
+            dateInput.addEventListener('input', () => {
+                validateEventDate();
+                if (typeof window.checkAvailability === 'function') window.checkAvailability();
+            });
+            dateInput.addEventListener('change', () => {
+                validateEventDate();
+                if (typeof window.checkAvailability === 'function') window.checkAvailability();
+            });
+            dateInput.addEventListener('blur', validateEventDate);
+        }
 
-            // Populate time chips for event hours
-            chipsGrid.innerHTML = '';
-            for (let m = eventStartMins; m < eventEndMins; m += 30) {
-                const valStr = formatTimeStr(m);
-                const labelStr = formatAmPmStr(m);
+        // --- Time Parsing & Helpers ---
+        const parseTimeStr = (t) => {
+            if (!t || typeof t !== 'string' || !t.includes(':')) return null;
+            const parts = t.split(':').map(Number);
+            if (isNaN(parts[0]) || isNaN(parts[1])) return null;
+            return parts[0] * 60 + parts[1];
+        };
+        const formatTimeStr = (mins) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        };
+        const formatAmPmStr = (mins) => {
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+        };
 
-                const chip = document.createElement('button');
-                chip.type = 'button';
-                chip.className = 'time-chip';
-                chip.innerText = labelStr;
-                chip.style.padding = '0.6rem 0.2rem';
-                chip.style.border = '1px solid #cbd5e1';
-                chip.style.borderRadius = '0.375rem';
-                chip.style.background = (valStr === initialVal) ? 'var(--wiz-primary, #ff7b54)' : '#f8fafc';
-                chip.style.color = (valStr === initialVal) ? '#fff' : '#475569';
-                chip.style.borderColor = (valStr === initialVal) ? 'var(--wiz-primary, #ff7b54)' : '#cbd5e1';
-                chip.style.cursor = 'pointer';
-                chip.style.fontSize = '0.8rem';
-                chip.style.fontWeight = '600';
-                chip.style.textAlign = 'center';
-                chip.style.transition = 'all 0.15s ease';
+        let eventStartMins = parseTimeStr(eventEarliest);
+        let eventEndMins = parseTimeStr(eventLatest);
+        if (eventStartMins === null) eventStartMins = 8 * 60; // 08:00 AM
+        if (eventEndMins === null) eventEndMins = 20 * 60; // 08:00 PM
+        if (eventEndMins <= eventStartMins) eventEndMins = Math.min(eventStartMins + 12 * 60, 23 * 60 + 30);
 
-                chip.onmouseenter = function () {
-                    if (timeInput.value !== valStr) {
-                        this.style.background = '#e2e8f0';
-                    }
-                };
-                chip.onmouseleave = function () {
-                    if (timeInput.value !== valStr) {
-                        this.style.background = '#f8fafc';
-                    }
-                };
+        if (timeInput && timeInput.tagName === 'SELECT') {
+            const initialTime = timeInput.dataset.initial || '';
+            timeInput.replaceChildren(new Option('Select ingress time', '', true, !initialTime));
+            timeInput.options[0].disabled = true;
+            for (let minutes = eventStartMins; minutes < eventEndMins; minutes += 30) {
+                const timeValue = formatTimeStr(minutes);
+                timeInput.add(new Option(formatAmPmStr(minutes), timeValue));
+            }
+            if (initialTime && Array.from(timeInput.options).some(option => option.value === initialTime)) {
+                timeInput.value = initialTime;
+            }
+        }
 
-                chip.onclick = function (e) {
-                    e.stopPropagation();
+        // --- Real-time Time Validation ---
+        const validateEventTime = () => {
+            if (!timeInput) return true;
+            const triggerBtn = document.getElementById('time-trigger-btn') || timeInput;
+            const errEl = document.getElementById('err-time');
+            const v = (timeInput.value || '').trim();
 
-                    Array.from(chipsGrid.children).forEach(c => {
-                        c.style.background = '#f8fafc';
-                        c.style.color = '#475569';
-                        c.style.borderColor = '#cbd5e1';
-                    });
+            if (!v) {
+                if (triggerBtn) {
+                    triggerBtn.classList.add('error');
+                    triggerBtn.classList.remove('is-valid');
+                }
+                if (errEl) {
+                    errEl.innerText = 'Please select a start time for your event.';
+                    errEl.classList.add('show');
+                }
+                return false;
+            }
 
-                    this.style.background = 'var(--wiz-primary, #ff7b54)';
-                    this.style.color = '#fff';
-                    this.style.borderColor = 'var(--wiz-primary, #ff7b54)';
+            const mins = parseTimeStr(v);
+            if (mins === null) {
+                if (triggerBtn) {
+                    triggerBtn.classList.add('error');
+                    triggerBtn.classList.remove('is-valid');
+                }
+                if (errEl) {
+                    errEl.innerText = 'Please choose a valid time.';
+                    errEl.classList.add('show');
+                }
+                return false;
+            }
 
-                    timeInput.value = valStr;
-                    updateEgressFromDuration();
-                    if (triggerText) {
-                        triggerText.innerText = labelStr;
+            if (mins < eventStartMins || mins >= eventEndMins) {
+                const startFormatted = formatAmPmStr(eventStartMins);
+                const endFormatted = formatAmPmStr(eventEndMins);
+                if (triggerBtn) {
+                    triggerBtn.classList.add('error');
+                    triggerBtn.classList.remove('is-valid');
+                }
+                if (errEl) {
+                    errEl.innerText = mins >= eventEndMins
+                        ? `Ingress must be before ${endFormatted}. Choose an earlier time.`
+                        : `The selected event time is outside caterer's available hours (${startFormatted} - ${endFormatted}).`;
+                    errEl.classList.add('show');
+                }
+                return false;
+            }
+
+            if (triggerBtn) {
+                triggerBtn.classList.remove('error');
+                triggerBtn.classList.add('is-valid');
+            }
+            if (errEl) errEl.classList.remove('show');
+            return true;
+        };
+
+        if (timeInput) {
+            const initialVal = timeInput.getAttribute('data-initial') || timeInput.value || '';
+            const triggerBtn = document.getElementById('time-trigger-btn');
+            const triggerText = document.getElementById('time-trigger-text');
+            const triggerIcon = document.getElementById('time-trigger-icon');
+            const dropdownMenu = document.getElementById('time-dropdown-menu');
+            const chipsGrid = document.getElementById('time-chips-grid');
+
+            if (triggerBtn && dropdownMenu && chipsGrid) {
+                if (initialVal) {
+                    timeInput.value = initialVal;
+                    const mInitial = parseTimeStr(initialVal);
+                    if (triggerText && mInitial !== null) {
+                        triggerText.innerText = formatAmPmStr(mInitial);
                         triggerText.style.color = '#0f172a';
                     }
+                }
 
-                    dropdownMenu.style.display = 'none';
-                    if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
-
-                    validateEventTime();
-                    if (typeof window.checkAvailability === 'function') {
-                        window.checkAvailability();
-                    }
+                // Toggle Dropdown
+                triggerBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const isVisible = dropdownMenu.style.display === 'block';
+                    dropdownMenu.style.display = isVisible ? 'none' : 'block';
+                    if (triggerIcon) triggerIcon.className = isVisible ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
                 };
 
-                chipsGrid.appendChild(chip);
-            }
-        }
-
-        timeInput.addEventListener('change', () => {
-            updateEgressFromDuration();
-            validateEventTime();
-            if (typeof window.checkAvailability === 'function') window.checkAvailability();
-        });
-        timeInput.addEventListener('input', updateEgressFromDuration);
-        timeInput.addEventListener('blur', validateEventTime);
-    }
-    updateEgressFromDuration();
-
-    // --- Real-time Location Validation ---
-    const validateProvince = () => {
-        if (!provinceSelect) return true;
-        const v = (provinceSelect.value || '').trim();
-        const isValid = !!v && !v.startsWith('--');
-        const errEl = document.getElementById('err-province');
-        if (isValid) {
-            provinceSelect.classList.remove('error');
-            provinceSelect.classList.add('is-valid');
-            if (errEl) errEl.classList.remove('show');
-        } else {
-            provinceSelect.classList.add('error');
-            provinceSelect.classList.remove('is-valid');
-            if (errEl) {
-                errEl.innerText = 'Please select the province of your event venue.';
-                errEl.classList.add('show');
-            }
-        }
-        return isValid;
-    };
-
-    const validateCity = () => {
-        if (!citySelect) return true;
-        const v = (citySelect.value || '').trim();
-        const isValid = !!v && !v.startsWith('--');
-        const errEl = document.getElementById('err-city');
-        if (isValid) {
-            citySelect.classList.remove('error');
-            citySelect.classList.add('is-valid');
-            if (errEl) errEl.classList.remove('show');
-        } else {
-            citySelect.classList.add('error');
-            citySelect.classList.remove('is-valid');
-            if (errEl) {
-                errEl.innerText = 'Please select the city or municipality of your event venue.';
-                errEl.classList.add('show');
-            }
-        }
-        return isValid;
-    };
-
-    const validateBarangay = () => {
-        if (!barangaySelect) return true;
-        const v = (barangaySelect.value || '').trim();
-        const barangayUnavailable = venueBarangayStatus?.value === 'unavailable' &&
-            !v && Boolean(venueLandmark?.value.trim());
-        const isValid = (Boolean(v) && !v.startsWith('--')) || barangayUnavailable;
-        const errEl = document.getElementById('err-barangay');
-        if (isValid) {
-            barangaySelect.classList.remove('error');
-            barangaySelect.classList.add('is-valid');
-            if (errEl) errEl.classList.remove('show');
-        } else {
-            barangaySelect.classList.add('error');
-            barangaySelect.classList.remove('is-valid');
-            if (errEl) {
-                errEl.innerText = 'Please select the barangay of your event venue.';
-                errEl.classList.add('show');
-            }
-        }
-        return isValid;
-    };
-
-    if (provinceSelect) {
-        provinceSelect.addEventListener('change', () => {
-            if (provinceSelect.tagName === 'SELECT') populateCities(provinceSelect.value);
-            updateHiddenVenue();
-            validateProvince();
-        });
-        provinceSelect.addEventListener('blur', validateProvince);
-    }
-    if (citySelect) {
-        citySelect.addEventListener('change', () => {
-            if (citySelect.tagName === 'SELECT') populateBarangays(citySelect.value);
-            updateHiddenVenue();
-            validateCity();
-        });
-        citySelect.addEventListener('blur', validateCity);
-    }
-    if (barangaySelect) {
-        barangaySelect.addEventListener('change', () => {
-            updateHiddenVenue();
-            validateBarangay();
-        });
-        barangaySelect.addEventListener('blur', validateBarangay);
-    }
-
-    window.setInterval(() => {
-        if (document.hidden) return;
-        const province = provinceSelect ? provinceSelect.value : '';
-        const city = citySelect ? citySelect.value : '';
-        if (province && city) updateHiddenVenue();
-    }, 30000);
-
-    if (form) {
-        form.addEventListener('submit', function (e) {
-            try {
-                const latitude = venueLat?.value || '';
-                const longitude = venueLng?.value || '';
-                const coordinateKey = `${latitude},${longitude}`;
-                if (latitude && longitude && coordinateKey !== validatedVenueCoordinateKey) {
-                    e.preventDefault();
-                    window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(latitude, longitude)
-                        .then(isValid => {
-                            if (!isValid) {
-                                validatedVenueCoordinateKey = '';
-                                setVenuePinStatus('This pin is not on valid land. Choose another venue location.', 'invalid');
-                                document.getElementById('err-venue')?.classList.add('show');
-                                return;
-                            }
-                            validatedVenueCoordinateKey = coordinateKey;
-                            form.requestSubmit(e.submitter || undefined);
-                        })
-                        .catch(error => {
-                            console.error('Could not validate event pin before submit:', error);
-                            setVenuePinStatus('The land-location check could not be completed. Please try again.', 'error');
-                            document.getElementById('err-venue')?.classList.add('show');
-                        });
-                    return;
-                }
-                saveDetailsFormState();
-                console.log('[BookingWizard] Form submit triggered');
-                let isValid = true;
-                const check = (label, result) => {
-                    if (!result) {
-                        console.warn('[BookingWizard] FAILED:', label);
-                        isValid = false;
-                    } else {
-                        console.log('[BookingWizard] OK:', label);
-                    }
+                // Prevent dropdown clicks from bubbling
+                dropdownMenu.onclick = (e) => {
+                    e.stopPropagation();
                 };
 
-                // 1. Event name
-                check('event_name', validateEventName());
-
-                // 2. Event type (locked from package — hidden input)
-                const eventTypeHidden = document.getElementById('event_type_hidden');
-                if (eventTypeHidden) {
-                    check('event_type_hidden', validateField(eventTypeHidden, 'err-type', v => (v || '').trim().length > 0));
-                } else if (eventTypeSelect) {
-                    check('event_type_select', validateField(eventTypeSelect, 'err-type', v => v !== ''));
-                    if (eventTypeSelect.value === 'Other' && otherEventInput) {
-                        check('other_event_type', validateField(otherEventInput, 'err-other-type', v => (v || '').trim().length > 0));
+                // Close on outside click and validate
+                document.addEventListener('click', (e) => {
+                    const customSelect = document.getElementById('custom-time-select');
+                    if (customSelect && !customSelect.contains(e.target)) {
+                        if (dropdownMenu.style.display === 'block') {
+                            dropdownMenu.style.display = 'none';
+                            if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
+                            validateEventTime();
+                        }
                     }
-                }
-
-                // 3. Guest count
-                check('guest_count', validateGuestCount());
-
-                // 4. Event date
-                check('event_date', validateEventDate());
-
-                // 5. Event time
-                check('event_time', validateEventTime());
-                const expectedEgress = updateEgressFromDuration();
-                const validEnd = expectedEgress
-                    ? endTimeInput?.value === expectedEgress
-                    : !!(endTimeInput?.value && timeInput?.value && endTimeInput.value > timeInput.value);
-                check('event_end_time', validEnd);
-                endTimeInput?.classList.toggle('error', !validEnd);
-
-                // 5.1 Booking availability
-                if (!isAvailabilityValid) {
-                    console.warn('[BookingWizard] FAILED: caterer availability check failed');
-                    isValid = false;
-                }
-
-                // 6. Exact venue pin and reverse-geocoded address
-                const pinValid = !!(
-                    venueHidden?.value &&
-                    venueLat?.value &&
-                    venueLng?.value
-                );
-                check('venue_pin', pinValid);
-                document.getElementById('err-venue')?.classList.toggle('show', !pinValid);
-                const venueDetailsValid = venueAddressFieldsComplete();
-                check('venue_address_details', venueDetailsValid);
-                [
-                    [provinceSelect, 'err-province'],
-                    [citySelect, 'err-city'],
-                    [barangaySelect, 'err-barangay']
-                ].forEach(([input, errorId]) => {
-                    const isFilled = Boolean(input?.value.trim());
-                    input?.classList.toggle('error', !isFilled);
-                    document.getElementById(errorId)?.classList.toggle('show', !isFilled);
                 });
-                if (!venueDetailsValid) {
-                    setVenuePinStatus('Enter the province, city, and barangay. Venue name or nearby landmark is optional.', 'invalid');
+
+                // Populate time chips for event hours
+                chipsGrid.innerHTML = '';
+                for (let m = eventStartMins; m < eventEndMins; m += 30) {
+                    const valStr = formatTimeStr(m);
+                    const labelStr = formatAmPmStr(m);
+
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'time-chip';
+                    chip.innerText = labelStr;
+                    chip.style.padding = '0.6rem 0.2rem';
+                    chip.style.border = '1px solid #cbd5e1';
+                    chip.style.borderRadius = '0.375rem';
+                    chip.style.background = (valStr === initialVal) ? 'var(--wiz-primary, #ff7b54)' : '#f8fafc';
+                    chip.style.color = (valStr === initialVal) ? '#fff' : '#475569';
+                    chip.style.borderColor = (valStr === initialVal) ? 'var(--wiz-primary, #ff7b54)' : '#cbd5e1';
+                    chip.style.cursor = 'pointer';
+                    chip.style.fontSize = '0.8rem';
+                    chip.style.fontWeight = '600';
+                    chip.style.textAlign = 'center';
+                    chip.style.transition = 'all 0.15s ease';
+
+                    chip.onmouseenter = function () {
+                        if (timeInput.value !== valStr) {
+                            this.style.background = '#e2e8f0';
+                        }
+                    };
+                    chip.onmouseleave = function () {
+                        if (timeInput.value !== valStr) {
+                            this.style.background = '#f8fafc';
+                        }
+                    };
+
+                    chip.onclick = function (e) {
+                        e.stopPropagation();
+
+                        Array.from(chipsGrid.children).forEach(c => {
+                            c.style.background = '#f8fafc';
+                            c.style.color = '#475569';
+                            c.style.borderColor = '#cbd5e1';
+                        });
+
+                        this.style.background = 'var(--wiz-primary, #ff7b54)';
+                        this.style.color = '#fff';
+                        this.style.borderColor = 'var(--wiz-primary, #ff7b54)';
+
+                        timeInput.value = valStr;
+                        updateEgressFromDuration();
+                        timeInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        if (triggerText) {
+                            triggerText.innerText = labelStr;
+                            triggerText.style.color = '#0f172a';
+                        }
+
+                        dropdownMenu.style.display = 'none';
+                        if (triggerIcon) triggerIcon.className = 'fas fa-chevron-down';
+
+                        validateEventTime();
+                        if (typeof window.checkAvailability === 'function') {
+                            window.checkAvailability();
+                        }
+                    };
+
+                    chipsGrid.appendChild(chip);
                 }
+            }
 
-                // 7. Delivery fee coverage
-                if (window.deliveryFeeStatus === "error" && !window.localDevelopment) {
-                    console.warn('[BookingWizard] FAILED: out of delivery coverage');
-                    isValid = false;
-                    if (window.Swal) {
-                        Swal.fire({ icon: 'error', title: 'Out of Coverage', text: 'Sorry, the caterer does not deliver to your specified location.', confirmButtonColor: '#FF7B54' })
-                            .then(focusFirstInvalidField);
-                    } else {
-                        alert('Out of Coverage: Sorry, the caterer does not deliver to your specified location.');
-                        focusFirstInvalidField();
-                    }
+            timeInput.addEventListener('change', () => {
+                updateEgressFromDuration();
+                validateEventTime();
+                if (typeof window.checkAvailability === 'function') window.checkAvailability();
+            });
+            timeInput.addEventListener('input', updateEgressFromDuration);
+            timeInput.addEventListener('blur', validateEventTime);
+        }
+        updateEgressFromDuration();
+
+        // --- Real-time Location Validation ---
+        const validateProvince = () => {
+            if (!provinceSelect) return true;
+            const v = (provinceSelect.value || '').trim();
+            const isValid = !!v && !v.startsWith('--');
+            const errEl = document.getElementById('err-province');
+            if (isValid) {
+                provinceSelect.classList.remove('error');
+                provinceSelect.classList.add('is-valid');
+                if (errEl) errEl.classList.remove('show');
+            } else {
+                provinceSelect.classList.add('error');
+                provinceSelect.classList.remove('is-valid');
+                if (errEl) {
+                    errEl.innerText = 'Please select the province of your event venue.';
+                    errEl.classList.add('show');
                 }
+            }
+            return isValid;
+        };
 
-                // 8. Menu selection rules
-                const selectionGroups = document.querySelectorAll('.selection-group');
-                let selectionErrorMsg = '';
-                if (selectionGroups && selectionGroups.length > 0) {
-                    selectionGroups.forEach(group => {
-                        try {
-                            const limit = parseInt(group.dataset.limit) || 0;
-                            const catRaw = group.dataset.category;
-                            if (!catRaw || limit === 0) return;
-                            const count = group.querySelectorAll('input[type="checkbox"]:checked').length;
+        const validateCity = () => {
+            if (!citySelect) return true;
+            const v = (citySelect.value || '').trim();
+            const isValid = !!v && !v.startsWith('--');
+            const errEl = document.getElementById('err-city');
+            if (isValid) {
+                citySelect.classList.remove('error');
+                citySelect.classList.add('is-valid');
+                if (errEl) errEl.classList.remove('show');
+            } else {
+                citySelect.classList.add('error');
+                citySelect.classList.remove('is-valid');
+                if (errEl) {
+                    errEl.innerText = 'Please select the city or municipality of your event venue.';
+                    errEl.classList.add('show');
+                }
+            }
+            return isValid;
+        };
 
-                            if (count !== limit) {
-                                isValid = false;
-                                selectionErrorMsg += `• Please select exactly ${limit} item(s) for ${catRaw.replace(/([A-Z])/g, ' $1').trim()}.
-`;
-                                const counterEl = document.getElementById(`counter-${catRaw}`);
-                                if (counterEl) {
-                                    counterEl.style.background = '#fee2e2';
-                                    counterEl.style.color = '#b91c1c';
+        const validateBarangay = () => {
+            if (!barangaySelect) return true;
+            const v = (barangaySelect.value || '').trim();
+            const barangayUnavailable = venueBarangayStatus?.value === 'unavailable' &&
+                !v && Boolean(venueLandmark?.value.trim());
+            const isValid = (Boolean(v) && !v.startsWith('--')) || barangayUnavailable;
+            const errEl = document.getElementById('err-barangay');
+            if (isValid) {
+                barangaySelect.classList.remove('error');
+                barangaySelect.classList.add('is-valid');
+                if (errEl) errEl.classList.remove('show');
+            } else {
+                barangaySelect.classList.add('error');
+                barangaySelect.classList.remove('is-valid');
+                if (errEl) {
+                    errEl.innerText = 'Please select the barangay of your event venue.';
+                    errEl.classList.add('show');
+                }
+            }
+            return isValid;
+        };
+
+        if (provinceSelect) {
+            provinceSelect.addEventListener('change', () => {
+                if (provinceSelect.tagName === 'SELECT') populateCities(provinceSelect.value);
+                updateHiddenVenue();
+                validateProvince();
+            });
+            provinceSelect.addEventListener('blur', validateProvince);
+        }
+        if (citySelect) {
+            citySelect.addEventListener('change', () => {
+                if (citySelect.tagName === 'SELECT') populateBarangays(citySelect.value);
+                updateHiddenVenue();
+                validateCity();
+            });
+            citySelect.addEventListener('blur', validateCity);
+        }
+        if (barangaySelect) {
+            barangaySelect.addEventListener('change', () => {
+                updateHiddenVenue();
+                validateBarangay();
+            });
+            barangaySelect.addEventListener('blur', validateBarangay);
+        }
+
+        window.setInterval(() => {
+            if (document.hidden) return;
+            const province = provinceSelect ? provinceSelect.value : '';
+            const city = citySelect ? citySelect.value : '';
+            if (province && city) updateHiddenVenue();
+        }, 30000);
+
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                try {
+                    const latitude = venueLat?.value || '';
+                    const longitude = venueLng?.value || '';
+                    const coordinateKey = `${latitude},${longitude}`;
+                    if (latitude && longitude && coordinateKey !== validatedVenueCoordinateKey) {
+                        e.preventDefault();
+                        window.OccaServeLocationAddress.isValidPhilippineLandCoordinate(latitude, longitude)
+                            .then(isValid => {
+                                if (!isValid) {
+                                    validatedVenueCoordinateKey = '';
+                                    setVenuePinStatus('This pin is not on valid land. Choose another venue location.', 'invalid');
+                                    document.getElementById('err-venue')?.classList.add('show');
+                                    return;
                                 }
+                                validatedVenueCoordinateKey = coordinateKey;
+                                form.requestSubmit(e.submitter || undefined);
+                            })
+                            .catch(error => {
+                                console.error('Could not validate event pin before submit:', error);
+                                setVenuePinStatus('The land-location check could not be completed. Please try again.', 'error');
+                                document.getElementById('err-venue')?.classList.add('show');
+                            });
+                        return;
+                    }
+                    saveDetailsFormState();
+                    console.log('[BookingWizard] Form submit triggered');
+                    let isValid = true;
+                    const check = (label, result) => {
+                        if (!result) {
+                            console.warn('[BookingWizard] FAILED:', label);
+                            isValid = false;
+                        } else {
+                            console.log('[BookingWizard] OK:', label);
+                        }
+                    };
+
+                    // 1. Event name
+                    check('event_name', validateEventName());
+
+                    // 2. Event type (locked from package — hidden input)
+                    const eventTypeHidden = document.getElementById('event_type_hidden');
+                    if (eventTypeHidden) {
+                        check('event_type_hidden', validateField(eventTypeHidden, 'err-type', v => (v || '').trim().length > 0));
+                    } else if (eventTypeSelect) {
+                        check('event_type_select', validateField(eventTypeSelect, 'err-type', v => v !== ''));
+                        if (eventTypeSelect.value === 'Other' && otherEventInput) {
+                            check('other_event_type', validateField(otherEventInput, 'err-other-type', v => (v || '').trim().length > 0));
+                        }
+                    }
+
+                    // 3. Guest count
+                    check('guest_count', validateGuestCount());
+
+                    // 4. Event date
+                    check('event_date', validateEventDate());
+
+                    // 5. Event time
+                    check('event_time', validateEventTime());
+                    const expectedEgress = updateEgressFromDuration();
+                    const validEnd = expectedEgress
+                        ? endTimeInput?.value === expectedEgress
+                        : !!(endTimeInput?.value && timeInput?.value && endTimeInput.value > timeInput.value);
+                    check('event_end_time', validEnd);
+                    endTimeInput?.classList.toggle('error', !validEnd);
+
+                    // 5.1 Booking availability
+                    if (!isAvailabilityValid) {
+                        console.warn('[BookingWizard] FAILED: caterer availability check failed');
+                        isValid = false;
+                    }
+
+                    // 6. Exact venue pin and reverse-geocoded address
+                    const pinValid = !!(
+                        venueHidden?.value &&
+                        venueLat?.value &&
+                        venueLng?.value
+                    );
+                    check('venue_pin', pinValid);
+                    document.getElementById('err-venue')?.classList.toggle('show', !pinValid);
+                    const venueDetailsValid = venueAddressFieldsComplete();
+                    check('venue_address_details', venueDetailsValid);
+                    [
+                        [provinceSelect, 'err-province'],
+                        [citySelect, 'err-city'],
+                        [barangaySelect, 'err-barangay']
+                    ].forEach(([input, errorId]) => {
+                        const isFilled = Boolean(input?.value.trim());
+                        input?.classList.toggle('error', !isFilled);
+                        document.getElementById(errorId)?.classList.toggle('show', !isFilled);
+                    });
+                    if (!venueDetailsValid) {
+                        setVenuePinStatus('Enter the province, city, and barangay. Venue name or nearby landmark is optional.', 'invalid');
+                    }
+
+                    // 7. Delivery fee coverage
+                    if (window.deliveryFeeStatus === "error" && !window.localDevelopment) {
+                        console.warn('[BookingWizard] FAILED: out of delivery coverage');
+                        isValid = false;
+                        if (window.Swal) {
+                            Swal.fire({ icon: 'error', title: 'Out of Coverage', text: 'Sorry, the caterer does not deliver to your specified location.', confirmButtonColor: '#FF7B54' })
+                                .then(focusFirstInvalidField);
+                        } else {
+                            alert('Out of Coverage: Sorry, the caterer does not deliver to your specified location.');
+                            focusFirstInvalidField();
+                        }
+                    }
+
+                    // 8. Menu selection rules
+                    const selectionGroups = document.querySelectorAll('.selection-group');
+                    let selectionErrorMsg = '';
+                    if (selectionGroups && selectionGroups.length > 0) {
+                        selectionGroups.forEach(group => {
+                            try {
+                                const limit = parseInt(group.dataset.limit) || 0;
+                                const catRaw = group.dataset.category;
+                                if (!catRaw || limit === 0) return;
+                                const count = group.querySelectorAll('input[type="checkbox"]:checked').length;
+
+                                if (count !== limit) {
+                                    isValid = false;
+                                    selectionErrorMsg += `• Please select exactly ${limit} item(s) for ${catRaw.replace(/([A-Z])/g, ' $1').trim()}.
+`;
+                                    const counterEl = document.getElementById(`counter-${catRaw}`);
+                                    if (counterEl) {
+                                        counterEl.style.background = '#fee2e2';
+                                        counterEl.style.color = '#b91c1c';
+                                    }
+                                }
+                            } catch (err) {
+                                console.error('Selection rule check error:', err);
                             }
-                        } catch(err) {
-                            console.error('Selection rule check error:', err);
+                        });
+                    }
+
+                    if (selectionErrorMsg) {
+                        if (window.Swal) {
+                            Swal.fire({ icon: 'warning', title: 'Incomplete Menu Setup', text: selectionErrorMsg, confirmButtonColor: '#FF7B54' })
+                                .then(focusFirstInvalidField);
+                        } else {
+                            alert('Incomplete Menu Setup:\n\n' + selectionErrorMsg);
+                            focusFirstInvalidField();
+                        }
+                    }
+
+                    console.log('[BookingWizard] isValid =', isValid);
+
+                    if (!isValid) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        // Reset the submit button if main.js already started its loading state
+                        const submitBtnEl = document.getElementById('submitBtn');
+                        if (submitBtnEl) {
+                            submitBtnEl.innerHTML = `Next Step: Identity <i class="fas fa-arrow-right"></i>`;
+                            submitBtnEl.disabled = false;
+                            submitBtnEl.classList.remove('is-loading');
+                        }
+
+                        if (!isAvailabilityValid) {
+                            const chip = document.getElementById('availability-chip');
+                            const chipMsg = chip ? chip.innerText : 'The selected date or time is not available for booking.';
+                            if (window.Swal) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Date / Time Unavailable',
+                                    text: chipMsg || 'The selected date or time is not available for booking. Please select another date or time.',
+                                    confirmButtonColor: '#FF7B54'
+                                }).then(focusFirstInvalidField);
+                            } else {
+                                alert(chipMsg || 'The selected date or time is not available for booking. Please select another date or time.');
+                                focusFirstInvalidField();
+                            }
+                        } else if (!selectionErrorMsg && window.deliveryFeeStatus !== 'error') {
+                            if (window.Swal) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Please complete all required fields',
+                                    text: 'Please complete the highlighted fields before continuing.',
+                                    confirmButtonColor: '#FF7B54'
+                                }).then(focusFirstInvalidField);
+                            } else {
+                                alert('Please complete the highlighted fields before continuing.');
+                                focusFirstInvalidField();
+                            }
+                        }
+                    } else {
+                        console.log('[BookingWizard] All valid — submitting form to server');
+                    }
+                } catch (err) {
+                    console.error('Fatal validation error:', err);
+                    e.preventDefault();
+                    alert('An error occurred during form validation: ' + err.message);
+                }
+            });
+        }
+
+        // Handle Backend Validation Errors
+        const urlParams = new URLSearchParams(window.location.search);
+        const bookingError = urlParams.get('booking_error');
+        if (bookingError) {
+            let errorId = null;
+            let errorMsg = decodeURIComponent(bookingError).replace(/\+/g, ' ');
+            let targetInput = null;
+
+            if (errorMsg.startsWith('err-')) {
+                const colonIdx = errorMsg.indexOf(':');
+                if (colonIdx !== -1) {
+                    errorId = errorMsg.substring(0, colonIdx).trim();
+                    errorMsg = errorMsg.substring(colonIdx + 1).trim();
+                } else {
+                    errorId = errorMsg.trim();
+                    errorMsg = 'Please correct this field.';
+                }
+
+                if (errorId === 'err-date') targetInput = dateInput;
+                else if (errorId === 'err-time') {
+                    targetInput = timeInput;
+                    const timeTrigger = document.getElementById('time-trigger-btn');
+                    if (timeTrigger) timeTrigger.classList.add('error');
+                }
+                else if (errorId === 'err-name') targetInput = eventName;
+                else if (errorId === 'err-type') {
+                    // event_type is a locked display box, highlight the parent card
+                    targetInput = document.getElementById('event_type_hidden');
+                    const displayBox = document.getElementById('event_type_display_box');
+                    if (displayBox) displayBox.style.border = '1.5px solid #ef4444';
+                }
+                else if (errorId === 'err-guests') targetInput = guestDisplay;
+                else if (errorId === 'err-province') targetInput = provinceSelect;
+                else if (errorId === 'err-city') targetInput = citySelect;
+                else if (errorId === 'err-barangay') targetInput = barangaySelect;
+            }
+
+            const errSpan = errorId ? document.getElementById(errorId) : null;
+            if (errSpan) {
+                errSpan.innerText = errorMsg;
+                errSpan.classList.add('show');
+                if (targetInput) {
+                    if (targetInput.classList) targetInput.classList.add('error');
+                }
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Please correct this field',
+                        text: errorMsg,
+                        confirmButtonColor: '#FF7B54'
+                    }).then(() => focusInvalidField(errSpan));
+                } else {
+                    focusInvalidField(errSpan);
+                }
+            } else {
+                const lowerError = errorMsg.toLowerCase();
+                let focusTarget = null;
+                if (lowerError.includes('venue') || lowerError.includes('pin the exact')) {
+                    focusTarget = venueSearch || document.getElementById('venue-map');
+                } else if (lowerError.includes('egress')) {
+                    focusTarget = endTimeInput;
+                    endTimeInput?.classList.add('error');
+                } else if (lowerError.includes('guest count')) {
+                    focusTarget = guestDisplay || guestInput;
+                }
+                // Generic fallback — always show the error to the user
+                if (window.Swal) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Cannot proceed',
+                        text: errorMsg,
+                        confirmButtonColor: '#FF7B54'
+                    }).then(() => {
+                        if (focusTarget) {
+                            focusTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            focusTarget.focus({ preventScroll: true });
                         }
                     });
-                }
-
-                if (selectionErrorMsg) {
-                    if (window.Swal) {
-                        Swal.fire({ icon: 'warning', title: 'Incomplete Menu Setup', text: selectionErrorMsg, confirmButtonColor: '#FF7B54' })
-                            .then(focusFirstInvalidField);
-                    } else {
-                        alert('Incomplete Menu Setup:\n\n' + selectionErrorMsg);
-                        focusFirstInvalidField();
-                    }
-                }
-
-                console.log('[BookingWizard] isValid =', isValid);
-
-                if (!isValid) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // Reset the submit button if main.js already started its loading state
-                    const submitBtnEl = document.getElementById('submitBtn');
-                    if (submitBtnEl) {
-                        submitBtnEl.innerHTML = `Next Step: Identity <i class="fas fa-arrow-right"></i>`;
-                        submitBtnEl.disabled = false;
-                        submitBtnEl.classList.remove('is-loading');
-                    }
-
-                    if (!isAvailabilityValid) {
-                        const chip = document.getElementById('availability-chip');
-                        const chipMsg = chip ? chip.innerText : 'The selected date or time is not available for booking.';
-                        if (window.Swal) {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Date / Time Unavailable',
-                                text: chipMsg || 'The selected date or time is not available for booking. Please select another date or time.',
-                                confirmButtonColor: '#FF7B54'
-                            }).then(focusFirstInvalidField);
-                        } else {
-                            alert(chipMsg || 'The selected date or time is not available for booking. Please select another date or time.');
-                            focusFirstInvalidField();
-                        }
-                    } else if (!selectionErrorMsg && window.deliveryFeeStatus !== 'error') {
-                        if (window.Swal) {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Please complete all required fields',
-                                text: 'Please complete the highlighted fields before continuing.',
-                                confirmButtonColor: '#FF7B54'
-                            }).then(focusFirstInvalidField);
-                        } else {
-                            alert('Please complete the highlighted fields before continuing.');
-                            focusFirstInvalidField();
-                        }
-                    }
                 } else {
-                    console.log('[BookingWizard] All valid — submitting form to server');
-                }
-            } catch (err) {
-                console.error('Fatal validation error:', err);
-                e.preventDefault();
-                alert('An error occurred during form validation: ' + err.message);
-            }
-        });
-    }
-
-    // Handle Backend Validation Errors
-    const urlParams = new URLSearchParams(window.location.search);
-    const bookingError = urlParams.get('booking_error');
-    if (bookingError) {
-        let errorId = null;
-        let errorMsg = decodeURIComponent(bookingError).replace(/\+/g, ' ');
-        let targetInput = null;
-
-        if (errorMsg.startsWith('err-')) {
-            const colonIdx = errorMsg.indexOf(':');
-            if (colonIdx !== -1) {
-                errorId = errorMsg.substring(0, colonIdx).trim();
-                errorMsg = errorMsg.substring(colonIdx + 1).trim();
-            } else {
-                errorId = errorMsg.trim();
-                errorMsg = 'Please correct this field.';
-            }
-
-            if (errorId === 'err-date') targetInput = dateInput;
-            else if (errorId === 'err-time') {
-                targetInput = timeInput;
-                const timeTrigger = document.getElementById('time-trigger-btn');
-                if (timeTrigger) timeTrigger.classList.add('error');
-            }
-            else if (errorId === 'err-name') targetInput = eventName;
-            else if (errorId === 'err-type') {
-                // event_type is a locked display box, highlight the parent card
-                targetInput = document.getElementById('event_type_hidden');
-                const displayBox = document.getElementById('event_type_display_box');
-                if (displayBox) displayBox.style.border = '1.5px solid #ef4444';
-            }
-            else if (errorId === 'err-guests') targetInput = guestDisplay;
-            else if (errorId === 'err-province') targetInput = provinceSelect;
-            else if (errorId === 'err-city') targetInput = citySelect;
-            else if (errorId === 'err-barangay') targetInput = barangaySelect;
-        }
-
-        const errSpan = errorId ? document.getElementById(errorId) : null;
-        if (errSpan) {
-            errSpan.innerText = errorMsg;
-            errSpan.classList.add('show');
-            if (targetInput) {
-                if (targetInput.classList) targetInput.classList.add('error');
-            }
-            if (window.Swal) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Please correct this field',
-                    text: errorMsg,
-                    confirmButtonColor: '#FF7B54'
-                }).then(() => focusInvalidField(errSpan));
-            } else {
-                focusInvalidField(errSpan);
-            }
-        } else {
-            const lowerError = errorMsg.toLowerCase();
-            let focusTarget = null;
-            if (lowerError.includes('venue') || lowerError.includes('pin the exact')) {
-                focusTarget = venueSearch || document.getElementById('venue-map');
-            } else if (lowerError.includes('egress')) {
-                focusTarget = endTimeInput;
-                endTimeInput?.classList.add('error');
-            } else if (lowerError.includes('guest count')) {
-                focusTarget = guestDisplay || guestInput;
-            }
-            // Generic fallback — always show the error to the user
-            if (window.Swal) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Cannot proceed',
-                    text: errorMsg,
-                    confirmButtonColor: '#FF7B54'
-                }).then(() => {
+                    alert('Error: ' + errorMsg);
                     if (focusTarget) {
                         focusTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         focusTarget.focus({ preventScroll: true });
                     }
-                });
-            } else {
-                alert('Error: ' + errorMsg);
-                if (focusTarget) {
-                    focusTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    focusTarget.focus({ preventScroll: true });
                 }
             }
+
+            const url = new URL(window.location.href);
+            url.searchParams.delete('booking_error');
+            window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
         }
 
-        const url = new URL(window.location.href);
-        url.searchParams.delete('booking_error');
-        window.history.replaceState({}, document.title, url.pathname + url.search + url.hash);
-    }
+        // --- 7. Menu Swapping Logic ---
+        let activeSlotIndex = null;
 
-    // --- 7. Menu Swapping Logic ---
-    let activeSlotIndex = null;
+        window.openSwapModal = function (category, slotIndex) {
+            activeSlotIndex = slotIndex;
+            const modal = document.getElementById('swapModal');
+            const container = document.getElementById('swapOptionsContainer');
+            const title = document.getElementById('modalCategoryTitle');
+            const catSelect = document.getElementById('swapCategoryFilter');
 
-    window.openSwapModal = function(category, slotIndex) {
-        activeSlotIndex = slotIndex;
-        const modal = document.getElementById('swapModal');
-        const container = document.getElementById('swapOptionsContainer');
-        const title = document.getElementById('modalCategoryTitle');
-        const catSelect = document.getElementById('swapCategoryFilter');
+            title.innerText = `Swap Dish`;
+            container.innerHTML = '<p class="form-subtitle">Loading items...</p>';
+            modal.style.display = 'flex';
 
-        title.innerText = `Swap Dish`;
-        container.innerHTML = '<p class="form-subtitle">Loading items...</p>';
-        modal.style.display = 'flex';
+            // Get all unique categories for the dropdown
+            const allOptions = window.allMenuItems.filter(i => !i.is_addon);
+            const categories = [...new Set(allOptions.map(i => i.category))].sort();
 
-        // Get all unique categories for the dropdown
-        const allOptions = window.allMenuItems.filter(i => !i.is_addon);
-        const categories = [...new Set(allOptions.map(i => i.category))].sort();
-        
-        if (catSelect) {
-            catSelect.innerHTML = `<option value="all">All Categories</option>`;
-            categories.forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.innerText = cat;
-                if (cat === category) opt.selected = true;
-                catSelect.appendChild(opt);
-            });
-        }
-
-        window.filterSwapOptions(category);
-    };
-
-    window.filterSwapOptions = function(categoryFilter) {
-        const container = document.getElementById('swapOptionsContainer');
-        container.innerHTML = '';
-        
-        let options = window.allMenuItems.filter(i => !i.is_addon);
-        if (categoryFilter !== 'all') {
-            options = options.filter(i => i.category === categoryFilter);
-        }
-
-        // Exclude items already selected in the package
-        const selectedIds = Array.from(document.querySelectorAll('.slot-input, input[name="selected_items"]:checked')).map(input => parseInt(input.value));
-        options = options.filter(i => !selectedIds.includes(i.id));
-
-        if (options.length === 0) {
-            container.innerHTML = `<p class="form-subtitle">No alternative options available.</p>`;
-            return;
-        }
-
-        options.forEach(item => {
-            const card = document.createElement('div');
-            card.className = 'swap-option-card';
-            let feeBadge = '';
-            if (item.upgrade_fee > 0) {
-                feeBadge = `<span style="font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;">+₱${item.upgrade_fee}/pax</span>`;
+            if (catSelect) {
+                catSelect.innerHTML = `<option value="all">All Categories</option>`;
+                categories.forEach(cat => {
+                    const opt = document.createElement('option');
+                    opt.value = cat;
+                    opt.innerText = cat;
+                    if (cat === category) opt.selected = true;
+                    catSelect.appendChild(opt);
+                });
             }
-            card.innerHTML = `
+
+            window.filterSwapOptions(category);
+        };
+
+        window.filterSwapOptions = function (categoryFilter) {
+            const container = document.getElementById('swapOptionsContainer');
+            container.innerHTML = '';
+
+            let options = window.allMenuItems.filter(i => !i.is_addon);
+            if (categoryFilter !== 'all') {
+                options = options.filter(i => i.category === categoryFilter);
+            }
+
+            // Exclude items already selected in the package
+            const selectedIds = Array.from(document.querySelectorAll('.slot-input, input[name="selected_items"]:checked')).map(input => parseInt(input.value));
+            options = options.filter(i => !selectedIds.includes(i.id));
+
+            if (options.length === 0) {
+                container.innerHTML = `<p class="form-subtitle">No alternative options available.</p>`;
+                return;
+            }
+
+            options.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'swap-option-card';
+                let feeBadge = '';
+                if (item.upgrade_fee > 0) {
+                    feeBadge = `<span style="font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;">+₱${item.upgrade_fee}/pax</span>`;
+                }
+                card.innerHTML = `
                 <div class="soc-info">
                     <span class="soc-name">${item.name}</span>
                     <span class="soc-cat">${item.category}</span>
@@ -2362,78 +2376,78 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
                 <button type="button" class="btn-select-swap" onclick="selectSwapItem(${item.id}, '${item.name.replace(/'/g, "\\'")}', ${item.upgrade_fee || 0})">Select</button>
             `;
-            card.onclick = () => selectSwapItem(item.id, item.name, item.upgrade_fee || 0);
-            container.appendChild(card);
-        });
-    };
+                card.onclick = () => selectSwapItem(item.id, item.name, item.upgrade_fee || 0);
+                container.appendChild(card);
+            });
+        };
 
-    window.closeSwapModal = function() {
-        document.getElementById('swapModal').style.display = 'none';
-        activeSlotIndex = null;
-    };
+        window.closeSwapModal = function () {
+            document.getElementById('swapModal').style.display = 'none';
+            activeSlotIndex = null;
+        };
 
-    window.selectSwapItem = function(itemId, itemName, upgradeFee = 0) {
-        if (!activeSlotIndex) return;
+        window.selectSwapItem = function (itemId, itemName, upgradeFee = 0) {
+            if (!activeSlotIndex) return;
 
-        const slot = document.getElementById(`slot-${activeSlotIndex}`);
-        const input = slot.querySelector('.slot-input');
-        const nameSpan = document.getElementById(`name-${activeSlotIndex}`);
+            const slot = document.getElementById(`slot-${activeSlotIndex}`);
+            const input = slot.querySelector('.slot-input');
+            const nameSpan = document.getElementById(`name-${activeSlotIndex}`);
 
-        if (input && nameSpan) {
-            input.value = itemId;
-            input.setAttribute('data-upgrade-fee', upgradeFee);
-            
-            nameSpan.innerText = itemName;
-            
-            const infoDiv = nameSpan.parentElement;
-            const existingBadge = infoDiv.querySelector('.upgrade-badge');
-            if (existingBadge) existingBadge.remove();
+            if (input && nameSpan) {
+                input.value = itemId;
+                input.setAttribute('data-upgrade-fee', upgradeFee);
 
-            if (upgradeFee > 0) {
-                const badge = document.createElement('span');
-                badge.className = 'upgrade-badge';
-                badge.style.cssText = 'font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;';
-                badge.innerText = `+₱${upgradeFee}/pax`;
-                infoDiv.appendChild(badge);
+                nameSpan.innerText = itemName;
+
+                const infoDiv = nameSpan.parentElement;
+                const existingBadge = infoDiv.querySelector('.upgrade-badge');
+                if (existingBadge) existingBadge.remove();
+
+                if (upgradeFee > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'upgrade-badge';
+                    badge.style.cssText = 'font-size: 0.65rem; color: #4338ca; background: #eef2ff; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-top: 4px; display: inline-block; width: fit-content;';
+                    badge.innerText = `+₱${upgradeFee}/pax`;
+                    infoDiv.appendChild(badge);
+                }
+
+                // Visual feedback
+                slot.style.borderColor = 'var(--wiz-primary)';
+                slot.style.background = 'rgba(255, 123, 84, 0.05)';
+                setTimeout(() => {
+                    slot.style.background = 'var(--wiz-slate-50)';
+                }, 500);
+
+                window.updateCalculator();
             }
-            
-            // Visual feedback
-            slot.style.borderColor = 'var(--wiz-primary)';
-            slot.style.background = 'rgba(255, 123, 84, 0.05)';
-            setTimeout(() => {
-                slot.style.background = 'var(--wiz-slate-50)';
-            }, 500);
-            
-            window.updateCalculator();
-        }
 
-        closeSwapModal();
-    };
-
-    // Close modal on click outside
-    window.onclick = function(event) {
-        const modal = document.getElementById('swapModal');
-        if (event.target == modal) {
             closeSwapModal();
-        }
-    };
+        };
 
-    // Initial run
-    updateCalculator();
-    loadExistingLocation();
-    if (dateInput && dateInput.value) {
-        window.checkAvailability();
-    }
+        // Close modal on click outside
+        window.onclick = function (event) {
+            const modal = document.getElementById('swapModal');
+            if (event.target == modal) {
+                closeSwapModal();
+            }
+        };
 
-    // Initialize checkmarks for already selected items (like back navigation or edit mode)
-    document.querySelectorAll('.menu-item-card input[type="checkbox"]:checked').forEach(cb => {
-        if (cb.closest('.selection-group')) {
-            // Trigger rule limit UI without resetting the others immediately
-            window.handleSelectionRuleLimit(cb);
-        } else {
-            window.handleMenuCardToggle(cb);
+        // Initial run
+        updateCalculator();
+        loadExistingLocation();
+        if (dateInput && dateInput.value) {
+            window.checkAvailability();
         }
-    });
+
+        // Initialize checkmarks for already selected items (like back navigation or edit mode)
+        document.querySelectorAll('.menu-item-card input[type="checkbox"]:checked').forEach(cb => {
+            if (cb.closest('.selection-group')) {
+                // Trigger rule limit UI without resetting the others immediately
+                window.handleSelectionRuleLimit(cb);
+            } else {
+                window.handleMenuCardToggle(cb);
+            }
+        });
     } catch (globalErr) {
         console.error("FATAL SCRIPT ERROR:", globalErr);
         alert("Fatal JS Error: " + globalErr.message);

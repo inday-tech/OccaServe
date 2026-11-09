@@ -313,6 +313,7 @@
     .booking-choice-price { white-space: nowrap; color: #334155; font-weight: 750; }
     .booking-event-status { margin-top: .65rem; color: #64748b; font-size: .78rem; }
     .booking-event-status.is-error { color: #b91c1c; }
+    .booking-event-status.is-success { color: #166534; font-weight: 600; }
     .booking-event-subtotal { margin-top: .85rem; padding-top: .75rem; border-top: 1px solid #e2e8f0; color: #172033; font-size: .82rem; font-weight: 800; }
     .booking-event-package { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .9rem; padding: .75rem; border: 1px solid #dbe3ef; border-radius: 10px; background: #f8fafc; }
     .booking-event-card > .booking-event-package { display: none !important; }
@@ -962,7 +963,7 @@
     {% endif %}
     window.catererId = "{{ caterer.id }}";
     window.localDevelopment = {{ local_development() | tojson }};
-    window.bookingLeadTime = parseInt("{{ (package.booking_lead_time if package and package.booking_lead_time else caterer.booking_lead_time) or 3 }}") || 3;
+    window.bookingLeadTime = parseInt("{{ (package.booking_lead_time if package and package.booking_lead_time else caterer.booking_lead_time) or 7 }}") || 7;
     window.catererRules = {{ (caterer.scheduling_rules or {}) | tojson | safe }};
     window.customization = {{ (customization or {}) | tojson | safe }};
 </script>

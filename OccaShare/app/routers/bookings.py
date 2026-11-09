@@ -2603,7 +2603,7 @@ async def step_details_submit(
                 return _event_error(
                     f"Event {index}: {availability_check.get('message', 'This date and time is unavailable.')}"
                 )
-            package_lead_time = max(0, int(event_package.booking_lead_time or caterer.booking_lead_time or 0))
+            package_lead_time = max(7, int(event_package.booking_lead_time or caterer.booking_lead_time or 7))
             manila_today = datetime.now(ZoneInfo("Asia/Manila")).date()
             if event_date_value < manila_today + timedelta(days=package_lead_time):
                 return _event_error(

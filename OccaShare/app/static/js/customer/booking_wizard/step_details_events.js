@@ -52,19 +52,103 @@ document.addEventListener('DOMContentLoaded', function () {
     const minimumEventDate = pkg => {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        const leadTime = Math.max(0, Number(pkg?.booking_lead_time ?? window.bookingLeadTime ?? 0));
+        const pkgLeadTime = pkg?.booking_lead_time;
+        const leadTime = Math.max(7, Number(pkgLeadTime != null ? pkgLeadTime : (window.bookingLeadTime || 7)));
         now.setDate(now.getDate() + leadTime);
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     };
+
+    const maximumAdvanceDate = () => {
+        try {
+            const maxDate = new Date();
+            maxDate.setFullYear(maxDate.getFullYear() + 1);
+            return `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+        } catch (_) {
+            const fallback = new Date();
+            fallback.setFullYear(fallback.getFullYear() + 1);
+            return `${fallback.getFullYear()}-${String(fallback.getMonth() + 1).padStart(2, '0')}-${String(fallback.getDate()).padStart(2, '0')}`;
+        }
+    };
+
     const eventDateBounds = (event, index = events.indexOf(event)) => {
-        const previousDate = events.slice(0, index).map(item => item.event_date).filter(Boolean).sort().at(-1) || '';
-        const nextDate = events.slice(index + 1).map(item => item.event_date).filter(Boolean).sort()[0] || '';
-        const packageMinimum = minimumEventDate(getPackage(event.package_id));
-        const afterPrevious = previousDate ? shiftIsoDate(previousDate, 1) : packageMinimum;
-        return {
-            min: afterPrevious > packageMinimum ? afterPrevious : packageMinimum,
-            max: nextDate ? shiftIsoDate(nextDate, -1) : ''
-        };
+        const pkg = getPackage(event?.package_id || events[0]?.package_id);
+        const packageMinimum = minimumEventDate(pkg);
+        const maxAdvance = maximumAdvanceDate();
+
+        let minDate = packageMinimum;
+        for (let p = 0; p < index; p++) {
+            const prevEvent = events[p];
+            if (prevEvent && prevEvent.event_date) {
+                const earliestFromPrev = shiftIsoDate(prevEvent.event_date, index - p);
+                if (earliestFromPrev && earliestFromPrev > minDate) {
+                    minDate = earliestFromPrev;
+                }
+            }
+        }
+
+        let maxDate = maxAdvance || '';
+        for (let s = index + 1; s < events.length; s++) {
+            const nextEvent = events[s];
+            if (nextEvent && nextEvent.event_date) {
+                const latestFromNext = shiftIsoDate(nextEvent.event_date, -(s - index));
+                if (latestFromNext && (!maxDate || latestFromNext < maxDate)) {
+                    maxDate = latestFromNext;
+                }
+            }
+        }
+
+        return { min: minDate, max: maxDate };
+    };
+
+    const checkDateRestrictions = (isoDate, event, index) => {
+        if (!isoDate) return { valid: false, message: 'Please select an event date.' };
+        const bounds = eventDateBounds(event, index);
+        if (bounds.min && isoDate < bounds.min) {
+            if (index === 0) {
+                const pkg = getPackage(event?.package_id || events[0]?.package_id);
+                const leadTime = Math.max(7, Number(pkg?.booking_lead_time ?? window.bookingLeadTime ?? 7));
+                const daysWord = leadTime === 1 ? '1 day' : `${leadTime} days`;
+                return { valid: false, message: `This caterer requires at least ${daysWord} advance notice. Earliest available date is ${bounds.min}.` };
+            }
+            return { valid: false, message: `Day ${index + 1} must be after the previous event date (on or after ${bounds.min}).` };
+        }
+        if (bounds.max && isoDate > bounds.max) {
+            const maxAdvance = maximumAdvanceDate();
+            if (isoDate > maxAdvance) {
+                return { valid: false, message: `Bookings can only be scheduled up to 1 year in advance (${maxAdvance}).` };
+            }
+            return { valid: false, message: `Keep event dates in order: Day ${index + 1} must be on or before ${bounds.max}.` };
+        }
+        const duplicate = events.some((item, i) => i !== index && item.event_date === isoDate);
+        if (duplicate) {
+            return { valid: false, message: 'This date is already selected for another event. Choose a different date.' };
+        }
+
+        try {
+            const rules = typeof window.catererRules === 'string' ? JSON.parse(window.catererRules) : (window.catererRules || {});
+            const evAvail = rules.event_availability || {};
+            if (evAvail.status === 'temporarily_unavailable') {
+                return { valid: false, message: 'This caterer is temporarily unavailable and not accepting new bookings.' };
+            }
+            const blocked = evAvail.blocked_dates || [];
+            const isBlocked = blocked.some(b => (typeof b === 'string' ? b : b?.date) === isoDate);
+            if (isBlocked) {
+                return { valid: false, message: 'This date is blocked and unavailable for this caterer. Please choose another date.' };
+            }
+            const opDays = evAvail.operating_days || (rules.business_hours && rules.business_hours.operating_days);
+            if (Array.isArray(opDays) && opDays.length > 0 && opDays.length < 7) {
+                const dateObj = dateFromIso(isoDate);
+                if (dateObj) {
+                    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const dayName = daysOfWeek[dateObj.getDay()];
+                    if (!opDays.includes(dayName)) {
+                        return { valid: false, message: `Caterer does not accept bookings on ${dayName}s.` };
+                    }
+                }
+            }
+        } catch (_) {}
+
+        return { valid: true, message: '' };
     };
     const getPackage = id => packages.find(item => String(item.id) === String(id));
     const getSelected = (event, key) => new Set((Array.isArray(event[key]) ? event[key] : []).map(Number));
@@ -529,12 +613,27 @@ document.addEventListener('DOMContentLoaded', function () {
         if (activeId) document.getElementById(activeId)?.focus({ preventScroll: true });
         const panel = document.getElementById('booking-events-panel');
         if (panel) panel.hidden = !events[0]?.event_date;
-        if (legacyDate) legacyDate.min = minimumEventDate(getPackage(events[0]?.package_id));
-        if (legacyDate && events[0]) legacyDate.max = eventDateBounds(events[0], 0).max;
+        if (legacyDate && events[0]) {
+            const day1Bounds = eventDateBounds(events[0], 0);
+            legacyDate.min = day1Bounds.min;
+            if (day1Bounds.max) {
+                legacyDate.max = day1Bounds.max;
+            } else {
+                legacyDate.removeAttribute('max');
+            }
+        }
         updateEventTotals();
         const addEventButton = form.querySelector('[data-action="add-event"]');
         if (addEventButton) {
-            addEventButton.disabled = !getPackage(events[0]?.package_id) || !events.every(item => item.event_date);
+            const hasPkg = Boolean(getPackage(events[0]?.package_id || legacyPackage?.value || window.currentPackageId));
+            const allValid = events.length > 0 && events.every((item, i) => {
+                if (!item.event_date) return false;
+                const check = checkDateRestrictions(item.event_date, item, i);
+                if (!check.valid) return false;
+                if (item.availability === false) return false;
+                return true;
+            });
+            addEventButton.disabled = !hasPkg || !allValid;
         }
     };
 
@@ -557,10 +656,21 @@ document.addEventListener('DOMContentLoaded', function () {
             render();
             return;
         }
-        const cacheKey = `${event.event_date}|${event.ingress}`;
+        const currentIndex = events.indexOf(event);
+        const dateCheck = checkDateRestrictions(event.event_date, event, currentIndex >= 0 ? currentIndex : 0);
+        if (!dateCheck.valid) {
+            availability.delete(event.id);
+            event.availability = false;
+            event.availabilityMessage = dateCheck.message;
+            render();
+            return;
+        }
+
+        const cacheKey = `${event.event_date}|${event.ingress}|${event.egress}`;
         event.availability = null;
         event.availabilityMessage = 'Checking caterer availability…';
         render();
+
         const params = new URLSearchParams({
             caterer_id: String(window.catererId || ''),
             date_str: event.event_date,
@@ -570,6 +680,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (bookingId) params.set('booking_id', bookingId);
         const requestKey = `${event.id}:${cacheKey}`;
         availability.set(event.id, requestKey);
+
         try {
             const response = await fetch(`/packages/api/check-availability?${params.toString()}`, { cache: 'no-store' });
             if (!response.ok) throw new Error(`Availability check failed with status ${response.status}`);
@@ -577,6 +688,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (availability.get(event.id) !== requestKey) return;
             event.availability = Boolean(result.available);
             event.availabilityMessage = result.message || (result.available ? 'This date and time is available.' : 'This date and time is unavailable.');
+            if (events.indexOf(event) === 0 && typeof window.isAvailabilityValid !== 'undefined') {
+                window.isAvailabilityValid = Boolean(result.available);
+            }
         } catch (error) {
             if (availability.get(event.id) !== requestKey) return;
             console.error('Could not verify event availability:', error);
@@ -587,30 +701,60 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const validateInternalConflicts = () => {
+        const pkg = getPackage(events[0]?.package_id || legacyPackage?.value || window.currentPackageId);
+        if (!pkg) return 'Please choose a package before setting up event dates.';
+
         const intervals = [];
         let turnoverHours = Number(window.catererRules?.package_rules?.turnover_time_hours ?? 2);
         if (!Number.isFinite(turnoverHours) || turnoverHours < 0) turnoverHours = 2;
         const turnoverMilliseconds = turnoverHours * 60 * 60 * 1000;
+
         for (const [index, event] of events.entries()) {
-            if (!String(event.event_name || '').trim()) return `Enter a name for Day ${index + 1}.`;
-            if (!event.event_date || !event.ingress || !event.egress) return 'Complete each event date and ingress time. Egress is calculated automatically.';
+            const dayName = `Day ${index + 1}`;
+            if (!String(event.event_name || '').trim()) return `Please enter an event name for ${dayName}.`;
+            if (!event.event_date) return `Please select an event date for ${dayName}.`;
+            if (!event.ingress) return `Please select an ingress time for ${dayName}.`;
+            if (!event.egress) return `Egress time for ${dayName} could not be calculated. Choose a valid ingress time.`;
+
+            // Validate date restrictions (lead time, operating days, blocked dates, bounds, duplicates)
+            const dateCheck = checkDateRestrictions(event.event_date, event, index);
+            if (!dateCheck.valid) return `${dayName}: ${dateCheck.message}`;
+
+            // Enforce chronological order: Day 1 < Day 2 < Day 3
+            if (index > 0 && event.event_date <= events[index - 1].event_date) {
+                return `Keep event dates in order: ${dayName} must be after Day ${index}.`;
+            }
+
+            // Ingress and Egress order
             const start = new Date(`${event.event_date}T${event.ingress}:00`).getTime();
             const end = new Date(`${event.event_date}T${event.egress}:00`).getTime();
-            if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 'Each event egress must follow ingress on the same date.';
-            const pkg = getPackage(event.package_id);
-            if (!pkg) return 'Choose the main package before setting up event dates.';
-            const guests = Number(event.guest_count || 0);
-            if (guests < Number(pkg.min_guests || 1) || guests > Number(pkg.max_guests || 999999)) {
-                return `${pkg.name} supports ${pkg.min_guests || 1}–${pkg.max_guests || 999999} guests. Adjust this event’s guest count.`;
+            if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+                return `${dayName}: Egress time must follow ingress on the same date.`;
             }
-            if (event.availability !== true) return event.availabilityMessage || 'Wait for availability to be confirmed for each event.';
+
+            // Guests count
+            const evPkg = getPackage(event.package_id) || pkg;
+            const guests = Number(event.guest_count || 0);
+            if (guests < Number(evPkg.min_guests || 1) || guests > Number(evPkg.max_guests || 999999)) {
+                return `${evPkg.name} supports ${evPkg.min_guests || 1}–${evPkg.max_guests || 999999} guests. Adjust ${dayName}’s guest count.`;
+            }
+
+            // Availability confirmation check
+            if (event.availability === false) {
+                return `${dayName}: ${event.availabilityMessage || 'The selected date and time is not available. Please choose another date or time.'}`;
+            }
+            if (event.availability !== true) {
+                return `${dayName}: Caterer availability is still being verified. Please wait a moment and try again.`;
+            }
+
+            // Turnover time check if multiple events on the same date
             for (const interval of intervals) {
                 if (
                     interval.date === event.event_date &&
                     start < interval.end + turnoverMilliseconds &&
                     end + turnoverMilliseconds > interval.start
                 ) {
-                    return 'Events on the same date need enough time for caterer setup and turnover.';
+                    return `Events on the same date need at least ${turnoverHours} hours for caterer setup and turnover.`;
                 }
             }
             intervals.push({ date: event.event_date, start, end });
@@ -629,20 +773,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 current.guest_count = Math.max(1, Math.min(999999, Number(event.target.value || 1)));
             } else if (field === 'event_date') {
                 const selectedDate = event.target.value;
-                const { min: minDate, max: maxDate } = eventDateBounds(current, events.indexOf(current));
-                const duplicate = selectedDate && events.some(item => item !== current && item.event_date === selectedDate);
-                const outOfOrder = selectedDate && ((minDate && selectedDate < minDate) || (maxDate && selectedDate > maxDate));
-                if (duplicate || outOfOrder) {
-                    event.target.setCustomValidity(duplicate
-                        ? 'This date is already selected for another event. Choose a different date.'
-                        : `Keep event dates in order: choose a date on or after ${minDate}${maxDate ? ` and on or before ${maxDate}` : ''}.`);
-                    event.target.reportValidity();
-                    event.target.value = '';
-                    current.event_date = '';
-                } else {
-                    event.target.setCustomValidity('');
-                    current.event_date = selectedDate;
+                const currentIndex = events.indexOf(current);
+                if (selectedDate) {
+                    const check = checkDateRestrictions(selectedDate, current, currentIndex);
+                    if (!check.valid) {
+                        event.target.setCustomValidity(check.message);
+                        event.target.reportValidity();
+                        event.target.value = current.event_date || '';
+                        return;
+                    }
                 }
+                event.target.setCustomValidity('');
+                current.event_date = selectedDate;
             } else {
                 current[field] = event.target.value;
             }
@@ -728,25 +870,31 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.target !== legacyDate && event.target !== legacyTime) return;
         const first = events[0];
         if (!first) return;
-        const selectedDate = legacyDate?.value || '';
-        const firstDateBounds = eventDateBounds(first, 0);
-        const duplicateDate = selectedDate && events.some(item => item !== first && item.event_date === selectedDate);
-        const outOfOrder = selectedDate && (selectedDate < firstDateBounds.min || (firstDateBounds.max && selectedDate > firstDateBounds.max));
-        if (duplicateDate || outOfOrder) {
-            legacyDate.setCustomValidity(duplicateDate
-                ? 'This date is already selected for another event. Choose a different date.'
-                : 'Keep event dates in order: Day 1 must be before the next event date.');
-            legacyDate.reportValidity();
-            legacyDate.value = first.event_date || '';
-            return;
+        if (event.target === legacyDate) {
+            const selectedDate = legacyDate.value || '';
+            if (selectedDate) {
+                const check = checkDateRestrictions(selectedDate, first, 0);
+                if (!check.valid) {
+                    legacyDate.setCustomValidity(check.message);
+                    legacyDate.reportValidity();
+                    legacyDate.value = first.event_date || '';
+                    return;
+                }
+            }
+            legacyDate.setCustomValidity('');
+            first.event_date = selectedDate;
+            first.availability = null;
+            first.availabilityMessage = '';
+            render();
+            if (first.event_date && first.ingress) checkAvailability(first);
+        } else if (event.target === legacyTime) {
+            first.ingress = legacyTime.value || '';
+            first.availability = null;
+            first.availabilityMessage = '';
+            updateEventTotals();
+            render();
+            if (first.event_date && first.ingress) checkAvailability(first);
         }
-        legacyDate?.setCustomValidity('');
-        first.event_date = selectedDate;
-        first.ingress = legacyTime?.value || '';
-        first.availability = null;
-        first.availabilityMessage = '';
-        render();
-        if (first.event_date && first.ingress) checkAvailability(first);
     });
 
     form.addEventListener('click', event => {
@@ -773,7 +921,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (error) {
             event.preventDefault();
             event.stopImmediatePropagation();
-            window.alert(error);
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Event Schedule Review',
+                    text: error,
+                    confirmButtonColor: '#FF7B54'
+                });
+            } else {
+                window.alert(error);
+            }
+            const submitBtnEl = document.getElementById('submitBtn');
+            if (submitBtnEl) {
+                submitBtnEl.innerHTML = `Next Step: Identity <i class="fas fa-arrow-right"></i>`;
+                submitBtnEl.disabled = false;
+                submitBtnEl.classList.remove('is-loading');
+            }
             return;
         }
         if (legacyDate && legacyTime && typeof window.checkAvailability === 'function') {
@@ -783,6 +946,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     window.updateEventTotals = updateEventTotals;
+    window.renderBookingEvents = render;
     render();
     events.forEach(item => {
         if (item.event_date && item.ingress) checkAvailability(item);
