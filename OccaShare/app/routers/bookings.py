@@ -1627,8 +1627,29 @@ async def customize_package_page(
     optional_services = rules.get("optional_services", [])
     grouped_inclusions = get_package_grouped_inclusions(package)
 
-    # Initial guest count from session or package min_guests or caterer min_pax
-    raw_guest_count = guest_count or sess_data.get("guest_count") or package.min_guests or caterer.min_pax or 50
+    event_customizations = sess_data.get("event_customizations", {})
+    saved_customization = {}
+    if event_id and isinstance(event_customizations, dict):
+        saved_customization = event_customizations.get(str(event_id)) or event_customizations.get(str(reuse_from or "")) or {}
+        if not saved_customization:
+            if reuse_from and reuse_from in event_customizations:
+                saved_customization = event_customizations[reuse_from]
+            elif sess_data.get("customization"):
+                saved_customization = sess_data.get("customization", {})
+    elif not event_id:
+        saved_customization = sess_data.get("customization", {})
+    if isinstance(saved_customization, dict) and int(saved_customization.get("package_id") or 0) != int(package.id):
+        saved_customization = {}
+
+    # Initial guest count from parameter, saved customization, session, or package defaults
+    raw_guest_count = (
+        guest_count
+        or (saved_customization.get("guest_count") if isinstance(saved_customization, dict) and saved_customization.get("guest_count") else None)
+        or sess_data.get("guest_count")
+        or package.min_guests
+        or caterer.min_pax
+        or 50
+    )
     try:
         initial_guest_count = min(
             max(int(raw_guest_count), int(package.min_guests or caterer.min_pax or 10)),
@@ -1636,16 +1657,6 @@ async def customize_package_page(
         )
     except (ValueError, TypeError):
         initial_guest_count = 50
-    event_customizations = sess_data.get("event_customizations", {})
-    saved_customization = {}
-    if event_id and isinstance(event_customizations, dict):
-        saved_customization = event_customizations.get(str(event_id)) or event_customizations.get(str(reuse_from or "")) or {}
-        if not saved_customization and reuse_from == "__initial__":
-            saved_customization = sess_data.get("customization", {})
-    elif not event_id:
-        saved_customization = sess_data.get("customization", {})
-    if isinstance(saved_customization, dict) and int(saved_customization.get("package_id") or 0) != int(package.id):
-        saved_customization = {}
 
     return templates.TemplateResponse("customer/booking_wizard/customizable_package.html", {
         "request": request,
@@ -1735,6 +1746,16 @@ async def save_customization_selection(
             event_customizations = {}
         event_customizations[str(event_id)] = parsed_customization
         booking_data["event_customizations"] = event_customizations
+
+        events_list = booking_data.get("events")
+        if isinstance(events_list, list):
+            for ev in events_list:
+                if isinstance(ev, dict) and str(ev.get("id")) == str(event_id):
+                    ev["guest_count"] = parsed_customization.get("guest_count")
+                    ev["customization"] = parsed_customization
+                    break
+            booking_data["events"] = events_list
+
         request.session["booking_data"] = booking_data
         return RedirectResponse(url="/bookings/step/details", status_code=303)
 

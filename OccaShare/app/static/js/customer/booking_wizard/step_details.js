@@ -110,6 +110,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.warn('Could not save event details in this browser:', storageError);
             }
         };
+        window.saveDetailsFormState = saveDetailsFormState;
         const focusInvalidField = (errorElement) => {
             if (!errorElement) return;
             const group = errorElement.closest('.form-group') || errorElement.parentElement;
