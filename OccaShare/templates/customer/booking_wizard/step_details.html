@@ -204,35 +204,56 @@
     .booking-date-control { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
     .booking-date-control input { flex: 1 1 150px; min-width: 0; }
     .booking-date-control .booking-event-add { flex: 0 0 auto; min-height: 42px; padding: .45rem .65rem; font-size: .72rem; }
-    .booking-date-picker { min-width: 0; }
-    .booking-date-picker-trigger { width: 100%; min-height: 44px; padding: .6rem .75rem; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #172033; font: inherit; text-align: left; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
-    .booking-date-picker-trigger:hover, .booking-date-picker-trigger[aria-expanded="true"] { border-color: #fb923c; box-shadow: 0 0 0 3px rgba(251, 146, 60, .12); }
-    .booking-event-calendar { position: relative; z-index: 1; width: min(100%, 360px); margin-top: .55rem; padding: .85rem; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; box-shadow: 0 8px 24px rgba(15, 23, 42, .1); }
-    .booking-event-calendar[hidden] { display: none; }
-    .booking-calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .65rem; }
-    .booking-calendar-header strong { color: #172033; font-size: .88rem; font-weight: 800; }
-    .booking-calendar-header button { width: 34px; height: 34px; border: 1px solid #e2e8f0; border-radius: 9px; background: #f8fafc; color: #334155; font-size: 1.2rem; cursor: pointer; }
-    .booking-calendar-header button:hover { border-color: #fdba74; background: #fff7ed; color: #c2410c; }
-    .booking-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .25rem; }
-    .booking-calendar-weekdays { margin-bottom: .35rem; color: #64748b; font-size: .68rem; font-weight: 750; text-align: center; }
-    .booking-calendar-empty, .booking-calendar-day { min-width: 0; height: 36px; }
-    .booking-calendar-day { border: 0; border-radius: 9px; background: #fff; color: #334155; font: inherit; font-size: .78rem; cursor: pointer; transition: background .12s, color .12s; }
-    .booking-calendar-day:hover:not(:disabled) { background: #fff7ed; color: #c2410c; }
-    .booking-calendar-day.is-selected { background: #ea580c; color: #fff; font-weight: 800; }
-    .booking-calendar-day:disabled { background: #f8fafc; color: #cbd5e1; cursor: not-allowed; }
     .booking-event-customization { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-top: .8rem; padding: .7rem .8rem; border: 1px solid #fed7aa; border-radius: 9px; background: #fff7ed; color: #7c2d12; font-size: .76rem; }
     .booking-event-customize { color: #c2410c; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
-    .booking-field label { display: block; margin-bottom: .35rem; color: #475569; font-size: .75rem; font-weight: 750; }
+    .booking-field label,
+    .booking-field .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #475569;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .booking-field .form-input,
     .booking-field input,
     .booking-field select {
         width: 100%;
+        height: 3.25rem;
         min-height: 44px;
-        padding: .6rem .7rem;
+        padding: 0 1.25rem;
         border: 1px solid #cbd5e1;
-        border-radius: 9px;
-        background: #fff;
-        color: #172033;
-        font: inherit;
+        border-radius: 12px;
+        font-family: 'Poppins', sans-serif;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--wiz-text-dark);
+        background: #fdfdfd;
+        transition: all 0.2s ease;
+        box-shadow: none;
+        box-sizing: border-box;
+    }
+    .booking-field .form-input:focus,
+    .booking-field input:focus,
+    .booking-field select:focus {
+        outline: none;
+        border-color: var(--wiz-primary);
+        background: #ffffff;
+        box-shadow: 0 0 0 3px rgba(255, 123, 84, 0.1);
+    }
+    .booking-field .form-input.is-valid,
+    .booking-field input.is-valid {
+        border-color: #10b981;
+    }
+    .booking-field input[type="date"],
+    .form-input[type="date"] {
+        cursor: pointer;
+    }
+    .booking-field input[type="date"]::-webkit-calendar-picker-indicator,
+    .form-input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
     }
     .booking-package-option {
         display: grid;
