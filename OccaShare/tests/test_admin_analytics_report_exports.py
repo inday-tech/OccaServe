@@ -27,6 +27,8 @@ def test_analytics_word_export_is_valid_and_includes_all_report_sections():
         document_xml = archive.read("word/document.xml")
         ElementTree.fromstring(document_xml)
         document = document_xml.decode("utf-8")
+        assert archive.read("word/media/brand_icon.png").startswith(b"\x89PNG")
+        assert "word/_rels/document.xml.rels" in archive.namelist()
 
     assert "OccaServe Analytics Report" in document
     assert "Monthly booking trend" in document
@@ -35,6 +37,7 @@ def test_analytics_word_export_is_valid_and_includes_all_report_sections():
     assert 'w:orient="landscape"' in document
     assert '<w:tblLayout w:type="fixed"/>' in document
     assert "<w:tcMar>" in document
+    assert "F07835" in document
 
 
 def test_analytics_pdf_export_has_valid_xref_and_includes_all_report_sections():
@@ -47,6 +50,8 @@ def test_analytics_pdf_export_has_valid_xref_and_includes_all_report_sections():
 
     assert content.startswith(b"%PDF-1.4")
     assert content[xref_offset:xref_offset + 4] == b"xref"
+    assert b"/Subtype /Image" in content
+    assert b"OCCASERVE" in content
     assert b"Monthly booking trend" in content
     assert b"Jan 2026" in content
     assert b"Feb 2026" in content

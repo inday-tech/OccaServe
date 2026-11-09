@@ -151,10 +151,41 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const formatInclusions = pkg => {
         const groups = pkg.grouped_inclusions || {};
-        const names = ['food', 'services', 'equipment'].flatMap(group =>
-            (groups[group] || []).map(item => item.name)
-        );
-        return names.length ? `Includes: ${names.slice(0, 5).map(escapeHtml).join(', ')}${names.length > 5 ? ` +${names.length - 5} more` : ''}` : 'Package inclusions confirmed by caterer';
+        const count = ['food', 'services', 'equipment'].reduce((total, group) => total + (groups[group] || []).length, 0);
+        return count ? `${count} included item${count === 1 ? '' : 's'}` : 'Package inclusions confirmed by caterer';
+    };
+    const renderPackageDetailGroup = (title, items) => {
+        if (!items.length) return '';
+        return `<section class="booking-package-modal-group"><h4>${title}</h4><ul>${items.map(item => {
+            const quantity = String(item.quantity || '').trim();
+            const description = String(item.description || '').trim();
+            return `<li><strong>${escapeHtml(item.name || 'Included item')}</strong>${quantity ? ` — ${escapeHtml(quantity)}` : ''}${description ? `<div>${escapeHtml(description)}</div>` : ''}</li>`;
+        }).join('')}</ul></section>`;
+    };
+    const openPackageDetails = pkg => {
+        const modal = document.getElementById('booking-package-details-modal');
+        if (!modal || !pkg) return;
+        const groups = pkg.grouped_inclusions || {};
+        const inclusions = ['food', 'services', 'equipment'].map(key => Array.isArray(groups[key]) ? groups[key] : []);
+        const totalItems = inclusions.reduce((total, items) => total + items.length, 0);
+        const title = document.getElementById('booking-package-details-title');
+        const meta = document.getElementById('booking-package-details-meta');
+        const description = document.getElementById('booking-package-details-description');
+        const content = document.getElementById('booking-package-details-inclusions');
+        if (title) title.textContent = pkg.name || 'Package Details';
+        if (meta) meta.textContent = `${packageRate(pkg)} · ${Number(pkg.min_guests || 1)}–${Number(pkg.max_guests || 999999)} guests · ${Number(pkg.service_duration || 0)}-hour service`;
+        if (description) {
+            description.textContent = pkg.description || '';
+            description.hidden = !pkg.description;
+        }
+        if (content) {
+            content.innerHTML = [
+                renderPackageDetailGroup('Food & Beverages', inclusions[0]),
+                renderPackageDetailGroup('Services', inclusions[1]),
+                renderPackageDetailGroup('Equipment', inclusions[2]),
+            ].join('') || `<p class="booking-package-modal-empty">${totalItems ? '' : 'No package inclusions are listed.'}</p>`;
+        }
+        if (!modal.open) modal.showModal();
     };
 
     const selectedCard = (event, pkg) => String(event.package_id) === String(pkg.id);
@@ -178,6 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span class="booking-package-name">${escapeHtml(pkg.name)}</span>
                     <span class="booking-package-meta">${packageRate(pkg)} · ${Number(pkg.min_guests || 1)}–${Number(pkg.max_guests || 999999)} guests · ${Number(pkg.service_duration)}-hour service</span>
                     <span class="booking-package-inclusions">${formatInclusions(pkg)}</span>
+                    <button type="button" class="booking-package-details-button" data-action="view-package-details" data-package-id="${Number(pkg.id)}" aria-haspopup="dialog">View Details</button>
                 </span>
             </label>`;
         }).join('')}</div>`;
@@ -466,6 +498,13 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     eventList.addEventListener('click', event => {
+        const detailsButton = event.target.closest('[data-action="view-package-details"]');
+        if (detailsButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            openPackageDetails(getPackage(detailsButton.dataset.packageId));
+            return;
+        }
         const button = event.target.closest('[data-action="remove-event"]');
         if (!button || events.length <= 1) return;
         const card = button.closest('.booking-event-card');
@@ -474,6 +513,12 @@ document.addEventListener('DOMContentLoaded', function () {
             availability.delete(events[index].id);
             events.splice(index, 1);
             render();
+        }
+    });
+
+    document.getElementById('booking-package-details-modal')?.addEventListener('click', event => {
+        if (event.target.closest('[data-action="close-package-details"]')) {
+            event.currentTarget.close();
         }
     });
 

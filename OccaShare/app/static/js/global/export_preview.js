@@ -324,6 +324,11 @@
         return canvas.toDataURL('image/png');
     }
 
+    function imageBytes(dataUrl) {
+        const binary = atob(dataUrl.split(',')[1]);
+        return Uint8Array.from(binary, character => character.charCodeAt(0));
+    }
+
     async function download(config, sections, format, button, status, formatLabels) {
         const label = formatLabels.get(format).label;
         button.disabled = true;
@@ -354,20 +359,48 @@
         await loadLibrary(libraries.docx);
         const word = window.docx;
         if (!word || !word.Document || !word.Packer) throw new Error('Word document library is unavailable.');
+        const brandImage = await loadBrandImage();
         const children = [
-            new word.Paragraph({ children: [new word.TextRun({ text: 'OCCASERVE', bold: true, color: 'F07835', size: 24 })], spacing: { after: 120 } }),
-            new word.Paragraph({ text: config.title || 'OccaServe Report', heading: word.HeadingLevel.TITLE }),
-            ...(config.catererName ? [new word.Paragraph({ text: config.catererName, heading: word.HeadingLevel.HEADING_2 })] : []),
-            new word.Paragraph({ text: `Generated ${config.generatedAt || new Date().toLocaleString()}${(config.metadata || []).length ? ` · ${(config.metadata || []).join(' · ')}` : ''}`, spacing: { after: 240 } })
+            new word.Paragraph({
+                children: [
+                    new word.ImageRun({ data: imageBytes(brandImage), transformation: { width: 34, height: 34 } }),
+                    new word.TextRun({ text: '  OCCASERVE', bold: true, color: 'F07835', size: 22 })
+                ],
+                spacing: { after: 100 },
+                alignment: word.AlignmentType.LEFT
+            }),
+            new word.Paragraph({
+                children: [new word.TextRun({ text: config.title || 'OccaServe Report', bold: true, color: '0F172A', size: 36 })],
+                spacing: { after: 60 }
+            }),
+            ...(config.catererName ? [new word.Paragraph({
+                children: [new word.TextRun({ text: config.catererName, bold: true, color: '334155', size: 22 })],
+                spacing: { after: 60 }
+            })] : []),
+            new word.Paragraph({
+                children: [new word.TextRun({
+                    text: `Generated ${config.generatedAt || new Date().toLocaleString()}${(config.metadata || []).length ? ` · ${(config.metadata || []).join(' · ')}` : ''}`,
+                    color: '64748B',
+                    size: 18
+                })],
+                border: { bottom: { color: 'F07835', space: 8, style: word.BorderStyle.SINGLE, size: 12 } },
+                spacing: { after: 200 }
+            })
         ];
         const pageWidth = 16838;
-        const margins = { top: 600, right: 540, bottom: 600, left: 540 };
+        const margins = { top: 720, right: 720, bottom: 720, left: 720 };
         const tableWidth = pageWidth - margins.left - margins.right;
         sections.forEach(section => {
             if (section.title) children.push(new word.Paragraph({ text: section.title, heading: word.HeadingLevel.HEADING_1, spacing: { before: 240, after: 120 } }));
             const widths = wordColumnWidths(section, tableWidth);
             const rows = [new word.TableRow({
-                children: section.columns.map((column, index) => makeWordCell(word, column.label, true, widths[index])),
+                children: section.columns.map((column, index) => makeWordCell(
+                    word,
+                    column.label,
+                    true,
+                    widths[index],
+                    column.type === 'currency' || column.type === 'number'
+                )),
                 tableHeader: true
             })];
             section.rows.forEach(row => rows.push(new word.TableRow({
@@ -376,7 +409,8 @@
                     word,
                     column.type === 'currency' ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index),
                     false,
-                    widths[index]
+                    widths[index],
+                    column.type === 'currency' || column.type === 'number'
                 ))
             })));
             if (!section.columns.length) children.push(new word.Paragraph({ text: 'No matching records.' }));
@@ -418,9 +452,10 @@
         saveBlob(await word.Packer.toBlob(document), `${fileBase(config)}.docx`);
     }
 
-    function makeWordCell(word, value, header = false, width) {
+    function makeWordCell(word, value, header = false, width, alignRight = false) {
         return new word.TableCell({
             children: [new word.Paragraph({
+                alignment: alignRight ? word.AlignmentType.RIGHT : word.AlignmentType.LEFT,
                 spacing: { before: 0, after: 0 },
                 children: [new word.TextRun({
                     text: safeText(value),
@@ -478,6 +513,8 @@
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'OccaServe';
         workbook.created = new Date();
+        const brandImage = await loadBrandImage();
+        const brandImageId = workbook.addImage({ base64: brandImage, extension: 'png' });
         sections.forEach((section, sectionIndex) => {
             const worksheetName = (section.title || 'Report').replace(/[\\/?*:[\]]/g, '').slice(0, 31) || `Report ${sectionIndex + 1}`;
             const worksheet = workbook.addWorksheet(worksheetName);
@@ -487,7 +524,12 @@
                 style: {
                     font: { name: 'Arial', size: 8 },
                     ...(column.type === 'currency' ? { numFmt: '"₱"#,##0.00' } : {}),
-                    ...(column.type === 'number' ? { numFmt: '#,##0.##' } : {})
+                    ...(column.type === 'number' ? { numFmt: '#,##0.##' } : {}),
+                    alignment: {
+                        horizontal: column.type === 'currency' || column.type === 'number' ? 'right' : 'left',
+                        vertical: 'top',
+                        wrapText: true
+                    }
                 }
             }));
             const columnCount = Math.max(1, section.columns.length);
@@ -502,11 +544,18 @@
                 };
                 return row;
             };
-            addMergedLine('OCCASERVE', { font: { bold: true, size: 10 }, color: 'FFF07835' });
-            addMergedLine(config.title || 'OccaServe Report', { font: { bold: true, size: 16 }, color: 'FF0F172A' });
-            if (config.catererName) addMergedLine(config.catererName, { font: { bold: true, size: 11 }, color: 'FF334155' });
+            const brandRow = addMergedLine('OCCASERVE', { font: { name: 'Arial', bold: true, size: 10 }, color: 'FFF07835' });
+            brandRow.height = 32;
+            brandRow.alignment = { vertical: 'middle', indent: 5 };
+            worksheet.addImage(brandImageId, {
+                tl: { col: 0, row: brandRow.number - 1 },
+                ext: { width: 30, height: 30 }
+            });
+            addMergedLine(config.title || 'OccaServe Report', { font: { name: 'Arial', bold: true, size: 14 }, color: 'FF0F172A' });
+            if (config.catererName) addMergedLine(config.catererName, { font: { name: 'Arial', bold: true, size: 11 }, color: 'FF334155' });
             const metadata = [`Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])];
-            addMergedLine(metadata.filter(Boolean).join(' · '), { font: { size: 9 }, color: 'FF64748B' });
+            const metadataRow = addMergedLine(metadata.filter(Boolean).join(' · '), { font: { name: 'Arial', size: 9 }, color: 'FF64748B' });
+            metadataRow.border = { bottom: { style: 'medium', color: { argb: 'FFF07835' } } };
             if (section.title) addMergedLine(section.title, { font: { bold: true, size: 11 }, color: 'FF263449' });
             worksheet.addRow([]);
             const headerRow = worksheet.addRow(section.columns.map(column => column.label));
@@ -525,7 +574,7 @@
                 fitToPage: true,
                 fitToWidth: 1,
                 fitToHeight: 0,
-                margins: { left: 0.25, right: 0.25, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
+                margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
             };
             if (section.columns.length) {
                 worksheet.autoFilter = {
@@ -535,7 +584,7 @@
             }
             headerRow.height = 24;
             headerRow.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF176B43' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
             headerRow.alignment = { vertical: 'middle', wrapText: true };
             worksheet.eachRow((row, rowNumber) => {
                 if (rowNumber < headerRowNumber) return;
@@ -545,7 +594,12 @@
                     if (rowNumber > headerRowNumber && (rowNumber - headerRowNumber) % 2 === 0) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
                     }
-                    cell.alignment = { vertical: 'top', wrapText: true };
+                    const column = section.columns[cell.col - 1];
+                    cell.alignment = {
+                        vertical: 'top',
+                        horizontal: column && (column.type === 'currency' || column.type === 'number') ? 'right' : 'left',
+                        wrapText: true
+                    };
                     const columnWidth = worksheet.getColumn(cell.col).width || 14;
                     const value = cell.value && typeof cell.value === 'object' && 'text' in cell.value
                         ? cell.value.text
@@ -565,43 +619,56 @@
         const Pdf = window.jspdf && window.jspdf.jsPDF;
         if (!Pdf) throw new Error('PDF library is unavailable.');
         const doc = new Pdf({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-        let brandImage = null;
-        try { brandImage = await loadBrandImage(); } catch (_) {}
+        const brandImage = await loadBrandImage();
         const margin = 36;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
         sections.forEach((section, index) => {
-            if (index) doc.addPage();
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9);
-            doc.setTextColor(240, 120, 53);
-            if (brandImage) doc.addImage(brandImage, 'PNG', margin, 13, 18, 18);
-            doc.text('OCCASERVE', margin + 22, 30);
-            doc.setFontSize(19);
-            doc.setTextColor(15, 23, 42);
-            const titleLines = doc.splitTextToSize(config.title || 'Report', doc.internal.pageSize.getWidth() - margin * 2);
-            doc.text(titleLines, margin, 56);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            const subtitle = [config.catererName, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · ');
-            const subtitleLines = doc.splitTextToSize(subtitle, doc.internal.pageSize.getWidth() - margin * 2);
-            const subtitleY = 56 + titleLines.length * 20 + 4;
-            doc.text(subtitleLines, margin, subtitleY);
-            let tableStartY = subtitleY + subtitleLines.length * 10 + 12;
+            let tableStartY = index && doc.lastAutoTable ? doc.lastAutoTable.finalY + 22 : 112;
+            const needsNewPage = tableStartY > pageHeight - 100;
+            if (needsNewPage) {
+                doc.addPage();
+                tableStartY = 112;
+            }
+            const drawPageHeader = () => {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(9);
+                doc.setTextColor(240, 120, 53);
+                doc.addImage(brandImage, 'PNG', margin, 14, 30, 30);
+                doc.text('OCCASERVE', margin + 38, 33);
+                doc.setFontSize(16);
+                doc.setTextColor(15, 23, 42);
+                const titleLines = doc.splitTextToSize(config.title || 'Report', pageWidth - margin * 2);
+                doc.text(titleLines, margin, 62);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(8);
+                doc.setTextColor(100, 116, 139);
+                const subtitle = [config.catererName, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · ');
+                const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - margin * 2);
+                doc.text(subtitleLines, margin, 78);
+                doc.setDrawColor(240, 120, 53);
+                doc.setLineWidth(1.5);
+                doc.line(margin, 91, pageWidth - margin, 91);
+            };
+            if (!index || needsNewPage) drawPageHeader();
             if (section.title) {
                 doc.setFontSize(11);
                 doc.setTextColor(51, 65, 85);
                 const titleLines = doc.splitTextToSize(section.title, doc.internal.pageSize.getWidth() - margin * 2);
-                doc.text(titleLines, margin, tableStartY);
-                tableStartY += titleLines.length * 13 + 4;
+                doc.text(titleLines, margin, tableStartY - 5);
+                tableStartY += titleLines.length * 13;
             }
             const columnCount = Math.max(1, section.columns.length);
+            const sectionStartPage = doc.internal.getCurrentPageInfo().pageNumber;
+            const pdfColumnWeights = wordColumnWeights(section);
+            const totalPdfColumnWeight = pdfColumnWeights.reduce((sum, weight) => sum + weight, 0) || 1;
             doc.autoTable({
                 startY: tableStartY,
                 head: [section.columns.map(column => column.label)],
                 body: section.rows.map(row => section.columns.map((column, columnIndex) => column.type === 'currency'
                     ? formatCurrency(valueFor(row, column, columnIndex))
                     : safeText(valueFor(row, column, columnIndex)))),
-                margin: { left: margin, right: margin, bottom: 30 },
+                margin: { top: 112, left: margin, right: margin, bottom: 30 },
                 theme: 'grid',
                 styles: {
                     font: 'helvetica',
@@ -613,8 +680,15 @@
                 },
                 headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', valign: 'middle' },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
-                didDrawPage: () => {
-                    const pageHeight = doc.internal.pageSize.getHeight();
+                columnStyles: Object.fromEntries(section.columns.map((column, columnIndex) => [
+                    columnIndex,
+                    {
+                        cellWidth: (pageWidth - margin * 2) * pdfColumnWeights[columnIndex] / totalPdfColumnWeight,
+                        halign: column.type === 'currency' || column.type === 'number' ? 'right' : 'left'
+                    }
+                ])),
+                didDrawPage: data => {
+                    if (doc.internal.getCurrentPageInfo().pageNumber > sectionStartPage) drawPageHeader();
                     doc.setFontSize(8);
                     doc.setTextColor(100, 116, 139);
                     doc.text('OccaServe · Confidential report', margin, pageHeight - 16);
@@ -622,8 +696,6 @@
             });
         });
         const pageCount = doc.internal.getNumberOfPages();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
         for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
             doc.setPage(pageNumber);
             doc.setFontSize(8);
@@ -637,7 +709,7 @@
         const win = window.open('', '_blank');
         if (!win) throw new Error('Allow pop-ups to print this report.');
         const sectionHtml = sections.map(section => `<section><h2>${escapeHtml(section.title)}</h2><table><thead><tr>${section.columns.map(column => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr></thead><tbody>${section.rows.map(row => `<tr>${section.columns.map((column, index) => `<td>${escapeHtml(column.type === 'currency' ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index))}</td>`).join('')}</tr>`).join('')}</tbody></table></section>`).join('');
-        win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(config.title || 'OccaServe Report')}</title><style>@page{size:landscape;margin:15mm}body{font:11px/1.5 Arial,sans-serif;color:#0f172a}header{border-bottom:3px solid #F07835;padding-bottom:12px;margin-bottom:20px}header strong{color:#F07835}h1{font-size:22px;margin:10px 0 4px}small{color:#64748b}section{margin:20px 0;break-inside:avoid}h2{font-size:14px}table{width:100%;border-collapse:collapse;font-size:9px}th,td{border:1px solid #dbe3ec;padding:6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#0f172a;color:white}tr:nth-child(even){background:#f8fafc}footer{position:fixed;bottom:0;color:#64748b;font-size:9px}</style></head><body><header><strong>OCCASERVE</strong><h1>${escapeHtml(config.title || 'Report')}</h1><small>${escapeHtml([config.catererName, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · '))}</small></header>${sectionHtml}<footer>OccaServe · Confidential report</footer><script>window.onload=()=>window.print()<\/script></body></html>`);
+        win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(config.title || 'OccaServe Report')}</title><style>@page{size:landscape;margin:15mm}body{font:10px/1.45 Arial,sans-serif;color:#0f172a}.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px;color:#F07835;font-size:12px;font-weight:800;letter-spacing:.09em}.brand img{width:38px;height:38px;object-fit:contain}header{border-bottom:2px solid #F07835;padding-bottom:12px;margin-bottom:18px}h1{font-size:20px;line-height:1.25;margin:0;color:#0f172a}header small{display:block;margin-top:8px;color:#64748b;font-size:10px}section{margin:16px 0 20px;break-inside:avoid}h2{font-size:13px;color:#334155;margin:0 0 8px}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9px}th,td{border:1px solid #dbe3ec;padding:5px 6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#0f172a;color:white}tr:nth-child(even){background:#f8fafc}footer{position:fixed;bottom:0;color:#64748b;font-size:9px}</style></head><body><header><div class="brand"><img src="${window.location.origin}/static/images/brand_icon.png" alt="">OCCASERVE</div><h1>${escapeHtml(config.title || 'Report')}</h1><small>${escapeHtml([config.catererName, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · '))}</small></header>${sectionHtml}<footer>OccaServe · Confidential report</footer><script>window.onload=()=>window.print()<\/script></body></html>`);
         const printStyles = win.document.createElement('style');
         printStyles.textContent = 'section{break-inside:auto!important}h2{break-after:avoid}thead{display:table-header-group}tr{break-inside:avoid}th,td{white-space:pre-wrap;overflow-wrap:anywhere}';
         win.document.head.appendChild(printStyles);

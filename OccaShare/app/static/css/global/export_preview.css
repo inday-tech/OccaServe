@@ -213,30 +213,31 @@
     border: 1px solid #e2e8f0;
     background: #fff;
     box-shadow: 0 4px 20px rgb(15 23 42 / 10%);
+    font-family: Arial, sans-serif;
 }
 
 .occa-export-document-brand {
     display: flex;
     align-items: center;
-    gap: 9px;
-    margin-bottom: 18px;
+    gap: 11px;
+    margin-bottom: 14px;
     color: #f07835;
-    font-size: 11px;
-    font-weight: 850;
-    letter-spacing: .1em;
+    font: 800 12px/1.2 Arial, sans-serif;
+    letter-spacing: .09em;
+    text-transform: uppercase;
 }
 
 .occa-export-document-brand img {
-    width: 28px;
-    height: 28px;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 auto;
     object-fit: contain;
 }
 
 .occa-export-sheet h1 {
     margin: 0;
     color: #0f172a;
-    font-size: clamp(21px, 2.6vw, 28px);
-    line-height: 1.25;
+    font: 700 clamp(19px, 2.2vw, 24px)/1.25 Arial, sans-serif;
 }
 
 .occa-export-caterer {
@@ -247,9 +248,11 @@
 }
 
 .occa-export-meta {
-    margin: 8px 0 22px;
+    margin: 8px 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f07835;
     color: #64748b;
-    font-size: 11px;
+    font: 10px/1.45 Arial, sans-serif;
     overflow-wrap: anywhere;
 }
 
@@ -273,11 +276,11 @@
 .occa-export-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 11px;
+    font: 10px/1.4 Arial, sans-serif;
 }
 
 .occa-export-table th {
-    background: #172033;
+    background: #0f172a;
     color: #fff;
     text-align: left;
     font-weight: 700;
@@ -311,11 +314,7 @@
 .occa-export-sheet-xlsx .occa-export-table {
     border: 1px solid #cbd5e1;
     font-family: Arial, sans-serif;
-    font-size: 11px;
-}
-
-.occa-export-sheet-xlsx .occa-export-table th {
-    background: #176b43;
+    font-size: 10px;
 }
 
 .occa-export-sheet-pdf {
@@ -349,19 +348,9 @@
     font-size: 10px;
 }
 
-.occa-export-sheet-word .occa-export-table th,
-.occa-export-sheet-word .occa-export-table td {
-    padding: 6px 7px;
-}
-
 .occa-export-sheet-word {
     max-width: 1020px;
     padding: clamp(22px, 3.2vw, 40px);
-}
-
-.occa-export-sheet-word > h1 {
-    padding-bottom: 12px;
-    border-bottom: 3px solid #f07835;
 }
 
 .occa-export-sheet-csv {
@@ -598,6 +587,7 @@
     }
 
     .occa-export-sheet {
+        font-family: Arial, sans-serif;
         page: occa-report;
         width: 100%;
         max-width: none;
