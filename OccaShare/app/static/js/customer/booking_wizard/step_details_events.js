@@ -1075,26 +1075,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const fee = feeIsKnown ? Number(window.currentDeliveryFee || 0) : 0;
         const total = subtotal + fee;
         const guests = events.reduce((sum, event) => sum + Number(event.guest_count || 0), 0);
-        const totalElement = document.getElementById('booking-events-total');
         const sidebarTotal = document.getElementById('calc-grand-total');
         const sidebarGuests = document.getElementById('calc-guests');
         const sidebarPackage = document.getElementById('calc-pkg-price-label');
         const sidebarFee = document.getElementById('calc-delivery-fee');
         const totalInput = document.getElementById('total_price_input');
         const reservationInput = document.getElementById('reservation_fee_input');
-        if (totalElement) totalElement.textContent = money(total);
         if (sidebarTotal) sidebarTotal.textContent = money(total);
         if (sidebarGuests) sidebarGuests.textContent = String(guests);
         if (sidebarPackage) sidebarPackage.textContent = `${events.length} event${events.length === 1 ? '' : 's'} · packages, menu & add-ons`;
         if (sidebarFee) sidebarFee.textContent = feeIsKnown ? money(fee) : 'Coordinate with caterer';
         if (totalInput) totalInput.value = total.toFixed(2);
         if (reservationInput) reservationInput.value = (total * 0.3).toFixed(2);
-        const transport = document.getElementById('booking-events-transport');
-        if (transport) {
-            transport.textContent = feeIsKnown
-                ? `Transportation fee: ${money(fee)} (configured for this venue).`
-                : 'Transportation: Coordinate with caterer until confirmed.';
-        }
         eventsInput.value = JSON.stringify(events.map(event => ({
             id: event.id,
             event_name: event.event_name,
