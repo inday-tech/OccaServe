@@ -2021,27 +2021,59 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     # Pre-map all caterer packages with their dynamic grouped inclusions for seamless instant UI switching
     packages_map = {}
     for p in caterer_packages:
+        package_rules = p.selection_rules or {}
+        if isinstance(package_rules, str):
+            try:
+                package_rules = json.loads(package_rules)
+            except json.JSONDecodeError:
+                package_rules = {}
+        allowed_menu_ids = package_rules.get("available_menu_ids", []) if isinstance(package_rules, dict) else []
+        if not isinstance(allowed_menu_ids, list):
+            allowed_menu_ids = []
         packages_map[str(p.id)] = {
             "id": p.id,
             "name": p.name,
+            "description": p.description or "",
+            "image_url": p.image_url or "",
             "event_type": p.service_type or "General Catering",
             "pricing_mode": p.pricing_mode or ('per_pax' if p.price_unit == 'per_guest' else 'fixed'),
             "price_per_head": float(p.price_per_head or p.price or 0),
             "price": float(p.price or p.price_per_head or 0),
             "price_unit": p.price_unit or 'per_guest',
             "additional_guest_price": float(p.additional_guest_price or 0),
-            "min_guests": p.min_guests or caterer.min_pax or 10,
-        "max_guests": 999999,
-            "service_duration": p.service_duration or 4,
-            "booking_lead_time": p.booking_lead_time or caterer.booking_lead_time or 7,
-            "grouped_inclusions": get_package_grouped_inclusions(p)
+            "min_guests": p.min_guests or caterer.min_pax or 1,
+            "max_guests": int(p.max_guests or 999999),
+            "service_duration": int(p.service_duration or 0),
+            "booking_lead_time": p.booking_lead_time or caterer.booking_lead_time or 0,
+            "grouped_inclusions": get_package_grouped_inclusions(p),
+            "included_menu_ids": [item.id for item in p.menu_items or []],
+            "allowed_menu_ids": [int(item_id) for item_id in allowed_menu_ids if str(item_id).isdigit()],
+            "included_equipment_ids": [link.equipment_id for link in p.equipment_links or [] if link.equipment_id],
+            "included_service_ids": [link.service_id for link in p.service_links or [] if link.service_id],
+            "menu_addons": [{
+                "id": link.menu_item_id,
+                "price": float(link.price or 0),
+                "enabled": bool(link.is_enabled),
+            } for link in p.menu_addons or []],
+            "equipment_addons": [{
+                "id": link.equipment_id,
+                "price": float(link.price or 0),
+                "enabled": bool(link.is_enabled),
+            } for link in p.equipment_addons or []],
+            "service_addons": [{
+                "id": link.service_id,
+                "price": float(link.price or 0),
+                "enabled": bool(link.is_enabled),
+            } for link in p.service_addons or []],
         }
     
     # All active items for this caterer (to allow swapping)
     all_menu_items = db.query(models.MenuItem).filter(
         models.MenuItem.caterer_id == caterer.id,
         models.MenuItem.is_archived == False,
-        models.MenuItem.available_for_package == True
+        models.MenuItem.available_for_package == True,
+        models.MenuItem.is_hidden == False,
+        models.MenuItem.status == "available",
     ).all()
     
     addon_items = [i for i in all_menu_items if i.is_addon]
@@ -2049,14 +2081,70 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     addon_equipment = db.query(models.Equipment).filter(
         models.Equipment.caterer_id == caterer.id,
         models.Equipment.is_archived == False,
-        models.Equipment.is_addon == True
+        models.Equipment.is_addon == True,
+        models.Equipment.is_hidden == False,
+        models.Equipment.status == "available",
     ).all()
 
     addon_services = db.query(models.Service).filter(
         models.Service.caterer_id == caterer.id,
         models.Service.is_archived == False,
-        models.Service.is_addon == True
+        models.Service.is_addon == True,
+        models.Service.is_hidden == False,
+        models.Service.status == "available",
     ).all()
+
+    initial_events = data.get("events")
+    if not isinstance(initial_events, list) and booking and booking.custom_requirements:
+        initial_events = booking.custom_requirements.get("events")
+    if not isinstance(initial_events, list) and booking:
+        initial_events = [{
+            "id": "event-1",
+            "event_date": booking.event_date.isoformat() if booking.event_date else "",
+            "ingress": booking.event_time.strftime("%H:%M") if booking.event_time else "",
+            "egress": booking.event_end_time.strftime("%H:%M") if booking.event_end_time else "",
+            "guest_count": booking.guest_count or data.get("guest_count") or 1,
+            "package_id": booking.package_id,
+            "menu_ids": [item.menu_item_id for item in booking.selected_items if item.menu_item_id],
+            "equipment_ids": [item.equipment_id for item in booking.selected_items if item.equipment_id],
+            "service_ids": [item.service_id for item in booking.selected_items if item.service_id],
+        }]
+    if not isinstance(initial_events, list):
+        initial_events = []
+
+    event_options = {
+        "packages": list(packages_map.values()),
+        "menu_items": [{
+            "id": item.id,
+            "name": item.name,
+            "category": item.category or "Other",
+            "description": item.description or "",
+            "image_url": item.image_url or "",
+            "price": float(item.price or 0),
+            "addon_price": float(item.addon_price or 0),
+            "upgrade_fee": float(item.upgrade_fee or 0),
+            "serving_size": item.serving_size or "",
+            "serving_style": item.serving_style or "",
+            "pricing_unit": item.pricing_unit or "per_pax",
+            "is_addon": bool(item.is_addon),
+        } for item in all_menu_items],
+        "equipment": [{
+            "id": item.id,
+            "name": item.name,
+            "description": item.description or "",
+            "image_url": item.image_url or "",
+            "unit_type": item.unit_type or "piece",
+            "price": float(item.addon_price or item.rental_price or 0),
+        } for item in addon_equipment],
+        "services": [{
+            "id": item.id,
+            "name": item.name,
+            "description": item.description or "",
+            "image_url": item.image_url or "",
+            "unit_type": item.unit_type or "per_event",
+            "price": float(item.addon_price or item.selling_price or 0),
+        } for item in addon_services],
+    }
 
     # Get selected addons if existing booking
     selected_addon_ids = []
@@ -2096,6 +2184,8 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
         "initial_guest_count": initial_guest_count,
         "caterer_packages": caterer_packages,
         "packages_map": packages_map,
+        "event_options": event_options,
+        "initial_events": initial_events,
         "grouped_inclusions": grouped_inclusions,
         "caterer": caterer,
         "all_menu_items": all_menu_items,
@@ -2136,6 +2226,7 @@ async def step_details_submit(
     selected_addons: list[int] = Form(default=[]),
     selected_equipment_addons: list[int] = Form(default=[]),
     selected_service_addons: list[int] = Form(default=[]),
+    events_json: Optional[str] = Form(None),
     special_requests: Optional[str] = Form(""),
     theme_motif: Optional[str] = Form(None),
     celebrant_name: Optional[str] = Form(None),
@@ -2172,6 +2263,50 @@ async def step_details_submit(
     venue_barangay_status = (_clean_str(venue_barangay_status) or "").lower()
 
     # Safely parse IDs and numbers
+    submitted_events = None
+    if events_json:
+        try:
+            submitted_events = json.loads(events_json)
+            if not isinstance(submitted_events, list) or not submitted_events:
+                raise ValueError("Add at least one event date.")
+            if not all(isinstance(item, dict) for item in submitted_events):
+                raise ValueError("Event details are invalid.")
+            first_event = submitted_events[0]
+            package_id = str(first_event.get("package_id") or "")
+            event_date = first_event.get("event_date")
+            event_time = first_event.get("ingress")
+            event_end_time = first_event.get("egress")
+            guest_count = str(first_event.get("guest_count") or "0")
+
+            def _event_ids(event_data, key):
+                values = event_data.get(key, [])
+                if not isinstance(values, list):
+                    raise ValueError("Event selections are invalid.")
+                parsed_ids = []
+                for value in values:
+                    parsed_id = int(value)
+                    if parsed_id < 1:
+                        raise ValueError("Event selections are invalid.")
+                    if parsed_id not in parsed_ids:
+                        parsed_ids.append(parsed_id)
+                return parsed_ids
+
+            selected_items = _event_ids(first_event, "menu_ids")
+            selected_addons = []
+            selected_equipment_addons = _event_ids(first_event, "equipment_ids")
+            selected_service_addons = _event_ids(first_event, "service_ids")
+        except (json.JSONDecodeError, TypeError, ValueError) as exc:
+            posted_booking_id = _clean_str(booking_id)
+            details_path = (
+                f"/bookings/step/details/{posted_booking_id}"
+                if posted_booking_id and posted_booking_id.isdigit()
+                else "/bookings/step/details"
+            )
+            return RedirectResponse(
+                url=f"{details_path}?booking_error={quote_plus(str(exc) or 'Event details are invalid.')}",
+                status_code=303,
+            )
+
     cleaned_pkg_str = _clean_str(package_id)
     package_id_int = int(cleaned_pkg_str) if cleaned_pkg_str and cleaned_pkg_str.isdigit() else None
     if not package_id_int:
@@ -2235,7 +2370,9 @@ async def step_details_submit(
     package = db.query(models.CateringPackage).get(package_id_int) if package_id_int else None
     if package_id_int and (not package or package.caterer_id != caterer_id):
         return RedirectResponse(url="/customer/marketplace?error_msg=The+selected+package+is+unavailable.", status_code=303)
-    package_is_customizable = bool(package and package.pricing_mode == "customizable")
+    package_is_customizable = bool(
+        package and package.pricing_mode == "customizable" and submitted_events is None
+    )
 
     event_name_clean = _clean_str(event_name) or ""
     event_type_clean = _clean_str(event_type) or ""
@@ -2295,6 +2432,239 @@ async def step_details_submit(
 
     from app.services.availability_service import AvailabilityService
     availability_settings = AvailabilityService.get_caterer_availability_settings(caterer)
+    validated_event_selections = []
+    if submitted_events is not None:
+        details_path = (
+            f"/bookings/step/details/{cleaned_booking_str}"
+            if cleaned_booking_str and cleaned_booking_str.isdigit()
+            else "/bookings/step/details"
+        )
+
+        def _event_error(message):
+            return RedirectResponse(
+                url=f"{details_path}?booking_error={quote_plus(message)}",
+                status_code=303,
+            )
+
+        package_rules = (caterer.scheduling_rules or {}).get("package_rules", {})
+        try:
+            turnover_hours = max(0.0, float(package_rules.get("turnover_time_hours", 2.0)))
+        except (AttributeError, TypeError, ValueError):
+            turnover_hours = 2.0
+
+        occupied_intervals = []
+        events_per_day = {}
+        for index, event_data in enumerate(submitted_events, start=1):
+            try:
+                event_date_value = date.fromisoformat(str(event_data.get("event_date") or ""))
+                event_ingress = time.fromisoformat(str(event_data.get("ingress") or ""))
+                event_egress = time.fromisoformat(str(event_data.get("egress") or ""))
+                event_package_id = int(event_data.get("package_id") or 0)
+                event_guests = int(event_data.get("guest_count") or 0)
+                if event_ingress.tzinfo or event_egress.tzinfo:
+                    raise ValueError("Times must be local event times.")
+                menu_ids = _event_ids(event_data, "menu_ids")
+                equipment_ids = _event_ids(event_data, "equipment_ids")
+                service_ids = _event_ids(event_data, "service_ids")
+            except (TypeError, ValueError):
+                return _event_error(f"Event {index} has invalid date, time, package, guest count, or selections.")
+
+            event_package = db.query(models.CateringPackage).filter(
+                models.CateringPackage.id == event_package_id,
+                models.CateringPackage.caterer_id == caterer_id,
+                models.CateringPackage.is_active.is_(True),
+                models.CateringPackage.status == "active",
+            ).first()
+            if not event_package:
+                return _event_error(f"Event {index} package is no longer available.")
+            minimum_guests = int(event_package.min_guests or caterer.min_pax or 1)
+            maximum_guests = int(event_package.max_guests or 999999)
+            if event_guests < minimum_guests or event_guests > maximum_guests:
+                return _event_error(f"Event {index} guest count must be between {minimum_guests} and {maximum_guests}.")
+            event_ingress_error = AvailabilityService.get_operating_hours_error(event_ingress, availability_settings)
+            if event_ingress_error:
+                return _event_error(f"Event {index}: {event_ingress_error}")
+            expected_egress = expected_same_day_end_time(
+                event_date_value,
+                event_ingress,
+                int(event_package.service_duration or 0),
+            )
+            if expected_egress is None or event_egress != expected_egress:
+                return _event_error(f"Event {index} egress must match the selected package duration and finish on the event date.")
+            closing_time = time.fromisoformat(str(availability_settings["close_time"]))
+            if event_egress > closing_time:
+                return _event_error(f"Event {index} egress must be within the caterer operating hours.")
+
+            availability_check = AvailabilityService.check_caterer_availability(
+                db=db,
+                caterer_id=caterer_id,
+                event_date=event_date_value,
+                event_time=event_ingress,
+                exclude_booking_id=booking_id_int,
+                event_end_time=event_egress,
+            )
+            if not availability_check["available"]:
+                return _event_error(
+                    f"Event {index}: {availability_check.get('message', 'This date and time is unavailable.')}"
+                )
+            package_lead_time = int(event_package.booking_lead_time or caterer.booking_lead_time or 0)
+            if event_date_value < date.today() + timedelta(days=package_lead_time):
+                return _event_error(
+                    f"Event {index} must be scheduled at least {package_lead_time} days in advance for this package."
+                )
+
+            start_at = datetime.combine(event_date_value, event_ingress)
+            end_at = datetime.combine(event_date_value, event_egress)
+            for existing_date, existing_start, existing_end in occupied_intervals:
+                if (
+                    existing_date == event_date_value
+                    and start_at < existing_end + timedelta(hours=turnover_hours)
+                    and end_at + timedelta(hours=turnover_hours) > existing_start
+                ):
+                    return RedirectResponse(
+                        url=f"{details_path}?booking_error={quote_plus('Events on the same date need enough time for caterer setup and turnover.')}",
+                        status_code=303,
+                    )
+            occupied_intervals.append((event_date_value, start_at, end_at))
+            events_per_day[event_date_value] = events_per_day.get(event_date_value, 0) + 1
+            max_events = int(availability_settings.get("max_events_per_day") or 0)
+            if max_events > 0 and events_per_day[event_date_value] > max_events:
+                return RedirectResponse(
+                    url=f"{details_path}?booking_error={quote_plus('The selected date exceeds the caterer’s daily booking capacity.')}",
+                    status_code=303,
+                )
+
+            selected_menu_items = db.query(models.MenuItem).filter(
+                models.MenuItem.id.in_(menu_ids or [-1]),
+                models.MenuItem.caterer_id == caterer_id,
+                models.MenuItem.is_archived.is_(False),
+                models.MenuItem.is_hidden.is_(False),
+                models.MenuItem.status == "available",
+                models.MenuItem.available_for_package.is_(True),
+            ).all()
+            package_rules = event_package.selection_rules or {}
+            if isinstance(package_rules, str):
+                try:
+                    package_rules = json.loads(package_rules)
+                except json.JSONDecodeError:
+                    package_rules = {}
+            if not isinstance(package_rules, dict):
+                package_rules = {}
+            configured_menu_ids = package_rules.get("available_menu_ids", [])
+            if not isinstance(configured_menu_ids, list):
+                configured_menu_ids = []
+            allowed_menu_ids = {
+                int(value)
+                for value in configured_menu_ids
+                if str(value).isdigit()
+            }
+            if allowed_menu_ids and any(item_id not in allowed_menu_ids for item_id in menu_ids):
+                return _event_error(f"Event {index} contains a food choice not configured for this package.")
+
+            category_quotas = package_rules.get("category_quotas", {})
+            if isinstance(category_quotas, dict):
+                category_counts = {}
+                for menu_item in selected_menu_items:
+                    category = menu_item.category or "Other"
+                    category_counts[category] = category_counts.get(category, 0) + 1
+                for category, count in category_counts.items():
+                    try:
+                        quota = int(category_quotas.get(category, 0) or 0)
+                    except (TypeError, ValueError):
+                        quota = 0
+                    if quota > 0 and count > quota:
+                        return _event_error(
+                            f"Event {index} can select up to {quota} menu item(s) for {category}."
+                        )
+
+            selected_equipment_items = db.query(models.Equipment).filter(
+                models.Equipment.id.in_(equipment_ids or [-1]),
+                models.Equipment.caterer_id == caterer_id,
+                models.Equipment.is_archived.is_(False),
+                models.Equipment.is_hidden.is_(False),
+                models.Equipment.status == "available",
+                models.Equipment.is_addon.is_(True),
+            ).all()
+            selected_service_items = db.query(models.Service).filter(
+                models.Service.id.in_(service_ids or [-1]),
+                models.Service.caterer_id == caterer_id,
+                models.Service.is_archived.is_(False),
+                models.Service.is_hidden.is_(False),
+                models.Service.status == "available",
+                models.Service.is_addon.is_(True),
+            ).all()
+            if (
+                len(selected_menu_items) != len(menu_ids)
+                or len(selected_equipment_items) != len(equipment_ids)
+                or len(selected_service_items) != len(service_ids)
+            ):
+                return _event_error(f"Event {index} includes a menu item or add-on that is no longer available.")
+            if event_package.menu_addons:
+                configured_ids = {
+                    link.menu_item_id for link in event_package.menu_addons if link.is_enabled
+                }
+                selected_addon_ids = {item.id for item in selected_menu_items if item.is_addon}
+                if not selected_addon_ids.issubset(configured_ids):
+                    return _event_error(f"Event {index} includes a food add-on not configured for this package.")
+            if event_package.equipment_addons:
+                configured_ids = {
+                    link.equipment_id for link in event_package.equipment_addons if link.is_enabled
+                }
+                if not {item.id for item in selected_equipment_items}.issubset(configured_ids):
+                    return _event_error(f"Event {index} includes equipment not configured for this package.")
+            if event_package.service_addons:
+                configured_ids = {
+                    link.service_id for link in event_package.service_addons if link.is_enabled
+                }
+                if not {item.id for item in selected_service_items}.issubset(configured_ids):
+                    return _event_error(f"Event {index} includes a service not configured for this package.")
+
+            if selected_service_items:
+                import math
+                from ..services.capacity_service import CapacityService
+
+                requested_service_capacity = []
+                for service_item in selected_service_items:
+                    quantity = 1
+                    if (
+                        getattr(service_item, "capacity_type", "unit_based") == "staff_based"
+                        and getattr(service_item, "staff_to_pax_ratio", 0) > 0
+                    ):
+                        quantity = max(
+                            getattr(service_item, "min_staff_required", 1),
+                            math.ceil(event_guests / service_item.staff_to_pax_ratio),
+                        )
+                    elif str(service_item.unit_type or "").lower() in {"per_pax", "per_guest", "per_person"}:
+                        quantity = event_guests
+                    requested_service_capacity.append((service_item.id, quantity))
+                capacity_valid, capacity_message = CapacityService.validate_booking_capacity(
+                    db,
+                    caterer_id,
+                    event_date_value,
+                    event_ingress,
+                    event_egress,
+                    requested_service_capacity,
+                    booking_id_int,
+                )
+                if not capacity_valid:
+                    return _event_error(f"Event {index}: {capacity_message}")
+
+            validated_event_selections.append({
+                "id": str(event_data.get("id") or f"event-{index}"),
+                "event_date": event_date_value.isoformat(),
+                "ingress": event_ingress.strftime("%H:%M"),
+                "egress": event_egress.strftime("%H:%M"),
+                "guest_count": event_guests,
+                "package_id": event_package.id,
+                "menu_ids": menu_ids,
+                "equipment_ids": equipment_ids,
+                "service_ids": service_ids,
+                "_package": event_package,
+                "_menu_items": selected_menu_items,
+                "_equipment_items": selected_equipment_items,
+                "_service_items": selected_service_items,
+            })
+
     ingress_error = AvailabilityService.get_operating_hours_error(
         event_time_parsed,
         availability_settings,
@@ -2814,45 +3184,106 @@ async def step_details_submit(
         for item_id in all_items:
             menu_item = db.query(models.MenuItem).get(item_id)
             if menu_item:
-                item_price = menu_item.addon_price if menu_item.is_addon else (getattr(menu_item, 'upgrade_fee', 0.0) or 0.0)
+                item_quantity = guest_count_int
+                if submitted_events is not None:
+                    included_ids = {item.id for item in (package.menu_items or [])} if package else set()
+                    if menu_item.is_addon:
+                        configured_addon = next((
+                            link for link in (package.menu_addons or [])
+                            if link.menu_item_id == menu_item.id and link.is_enabled
+                        ), None) if package else None
+                        item_price = float(
+                            configured_addon.price
+                            if configured_addon is not None
+                            else (menu_item.addon_price or menu_item.price or 0)
+                        )
+                    elif menu_item.id in included_ids:
+                        item_price = 0.0
+                    else:
+                        item_price = float(menu_item.price or menu_item.upgrade_fee or 0)
+                    if str(menu_item.pricing_unit or "").lower() not in {"per_pax", "per_guest", "per_person"}:
+                        item_quantity = 1
+                else:
+                    item_price = menu_item.addon_price if menu_item.is_addon else (getattr(menu_item, 'upgrade_fee', 0.0) or 0.0)
                 booking_item = models.BookingMenuItem(
                     booking_id=booking.id,
                     menu_item_id=item_id,
                     is_add_on=menu_item.is_addon,
                     price=item_price,
-                    quantity=guest_count_int
+                    quantity=item_quantity
                 )
                 db.add(booking_item)
                 
         for equip_id in selected_equipment_addons:
             equip_item = db.query(models.Equipment).get(equip_id)
             if equip_item:
+                configured_addon = next((
+                    link for link in (package.equipment_addons or [])
+                    if link.equipment_id == equip_id and link.is_enabled
+                ), None) if submitted_events is not None and package else None
                 booking_item = models.BookingMenuItem(
                     booking_id=booking.id,
                     equipment_id=equip_id,
                     is_add_on=True,
-                    price=equip_item.addon_price or 0.0
+                    price=configured_addon.price if configured_addon else (equip_item.addon_price or equip_item.rental_price or 0.0)
                 )
                 db.add(booking_item)
 
         for serv_id in selected_service_addons:
             serv_item = db.query(models.Service).get(serv_id)
             if serv_item:
+                configured_addon = next((
+                    link for link in (package.service_addons or [])
+                    if link.service_id == serv_id and link.is_enabled
+                ), None) if submitted_events is not None and package else None
                 # --- Smart Capacity Phase 2 ---
                 qty = 1
                 if getattr(serv_item, 'capacity_type', 'unit_based') == 'staff_based' and getattr(serv_item, 'staff_to_pax_ratio', 0) > 0:
                     import math
                     qty = max(getattr(serv_item, 'min_staff_required', 1), math.ceil(guest_count_int / serv_item.staff_to_pax_ratio))
-                    
+                if submitted_events is not None and str(serv_item.unit_type or "").lower() in {"per_pax", "per_guest", "per_person"}:
+                    qty = guest_count_int
                 booking_item = models.BookingMenuItem(
                     booking_id=booking.id,
                     service_id=serv_id,
                     is_add_on=True,
-                    price=serv_item.addon_price or 0.0,
+                    price=configured_addon.price if configured_addon else (serv_item.addon_price or serv_item.selling_price or 0.0),
                     quantity=qty
                 )
                 db.add(booking_item)
     
+    if submitted_events is not None:
+        from ..services.booking_event_pricing import calculate_event_estimate
+
+        persisted_events = []
+        subtotal = 0.0
+        for event_selection in validated_event_selections:
+            estimate = calculate_event_estimate(
+                event_selection,
+                event_selection["_package"],
+                event_selection["_menu_items"],
+                event_selection["_equipment_items"],
+                event_selection["_service_items"],
+            )
+            subtotal += estimate["subtotal"]
+            persisted_event = {
+                key: value
+                for key, value in event_selection.items()
+                if not key.startswith("_")
+            }
+            persisted_event.update({
+                "price_breakdown": estimate,
+                "estimated_subtotal": estimate["subtotal"],
+            })
+            persisted_events.append(persisted_event)
+
+        custom_requirements = dict(booking.custom_requirements or {})
+        custom_requirements["events"] = persisted_events
+        booking.custom_requirements = custom_requirements
+        booking.total_amount = round(subtotal + float(booking.travel_fee or 0), 2)
+        booking.total_price = booking.total_amount
+        booking.reservation_fee = booking.total_amount * 0.30
+
     if user.is_verified and user.is_kyc_complete:
         booking.status = "pending_review"
         booking.expires_at = None

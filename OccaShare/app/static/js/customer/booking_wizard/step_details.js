@@ -585,6 +585,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (totalPriceInput) totalPriceInput.value = total;
         if (reservationFeeInput) reservationFeeInput.value = total * 0.3; // 30% reservation
+        if (typeof window.updateEventTotals === 'function') window.updateEventTotals();
     };
 
     window.toggleCardSelection = function(card) {

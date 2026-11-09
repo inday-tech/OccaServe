@@ -3,6 +3,7 @@ import sys
 from datetime import date, time, timedelta
 import pytest
 from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 # Add project root to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,7 +33,7 @@ def test_status_temporarily_unavailable():
     mock_db = MagicMock()
     rules = {
         "event_availability": {
-            "status": "temporarily_unavailable"
+            "availability_status": "Temporarily Unavailable"
         }
     }
     mock_caterer = MockCaterer(scheduling_rules=rules)
@@ -73,7 +74,7 @@ def test_minimum_lead_time_restriction():
     rules = {
         "event_availability": {
             "status": "available",
-            "lead_time_days": 5
+            "booking_lead_time": 5
         }
     }
     mock_caterer = MockCaterer(scheduling_rules=rules)
@@ -92,9 +93,8 @@ def test_maximum_advance_restriction():
     rules = {
         "event_availability": {
             "status": "available",
-            "lead_time_days": 1,
-            "max_advance_val": 3,
-            "max_advance_unit": "months"
+            "booking_lead_time": 1,
+            "max_advance_booking_days": 90
         }
     }
     mock_caterer = MockCaterer(scheduling_rules=rules)
@@ -198,6 +198,7 @@ def test_daily_event_capacity_limit():
             m.filter.return_value.first.return_value = mock_caterer
         elif model == models.Availability:
             m.filter.return_value.all.return_value = []
+            m.filter.return_value.first.return_value = None
         elif model == models.Booking:
             m.filter.return_value.filter.return_value.count.return_value = 2
             m.filter.return_value.count.return_value = 2
@@ -235,6 +236,7 @@ def test_fully_available_slot():
             m.filter.return_value.first.return_value = mock_caterer
         elif model == models.Availability:
             m.filter.return_value.all.return_value = []
+            m.filter.return_value.first.return_value = None
         elif model == models.Booking:
             m.filter.return_value.filter.return_value.count.return_value = 0
             m.filter.return_value.count.return_value = 0
@@ -248,3 +250,61 @@ def test_fully_available_slot():
     assert res["available"] is True
     assert res["reason"] == "available"
     assert "This date and time is available for booking." in res["message"]
+
+
+def test_saved_secondary_event_schedule_blocks_overlapping_availability():
+    mock_db = MagicMock()
+    rules = {
+        "event_availability": {
+            "status": "available",
+            "lead_time_days": 1,
+            "max_advance_val": 1,
+            "max_advance_unit": "years",
+            "max_events_per_day": 5,
+            "operating_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+            "opening_time": "08:00",
+            "closing_time": "22:00",
+        }
+    }
+    target = date.today() + timedelta(days=10)
+    caterer = MockCaterer(scheduling_rules=rules)
+    saved_booking = SimpleNamespace(
+        id=42,
+        event_date=target - timedelta(days=1),
+        event_time=time(9, 0),
+        event_end_time=time(13, 0),
+        custom_requirements={
+            "events": [{
+                "event_date": target.isoformat(),
+                "ingress": "10:00",
+                "egress": "14:00",
+            }]
+        },
+    )
+    booking_query_index = 0
+
+    def query_side_effect(model):
+        nonlocal booking_query_index
+        query = MagicMock()
+        query.filter.return_value = query
+        if model == models.CatererProfile:
+            query.first.return_value = caterer
+        elif model == models.Availability:
+            query.first.return_value = None
+        elif model == models.Booking:
+            booking_query_index += 1
+            query.count.return_value = 0
+            query.all.return_value = [saved_booking] if booking_query_index in (2, 4) else []
+        return query
+
+    mock_db.query.side_effect = query_side_effect
+    result = AvailabilityService.check_caterer_availability(
+        mock_db,
+        1,
+        target,
+        time(11, 0),
+        event_end_time=time(12, 0),
+    )
+
+    assert result["available"] is False
+    assert result["reason"] == "slot_conflict"

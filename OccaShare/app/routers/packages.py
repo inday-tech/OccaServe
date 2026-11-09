@@ -67,6 +67,7 @@ async def check_availability(
     caterer_id: int, 
     date_str: str, 
     time_str: Optional[str] = None,
+    event_end_time: Optional[str] = None,
     booking_id: Optional[int] = None,
     db: Session = Depends(database.get_db)
 ):
@@ -75,7 +76,7 @@ async def check_availability(
         caterer_id=caterer_id,
         event_date=date_str,
         event_time=time_str,
-        exclude_booking_id=booking_id
+        exclude_booking_id=booking_id,
+        event_end_time=event_end_time,
     )
     return res
-

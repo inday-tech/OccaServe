@@ -112,7 +112,8 @@ class AvailabilityService:
         caterer_id: int,
         event_date: Union[date, str],
         event_time: Optional[Union[dt_time, str]] = None,
-        exclude_booking_id: Optional[int] = None
+        exclude_booking_id: Optional[int] = None,
+        event_end_time: Optional[Union[dt_time, str]] = None,
     ) -> Dict[str, Any]:
         """
         Validates whether a given caterer is available on the specified date and time.
@@ -245,6 +246,19 @@ class AvailabilityService:
                     "settings": settings
                 }
 
+        target_end_time: Optional[dt_time] = None
+        if event_end_time:
+            if isinstance(event_end_time, str):
+                try:
+                    target_end_time = datetime.strptime(event_end_time.strip(), "%H:%M").time()
+                except ValueError:
+                    try:
+                        target_end_time = datetime.strptime(event_end_time.strip(), "%H:%M:%S").time()
+                    except ValueError:
+                        pass
+            else:
+                target_end_time = event_end_time
+
         # 5. Blocked / Unavailable Dates Check
         target_date_str = target_date.strftime("%Y-%m-%d")
         blocked_in_settings = any(item["date"] == target_date_str for item in settings["blocked_dates"])
@@ -272,13 +286,35 @@ class AvailabilityService:
                 models.Booking.event_date == target_date,
                 models.Booking.status.in_([
                     'confirmed', 'preparing', 'in_progress', 'on_the_way', 'completed',
-                    'awaiting_payment', 'pending_quotation', 'pending', 'pending_payment', 'awaiting_caterer'
+                    'awaiting_payment', 'pending_review', 'pending_quotation', 'pending', 'pending_payment', 'awaiting_caterer'
                 ])
             )
             if exclude_booking_id:
                 active_events_query = active_events_query.filter(models.Booking.id != exclude_booking_id)
 
             active_events_count = active_events_query.count()
+            json_events_query = db.query(models.Booking).filter(
+                models.Booking.caterer_id == caterer_id,
+                models.Booking.status.in_([
+                    'confirmed', 'preparing', 'in_progress', 'on_the_way', 'completed',
+                    'awaiting_payment', 'pending_review', 'pending_quotation', 'pending', 'pending_payment', 'awaiting_caterer'
+                ]),
+                models.Booking.custom_requirements["events"].contains([{"event_date": target_date_str}]),
+            )
+            if exclude_booking_id:
+                json_events_query = json_events_query.filter(models.Booking.id != exclude_booking_id)
+            for existing_booking in json_events_query.all():
+                booking_events = (
+                    existing_booking.custom_requirements.get("events", [])
+                    if isinstance(existing_booking.custom_requirements, dict)
+                    else []
+                )
+                matching_events = [
+                    item for item in booking_events
+                    if isinstance(item, dict) and item.get("event_date") == target_date_str
+                ] if isinstance(booking_events, list) else []
+                legacy_count = 1 if existing_booking.event_date == target_date else 0
+                active_events_count += max(len(matching_events) - legacy_count, 0)
             if active_events_count >= max_events:
                 return {
                     "available": False,
@@ -293,10 +329,18 @@ class AvailabilityService:
             same_day_confirmed = db.query(models.Booking).filter(
                 models.Booking.caterer_id == caterer_id,
                 models.Booking.event_date == target_date,
-                models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way', 'completed'])
+                models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way', 'completed', 'pending_review'])
             )
             if exclude_booking_id:
                 same_day_confirmed = same_day_confirmed.filter(models.Booking.id != exclude_booking_id)
+
+            same_day_json = db.query(models.Booking).filter(
+                models.Booking.caterer_id == caterer_id,
+                models.Booking.status.in_(['confirmed', 'preparing', 'in_progress', 'on_the_way', 'completed', 'pending_review']),
+                models.Booking.custom_requirements["events"].contains([{"event_date": target_date_str}]),
+            )
+            if exclude_booking_id:
+                same_day_json = same_day_json.filter(models.Booking.id != exclude_booking_id)
 
             turnover_hours = 2.0
             rules_pkg = caterer.scheduling_rules.get("package_rules", {}) if caterer.scheduling_rules else {}
@@ -306,12 +350,67 @@ class AvailabilityService:
                 except Exception:
                     turnover_hours = 2.0
 
-            for confirmed_b in same_day_confirmed.all():
-                if confirmed_b.event_time:
-                    dt1 = datetime.combine(today, target_time)
-                    dt2 = datetime.combine(today, confirmed_b.event_time)
-                    diff_hours = abs((dt1 - dt2).total_seconds()) / 3600.0
-                    if diff_hours < turnover_hours:
+            confirmed_bookings = {
+                booking.id: booking
+                for booking in same_day_confirmed.all()
+            }
+            for booking in same_day_json.all():
+                confirmed_bookings[booking.id] = booking
+
+            for confirmed_booking in confirmed_bookings.values():
+                saved_events = (
+                    confirmed_booking.custom_requirements.get("events", [])
+                    if isinstance(confirmed_booking.custom_requirements, dict)
+                    else []
+                )
+                matching_events = [
+                    item for item in saved_events
+                    if isinstance(item, dict) and item.get("event_date") == target_date_str
+                ] if isinstance(saved_events, list) else []
+                if matching_events:
+                    schedules = [
+                        (item.get("ingress"), item.get("egress"))
+                        for item in matching_events
+                    ]
+                elif confirmed_booking.event_date == target_date:
+                    schedules = [(confirmed_booking.event_time, confirmed_booking.event_end_time)]
+                else:
+                    schedules = []
+
+                for ingress, egress in schedules:
+                    if isinstance(ingress, str):
+                        try:
+                            ingress = datetime.strptime(ingress, "%H:%M").time()
+                        except ValueError:
+                            try:
+                                ingress = datetime.strptime(ingress, "%H:%M:%S").time()
+                            except ValueError:
+                                ingress = None
+                    if isinstance(egress, str):
+                        try:
+                            egress = datetime.strptime(egress, "%H:%M").time()
+                        except ValueError:
+                            try:
+                                egress = datetime.strptime(egress, "%H:%M:%S").time()
+                            except ValueError:
+                                egress = None
+                    if not ingress:
+                        continue
+
+                    candidate_start = datetime.combine(target_date, target_time)
+                    existing_start = datetime.combine(target_date, ingress)
+                    if target_end_time and egress:
+                        candidate_end = datetime.combine(target_date, target_end_time)
+                        existing_end = datetime.combine(target_date, egress)
+                        has_conflict = (
+                            candidate_start < existing_end + timedelta(hours=turnover_hours)
+                            and candidate_end + timedelta(hours=turnover_hours) > existing_start
+                        )
+                    else:
+                        diff_hours = abs((candidate_start - existing_start).total_seconds()) / 3600.0
+                        has_conflict = diff_hours < turnover_hours
+
+                    if has_conflict:
                         return {
                             "available": False,
                             "code": "slot_conflict",
