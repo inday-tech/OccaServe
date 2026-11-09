@@ -225,16 +225,36 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     const events = initialData.length ? initialData.map((source, index) => makeEvent(source, index)) : [makeEvent()];
     const eventCustomizations = options.event_customizations || {};
-    events.forEach((event, index) => {
-        const savedEventCustomization = eventCustomizations[event.id];
-        const matchesEvent = customization => customization &&
-            (!customization.event_id || String(customization.event_id) === String(event.id));
-        event.customization = (matchesEvent(savedEventCustomization) ? savedEventCustomization : null)
-            || (matchesEvent(event.customization) ? event.customization : null)
-            || (!index && matchesEvent(options.initial_customization) ? options.initial_customization : null)
+
+    const getEventCustomization = (event, index = events.indexOf(event)) => {
+        const pkg = getPackage(event?.package_id);
+        if (!pkg || String(pkg.pricing_mode || '').toLowerCase() !== 'customizable') return null;
+
+        const isDayOne = index === 0 || (!event?.id && index <= 0);
+        const matchesEvent = customization => {
+            if (!customization) return false;
+            if (customization.event_id) {
+                return String(customization.event_id) === String(event?.id);
+            }
+            return Boolean(isDayOne);
+        };
+
+        const savedEventCustomization = eventCustomizations[event?.id];
+        const cust = (matchesEvent(savedEventCustomization) ? savedEventCustomization : null)
+            || (matchesEvent(event?.customization) ? event.customization : null)
+            || (isDayOne && matchesEvent(options.initial_customization) ? options.initial_customization : null)
+            || (isDayOne && matchesEvent(window.customization) ? window.customization : null)
             || null;
-        if (!index && event.customization && !savedEventCustomization) event.customization_source_event_id = '__initial__';
-        if (event.customization && Number(event.customization.package_id) !== Number(event.package_id)) event.customization = null;
+
+        if (cust && Number(cust.package_id) !== Number(event?.package_id)) {
+            return null;
+        }
+        return cust;
+    };
+
+    events.forEach((event, index) => {
+        event.customization = getEventCustomization(event, index);
+        if (!index && event.customization && !eventCustomizations[event.id]) event.customization_source_event_id = '__initial__';
     });
     const sharedEventName = legacyEventName?.value || events[0]?.event_name || '';
     const sharedGuestCount = Math.max(1, Number(legacyGuests?.value || legacyGuestDisplay?.value?.replace(/\D/g, '') || events[0]?.guest_count || 1));
@@ -262,7 +282,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedEventPrice = event => {
         const pkg = getPackage(event.package_id);
         if (!pkg) return { subtotal: 0, package: 0, menu: 0, equipment: 0, services: 0 };
-        const customization = event.customization;
+        const index = events.indexOf(event);
+        const customization = getEventCustomization(event, index >= 0 ? index : 0);
         if (String(pkg.pricing_mode || '').toLowerCase() === 'customizable' && customization) {
             const guests = Math.max(1, Number(event.guest_count || 1));
             const oldGuests = Math.max(1, Number(customization.guest_count || guests));
@@ -356,8 +377,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const isSelectedEvent = eventSelection && String(eventSelection.package_id) === String(pkg.id);
         const isCustomizable = String(pkg.pricing_mode || '').toLowerCase() === 'customizable';
         const getCustomization = selection => {
-            const value = selection?.customization || eventCustomizations[selection?.id] || null;
-            return isCustomizable && value && Number(value.package_id) === Number(pkg.id) ? value : null;
+            const idx = events.findIndex(item => String(item.id) === String(selection?.id));
+            return getEventCustomization(selection, idx >= 0 ? idx : 0);
         };
         const lookupSelections = (source, ids, includedIds = [], addonKey = '', selectedEvent = eventSelection) => {
             const included = new Set(includedIds.map(Number));
@@ -424,6 +445,410 @@ document.addEventListener('DOMContentLoaded', function () {
             content.innerHTML = blocks.filter(Boolean).join('');
         }
         if (!modal.open) modal.showModal();
+    };
+
+    const renderBookingSummaryModal = () => {
+        const body = document.getElementById('booking-summary-modal-body');
+        const footer = document.getElementById('booking-summary-modal-footer');
+        if (!body || !footer) return;
+
+        const feeStatus = String(window.deliveryFeeStatus || '').toLowerCase();
+        const feeIsKnown = ['calculated', 'confirmed', 'available', 'success'].includes(feeStatus);
+        const fee = feeIsKnown ? Number(window.currentDeliveryFee || 0) : 0;
+
+        let totalSubtotal = 0;
+
+        const daysHtml = events.map((event, index) => {
+            const dayNumber = index + 1;
+            const pkg = getPackage(event.package_id);
+            const isCustomizable = String(pkg?.pricing_mode || '').toLowerCase() === 'customizable';
+            const customization = getEventCustomization(event, index);
+            const eventPrice = selectedEventPrice(event);
+            totalSubtotal += eventPrice.subtotal;
+
+            const dateDisplay = event.event_date ? formatDisplayDate(event.event_date) : '<span style="color:#94a3b8;">Not selected</span>';
+            const ingressDisplay = event.ingress ? formatDisplayTime(event.ingress) : '<span style="color:#94a3b8;">Not set</span>';
+            const egressDisplay = event.egress ? formatDisplayTime(event.egress) : '<span style="color:#94a3b8;">Not set</span>';
+            const guestCount = Number(event.guest_count || 1);
+
+            // 1. Menu Items
+            let menuRowsHtml = '';
+            let menuCount = 0;
+
+            if (isCustomizable) {
+                if (customization) {
+                    const customFood = Array.isArray(customization.selected_food) ? customization.selected_food : [];
+                    const customExtras = Array.isArray(customization.selected_menu_extras) ? customization.selected_menu_extras : [];
+                    menuCount = customFood.length + customExtras.length;
+
+                    if (menuCount > 0) {
+                        menuRowsHtml = customFood.map(dish => {
+                            const fee = Number(dish.upgrade_fee || dish.price || 0);
+                            const feeBadge = fee > 0 ? `+${money(fee)}/pax` : 'Included';
+                            const isInc = fee === 0;
+                            const extraNote = dish.replacement_for_name ? `Replaces ${escapeHtml(dish.replacement_for_name)}` : (dish.category ? escapeHtml(dish.category) : '');
+                            return `<li class="booking-summary-item-row">
+                                <div class="booking-summary-item-info">
+                                    <span class="booking-summary-item-name">${escapeHtml(dish.name)}</span>
+                                    ${extraNote ? `<span class="booking-summary-item-extra">${extraNote}</span>` : ''}
+                                </div>
+                                <span class="booking-summary-item-badge ${isInc ? 'is-included' : ''}">${feeBadge}</span>
+                            </li>`;
+                        }).join('');
+
+                        if (customExtras.length) {
+                            menuRowsHtml += customExtras.map(dish => {
+                                const qty = Number(dish.qty || 1);
+                                const price = Number(dish.price || 0);
+                                const subtotal = Number(dish.subtotal || (qty * price));
+                                return `<li class="booking-summary-item-row">
+                                    <div class="booking-summary-item-info">
+                                        <span class="booking-summary-item-name">${escapeHtml(dish.name)} <small style="color:#6366f1;font-weight:700;">(Extra Dish)</small></span>
+                                        <span class="booking-summary-item-extra">${qty} × ${money(price)}</span>
+                                    </div> 
+                                    <span class="booking-summary-item-badge">${money(subtotal)}</span>
+                                </li>`;
+                            }).join('');
+                        }
+
+                        if (Number(customization.food_removal_credit || 0) > 0) {
+                            menuRowsHtml += `<li class="booking-summary-item-row" style="background:#f0fdf4;border-radius:6px;">
+                                <div class="booking-summary-item-info">
+                                    <span class="booking-summary-item-name" style="color:#15803d;">Menu Credit Applied</span>
+                                    <span class="booking-summary-item-extra" style="color:#166534;">Dishes removed from base</span>
+                                </div>
+                                <span class="booking-summary-item-badge" style="color:#15803d;">-${money(customization.food_removal_credit)}</span>
+                            </li>`;
+                        }
+                    } else {
+                        menuRowsHtml = `<li class="booking-summary-empty-note">No dishes selected yet.</li>`;
+                    }
+                } else {
+                    menuRowsHtml = `<li class="booking-summary-empty-note">No custom menu selections saved yet for this event day.</li>`;
+                }
+            } else {
+                // Fixed package
+                const includedFood = (pkg?.grouped_inclusions?.food || []).map(dish => ({
+                    name: dish.name || 'Included dish',
+                    note: dish.category || 'Package inclusion',
+                    fee: 0,
+                    isIncluded: true
+                }));
+                
+                if (index === 0) {
+                    const slotInputs = Array.from(document.querySelectorAll('.slot-input'));
+                    if (slotInputs.length) {
+                        slotInputs.forEach(input => {
+                            const dishId = Number(input.value);
+                            const dish = menuItems.find(i => Number(i.id) === dishId);
+                            const fee = Number(input.dataset.upgradeFee || 0);
+                            if (dish) {
+                                const existingIdx = includedFood.findIndex(f => f.name === dish.name);
+                                if (existingIdx === -1) {
+                                    includedFood.push({
+                                        name: dish.name,
+                                        note: dish.category ? `${dish.category} · Swapped` : 'Swapped dish',
+                                        fee: fee,
+                                        isIncluded: fee === 0
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+
+                const optionalFood = menuItemsForEvent(event).filter(item =>
+                    getSelected(event, 'menu_ids').has(Number(item.id)) && !isIncluded(pkg, item.id, 'included_menu_ids')
+                ).map(item => {
+                    const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(item.pricing_unit || '').toLowerCase());
+                    const price = itemPrice(item, pkg);
+                    return {
+                        name: item.name,
+                        note: `${item.category || 'Add-on'} · ${perGuest ? `${guestCount} guests` : '1 unit'}`,
+                        fee: price * (perGuest ? guestCount : 1),
+                        badge: `${money(price)}${perGuest ? '/pax' : ''}`,
+                        isIncluded: false
+                    };
+                });
+
+                const allFood = [...includedFood, ...optionalFood];
+                menuCount = allFood.length;
+
+                if (allFood.length) {
+                    menuRowsHtml = allFood.map(item => `
+                        <li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(item.name)}</span>
+                                <span class="booking-summary-item-extra">${escapeHtml(item.note)}</span>
+                            </div>
+                            <span class="booking-summary-item-badge ${item.isIncluded ? 'is-included' : ''}">${item.isIncluded ? 'Included' : (item.badge || money(item.fee))}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    menuRowsHtml = `<li class="booking-summary-empty-note">Package inclusions confirmed by caterer.</li>`;
+                }
+            }
+
+            // 2. Add-on Services
+            let servicesRowsHtml = '';
+            let serviceCount = 0;
+
+            if (isCustomizable) {
+                const customSvcs = customization && Array.isArray(customization.selected_services) ? customization.selected_services : [];
+                const customSvcIds = new Set(customSvcs.map(s => Number(s.id)));
+                const extraSvcs = serviceItems.filter(s => getSelected(event, 'service_ids').has(Number(s.id)) && !customSvcIds.has(Number(s.id)));
+                serviceCount = customSvcs.length + extraSvcs.length;
+
+                if (serviceCount > 0) {
+                    servicesRowsHtml = customSvcs.map(s => {
+                        const isInc = Boolean(s.included);
+                        const price = Number(s.price || 0);
+                        const badge = isInc ? 'Included in base' : `${money(price)}${s.unit && s.unit !== 'fixed' && s.unit !== 'service' ? '/' + s.unit : ''}`;
+                        return `<li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(s.name)}</span>
+                                ${s.description ? `<span class="booking-summary-item-extra">${escapeHtml(s.description)}</span>` : ''}
+                            </div>
+                            <span class="booking-summary-item-badge ${isInc ? 'is-included' : ''}">${badge}</span>
+                        </li>`;
+                    }).join('');
+
+                    if (extraSvcs.length) {
+                        servicesRowsHtml += extraSvcs.map(s => {
+                            const configured = packageAddon(pkg, 'service_addons', s.id);
+                            const price = Number(configured?.price ?? s.price ?? 0);
+                            const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(s.unit_type || '').toLowerCase());
+                            const sub = price * (perGuest ? guestCount : 1);
+                            return `<li class="booking-summary-item-row">
+                                <div class="booking-summary-item-info">
+                                    <span class="booking-summary-item-name">${escapeHtml(s.name)}</span>
+                                    <span class="booking-summary-item-extra">${perGuest ? `${guestCount} guests` : '1 service'}</span>
+                                </div>
+                                <span class="booking-summary-item-badge">${money(sub)}</span>
+                            </li>`;
+                        }).join('');
+                    }
+                } else {
+                    servicesRowsHtml = `<li class="booking-summary-empty-note">None selected</li>`;
+                }
+            } else {
+                const includedSvcs = (pkg?.grouped_inclusions?.services || []).map(s => ({
+                    name: s.name || 'Included service',
+                    desc: s.description || '',
+                    badge: 'Included',
+                    isIncluded: true
+                }));
+                const optionalSvcs = serviceItems.filter(s =>
+                    getSelected(event, 'service_ids').has(Number(s.id)) && !isIncluded(pkg, s.id, 'included_service_ids')
+                ).map(s => {
+                    const configured = packageAddon(pkg, 'service_addons', s.id);
+                    const price = Number(configured?.price ?? s.price ?? 0);
+                    const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(s.unit_type || '').toLowerCase());
+                    const sub = price * (perGuest ? guestCount : 1);
+                    return {
+                        name: s.name,
+                        desc: perGuest ? `${guestCount} guests × ${money(price)}` : '',
+                        badge: money(sub),
+                        isIncluded: false
+                    };
+                });
+
+                const allSvcs = [...includedSvcs, ...optionalSvcs];
+                serviceCount = allSvcs.length;
+
+                if (allSvcs.length) {
+                    servicesRowsHtml = allSvcs.map(s => `
+                        <li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(s.name)}</span>
+                                ${s.desc ? `<span class="booking-summary-item-extra">${escapeHtml(s.desc)}</span>` : ''}
+                            </div>
+                            <span class="booking-summary-item-badge ${s.isIncluded ? 'is-included' : ''}">${s.badge}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    servicesRowsHtml = `<li class="booking-summary-empty-note">None selected</li>`;
+                }
+            }
+
+            // 3. Equipment & Rentals
+            let equipmentRowsHtml = '';
+            let equipmentCount = 0;
+
+            if (isCustomizable) {
+                const customEq = customization && Array.isArray(customization.selected_equipment) ? customization.selected_equipment : [];
+                const customEqIds = new Set(customEq.map(e => Number(e.id)));
+                const extraEq = equipmentItems.filter(e => getSelected(event, 'equipment_ids').has(Number(e.id)) && !customEqIds.has(Number(e.id)));
+                equipmentCount = customEq.length + extraEq.length;
+
+                if (equipmentCount > 0) {
+                    equipmentRowsHtml = customEq.map(eq => {
+                        const isInc = Boolean(eq.included);
+                        const qty = Number(eq.qty || 1);
+                        const dur = Number(eq.duration_qty || 1);
+                        const price = Number(eq.price || 0);
+                        const sub = Number(eq.subtotal || (qty * dur * price));
+                        const badge = isInc ? 'Included in base' : money(sub);
+                        const desc = isInc ? '' : `${qty} × ${dur} ${eq.unit || 'unit'}${dur > 1 ? 's' : ''} × ${money(price)}`;
+                        return `<li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(eq.name)}</span>
+                                ${desc ? `<span class="booking-summary-item-extra">${desc}</span>` : ''}
+                            </div>
+                            <span class="booking-summary-item-badge ${isInc ? 'is-included' : ''}">${badge}</span>
+                        </li>`;
+                    }).join('');
+
+                    if (extraEq.length) {
+                        equipmentRowsHtml += extraEq.map(e => {
+                            const configured = packageAddon(pkg, 'equipment_addons', e.id);
+                            const price = Number(configured?.price ?? e.price ?? 0);
+                            return `<li class="booking-summary-item-row">
+                                <div class="booking-summary-item-info">
+                                    <span class="booking-summary-item-name">${escapeHtml(e.name)}</span>
+                                    ${e.description ? `<span class="booking-summary-item-extra">${escapeHtml(e.description)}</span>` : ''}
+                                </div>
+                                <span class="booking-summary-item-badge">${money(price)}</span>
+                            </li>`;
+                        }).join('');
+                    }
+                } else {
+                    equipmentRowsHtml = `<li class="booking-summary-empty-note">None selected</li>`;
+                }
+            } else {
+                const includedEq = (pkg?.grouped_inclusions?.equipment || []).map(e => ({
+                    name: e.name || 'Included equipment',
+                    desc: e.description || '',
+                    badge: 'Included',
+                    isIncluded: true
+                }));
+                const optionalEq = equipmentItems.filter(e =>
+                    getSelected(event, 'equipment_ids').has(Number(e.id)) && !isIncluded(pkg, e.id, 'included_equipment_ids')
+                ).map(e => {
+                    const configured = packageAddon(pkg, 'equipment_addons', e.id);
+                    const price = Number(configured?.price ?? e.price ?? 0);
+                    return {
+                        name: e.name,
+                        desc: e.description || '',
+                        badge: money(price),
+                        isIncluded: false
+                    };
+                });
+
+                const allEq = [...includedEq, ...optionalEq];
+                equipmentCount = allEq.length;
+
+                if (allEq.length) {
+                    equipmentRowsHtml = allEq.map(e => `
+                        <li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(e.name)}</span>
+                                ${e.desc ? `<span class="booking-summary-item-extra">${escapeHtml(e.desc)}</span>` : ''}
+                            </div>
+                            <span class="booking-summary-item-badge ${e.isIncluded ? 'is-included' : ''}">${e.badge}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    equipmentRowsHtml = `<li class="booking-summary-empty-note">None selected</li>`;
+                }
+            }
+
+            return `<article class="booking-summary-day-card" data-event-id="${escapeHtml(event.id)}">
+                <div class="booking-summary-day-head">
+                    <div class="booking-summary-day-title">
+                        <span class="booking-summary-day-badge">Day ${dayNumber}</span>
+                        ${event.event_name ? `<span class="booking-summary-day-eventname">· ${escapeHtml(event.event_name)}</span>` : ''}
+                    </div>
+                    <span class="booking-summary-pkg-pill">
+                        <i class="fas fa-box-archive" aria-hidden="true"></i> ${escapeHtml(pkg ? pkg.name : 'Package')}
+                    </span>
+                </div>
+
+                <div class="booking-summary-meta-grid">
+                    <div class="booking-summary-meta-item">
+                        <span class="booking-summary-meta-label"><i class="far fa-calendar"></i> Date</span>
+                        <span class="booking-summary-meta-val">${dateDisplay}</span>
+                    </div>
+                    <div class="booking-summary-meta-item">
+                        <span class="booking-summary-meta-label"><i class="far fa-clock"></i> Ingress</span>
+                        <span class="booking-summary-meta-val">${ingressDisplay}</span>
+                    </div>
+                    <div class="booking-summary-meta-item">
+                        <span class="booking-summary-meta-label"><i class="fas fa-hourglass-end"></i> Egress</span>
+                        <span class="booking-summary-meta-val">${egressDisplay}</span>
+                    </div>
+                    <div class="booking-summary-meta-item">
+                        <span class="booking-summary-meta-label"><i class="fas fa-users"></i> Guests</span>
+                        <span class="booking-summary-meta-val">${guestCount.toLocaleString()} pax</span>
+                    </div>
+                </div>
+
+                <div class="booking-summary-group">
+                    <div class="booking-summary-group-title">
+                        <span><i class="fas fa-utensils" style="color:#f97316;"></i> Selected Menu</span>
+                        <span class="booking-summary-group-count">${menuCount} item${menuCount === 1 ? '' : 's'}</span>
+                    </div>
+                    <ul class="booking-summary-items-list">
+                        ${menuRowsHtml}
+                    </ul>
+                </div>
+
+                <div class="booking-summary-group">
+                    <div class="booking-summary-group-title">
+                        <span><i class="fas fa-bell-concierge" style="color:#6366f1;"></i> Add-on Services</span>
+                        <span class="booking-summary-group-count">${serviceCount} service${serviceCount === 1 ? '' : 's'}</span>
+                    </div>
+                    <ul class="booking-summary-items-list">
+                        ${servicesRowsHtml}
+                    </ul>
+                </div>
+
+                <div class="booking-summary-group">
+                    <div class="booking-summary-group-title">
+                        <span><i class="fas fa-chair" style="color:#0ea5e9;"></i> Equipment &amp; Rentals</span>
+                        <span class="booking-summary-group-count">${equipmentCount} item${equipmentCount === 1 ? '' : 's'}</span>
+                    </div>
+                    <ul class="booking-summary-items-list">
+                        ${equipmentRowsHtml}
+                    </ul>
+                </div>
+
+                <div class="booking-summary-day-subtotal-bar">
+                    <span><i class="fas fa-calculator"></i> Day ${dayNumber} Estimated Subtotal</span>
+                    <strong>${money(eventPrice.subtotal)}</strong>
+                </div>
+            </article>`;
+        }).join('');
+
+        body.innerHTML = daysHtml || '<p class="booking-summary-empty-note">No event days configured yet.</p>';
+
+        const grandTotal = totalSubtotal + fee;
+
+        footer.innerHTML = `
+            <div class="booking-summary-footer-card">
+                ${events.length > 1 ? events.map((ev, i) => `
+                    <div class="booking-summary-footer-row">
+                        <span>Day ${i + 1} Subtotal (${formatDisplayDate(ev.event_date)})</span>
+                        <strong>${money(selectedEventPrice(ev).subtotal)}</strong>
+                    </div>
+                `).join('') : ''}
+                <div class="booking-summary-footer-row" ${events.length > 1 ? 'style="padding-top:0.35rem;border-top:1px dashed #cbd5e1;"' : ''}>
+                    <span>Total Events Subtotal (${events.length} Event Day${events.length === 1 ? '' : 's'})</span>
+                    <strong>${money(totalSubtotal)}</strong>
+                </div>
+                <div class="booking-summary-footer-row">
+                    <span>Transportation Fee</span>
+                    <span>${feeIsKnown ? money(fee) : '<em style="color:#64748b;font-style:normal;">Coordinate with caterer</em>'}</span>
+                </div>
+                <div class="booking-summary-footer-row is-grand-total">
+                    <span>Estimated Booking Total</span>
+                    <strong>${money(grandTotal)}</strong>
+                </div>
+            </div>
+            <div class="booking-summary-footer-actions">
+                <button type="button" class="btn-summary-close" data-action="close-booking-summary">Close Summary</button>
+            </div>
+        `;
     };
 
     const renderMenuChoices = event => {
@@ -603,6 +1028,10 @@ document.addEventListener('DOMContentLoaded', function () {
             sessionStorage.setItem(eventStorageKey, eventsInput.value);
         } catch (error) {
             console.warn('Could not save event schedules in this browser:', error);
+        }
+        const summaryModal = document.getElementById('booking-summary-modal');
+        if (summaryModal && summaryModal.open) {
+            renderBookingSummaryModal();
         }
     };
 
@@ -915,6 +1344,36 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.addEventListener('click', event => {
+        const summaryBtn = event.target.closest('[data-action="view-booking-summary"]');
+        if (summaryBtn) {
+            event.preventDefault();
+            const modal = document.getElementById('booking-summary-modal');
+            if (modal) {
+                renderBookingSummaryModal();
+                if (!modal.open) {
+                    modal.showModal();
+                }
+            }
+            return;
+        }
+
+        const closeBtn = event.target.closest('[data-action="close-booking-summary"]');
+        if (closeBtn) {
+            event.preventDefault();
+            const modal = document.getElementById('booking-summary-modal');
+            if (modal && modal.open) {
+                modal.close();
+            }
+            return;
+        }
+
+        const modal = document.getElementById('booking-summary-modal');
+        if (event.target === modal && modal?.open) {
+            modal.close();
+        }
+    });
+
     form.addEventListener('submit', event => {
         updateEventTotals();
         const error = validateInternalConflicts();
@@ -947,6 +1406,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.updateEventTotals = updateEventTotals;
     window.renderBookingEvents = render;
+    window.renderBookingSummaryModal = renderBookingSummaryModal;
+    window.openBookingSummaryModal = () => {
+        const modal = document.getElementById('booking-summary-modal');
+        if (modal) {
+            renderBookingSummaryModal();
+            if (!modal.open) modal.showModal();
+        }
+    };
     render();
     events.forEach(item => {
         if (item.event_date && item.ingress) checkAvailability(item);

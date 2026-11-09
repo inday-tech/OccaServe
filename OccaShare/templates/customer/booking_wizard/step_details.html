@@ -600,6 +600,424 @@
     .booking-total-row { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid #e2e8f0; color: #172033; font-weight: 800; }
     .booking-total-row strong { color: #c2410c; font-size: 1.05rem; }
     .booking-events-help { margin: .25rem 0 0; color: #64748b; font-size: .78rem; line-height: 1.5; }
+
+    /* Booking Summary Button & Modal */
+    .booking-summary-btn-wrap {
+        margin-top: 0.85rem;
+        padding-top: 0.85rem;
+        border-top: 1px dashed #e2e8f0;
+    }
+    .btn-booking-summary {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        min-height: 42px;
+        padding: 0.65rem 1.25rem;
+        border: 1.5px solid #fed7aa;
+        border-radius: 10px;
+        background: #fff7ed;
+        color: #c2410c;
+        font-family: inherit;
+        font-size: 0.88rem;
+        font-weight: 750;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(194, 65, 12, 0.08);
+    }
+    .btn-booking-summary:hover {
+        background: #ffedd5;
+        border-color: #fdba74;
+        color: #9a3412;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(194, 65, 12, 0.14);
+    }
+    .btn-booking-summary i {
+        font-size: 0.95rem;
+        color: #ea580c;
+    }
+    .sidebar-summary-btn-wrap {
+        margin-top: 0.75rem;
+    }
+    .btn-booking-summary-sidebar {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.85rem;
+        border: 1px solid #fed7aa;
+        border-radius: 8px;
+        background: #fff7ed;
+        color: #c2410c;
+        font-family: inherit;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .btn-booking-summary-sidebar:hover {
+        background: #ffedd5;
+        border-color: #fdba74;
+    }
+    
+    /* Summary Dialog */
+    dialog.booking-summary-dialog {
+        width: min(94vw, 760px);
+        max-height: 88vh;
+        margin: auto;
+        padding: 0;
+        border: 0;
+        border-radius: 18px;
+        color: #0f172a;
+        background: #ffffff;
+        box-shadow: 0 25px 70px rgba(15, 23, 42, 0.32);
+        overflow: hidden;
+    }
+    dialog.booking-summary-dialog[open] {
+        display: flex;
+        flex-direction: column;
+    }
+    dialog.booking-summary-dialog::backdrop {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+    }
+    .booking-summary-modal-content {
+        display: flex;
+        flex-direction: column;
+        max-height: 88vh;
+        height: 100%;
+        overflow: hidden;
+    }
+    .booking-summary-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.15rem 1.4rem;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        flex-shrink: 0;
+    }
+    .booking-summary-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+    .booking-summary-icon-badge {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        border: 1px solid #fed7aa;
+        color: #c2410c;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+    }
+    .booking-summary-modal-title {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 850;
+        color: #0f172a;
+        letter-spacing: -0.01em;
+    }
+    .booking-summary-modal-subtitle {
+        margin: 0.15rem 0 0;
+        color: #64748b;
+        font-size: 0.82rem;
+    }
+    .booking-summary-modal-close {
+        width: 36px;
+        height: 36px;
+        flex: 0 0 36px;
+        border: 0;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 1.35rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        line-height: 1;
+    }
+    .booking-summary-modal-close:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+        transform: rotate(90deg);
+    }
+    .booking-summary-modal-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 1.25rem 1.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        background: #f8fafc;
+    }
+    .booking-summary-day-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 1.15rem;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+    }
+    .booking-summary-day-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .booking-summary-day-title {
+        display: flex;
+        align-items: baseline;
+        gap: 0.5rem;
+        margin: 0;
+    }
+    .booking-summary-day-badge {
+        font-size: 1rem;
+        font-weight: 850;
+        color: #0f172a;
+    }
+    .booking-summary-day-eventname {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #64748b;
+    }
+    .booking-summary-pkg-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.65rem;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #334155;
+    }
+    .booking-summary-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.6rem;
+    }
+    .booking-summary-meta-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        padding: 0.55rem 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .booking-summary-meta-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .booking-summary-meta-val {
+        font-size: 0.84rem;
+        font-weight: 750;
+        color: #1e293b;
+        word-break: break-word;
+    }
+    .booking-summary-group {
+        border: 1px solid #eef2f6;
+        border-radius: 10px;
+        padding: 0.85rem;
+        background: #ffffff;
+    }
+    .booking-summary-group-title {
+        margin: 0 0 0.55rem;
+        font-size: 0.82rem;
+        font-weight: 800;
+        color: #334155;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .booking-summary-group-title span:first-child {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+    }
+    .booking-summary-group-count {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #64748b;
+        background: #f1f5f9;
+        padding: 1px 6px;
+        border-radius: 10px;
+    }
+    .booking-summary-items-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    .booking-summary-item-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: 0.82rem;
+        padding: 0.35rem 0.45rem;
+        border-radius: 6px;
+        transition: background 0.15s ease;
+    }
+    .booking-summary-item-row:hover {
+        background: #f8fafc;
+    }
+    .booking-summary-item-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+        flex: 1;
+    }
+    .booking-summary-item-name {
+        font-weight: 700;
+        color: #1e293b;
+    }
+    .booking-summary-item-extra {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+    .booking-summary-item-badge {
+        font-size: 0.78rem;
+        font-weight: 750;
+        white-space: nowrap;
+        color: #334155;
+    }
+    .booking-summary-item-badge.is-included {
+        color: #059669;
+        background: #ecfdf5;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 0.72rem;
+    }
+    .booking-summary-empty-note {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        font-style: italic;
+        padding: 0.2rem 0;
+    }
+    .booking-summary-day-subtotal-bar {
+        margin-top: 0.25rem;
+        padding: 0.75rem 1rem;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+    .booking-summary-day-subtotal-bar span {
+        font-size: 0.85rem;
+        font-weight: 750;
+        color: #9a3412;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    .booking-summary-day-subtotal-bar strong {
+        font-size: 1.05rem;
+        font-weight: 850;
+        color: #c2410c;
+    }
+    .booking-summary-modal-footer {
+        flex-shrink: 0;
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        padding: 1.15rem 1.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+    .booking-summary-footer-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0.85rem 1.1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+    .booking-summary-footer-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: 0.84rem;
+        color: #475569;
+    }
+    .booking-summary-footer-row.is-grand-total {
+        margin-top: 0.35rem;
+        padding-top: 0.6rem;
+        border-top: 1.5px solid #cbd5e1;
+        font-size: 1.05rem;
+        font-weight: 850;
+        color: #0f172a;
+    }
+    .booking-summary-footer-row.is-grand-total strong {
+        font-size: 1.3rem;
+        color: #c2410c;
+    }
+    .booking-summary-footer-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
+    .btn-summary-close {
+        padding: 0.55rem 1.25rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #334155;
+        font-family: inherit;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .btn-summary-close:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    @media (max-width: 640px) {
+        .booking-summary-meta-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        dialog.booking-summary-dialog {
+            width: 96vw;
+            max-height: 92vh;
+            border-radius: 14px;
+        }
+        .booking-summary-modal-header,
+        .booking-summary-modal-body,
+        .booking-summary-modal-footer {
+            padding: 0.9rem;
+        }
+    }
     @media (max-width: 540px) {
         .custom-choice-header { align-items: flex-start; }
         .custom-choice-edit { width: 100%; }
@@ -645,6 +1063,11 @@
                 <div class="calc-total">
                     <span class="total-label">Estimated Total</span>
                     <span class="total-price" id="calc-grand-total">₱0.00</span>
+                </div>
+                <div class="sidebar-summary-btn-wrap">
+                    <button type="button" class="btn-booking-summary-sidebar" data-action="view-booking-summary">
+                        <i class="fas fa-file-invoice" aria-hidden="true"></i> View Booking Summary
+                    </button>
                 </div>
                 <div class="calc-info-box">
                     <i class="fas fa-circle-info"></i>
@@ -801,6 +1224,11 @@
                     <strong id="booking-events-total">₱0.00</strong>
                 </div>
                 <p class="booking-events-help" id="booking-events-transport">Transportation: Coordinate with caterer until confirmed.</p>
+                <div class="booking-summary-btn-wrap">
+                    <button type="button" class="btn-booking-summary" id="btn-view-booking-summary" data-action="view-booking-summary">
+                        <i class="fas fa-file-invoice" aria-hidden="true"></i> View Booking Summary
+                    </button>
+                </div>
                 <input type="hidden" name="events_json" id="booking-events-json" value="">
             </section>
 
@@ -1191,6 +1619,32 @@
         </div>
     </div>
 </div>
+
+<!-- Booking Summary Modal -->
+<dialog id="booking-summary-modal" class="booking-summary-dialog" aria-labelledby="booking-summary-title">
+    <div class="booking-summary-modal-content">
+        <div class="booking-summary-modal-header">
+            <div class="booking-summary-title-wrap">
+                <div class="booking-summary-icon-badge">
+                    <i class="fas fa-file-invoice" aria-hidden="true"></i>
+                </div>
+                <div>
+                    <h3 class="booking-summary-modal-title" id="booking-summary-title">Complete Booking Summary</h3>
+                    <p class="booking-summary-modal-subtitle">Review schedule, guest count, menu, services, and equipment for each day.</p>
+                </div>
+            </div>
+            <button type="button" class="booking-summary-modal-close" data-action="close-booking-summary" aria-label="Close summary">&times;</button>
+        </div>
+        
+        <div class="booking-summary-modal-body" id="booking-summary-modal-body" aria-live="polite">
+            <!-- Generated dynamically via JS -->
+        </div>
+
+        <div class="booking-summary-modal-footer" id="booking-summary-modal-footer">
+            <!-- Grand Total Breakdown & actions -->
+        </div>
+    </div>
+</dialog>
 
 <script>
     window.allMenuItems = [
