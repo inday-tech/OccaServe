@@ -946,8 +946,8 @@
 
 {% block wizard_content %}
 <div class="customize-package-banner">
-    <span class="cust-badge-type">Customize your package</span>
-    <p class="cust-flow-note">Choose your guest count and package options. Review what is included and any added or deducted costs, then continue to your event details.</p>
+    <span class="cust-badge-type">{% if event_id %}{% if event_day %}Customize Day {{ event_day }}{% else %}Customize this event{% endif %}{% else %}Customize your package{% endif %}</span>
+    <p class="cust-flow-note">{% if event_id %}{% if event_day %}These choices and the estimate apply to Day {{ event_day }} only.{% else %}These choices and the estimate apply to this event only.{% endif %} Other event dates keep their own menu, services, equipment, and price.{% else %}Choose your guest count and package options. Review what is included and any added or deducted costs, then continue to your event details.{% endif %}</p>
 </div>
 
 {% macro service_option(svc, service_included, service_price, service_notes, package_duration) %}
@@ -2550,6 +2550,7 @@ function validateAndSubmitCustomization() {
     const specialReq = document.getElementById('custSpecialRequests')?.value || '';
 
     const finalPayload = {
+        event_id: {{ event_id|tojson }},
         package_id: {{ package.id }},
         package_name: {{ package.name|tojson }},
         pricing_mode: 'customizable',

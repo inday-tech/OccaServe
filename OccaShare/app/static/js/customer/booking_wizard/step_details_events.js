@@ -167,7 +167,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const eventCustomizations = options.event_customizations || {};
     events.forEach((event, index) => {
         const savedEventCustomization = eventCustomizations[event.id];
-        event.customization = savedEventCustomization || event.customization || (!index ? options.initial_customization : null) || null;
+        const matchesEvent = customization => customization &&
+            (!customization.event_id || String(customization.event_id) === String(event.id));
+        event.customization = (matchesEvent(savedEventCustomization) ? savedEventCustomization : null)
+            || (matchesEvent(event.customization) ? event.customization : null)
+            || (!index && matchesEvent(options.initial_customization) ? options.initial_customization : null)
+            || null;
         if (!index && event.customization && !savedEventCustomization) event.customization_source_event_id = '__initial__';
         if (event.customization && Number(event.customization.package_id) !== Number(event.package_id)) event.customization = null;
     });
@@ -238,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const guests = Math.max(1, Number(event.guest_count || 1));
         const mode = String(pkg.pricing_mode || (pkg.price_unit === 'per_guest' ? 'per_pax' : 'fixed')).toLowerCase();
         let packageTotal;
-        if (mode === 'fixed' || String(pkg.price_unit || '').toLowerCase() !== 'per_guest') {
+        if (mode === 'fixed') {
             packageTotal = Number(pkg.price || pkg.price_per_head || 0) +
                 Math.max(0, guests - Number(pkg.min_guests || 0)) * Number(pkg.additional_guest_price || 0);
         } else {
@@ -411,7 +416,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const pkg = getPackage(event.package_id);
         const isCustomizable = String(pkg?.pricing_mode || '').toLowerCase() === 'customizable';
         const customizeUrl = isCustomizable
-            ? `/bookings/customize/${encodeURIComponent(window.catererId)}?package_id=${encodeURIComponent(pkg.id)}&event_id=${encodeURIComponent(event.id)}&guest_count=${encodeURIComponent(event.guest_count || 1)}${event.customization_source_event_id ? `&reuse_from=${encodeURIComponent(event.customization_source_event_id)}` : ''}`
+            ? `/bookings/customize/${encodeURIComponent(window.catererId)}?package_id=${encodeURIComponent(pkg.id)}&event_id=${encodeURIComponent(event.id)}&event_day=${index + 1}&guest_count=${encodeURIComponent(event.guest_count || 1)}${event.customization_source_event_id ? `&reuse_from=${encodeURIComponent(event.customization_source_event_id)}` : ''}`
             : '';
         const times = timeOptions.map(option =>
             `<option value="${escapeHtml(option.value)}" ${option.value === event.ingress ? 'selected' : ''}>${escapeHtml(option.label)}</option>`

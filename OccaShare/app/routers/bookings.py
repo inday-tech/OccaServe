@@ -1457,6 +1457,7 @@ async def customize_package_page(
     package_id: Optional[int] = None,
     guest_count: Optional[int] = None,
     event_id: Optional[str] = None,
+    event_day: Optional[int] = None,
     reuse_from: Optional[str] = None,
     db: Session = Depends(database.get_db)
 ):
@@ -1668,6 +1669,7 @@ async def customize_package_page(
         "initial_guest_count": initial_guest_count,
         "saved_customization": saved_customization,
         "event_id": event_id or "",
+        "event_day": event_day,
         "selection_rules": rules,
         "user": user,
         "current_step": 1,
@@ -1712,6 +1714,12 @@ async def save_customization_selection(
 
     try:
         submitted_customization = json.loads(customization_json)
+        if not isinstance(submitted_customization, dict):
+            raise PackagePricingError("Customization data is invalid. Reopen the event and try again.")
+        submitted_event_id = str(submitted_customization.get("event_id") or "").strip()
+        requested_event_id = str(event_id or "").strip()
+        if submitted_event_id != requested_event_id:
+            raise PackagePricingError("The customization belongs to a different event. Reopen the correct event and try again.")
         parsed_customization = load_and_calculate_customization(db, package, submitted_customization)
     except (json.JSONDecodeError, PackagePricingError) as exc:
         return RedirectResponse(
@@ -1721,6 +1729,7 @@ async def save_customization_selection(
 
     booking_data = request.session.get("booking_data", {})
     if event_id:
+        parsed_customization["event_id"] = str(event_id)
         event_customizations = booking_data.get("event_customizations", {})
         if not isinstance(event_customizations, dict):
             event_customizations = {}
@@ -2534,6 +2543,10 @@ async def step_details_submit(
                     event_customization = saved_event_customizations.get(event_key)
                 if not isinstance(event_customization, dict) and index == 1:
                     event_customization = booking_data_for_events.get("customization")
+            if isinstance(event_customization, dict):
+                customization_event_id = str(event_customization.get("event_id") or "").strip()
+                if customization_event_id and customization_event_id != event_key:
+                    return _event_error(f"Day {index} choices belong to a different event. Reopen its customization and try again.")
             if isinstance(event_customization, dict) and int(event_customization.get("package_id") or 0) != event_package.id:
                 event_customization = None
             if str(event_package.pricing_mode or "").lower() == "customizable":

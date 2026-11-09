@@ -2,10 +2,9 @@ def calculate_event_estimate(event, package, menu_items, equipment_items, servic
     """Calculate an event estimate from the selected caterer's current catalog data."""
     guest_count = int(event["guest_count"])
     pricing_mode = (package.pricing_mode or ("per_pax" if package.price_unit == "per_guest" else "fixed")).lower()
-    price_unit = (package.price_unit or "per_guest").lower()
     price_per_guest = float(package.price_per_head or package.price or 0)
 
-    if pricing_mode == "fixed" or price_unit != "per_guest":
+    if pricing_mode == "fixed":
         package_total = float(package.price or package.price_per_head or 0)
         additional_guest_price = float(package.additional_guest_price or 0)
         package_total += max(guest_count - int(package.min_guests or 0), 0) * additional_guest_price
