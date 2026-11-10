@@ -1274,7 +1274,7 @@
                                        data-price="{{ item.price or 0 }}"
                                        data-unit="{{ unit_text }}"
                                        data-is-pax="{{ 1 if is_pax else 0 }}"
-                                       {% if is_included_default and not saved_customization %}checked{% endif %}
+                                       {% if (is_included_default if menu_slots_configured else loop.index <= quota) and not saved_customization %}checked{% endif %}
                                        {% if unavailable_slot_choice %}disabled{% endif %}
                                        onchange="handleFoodItemToggle(this)">
                                 <div class="menu-choice-main">
@@ -2488,6 +2488,27 @@ function validateAndSubmitCustomization() {
         return;
     }
 
+    // 2. Menu selection quota check per category
+    const catGroups = document.querySelectorAll('.menu-cat-group');
+    for (const group of catGroups) {
+        if (group.hidden || group.style.display === 'none') continue;
+        const category = group.querySelector('.cat-header-name')?.textContent?.trim() || 'Menu';
+        const quotaBadge = group.querySelector('.cat-badge-counter');
+        const quota = parseInt(quotaBadge?.dataset.quota, 10) || 0;
+        const removeCb = group.querySelector('.category-remove-checkbox');
+        const isRemoved = removeCb && removeCb.checked;
+
+        if (!isRemoved && quota > 0) {
+            const checkedCount = group.querySelectorAll('.food-checkbox:checked').length;
+            if (checkedCount < quota) {
+                const diff = quota - checkedCount;
+                const msg = `Please select ${diff} more dish${diff > 1 ? 'es' : ''} for "${category}" (${checkedCount}/${quota} selected), or remove the category if permitted.`;
+                showValidationError(msg, group);
+                return;
+            }
+        }
+    }
+
     const selectedFoodBoxes = Array.from(document.querySelectorAll('.food-checkbox:checked'));
     const selectedServiceBoxes = Array.from(document.querySelectorAll('.service-checkbox:checked'));
     const selectedEquipmentBoxes = Array.from(document.querySelectorAll('.equipment-checkbox:checked'));
@@ -2675,7 +2696,11 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
         const saved = {{ saved_customization | tojson }};
         if (saved && typeof saved === 'object') {
-            if (saved.selected_food) {
+            if (saved.selected_food && Array.isArray(saved.selected_food) && saved.selected_food.length > 0) {
+                document.querySelectorAll('.food-checkbox').forEach(cb => {
+                    cb.checked = false;
+                    document.getElementById(`card_food_${cb.value}`)?.classList.remove('selected');
+                });
                 saved.selected_food.forEach(f => {
                     const cb = document.querySelector(`.food-checkbox[value="${f.id}"]`);
                     if (cb) {

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import Optional
 from datetime import date, time, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from ..db import database, models
 from ..core import security as auth
 from ..services.verification import verification_service
@@ -1763,12 +1764,32 @@ async def customize_package_page(
     saved_customization = {}
     if event_id and isinstance(event_customizations, dict):
         saved_customization = event_customizations.get(str(event_id)) or event_customizations.get(str(reuse_from or "")) or {}
-        if not saved_customization and reuse_from == "__initial__":
-            saved_customization = sess_data.get("customization", {})
+        if not saved_customization:
+            if reuse_from and reuse_from in event_customizations:
+                saved_customization = event_customizations[reuse_from]
+            elif sess_data.get("customization"):
+                saved_customization = sess_data.get("customization", {})
     elif not event_id:
         saved_customization = sess_data.get("customization", {})
     if isinstance(saved_customization, dict) and int(saved_customization.get("package_id") or 0) != int(package.id):
         saved_customization = {}
+
+    # Initial guest count from parameter, saved customization, session, or package defaults
+    raw_guest_count = (
+        guest_count
+        or (saved_customization.get("guest_count") if isinstance(saved_customization, dict) and saved_customization.get("guest_count") else None)
+        or sess_data.get("guest_count")
+        or package.min_guests
+        or caterer.min_pax
+        or 50
+    )
+    try:
+        initial_guest_count = min(
+            max(int(raw_guest_count), int(package.min_guests or caterer.min_pax or 10)),
+            int(package.max_guests or 999999),
+        )
+    except (ValueError, TypeError):
+        initial_guest_count = 50
 
     return templates.TemplateResponse("customer/booking_wizard/customizable_package.html", {
         "request": request,
@@ -1859,6 +1880,16 @@ async def save_customization_selection(
             event_customizations = {}
         event_customizations[str(event_id)] = compact_customization
         booking_data["event_customizations"] = event_customizations
+
+        events_list = booking_data.get("events")
+        if isinstance(events_list, list):
+            for ev in events_list:
+                if isinstance(ev, dict) and str(ev.get("id")) == str(event_id):
+                    ev["guest_count"] = parsed_customization.get("guest_count")
+                    ev["customization"] = parsed_customization
+                    break
+            booking_data["events"] = events_list
+
         request.session["booking_data"] = booking_data
         return RedirectResponse(url="/bookings/step/details", status_code=303)
 
@@ -2802,9 +2833,8 @@ async def step_details_submit(
                 return _event_error(
                     f"Event {index}: {availability_check.get('message', 'This date and time is unavailable.')}"
                 )
-            package_lead_time = max(0, int(event_package.booking_lead_time or caterer.booking_lead_time or 0))
-            manila_tz = timezone(timedelta(hours=8), "Asia/Manila")
-            manila_today = datetime.now(manila_tz).date()
+            package_lead_time = max(7, int(event_package.booking_lead_time or caterer.booking_lead_time or 7))
+            manila_today = datetime.now(ZoneInfo("Asia/Manila")).date()
             if event_date_value < manila_today + timedelta(days=package_lead_time):
                 return _event_error(
                     f"Event {index} must be scheduled at least {package_lead_time} days in advance for this package."

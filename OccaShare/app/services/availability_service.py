@@ -52,22 +52,22 @@ class AvailabilityService:
         open_time_str = event_avail.get("open_time", bh.get("open_time", "08:00")) or "08:00"
         close_time_str = event_avail.get("close_time", bh.get("close_time", "20:00")) or "20:00"
 
-        # Lead time in days
+        # Lead time in days (minimum 7 days lead time)
         raw_lead = event_avail.get("booking_lead_time", caterer.booking_lead_time)
         try:
-            lead_time = max(0, int(raw_lead)) if raw_lead is not None else 3
+            lead_time = max(7, int(raw_lead)) if raw_lead is not None else 7
         except (ValueError, TypeError):
-            lead_time = 3
+            lead_time = 7
 
-        # Max advance booking in days
+        # Max advance booking in days (allow up to 1 year ahead / 365 days)
         raw_advance = event_avail.get(
             "max_advance_booking_days",
-            rules.get("booking_rules", {}).get("max_advance_booking_days", 180)
+            rules.get("booking_rules", {}).get("max_advance_booking_days", 365)
         )
         try:
-            max_advance_days = max(1, int(raw_advance)) if raw_advance is not None else 180
+            max_advance_days = max(365, int(raw_advance)) if raw_advance is not None else 365
         except (ValueError, TypeError):
-            max_advance_days = 180
+            max_advance_days = 365
 
         # Max events per day
         raw_max_events = event_avail.get("max_events_per_day", caterer.max_bookings_per_day)

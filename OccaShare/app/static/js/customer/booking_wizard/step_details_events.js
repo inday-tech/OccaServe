@@ -58,19 +58,103 @@ document.addEventListener('DOMContentLoaded', function () {
     const minimumEventDate = pkg => {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        const leadTime = Math.max(0, Number(pkg?.booking_lead_time ?? window.bookingLeadTime ?? 0));
+        const pkgLeadTime = pkg?.booking_lead_time;
+        const leadTime = Math.max(7, Number(pkgLeadTime != null ? pkgLeadTime : (window.bookingLeadTime || 7)));
         now.setDate(now.getDate() + leadTime);
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     };
+
+    const maximumAdvanceDate = () => {
+        try {
+            const maxDate = new Date();
+            maxDate.setFullYear(maxDate.getFullYear() + 1);
+            return `${maxDate.getFullYear()}-${String(maxDate.getMonth() + 1).padStart(2, '0')}-${String(maxDate.getDate()).padStart(2, '0')}`;
+        } catch (_) {
+            const fallback = new Date();
+            fallback.setFullYear(fallback.getFullYear() + 1);
+            return `${fallback.getFullYear()}-${String(fallback.getMonth() + 1).padStart(2, '0')}-${String(fallback.getDate()).padStart(2, '0')}`;
+        }
+    };
+
     const eventDateBounds = (event, index = events.indexOf(event)) => {
-        const previousDate = events.slice(0, index).map(item => item.event_date).filter(Boolean).sort().at(-1) || '';
-        const nextDate = events.slice(index + 1).map(item => item.event_date).filter(Boolean).sort()[0] || '';
-        const packageMinimum = minimumEventDate(getPackage(event.package_id));
-        const afterPrevious = previousDate ? shiftIsoDate(previousDate, 1) : packageMinimum;
-        return {
-            min: afterPrevious > packageMinimum ? afterPrevious : packageMinimum,
-            max: nextDate ? shiftIsoDate(nextDate, -1) : ''
-        };
+        const pkg = getPackage(event?.package_id || events[0]?.package_id);
+        const packageMinimum = minimumEventDate(pkg);
+        const maxAdvance = maximumAdvanceDate();
+
+        let minDate = packageMinimum;
+        for (let p = 0; p < index; p++) {
+            const prevEvent = events[p];
+            if (prevEvent && prevEvent.event_date) {
+                const earliestFromPrev = shiftIsoDate(prevEvent.event_date, index - p);
+                if (earliestFromPrev && earliestFromPrev > minDate) {
+                    minDate = earliestFromPrev;
+                }
+            }
+        }
+
+        let maxDate = maxAdvance || '';
+        for (let s = index + 1; s < events.length; s++) {
+            const nextEvent = events[s];
+            if (nextEvent && nextEvent.event_date) {
+                const latestFromNext = shiftIsoDate(nextEvent.event_date, -(s - index));
+                if (latestFromNext && (!maxDate || latestFromNext < maxDate)) {
+                    maxDate = latestFromNext;
+                }
+            }
+        }
+
+        return { min: minDate, max: maxDate };
+    };
+
+    const checkDateRestrictions = (isoDate, event, index) => {
+        if (!isoDate) return { valid: false, message: 'Please select an event date.' };
+        const bounds = eventDateBounds(event, index);
+        if (bounds.min && isoDate < bounds.min) {
+            if (index === 0) {
+                const pkg = getPackage(event?.package_id || events[0]?.package_id);
+                const leadTime = Math.max(7, Number(pkg?.booking_lead_time ?? window.bookingLeadTime ?? 7));
+                const daysWord = leadTime === 1 ? '1 day' : `${leadTime} days`;
+                return { valid: false, message: `This caterer requires at least ${daysWord} advance notice. Earliest available date is ${bounds.min}.` };
+            }
+            return { valid: false, message: `Day ${index + 1} must be after the previous event date (on or after ${bounds.min}).` };
+        }
+        if (bounds.max && isoDate > bounds.max) {
+            const maxAdvance = maximumAdvanceDate();
+            if (isoDate > maxAdvance) {
+                return { valid: false, message: `Bookings can only be scheduled up to 1 year in advance (${maxAdvance}).` };
+            }
+            return { valid: false, message: `Keep event dates in order: Day ${index + 1} must be on or before ${bounds.max}.` };
+        }
+        const duplicate = events.some((item, i) => i !== index && item.event_date === isoDate);
+        if (duplicate) {
+            return { valid: false, message: 'This date is already selected for another event. Choose a different date.' };
+        }
+
+        try {
+            const rules = typeof window.catererRules === 'string' ? JSON.parse(window.catererRules) : (window.catererRules || {});
+            const evAvail = rules.event_availability || {};
+            if (evAvail.status === 'temporarily_unavailable') {
+                return { valid: false, message: 'This caterer is temporarily unavailable and not accepting new bookings.' };
+            }
+            const blocked = evAvail.blocked_dates || [];
+            const isBlocked = blocked.some(b => (typeof b === 'string' ? b : b?.date) === isoDate);
+            if (isBlocked) {
+                return { valid: false, message: 'This date is blocked and unavailable for this caterer. Please choose another date.' };
+            }
+            const opDays = evAvail.operating_days || (rules.business_hours && rules.business_hours.operating_days);
+            if (Array.isArray(opDays) && opDays.length > 0 && opDays.length < 7) {
+                const dateObj = dateFromIso(isoDate);
+                if (dateObj) {
+                    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const dayName = daysOfWeek[dateObj.getDay()];
+                    if (!opDays.includes(dayName)) {
+                        return { valid: false, message: `Caterer does not accept bookings on ${dayName}s.` };
+                    }
+                }
+            }
+        } catch (_) {}
+
+        return { valid: true, message: '' };
     };
     const getPackage = id => packages.find(item => String(item.id) === String(id));
     const getSelected = (event, key) => new Set((Array.isArray(event[key]) ? event[key] : []).map(Number));
@@ -194,19 +278,42 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     const events = initialData.length ? initialData.map((source, index) => makeEvent(source, index)) : [makeEvent()];
     const eventCustomizations = options.event_customizations || {};
-    events.forEach((event, index) => {
-        const savedEventCustomization = eventCustomizations[event.id] || Object.values(eventCustomizations).find(
-            customization => customization && String(customization.event_id || '') === String(event.id)
-        );
-        const matchesEvent = customization => customization &&
-            (!customization.event_id || String(customization.event_id) === String(event.id));
-        event.customization = (matchesEvent(savedEventCustomization) ? savedEventCustomization : null)
-            || (matchesEvent(event.customization) ? event.customization : null)
-            || (!index && matchesEvent(options.initial_customization) ? options.initial_customization : null)
+    const getEventCustomization = (event, index = events.indexOf(event)) => {
+        const pkg = getPackage(event?.package_id);
+        if (!pkg || String(pkg.pricing_mode || '').toLowerCase() !== 'customizable') return null;
+
+        const isDayOne = index === 0 || (!event?.id && index <= 0);
+        const matchesEvent = customization => {
+            if (!customization) return false;
+            if (customization.event_id) {
+                return String(customization.event_id) === String(event?.id);
+            }
+            return Boolean(isDayOne);
+        };
+
+        let savedEventCustomization = eventCustomizations[event?.id];
+        if (!savedEventCustomization && event?.id) {
+            savedEventCustomization = Object.values(eventCustomizations).find(c => c && String(c.event_id) === String(event.id));
+        }
+        const cust = (matchesEvent(savedEventCustomization) ? savedEventCustomization : null)
+            || (matchesEvent(event?.customization) ? event.customization : null)
+            || (isDayOne && matchesEvent(options.initial_customization) ? options.initial_customization : null)
+            || (isDayOne && matchesEvent(window.customization) ? window.customization : null)
             || null;
-        if (!index && event.customization && !savedEventCustomization) event.customization_source_event_id = '__initial__';
-        if (event.customization && Number(event.customization.package_id) !== Number(event.package_id)) event.customization = null;
+
+        if (cust && Number(cust.package_id) !== Number(event?.package_id)) {
+            return null;
+        }
+        return cust;
+    };
+
+    events.forEach((event, index) => {
+        event.customization = getEventCustomization(event, index);
+        if (event.customization && event.customization.guest_count) {
+            event.guest_count = Number(event.customization.guest_count);
+        }
         if (!event.special_requests) event.special_requests = String(event.customization?.special_requests || '');
+        if (!index && event.customization && !eventCustomizations[event.id]) event.customization_source_event_id = '__initial__';
     });
     if (events[0]) {
         events[0].event_name = legacyEventName?.value || events[0].event_name || '';
@@ -214,7 +321,9 @@ document.addEventListener('DOMContentLoaded', function () {
         events[0].event_type_other = legacyOtherEventType?.value || events[0].event_type_other || '';
         events[0].celebrant_name = legacyCelebrant?.value || events[0].celebrant_name || '';
         events[0].theme_motif = legacyTheme?.value || events[0].theme_motif || '';
-        events[0].guest_count = Math.max(1, Number(legacyGuests?.value || legacyGuestDisplay?.value?.replace(/\D/g, '') || events[0].guest_count || 1));
+        if (!events[0].customization?.guest_count) {
+            events[0].guest_count = Math.max(1, Number(legacyGuests?.value || legacyGuestDisplay?.value?.replace(/\D/g, '') || events[0].guest_count || 1));
+        }
     }
 
     const isIncluded = (pkg, id, key) => (pkg?.[key] || []).some(value => Number(value) === Number(id));
@@ -236,9 +345,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const selectedEventPrice = event => {
         const pkg = getPackage(event.package_id);
         if (!pkg) return { subtotal: 0, package: 0, menu: 0, equipment: 0, services: 0 };
-        const customization = event.customization;
+        const index = events.indexOf(event);
+        const customization = event.customization || getEventCustomization(event, index >= 0 ? index : 0);
         if (String(pkg.pricing_mode || '').toLowerCase() === 'customizable' && customization) {
-            const guests = Math.max(1, Number(event.guest_count || 1));
+            if (customization.guest_count && (!event.guest_count || event.guest_count !== Number(customization.guest_count))) {
+                event.guest_count = Number(customization.guest_count);
+            }
+            const guests = Math.max(1, Number(event.guest_count || customization.guest_count || 1));
             const oldGuests = Math.max(1, Number(customization.guest_count || guests));
             const base = Number(customization.base_price || pkg.price_per_head || pkg.price || 0) * guests;
             const food = (customization.selected_food || []).reduce((sum, item) => {
@@ -329,8 +442,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const isSelectedEvent = eventSelection && String(eventSelection.package_id) === String(pkg.id);
         const isCustomizable = String(pkg.pricing_mode || '').toLowerCase() === 'customizable';
         const getCustomization = selection => {
-            const value = selection?.customization || eventCustomizations[selection?.id] || null;
-            return isCustomizable && value && Number(value.package_id) === Number(pkg.id) ? value : null;
+            const idx = events.findIndex(item => String(item.id) === String(selection?.id));
+            return getEventCustomization(selection, idx >= 0 ? idx : 0);
         };
         const lookupSelections = (source, ids, includedIds = [], addonKey = '', selectedEvent = eventSelection) => {
             const included = new Set(includedIds.map(Number));
@@ -410,6 +523,410 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!modal.open) modal.showModal();
     };
 
+    const renderBookingSummaryModal = () => {
+        const body = document.getElementById('booking-summary-modal-body');
+        const footer = document.getElementById('booking-summary-modal-footer');
+        if (!body || !footer) return;
+
+        const feeStatus = String(window.deliveryFeeStatus || '').toLowerCase();
+        const feeIsKnown = ['calculated', 'confirmed', 'available', 'success'].includes(feeStatus);
+        const fee = feeIsKnown ? Number(window.currentDeliveryFee || 0) : 0;
+
+        let totalSubtotal = 0;
+
+        const daysHtml = events.map((event, index) => {
+            const dayNumber = index + 1;
+            const pkg = getPackage(event.package_id);
+            const isCustomizable = String(pkg?.pricing_mode || '').toLowerCase() === 'customizable';
+            const customization = getEventCustomization(event, index);
+            const eventPrice = selectedEventPrice(event);
+            totalSubtotal += eventPrice.subtotal;
+
+            const dateDisplay = event.event_date ? formatDisplayDate(event.event_date) : '<span style="color:#94a3b8;">Not selected</span>';
+            const ingressDisplay = event.ingress ? formatDisplayTime(event.ingress) : '<span style="color:#94a3b8;">Not set</span>';
+            const egressDisplay = event.egress ? formatDisplayTime(event.egress) : '<span style="color:#94a3b8;">Not set</span>';
+            const guestCount = Number(event.guest_count || 1);
+
+            // 1. Menu Items
+            let menuRowsHtml = '';
+            let menuCount = 0;
+
+            if (isCustomizable) {
+                if (customization) {
+                    const customFood = Array.isArray(customization.selected_food) ? customization.selected_food : [];
+                    const customExtras = Array.isArray(customization.selected_menu_extras) ? customization.selected_menu_extras : [];
+                    menuCount = customFood.length + customExtras.length;
+
+                    if (menuCount > 0) {
+                        menuRowsHtml = customFood.map(dish => {
+                            const fee = Number(dish.upgrade_fee || dish.price || 0);
+                            const feeBadge = fee > 0 ? `+${money(fee)}/pax` : 'Included';
+                            const isInc = fee === 0;
+                            const extraNote = dish.replacement_for_name ? `Replaces ${escapeHtml(dish.replacement_for_name)}` : (dish.category ? escapeHtml(dish.category) : '');
+                            return `<li class="booking-summary-item-row">
+                                <div class="booking-summary-item-info">
+                                    <span class="booking-summary-item-name">${escapeHtml(dish.name)}</span>
+                                    ${extraNote ? `<span class="booking-summary-item-extra">${extraNote}</span>` : ''}
+                                </div>
+                                <span class="booking-summary-item-badge ${isInc ? 'is-included' : ''}">${feeBadge}</span>
+                            </li>`;
+                        }).join('');
+
+                        if (customExtras.length) {
+                            menuRowsHtml += customExtras.map(dish => {
+                                const qty = Number(dish.qty || 1);
+                                const price = Number(dish.price || 0);
+                                const subtotal = Number(dish.subtotal || (qty * price));
+                                return `<li class="booking-summary-item-row">
+                                    <div class="booking-summary-item-info">
+                                        <span class="booking-summary-item-name">${escapeHtml(dish.name)} <small style="color:#6366f1;font-weight:700;">(Extra Dish)</small></span>
+                                        <span class="booking-summary-item-extra">${qty} × ${money(price)}</span>
+                                    </div>
+                                    <span class="booking-summary-item-badge">${money(subtotal)}</span>
+                                </li>`;
+                            }).join('');
+                        }
+
+                        if (Number(customization.food_removal_credit || 0) > 0) {
+                            menuRowsHtml += `<li class="booking-summary-item-row" style="background:#f0fdf4;border-radius:6px;">
+                                <div class="booking-summary-item-info">
+                                    <span class="booking-summary-item-name" style="color:#15803d;">Menu Credit Applied</span>
+                                    <span class="booking-summary-item-extra" style="color:#166534;">Dishes removed from base</span>
+                                </div>
+                                <span class="booking-summary-item-badge" style="color:#15803d;">-${money(customization.food_removal_credit)}</span>
+                            </li>`;
+                        }
+                    } else {
+                        menuRowsHtml = `<li class="booking-summary-empty-note">No dishes selected yet.</li>`;
+                    }
+                } else {
+                    menuRowsHtml = `<li class="booking-summary-empty-note">No custom menu selections saved yet for this event day.</li>`;
+                }
+            } else {
+                // Fixed package
+                const includedFood = (pkg?.grouped_inclusions?.food || []).map(dish => ({
+                    name: dish.name || 'Included dish',
+                    note: dish.category || 'Package inclusion',
+                    fee: 0,
+                    isIncluded: true
+                }));
+
+                if (index === 0) {
+                    const slotInputs = Array.from(document.querySelectorAll('.slot-input'));
+                    if (slotInputs.length) {
+                        slotInputs.forEach(input => {
+                            const dishId = Number(input.value);
+                            const dish = menuItems.find(i => Number(i.id) === dishId);
+                            const fee = Number(input.dataset.upgradeFee || 0);
+                            if (dish) {
+                                const existingIdx = includedFood.findIndex(f => f.name === dish.name);
+                                if (existingIdx === -1) {
+                                    includedFood.push({
+                                        name: dish.name,
+                                        note: dish.category ? `${dish.category} · Swapped` : 'Swapped dish',
+                                        fee: fee,
+                                        isIncluded: fee === 0
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+
+                const optionalFood = menuItemsForEvent(event).filter(item =>
+                    getSelected(event, 'menu_ids').has(Number(item.id)) && !isIncluded(pkg, item.id, 'included_menu_ids')
+                ).map(item => {
+                    const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(item.pricing_unit || '').toLowerCase());
+                    const price = itemPrice(item, pkg);
+                    return {
+                        name: item.name,
+                        note: `${item.category || 'Add-on'} · ${perGuest ? `${guestCount} guests` : '1 unit'}`,
+                        fee: price * (perGuest ? guestCount : 1),
+                        badge: `${money(price)}${perGuest ? '/pax' : ''}`,
+                        isIncluded: false
+                    };
+                });
+
+                const allFood = [...includedFood, ...optionalFood];
+                menuCount = allFood.length;
+
+                if (allFood.length) {
+                    menuRowsHtml = allFood.map(item => `
+                        <li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(item.name)}</span>
+                                <span class="booking-summary-item-extra">${escapeHtml(item.note)}</span>
+                            </div>
+                            <span class="booking-summary-item-badge ${item.isIncluded ? 'is-included' : ''}">${item.isIncluded ? 'Included' : (item.badge || money(item.fee))}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    menuRowsHtml = `<li class="booking-summary-empty-note">Package inclusions confirmed by caterer.</li>`;
+                }
+            }
+
+            // 2. Add-on Services
+            let servicesRowsHtml = '';
+            let serviceCount = 0;
+
+            if (isCustomizable) {
+                const customSvcs = customization && Array.isArray(customization.selected_services) ? customization.selected_services : [];
+                const customSvcIds = new Set(customSvcs.map(s => Number(s.id)));
+                const extraSvcs = serviceItems.filter(s => getSelected(event, 'service_ids').has(Number(s.id)) && !customSvcIds.has(Number(s.id)));
+                serviceCount = customSvcs.length + extraSvcs.length;
+
+                if (serviceCount > 0) {
+                    servicesRowsHtml = customSvcs.map(s => {
+                        const isInc = Boolean(s.included);
+                        const price = Number(s.price || 0);
+                        const badge = isInc ? 'Included in base' : `${money(price)}${s.unit && s.unit !== 'fixed' && s.unit !== 'service' ? '/' + s.unit : ''}`;
+                        return `<li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(s.name)}</span>
+                                ${s.description ? `<span class="booking-summary-item-extra">${escapeHtml(s.description)}</span>` : ''}
+                            </div>
+                            <span class="booking-summary-item-badge ${isInc ? 'is-included' : ''}">${badge}</span>
+                        </li>`;
+                    }).join('');
+
+                    if (extraSvcs.length) {
+                        servicesRowsHtml += extraSvcs.map(s => {
+                            const configured = packageAddon(pkg, 'service_addons', s.id);
+                            const price = Number(configured?.price ?? s.price ?? 0);
+                            const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(s.unit_type || '').toLowerCase());
+                            const sub = price * (perGuest ? guestCount : 1);
+                            return `<li class="booking-summary-item-row">
+                                <div class="booking-summary-item-info">
+                                    <span class="booking-summary-item-name">${escapeHtml(s.name)}</span>
+                                    <span class="booking-summary-item-extra">${perGuest ? `${guestCount} guests` : '1 service'}</span>
+                                </div>
+                                <span class="booking-summary-item-badge">${money(sub)}</span>
+                            </li>`;
+                        }).join('');
+                    }
+                } else {
+                    servicesRowsHtml = `<li class="booking-summary-empty-note">None selected</li>`;
+                }
+            } else {
+                const includedSvcs = (pkg?.grouped_inclusions?.services || []).map(s => ({
+                    name: s.name || 'Included service',
+                    desc: s.description || '',
+                    badge: 'Included',
+                    isIncluded: true
+                }));
+                const optionalSvcs = serviceItems.filter(s =>
+                    getSelected(event, 'service_ids').has(Number(s.id)) && !isIncluded(pkg, s.id, 'included_service_ids')
+                ).map(s => {
+                    const configured = packageAddon(pkg, 'service_addons', s.id);
+                    const price = Number(configured?.price ?? s.price ?? 0);
+                    const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(s.unit_type || '').toLowerCase());
+                    const sub = price * (perGuest ? guestCount : 1);
+                    return {
+                        name: s.name,
+                        desc: perGuest ? `${guestCount} guests × ${money(price)}` : '',
+                        badge: money(sub),
+                        isIncluded: false
+                    };
+                });
+
+                const allSvcs = [...includedSvcs, ...optionalSvcs];
+                serviceCount = allSvcs.length;
+
+                if (allSvcs.length) {
+                    servicesRowsHtml = allSvcs.map(s => `
+                        <li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(s.name)}</span>
+                                ${s.desc ? `<span class="booking-summary-item-extra">${escapeHtml(s.desc)}</span>` : ''}
+                            </div>
+                            <span class="booking-summary-item-badge ${s.isIncluded ? 'is-included' : ''}">${s.badge}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    servicesRowsHtml = `<li class="booking-summary-empty-note">None selected</li>`;
+                }
+            }
+
+            // 3. Equipment & Rentals
+            let equipmentRowsHtml = '';
+            let equipmentCount = 0;
+
+            if (isCustomizable) {
+                const customEq = customization && Array.isArray(customization.selected_equipment) ? customization.selected_equipment : [];
+                const customEqIds = new Set(customEq.map(e => Number(e.id)));
+                const extraEq = equipmentItems.filter(e => getSelected(event, 'equipment_ids').has(Number(e.id)) && !customEqIds.has(Number(e.id)));
+                equipmentCount = customEq.length + extraEq.length;
+
+                if (equipmentCount > 0) {
+                    equipmentRowsHtml = customEq.map(eq => {
+                        const isInc = Boolean(eq.included);
+                        const qty = Number(eq.qty || 1);
+                        const dur = Number(eq.duration_qty || 1);
+                        const price = Number(eq.price || 0);
+                        const sub = Number(eq.subtotal || (qty * dur * price));
+                        const badge = isInc ? 'Included in base' : money(sub);
+                        const desc = isInc ? '' : `${qty} × ${dur} ${eq.unit || 'unit'}${dur > 1 ? 's' : ''} × ${money(price)}`;
+                        return `<li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(eq.name)}</span>
+                                ${desc ? `<span class="booking-summary-item-extra">${desc}</span>` : ''}
+                            </div>
+                            <span class="booking-summary-item-badge ${isInc ? 'is-included' : ''}">${badge}</span>
+                        </li>`;
+                    }).join('');
+
+                    if (extraEq.length) {
+                        equipmentRowsHtml += extraEq.map(e => {
+                            const configured = packageAddon(pkg, 'equipment_addons', e.id);
+                            const price = Number(configured?.price ?? e.price ?? 0);
+                            return `<li class="booking-summary-item-row">
+                                <div class="booking-summary-item-info">
+                                    <span class="booking-summary-item-name">${escapeHtml(e.name)}</span>
+                                    ${e.description ? `<span class="booking-summary-item-extra">${escapeHtml(e.description)}</span>` : ''}
+                                </div>
+                                <span class="booking-summary-item-badge">${money(price)}</span>
+                            </li>`;
+                        }).join('');
+                    }
+                } else {
+                    equipmentRowsHtml = `<li class="booking-summary-empty-note">None selected</li>`;
+                }
+            } else {
+                const includedEq = (pkg?.grouped_inclusions?.equipment || []).map(e => ({
+                    name: e.name || 'Included equipment',
+                    desc: e.description || '',
+                    badge: 'Included',
+                    isIncluded: true
+                }));
+                const optionalEq = equipmentItems.filter(e =>
+                    getSelected(event, 'equipment_ids').has(Number(e.id)) && !isIncluded(pkg, e.id, 'included_equipment_ids')
+                ).map(e => {
+                    const configured = packageAddon(pkg, 'equipment_addons', e.id);
+                    const price = Number(configured?.price ?? e.price ?? 0);
+                    return {
+                        name: e.name,
+                        desc: e.description || '',
+                        badge: money(price),
+                        isIncluded: false
+                    };
+                });
+
+                const allEq = [...includedEq, ...optionalEq];
+                equipmentCount = allEq.length;
+
+                if (allEq.length) {
+                    equipmentRowsHtml = allEq.map(e => `
+                        <li class="booking-summary-item-row">
+                            <div class="booking-summary-item-info">
+                                <span class="booking-summary-item-name">${escapeHtml(e.name)}</span>
+                                ${e.desc ? `<span class="booking-summary-item-extra">${escapeHtml(e.desc)}</span>` : ''}
+                            </div>
+                            <span class="booking-summary-item-badge ${e.isIncluded ? 'is-included' : ''}">${e.badge}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    equipmentRowsHtml = `<li class="booking-summary-empty-note">None selected</li>`;
+                }
+            }
+
+            return `<article class="booking-summary-day-card" data-event-id="${escapeHtml(event.id)}">
+                <div class="booking-summary-day-head">
+                    <div class="booking-summary-day-title">
+                        <span class="booking-summary-day-badge">Day ${dayNumber}</span>
+                        ${event.event_name ? `<span class="booking-summary-day-eventname">· ${escapeHtml(event.event_name)}</span>` : ''}
+                    </div>
+                    <span class="booking-summary-pkg-pill">
+                        <i class="fas fa-box-archive" aria-hidden="true"></i> ${escapeHtml(pkg ? pkg.name : 'Package')}
+                    </span>
+                </div>
+
+                <div class="booking-summary-meta-grid">
+                    <div class="booking-summary-meta-item">
+                        <span class="booking-summary-meta-label"><i class="far fa-calendar"></i> Date</span>
+                        <span class="booking-summary-meta-val">${dateDisplay}</span>
+                    </div>
+                    <div class="booking-summary-meta-item">
+                        <span class="booking-summary-meta-label"><i class="far fa-clock"></i> Ingress</span>
+                        <span class="booking-summary-meta-val">${ingressDisplay}</span>
+                    </div>
+                    <div class="booking-summary-meta-item">
+                        <span class="booking-summary-meta-label"><i class="fas fa-hourglass-end"></i> Egress</span>
+                        <span class="booking-summary-meta-val">${egressDisplay}</span>
+                    </div>
+                    <div class="booking-summary-meta-item">
+                        <span class="booking-summary-meta-label"><i class="fas fa-users"></i> Guests</span>
+                        <span class="booking-summary-meta-val">${guestCount.toLocaleString()} pax</span>
+                    </div>
+                </div>
+
+                <div class="booking-summary-group">
+                    <div class="booking-summary-group-title">
+                        <span><i class="fas fa-utensils" style="color:#f97316;"></i> Selected Menu</span>
+                        <span class="booking-summary-group-count">${menuCount} item${menuCount === 1 ? '' : 's'}</span>
+                    </div>
+                    <ul class="booking-summary-items-list">
+                        ${menuRowsHtml}
+                    </ul>
+                </div>
+
+                <div class="booking-summary-group">
+                    <div class="booking-summary-group-title">
+                        <span><i class="fas fa-bell-concierge" style="color:#6366f1;"></i> Add-on Services</span>
+                        <span class="booking-summary-group-count">${serviceCount} service${serviceCount === 1 ? '' : 's'}</span>
+                    </div>
+                    <ul class="booking-summary-items-list">
+                        ${servicesRowsHtml}
+                    </ul>
+                </div>
+
+                <div class="booking-summary-group">
+                    <div class="booking-summary-group-title">
+                        <span><i class="fas fa-chair" style="color:#0ea5e9;"></i> Equipment &amp; Rentals</span>
+                        <span class="booking-summary-group-count">${equipmentCount} item${equipmentCount === 1 ? '' : 's'}</span>
+                    </div>
+                    <ul class="booking-summary-items-list">
+                        ${equipmentRowsHtml}
+                    </ul>
+                </div>
+
+                <div class="booking-summary-day-subtotal-bar">
+                    <span><i class="fas fa-calculator"></i> Day ${dayNumber} Estimated Subtotal</span>
+                    <strong>${money(eventPrice.subtotal)}</strong>
+                </div>
+            </article>`;
+        }).join('');
+
+        body.innerHTML = daysHtml || '<p class="booking-summary-empty-note">No event days configured yet.</p>';
+
+        const grandTotal = totalSubtotal + fee;
+
+        footer.innerHTML = `
+            <div class="booking-summary-footer-card">
+                ${events.length > 1 ? events.map((ev, i) => `
+                    <div class="booking-summary-footer-row">
+                        <span>Day ${i + 1} Subtotal (${formatDisplayDate(ev.event_date)})</span>
+                        <strong>${money(selectedEventPrice(ev).subtotal)}</strong>
+                    </div>
+                `).join('') : ''}
+                <div class="booking-summary-footer-row" ${events.length > 1 ? 'style="padding-top:0.35rem;border-top:1px dashed #cbd5e1;"' : ''}>
+                    <span>Total Events Subtotal (${events.length} Event Day${events.length === 1 ? '' : 's'})</span>
+                    <strong>${money(totalSubtotal)}</strong>
+                </div>
+                <div class="booking-summary-footer-row">
+                    <span>Transportation Fee</span>
+                    <span>${feeIsKnown ? money(fee) : '<em style="color:#64748b;font-style:normal;">Coordinate with caterer</em>'}</span>
+                </div>
+                <div class="booking-summary-footer-row is-grand-total">
+                    <span>Estimated Booking Total</span>
+                    <strong>${money(grandTotal)}</strong>
+                </div>
+            </div>
+            <div class="booking-summary-footer-actions">
+                <button type="button" class="btn-summary-close" data-action="close-booking-summary">Close Summary</button>
+            </div>
+        `;
+    };
+
     const renderMenuChoices = event => {
         const availableMenuItems = menuItemsForEvent(event);
         if (!availableMenuItems.length) return '<p class="booking-event-status">No additional food options are currently listed for this package.</p>';
@@ -459,7 +976,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const pkg = getPackage(event.package_id);
         const isCustomizable = String(pkg?.pricing_mode || '').toLowerCase() === 'customizable';
         const customizeUrl = isCustomizable
-            ? `/bookings/customize/${encodeURIComponent(window.catererId)}?package_id=${encodeURIComponent(pkg.id)}&event_id=${encodeURIComponent(event.id)}&event_day=${index + 1}&guest_count=${encodeURIComponent(event.guest_count || 1)}${event.customization_source_event_id ? `&reuse_from=${encodeURIComponent(event.customization_source_event_id)}` : ''}`
+            ? `/bookings/customize/${encodeURIComponent(window.catererId)}?package_id=${encodeURIComponent(pkg.id)}&event_id=${encodeURIComponent(event.id)}&event_day=${index + 1}&guest_count=${encodeURIComponent(event.guest_count || 1)}${event.customization ? '' : (events[0]?.id ? `&reuse_from=${encodeURIComponent(events[0].id)}` : '&reuse_from=__initial__')}`
             : '';
         const times = timeOptions.map(option =>
             `<option value="${escapeHtml(option.value)}" ${option.value === event.ingress ? 'selected' : ''}>${escapeHtml(option.label)}</option>`
@@ -496,9 +1013,67 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="booking-field booking-field-wide"><label class="form-label" for="${escapeHtml(event.id)}-special-requests">Special Requests &amp; Notes <span class="booking-field-range">(optional)</span></label><textarea id="${escapeHtml(event.id)}-special-requests" class="form-input" data-field="special_requests" maxlength="300" rows="2">${escapeHtml(event.special_requests || '')}</textarea></div>
         </div>`;
         const eventTitle = event.event_name || `Event ${index + 1}`;
+
+        let customizationBlock = '';
+        if (isCustomizable) {
+            if (index === 0) {
+                customizationBlock = `<div class="booking-event-customization is-saved">
+                    <div class="booking-event-customization-main">
+                        <i class="fas fa-check-circle booking-event-customization-icon" aria-hidden="true"></i>
+                        <div>
+                            <span>${event.customization ? 'Day 1 choices are from your Step 1 package selection.' : 'Choose or update Day 1 package choices in Step 1.'}</span>
+                            <small style="display:block;font-size:0.78rem;color:#64748b;font-weight:600;">${Number(event.guest_count || 1)} guests</small>
+                        </div>
+                    </div>
+                </div>`;
+            } else if (event.customization) {
+                const cust = event.customization;
+                const guests = Number(event.guest_count || cust.guest_count || 1);
+                const foodCount = (cust.selected_food || []).length;
+                const extraCount = (cust.selected_menu_extras || []).length;
+                const totalDishes = foodCount + extraCount;
+                const serviceCount = (cust.selected_services || []).length;
+                const equipCount = (cust.selected_equipment || []).length;
+                const details = [];
+                details.push(`<strong>${guests} guests</strong>`);
+                if (totalDishes > 0) details.push(`${totalDishes} dish${totalDishes === 1 ? '' : 'es'}`);
+                if (serviceCount > 0) details.push(`${serviceCount} service${serviceCount === 1 ? '' : 's'}`);
+                if (equipCount > 0) details.push(`${equipCount} equipment`);
+
+                customizationBlock = `<div class="booking-event-customization is-saved">
+                    <div class="booking-event-customization-main">
+                        <i class="fas fa-check-circle booking-event-customization-icon" aria-hidden="true"></i>
+                        <div>
+                            <span>Custom choices saved for Day ${index + 1}.</span>
+                            <div style="font-size:0.78rem;color:#1e293b;margin-top:2px;">${details.join(' · ')}</div>
+                        </div>
+                    </div>
+                    <div class="booking-event-customization-actions">
+                        <a class="booking-event-customize" href="${customizeUrl}">Edit choices for this event</a>
+                    </div>
+                </div>`;
+            } else {
+                customizationBlock = `<div class="booking-event-customization">
+                    <div class="booking-event-customization-main">
+                        <i class="fas fa-utensils booking-event-customization-icon" aria-hidden="true"></i>
+                        <div>
+                            <span>Select this event’s menu, services, and equipment.</span>
+                            <small style="display:block;font-size:0.78rem;color:#64748b;font-weight:600;">Current: ${Number(event.guest_count || 1)} guests</small>
+                        </div>
+                    </div>
+                    <div class="booking-event-customization-actions">
+                        <a class="booking-event-customize" href="${customizeUrl}">Customize this event</a>
+                    </div>
+                </div>`;
+            }
+        }
+
         return `<article class="booking-event-card" data-event-id="${escapeHtml(event.id)}" data-event-index="${index}">
             <div class="booking-event-heading">
-                <div class="booking-event-title-wrap"><h4 class="booking-event-title">${escapeHtml(eventTitle)}</h4><span class="booking-event-type">${escapeHtml(displayEventType(event))}</span></div>
+                <div class="booking-event-title-wrap">
+                    <h4 class="booking-event-title">${escapeHtml(eventTitle)}</h4>
+                    <span class="booking-event-type">Day ${index + 1} · ${escapeHtml(displayEventType(event))}</span>
+                </div>
                 <button class="booking-event-remove" type="button" data-action="remove-event" ${events.length === 1 ? 'disabled' : ''}>Remove event</button>
             </div>
             ${scheduleFields}
@@ -506,9 +1081,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <p class="booking-events-help">Egress is calculated from this event’s selected package duration.</p>
             <div class="booking-event-status${event.availability === false ? ' is-error' : ''}" role="status">${escapeHtml(status)}</div>
             ${pkg ? `<div class="booking-event-package"><div><strong>${escapeHtml(pkg.name)}</strong><span>${packageRate(pkg)} · ${Number(event.guest_count || 1)} guests · ${Number(pkg.service_duration || 0)}-hour service</span></div><button type="button" data-action="view-package-details" data-package-id="${Number(pkg.id)}">View details</button></div>` : '<p class="booking-event-status is-error">Select a package in the previous step before adding event dates.</p>'}
-            ${isCustomizable ? `<div class="booking-event-customization"><span>${index === 0
-                ? (event.customization ? 'Package choices are saved for this event.' : 'Choose or update this event’s package choices in Step 1.')
-                : (event.customization ? 'Custom choices saved for this event.' : 'Select this event’s menu, services, and equipment.')}</span>${index > 0 ? `<a class="booking-event-customize" href="${customizeUrl}">${event.customization ? 'Edit choices for this event' : 'Customize this event'}</a>` : ''}</div>` : ''}
+            ${customizationBlock}
             ${!isCustomizable ? `<details class="booking-event-menu">
                 <summary class="booking-menu-heading"><strong>Optional food add-ons</strong><span class="booking-choice-meta">Fixed package inclusions stay unchanged</span></summary>
                 ${renderMenuChoices(event)}
@@ -600,6 +1173,10 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.warn('Could not save event schedules in this browser:', error);
         }
+        const summaryModal = document.getElementById('booking-summary-modal');
+        if (summaryModal && summaryModal.open) {
+            renderBookingSummaryModal();
+        }
     };
 
     legacySpecialRequests?.addEventListener('input', updateEventTotals);
@@ -611,20 +1188,35 @@ document.addEventListener('DOMContentLoaded', function () {
         if (activeId) document.getElementById(activeId)?.focus({ preventScroll: true });
         const panel = document.getElementById('booking-events-panel');
         if (panel) panel.hidden = !events[0]?.event_date;
-        if (legacyDate) legacyDate.min = minimumEventDate(getPackage(events[0]?.package_id));
-        if (legacyDate && events[0]) legacyDate.max = eventDateBounds(events[0], 0).max;
+        if (legacyDate && events[0]) {
+            const day1Bounds = eventDateBounds(events[0], 0);
+            legacyDate.min = day1Bounds.min;
+            if (day1Bounds.max) {
+                legacyDate.max = day1Bounds.max;
+            } else {
+                legacyDate.removeAttribute('max');
+            }
+        }
         updateEventTotals();
         const addEventButton = form.querySelector('[data-action="add-event"]');
         const addEventHint = document.getElementById('booking-add-event-hint');
-        const canAddEvent = Boolean(getPackage(events[0]?.package_id)) && events.every(item => item.event_date);
+        const hasPkg = Boolean(getPackage(events[0]?.package_id || legacyPackage?.value || window.currentPackageId));
+        const allValid = events.length > 0 && events.every((item, index) => {
+            if (!item.event_date) return false;
+            const check = checkDateRestrictions(item.event_date, item, index);
+            return check.valid && item.availability !== false;
+        });
+        const canAddEvent = hasPkg && events.every(item => item.event_date) && allValid;
         if (addEventButton) {
             addEventButton.disabled = !canAddEvent;
         }
         if (addEventHint) {
             addEventHint.hidden = canAddEvent;
-            addEventHint.textContent = events.length > 1
-                ? 'Complete each event date before adding another event.'
-                : 'Choose an event date first to add another event.';
+            addEventHint.textContent = !hasPkg
+                ? 'Choose a package before adding event dates.'
+                : events.length > 1
+                    ? 'Complete and verify each event date before adding another event.'
+                    : 'Choose and verify an event date before adding another event.';
         }
     };
 
@@ -667,7 +1259,17 @@ document.addEventListener('DOMContentLoaded', function () {
     legacyGuestDisplay?.addEventListener('input', () => {
         const guestCount = Math.max(1, Math.min(999999, Number(legacyGuestDisplay.value.replace(/\D/g, '') || 1)));
         if (legacyGuests) legacyGuests.value = guestCount;
-        if (events[0]) events[0].guest_count = guestCount;
+        if (events[0]) {
+            events[0].guest_count = guestCount;
+            if (events[0].customization) {
+                events[0].customization.guest_count = guestCount;
+            }
+        }
+        events.forEach((event, idx) => {
+            if (idx > 0 && !event.customization) {
+                event.guest_count = guestCount;
+            }
+        });
         render();
     });
 
@@ -679,10 +1281,21 @@ document.addEventListener('DOMContentLoaded', function () {
             render();
             return;
         }
-        const cacheKey = `${event.event_date}|${event.ingress}`;
+        const currentIndex = events.indexOf(event);
+        const dateCheck = checkDateRestrictions(event.event_date, event, currentIndex >= 0 ? currentIndex : 0);
+        if (!dateCheck.valid) {
+            availability.delete(event.id);
+            event.availability = false;
+            event.availabilityMessage = dateCheck.message;
+            render();
+            return;
+        }
+
+        const cacheKey = `${event.event_date}|${event.ingress}|${event.egress}`;
         event.availability = null;
         event.availabilityMessage = 'Checking caterer availability…';
         render();
+
         const params = new URLSearchParams({
             caterer_id: String(window.catererId || ''),
             date_str: event.event_date,
@@ -692,6 +1305,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (bookingId) params.set('booking_id', bookingId);
         const requestKey = `${event.id}:${cacheKey}`;
         availability.set(event.id, requestKey);
+
         try {
             const response = await fetch(`/packages/api/check-availability?${params.toString()}`, { cache: 'no-store' });
             if (!response.ok) throw new Error(`Availability check failed with status ${response.status}`);
@@ -699,6 +1313,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (availability.get(event.id) !== requestKey) return;
             event.availability = Boolean(result.available);
             event.availabilityMessage = result.message || (result.available ? 'This date and time is available.' : 'This date and time is unavailable.');
+            if (events.indexOf(event) === 0 && typeof window.isAvailabilityValid !== 'undefined') {
+                window.isAvailabilityValid = Boolean(result.available);
+            }
         } catch (error) {
             if (availability.get(event.id) !== requestKey) return;
             console.error('Could not verify event availability:', error);
@@ -709,32 +1326,63 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const validateInternalConflicts = () => {
+        const pkg = getPackage(events[0]?.package_id || legacyPackage?.value || window.currentPackageId);
+        if (!pkg) return 'Please choose a package before setting up event dates.';
+
         const intervals = [];
         let turnoverHours = Number(window.catererRules?.package_rules?.turnover_time_hours ?? 2);
         if (!Number.isFinite(turnoverHours) || turnoverHours < 0) turnoverHours = 2;
         const turnoverMilliseconds = turnoverHours * 60 * 60 * 1000;
+
         for (const [index, event] of events.entries()) {
-            if (!String(event.event_name || '').trim()) return `Enter a name for Event ${index + 1}.`;
-            if (!String(event.event_type_other || '').trim() && event.event_type === 'Other') return `Describe the type for Event ${index + 1}.`;
-            if (!event.event_date || !event.ingress || !event.egress) return 'Complete each event date and ingress time. Egress is calculated automatically.';
+            const dayName = `Day ${index + 1}`;
+            if (!String(event.event_name || '').trim()) return `Please enter an event name for ${dayName}.`;
+            if (event.event_type === 'Other' && !String(event.event_type_other || '').trim()) {
+                return `Please describe the event type for ${dayName}.`;
+            }
+            if (!event.event_date) return `Please select an event date for ${dayName}.`;
+            if (!event.ingress) return `Please select an ingress time for ${dayName}.`;
+            if (!event.egress) return `Egress time for ${dayName} could not be calculated. Choose a valid ingress time.`;
+
+            // Validate date restrictions (lead time, operating days, blocked dates, bounds, duplicates)
+            const dateCheck = checkDateRestrictions(event.event_date, event, index);
+            if (!dateCheck.valid) return `${dayName}: ${dateCheck.message}`;
+
+            // Enforce chronological order: Day 1 < Day 2 < Day 3
+            if (index > 0 && event.event_date <= events[index - 1].event_date) {
+                return `Keep event dates in order: ${dayName} must be after Day ${index}.`;
+            }
+
+            // Ingress and Egress order
             const start = new Date(`${event.event_date}T${event.ingress}:00`).getTime();
             const end = new Date(`${event.event_date}T${event.egress}:00`).getTime();
-            if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 'Each event egress must follow ingress on the same date.';
-            const pkg = getPackage(event.package_id);
-            if (!pkg) return 'Choose the main package before setting up event dates.';
-            const guests = Number(event.guest_count || 0);
-            if (guests < Number(pkg.min_guests || 50) || guests > Number(pkg.max_guests || 999999)) {
-                const maximum = pkg.max_guests_display || pkg.max_guests || 'No maximum';
-                return `${pkg.name} supports ${pkg.min_guests || 50} to ${maximum} guests. Adjust this event's guest count.`;
+            if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+                return `${dayName}: Egress time must follow ingress on the same date.`;
             }
-            if (event.availability !== true) return event.availabilityMessage || 'Wait for availability to be confirmed for each event.';
+
+            // Guests count
+            const evPkg = getPackage(event.package_id) || pkg;
+            const guests = Number(event.guest_count || 0);
+            if (guests < Number(evPkg.min_guests || 1) || guests > Number(evPkg.max_guests || 999999)) {
+                return `${evPkg.name} supports ${evPkg.min_guests || 1}–${evPkg.max_guests || 999999} guests. Adjust ${dayName}’s guest count.`;
+            }
+
+            // Availability confirmation check
+            if (event.availability === false) {
+                return `${dayName}: ${event.availabilityMessage || 'The selected date and time is not available. Please choose another date or time.'}`;
+            }
+            if (event.availability !== true) {
+                return `${dayName}: Caterer availability is still being verified. Please wait a moment and try again.`;
+            }
+
+            // Turnover time check if multiple events on the same date
             for (const interval of intervals) {
                 if (
                     interval.date === event.event_date &&
                     start < interval.end + turnoverMilliseconds &&
                     end + turnoverMilliseconds > interval.start
                 ) {
-                    return 'Events on the same date need enough time for caterer setup and turnover.';
+                    return `Events on the same date need at least ${turnoverHours} hours for caterer setup and turnover.`;
                 }
             }
             intervals.push({ date: event.event_date, start, end });
@@ -769,20 +1417,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 current.guest_count = Math.max(1, Math.min(999999, Number(event.target.value || 1)));
             } else if (field === 'event_date') {
                 const selectedDate = event.target.value;
-                const { min: minDate, max: maxDate } = eventDateBounds(current, events.indexOf(current));
-                const duplicate = selectedDate && events.some(item => item !== current && item.event_date === selectedDate);
-                const outOfOrder = selectedDate && ((minDate && selectedDate < minDate) || (maxDate && selectedDate > maxDate));
-                if (duplicate || outOfOrder) {
-                    event.target.setCustomValidity(duplicate
-                        ? 'This date is already selected for another event. Choose a different date.'
-                        : `Keep event dates in order: choose a date on or after ${minDate}${maxDate ? ` and on or before ${maxDate}` : ''}.`);
-                    event.target.reportValidity();
-                    event.target.value = '';
-                    current.event_date = '';
-                } else {
-                    event.target.setCustomValidity('');
-                    current.event_date = selectedDate;
+                const currentIndex = events.indexOf(current);
+                if (selectedDate) {
+                    const check = checkDateRestrictions(selectedDate, current, currentIndex);
+                    if (!check.valid) {
+                        event.target.setCustomValidity(check.message);
+                        event.target.reportValidity();
+                        event.target.value = current.event_date || '';
+                        return;
+                    }
                 }
+                event.target.setCustomValidity('');
+                current.event_date = selectedDate;
             } else {
                 current[field] = event.target.value;
             }
@@ -869,25 +1515,31 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.target !== legacyDate && event.target !== legacyTime) return;
         const first = events[0];
         if (!first) return;
-        const selectedDate = legacyDate?.value || '';
-        const firstDateBounds = eventDateBounds(first, 0);
-        const duplicateDate = selectedDate && events.some(item => item !== first && item.event_date === selectedDate);
-        const outOfOrder = selectedDate && (selectedDate < firstDateBounds.min || (firstDateBounds.max && selectedDate > firstDateBounds.max));
-        if (duplicateDate || outOfOrder) {
-            legacyDate.setCustomValidity(duplicateDate
-                ? 'This date is already selected for another event. Choose a different date.'
-                : 'Keep events in date order. The first event must come before the next event.');
-            legacyDate.reportValidity();
-            legacyDate.value = first.event_date || '';
-            return;
+        if (event.target === legacyDate) {
+            const selectedDate = legacyDate.value || '';
+            if (selectedDate) {
+                const check = checkDateRestrictions(selectedDate, first, 0);
+                if (!check.valid) {
+                    legacyDate.setCustomValidity(check.message);
+                    legacyDate.reportValidity();
+                    legacyDate.value = first.event_date || '';
+                    return;
+                }
+            }
+            legacyDate.setCustomValidity('');
+            first.event_date = selectedDate;
+            first.availability = null;
+            first.availabilityMessage = '';
+            render();
+            if (first.event_date && first.ingress) checkAvailability(first);
+        } else if (event.target === legacyTime) {
+            first.ingress = legacyTime.value || '';
+            first.availability = null;
+            first.availabilityMessage = '';
+            updateEventTotals();
+            render();
+            if (first.event_date && first.ingress) checkAvailability(first);
         }
-        legacyDate?.setCustomValidity('');
-        first.event_date = selectedDate;
-        first.ingress = legacyTime?.value || '';
-        first.availability = null;
-        first.availabilityMessage = '';
-        render();
-        if (first.event_date && first.ingress) checkAvailability(first);
     });
 
     form.addEventListener('click', event => {
@@ -908,13 +1560,71 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    document.addEventListener('click', event => {
+        const customizeLink = event.target.closest('.booking-event-customize');
+        if (customizeLink) {
+            try {
+                if (typeof window.saveDetailsFormState === 'function') {
+                    window.saveDetailsFormState();
+                }
+                updateEventTotals();
+            } catch (err) {
+                console.warn('Could not save details form state before customizing:', err);
+            }
+            return;
+        }
+
+        const summaryBtn = event.target.closest('[data-action="view-booking-summary"]');
+        if (summaryBtn) {
+            event.preventDefault();
+            const modal = document.getElementById('booking-summary-modal');
+            if (modal) {
+                renderBookingSummaryModal();
+                if (!modal.open) {
+                    modal.showModal();
+                }
+            }
+            return;
+        }
+
+        const closeBtn = event.target.closest('[data-action="close-booking-summary"]');
+        if (closeBtn) {
+            event.preventDefault();
+            const modal = document.getElementById('booking-summary-modal');
+            if (modal && modal.open) {
+                modal.close();
+            }
+            return;
+        }
+
+        const modal = document.getElementById('booking-summary-modal');
+        if (event.target === modal && modal?.open) {
+            modal.close();
+        }
+    });
+
     form.addEventListener('submit', event => {
         updateEventTotals();
         const error = validateInternalConflicts();
         if (error) {
             event.preventDefault();
             event.stopImmediatePropagation();
-            window.alert(error);
+            if (window.Swal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Event Schedule Review',
+                    text: error,
+                    confirmButtonColor: '#FF7B54'
+                });
+            } else {
+                window.alert(error);
+            }
+            const submitBtnEl = document.getElementById('submitBtn');
+            if (submitBtnEl) {
+                submitBtnEl.innerHTML = `Next Step: Identity <i class="fas fa-arrow-right"></i>`;
+                submitBtnEl.disabled = false;
+                submitBtnEl.classList.remove('is-loading');
+            }
             return;
         }
         if (legacyDate && legacyTime && typeof window.checkAvailability === 'function') {
@@ -924,6 +1634,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     window.updateEventTotals = updateEventTotals;
+    window.renderBookingEvents = render;
+    window.renderBookingSummaryModal = renderBookingSummaryModal;
+    window.openBookingSummaryModal = () => {
+        const modal = document.getElementById('booking-summary-modal');
+        if (modal) {
+            renderBookingSummaryModal();
+            if (!modal.open) modal.showModal();
+        }
+    };
     render();
     events.forEach(item => {
         if (item.event_date && item.ingress) checkAvailability(item);
