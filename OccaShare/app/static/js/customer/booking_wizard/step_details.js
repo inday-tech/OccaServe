@@ -315,14 +315,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // legacy `price` field is only a fallback.
         window.basePrice = Number(pkg.price_per_head || pkg.price || 0);
         window.additionalGuestPrice = Number(pkg.additional_guest_price || 0);
-        window.minGuests = Number(pkg.min_guests || 1);
-        window.maxGuests = 999999;
+        window.minGuests = Number(pkg.min_guests || 50);
+        window.maxGuests = Number(pkg.max_guests || 999999);
 
         // 3. Update guest count labels & bounds
         const minSpan = document.getElementById('min_guests_span');
         if (minSpan) minSpan.innerText = window.minGuests;
         const maxSpan = document.getElementById('max_guests_span');
-        if (maxSpan) maxSpan.innerText = window.maxGuests || '999999';
+        if (maxSpan) maxSpan.innerText = pkg.max_guests_display || 'No maximum';
         const errGuests = document.getElementById('err-guests');
         if (errGuests) errGuests.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
 
@@ -566,20 +566,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (calcAddonsTotal) calcAddonsTotal.innerText = '+₱' + extraCharges.toLocaleString(undefined, { minimumFractionDigits: 2 });
         
         total += extraCharges;
-        total += (window.currentDeliveryFee || 0);
-
-        const calcDeliveryFee = document.getElementById('calc-delivery-fee');
-        if (calcDeliveryFee) {
-            if (window.deliveryFeeStatus === "manual_quote") {
-                calcDeliveryFee.innerText = "Coordinate with caterer";
-            } else if (window.deliveryFeeStatus === "error") {
-                calcDeliveryFee.innerText = "Coordinate with caterer";
-            } else if (window.deliveryFeeStatus === "pending") {
-                calcDeliveryFee.innerText = "Coordinate with caterer";
-            } else {
-                calcDeliveryFee.innerText = '+₱' + (window.currentDeliveryFee || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
-            }
-        }
+        // Transportation is not included until the caterer adds a confirmed fee.
 
         calcTotal.innerText = '₱' + total.toLocaleString(undefined, { minimumFractionDigits: 2 });
 
@@ -827,17 +814,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- 4. Other Event Type Toggle ---
     if (eventTypeSelect) {
-        eventTypeSelect.addEventListener('change', function () {
-            if (this.value === 'Other') {
+        const syncOtherEventType = focusInput => {
+            if (!otherEventWrap || !otherEventInput) return;
+            if (eventTypeSelect.value === 'Other') {
                 otherEventWrap.classList.add('visible');
                 otherEventInput.required = true;
-                setTimeout(() => otherEventInput.focus(), 100);
+                if (focusInput) setTimeout(() => otherEventInput.focus(), 100);
             } else {
                 otherEventWrap.classList.remove('visible');
                 otherEventInput.required = false;
                 otherEventInput.value = '';
-                document.getElementById('err-other-type').classList.remove('show');
+                document.getElementById('err-other-type')?.classList.remove('show');
             }
+        };
+        syncOtherEventType(false);
+        eventTypeSelect.addEventListener('change', function () {
+            syncOtherEventType(this.value === 'Other');
         });
     }
 
@@ -955,7 +947,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (p && c && !p.startsWith('--') && !c.startsWith('--')) {
             if (venueHidden && !venueHidden.value) venueHidden.value = [b, c, p].filter(Boolean).join(', ');
             
-            // Fetch dynamic delivery fee
+            // Check delivery coverage only; transportation stays out of totals.
             try {
                 const res = await fetch(`/customer/api/caterer/${catererId}/delivery-fee?province=${encodeURIComponent(p)}&municipality=${encodeURIComponent(c)}`, { cache: 'no-store' });
                 const data = await res.json();
@@ -965,8 +957,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         window.currentDeliveryFee = 0;
                         window.deliveryFeeStatus = "manual_quote";
                     } else {
-                        window.currentDeliveryFee = data.fee;
-                        window.deliveryFeeStatus = "calculated";
+                        window.currentDeliveryFee = 0;
+                        window.deliveryFeeStatus = "pending";
                     }
                 } else {
                     if (window.pricingMode === 'customizable' || data.out_of_coverage_action === 'manual') {
@@ -979,14 +971,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         window.currentDeliveryFee = 0;
                         window.deliveryFeeStatus = window.pricingMode === 'fixed' ? "manual_quote" : "error";
                     } else {
-                        window.currentDeliveryFee = data.base_fee || 0;
-                        window.deliveryFeeStatus = "calculated";
+                        window.currentDeliveryFee = 0;
+                        window.deliveryFeeStatus = "pending";
                     }
                 }
             } catch (e) {
-                console.error("Failed to fetch delivery fee", e);
+                console.error("Failed to check delivery coverage", e);
                 window.currentDeliveryFee = 0;
-                window.deliveryFeeStatus = window.pricingMode === 'customizable' ? "manual_quote" : "error";
+                window.deliveryFeeStatus = "pending";
             }
             updateCalculator();
         } else {
@@ -1003,7 +995,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (barangayUnavailableChoice) barangayUnavailableChoice.style.display = showUnavailableChoice ? 'block' : 'none';
         if (venueLandmark) {
             venueLandmark.required = false;
-            venueLandmark.placeholder = 'Enter a venue name or nearby landmark (optional)';
         }
         if (venueLandmarkLabel) {
             venueLandmarkLabel.innerHTML = 'Venue name / Nearby landmark <small>(Optional)</small>';
@@ -1569,7 +1560,7 @@ document.addEventListener('DOMContentLoaded', function () {
             guestDisplay.classList.add('error');
             guestDisplay.classList.remove('is-valid');
             if (errSpan) {
-                errSpan.innerText = 'Enter a guest count between 1 and 999999.';
+                errSpan.innerText = `Enter a guest count between 1 and ${Number(window.maxGuests || 999999)}.`;
                 errSpan.classList.add('show');
             }
             return false;
@@ -1580,6 +1571,16 @@ document.addEventListener('DOMContentLoaded', function () {
             guestDisplay.classList.remove('is-valid');
             if (errSpan) {
                 errSpan.innerText = `Please enter at least ${window.minGuests} guests for this package.`;
+                errSpan.classList.add('show');
+            }
+            return false;
+        }
+
+        if (g > window.maxGuests) {
+            guestDisplay.classList.add('error');
+            guestDisplay.classList.remove('is-valid');
+            if (errSpan) {
+                errSpan.innerText = `Please enter no more than ${window.maxGuests} guests for this package.`;
                 errSpan.classList.add('show');
             }
             return false;

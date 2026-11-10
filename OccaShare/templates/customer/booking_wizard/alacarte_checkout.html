@@ -938,10 +938,6 @@ Carte Checkout') }}{% endblock %}
                                             <span id="rev-base-label">Rental Subtotal</span>
                                             <span id="rev-base-total" style="font-weight: 700; color: #0f172a;">₱0.00</span>
                                         </div>
-                                        <div id="rev-delivery-row" style="display: flex; justify-content: space-between; color: #475569;">
-                                            <span id="rev-delivery-label">Delivery Fee</span>
-                                            <span id="rev-delivery-fee" style="font-weight: 700; color: #0f172a;">₱0.00</span>
-                                        </div>
                                         <div id="rev-deposit-row" style="display: none; justify-content: space-between; color: #c2410c;">
                                             <span>Refundable Security Deposit</span>
                                             <span id="rev-deposit-fee" style="font-weight: 700; color: #c2410c;">₱0.00</span>
@@ -1159,10 +1155,6 @@ Carte Checkout') }}{% endblock %}
                     <span class="calc-label" id="lbl-base-total">Base Total</span>
                     <span class="calc-val" id="sum-base-total">₱{{ "{:,.2f}".format(server_base_total or 0.0) }}</span>
                 </div>
-                <div class="calc-row" id="delivery-row">
-                    <span class="calc-label">Delivery Fee</span>
-                    <span class="calc-val" id="sum-delivery-fee">TBD</span>
-                </div>
                 <div class="calc-row" id="deposit-row" style="display: none;">
                     <span class="calc-label">Refundable Security Deposit</span>
                     <span class="calc-val" id="sum-deposit-fee" style="color: #c2410c;">₱0.00</span>
@@ -1331,7 +1323,6 @@ Carte Checkout') }}{% endblock %}
     window.isVerified = {% if user.is_verified %}true{% else %} false{% endif %};
     window.bookingLeadTime = {{ caterer.booking_lead_time or 7 }};
     window.catererRules = {{ (caterer.scheduling_rules or { }) | tojson | safe }};
-    window.catererBaseDeliveryFee = {{ caterer.base_delivery_fee or 150.0 }};
     window.catererGcashNumber = "{{ caterer.gcash_number or '' }}";
     window.catererMayaNumber = "{{ caterer.maya_number or '' }}";
     window.catererBankName = "{{ caterer.bank_name or '' }}";

@@ -1,10 +1,9 @@
-from datetime import datetime, time
-from zoneinfo import ZoneInfo
+from datetime import datetime, time, timedelta, timezone
 
 from .preparation_service import PREP_STATUSES, PREP_STATUS_KEYS, normalize_prep_status
 
 
-MANILA = ZoneInfo("Asia/Manila")
+MANILA = timezone(timedelta(hours=8), "Asia/Manila")
 CANCELLATION_POLICY_VERSION = "2026-11-no-refund-v1"
 CANCELLATION_POLICY_TEXT = (
     "Customer-initiated booking cancellations are not refundable. Before preparation "

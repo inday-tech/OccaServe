@@ -95,6 +95,16 @@
     .custom-choice-edit:hover { background: #ffedd5; }
     .custom-choice-edit[aria-busy="true"] { opacity: .65; pointer-events: none; }
     .custom-choice-groups { margin-top: 1rem; }
+    .booking-main-package-inline { margin: .9rem 0 1.35rem; }
+    .booking-main-package-label { margin-bottom: .45rem; color: #64748b; font-size: .7rem; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+    .booking-main-package-inline .booking-main-package-card { margin-top: 0; }
+    .booking-main-package-help { display: flex; align-items: flex-start; gap: .45rem; margin: .55rem 0 0; padding: .55rem .7rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-size: .72rem; line-height: 1.45; }
+    .booking-main-package-help i { margin-top: .08rem; color: #64748b; }
+    .booking-main-package-help span { min-width: 0; }
+    .booking-field > .character-counter { margin: .18rem .1rem 0; color: #94a3b8; font-size: .66rem; line-height: 1.2; text-align: right; }
+    .booking-add-event-hint { display: block; margin: .35rem 0 0; color: #64748b; font-size: .68rem; line-height: 1.35; }
+    .booking-add-event-hint[hidden] { display: none; }
+    .booking-event-add:disabled { opacity: .5; cursor: not-allowed; }
     .custom-choice-group { padding: .8rem 0; border-top: 1px solid #e9eef4; }
     .custom-choice-group:first-child { border-top: 0; padding-top: 0; }
     .custom-choice-group-head {
@@ -204,7 +214,8 @@
     .booking-date-control { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; }
     .booking-date-control input { flex: 1 1 150px; min-width: 0; }
     .booking-date-control .booking-event-add { flex: 0 0 auto; min-height: 42px; padding: .45rem .65rem; font-size: .72rem; }
-    .booking-event-customization { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-top: .8rem; padding: .7rem .8rem; border: 1px solid #fed7aa; border-radius: 9px; background: #fff7ed; color: #7c2d12; font-size: .76rem; }
+    .booking-event-customization { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin: .8rem 0 1.1rem; padding: .7rem .8rem; border: 1px solid #fed7aa; border-radius: 9px; background: #fff7ed; color: #7c2d12; font-size: .76rem; }
+    .booking-choice-group { margin-top: 1rem; }
     .booking-event-customize { color: #c2410c; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
     .booking-field label,
     .booking-field .form-label {
@@ -287,12 +298,16 @@
     .booking-package-modal-close { width: 34px; height: 34px; flex: 0 0 34px; border: 0; border-radius: 50%; background: #f1f5f9; color: #334155; font-size: 1.25rem; cursor: pointer; }
     .booking-package-modal-meta { margin: .35rem 0 0; color: #64748b; font-size: .82rem; }
     .booking-package-modal-description { margin: .9rem 0; color: #475569; font-size: .88rem; line-height: 1.55; white-space: pre-line; }
-    .booking-package-modal-group { margin-top: .9rem; padding: .85rem; border: 1px solid #e2e8f0; border-radius: 10px; }
-    .booking-package-modal-group h4 { margin: 0 0 .55rem; font-size: .9rem; }
+    .booking-package-modal-group { margin-top: .75rem; padding: .8rem; border: 1px solid #e2e8f0; border-radius: 10px; }
+    .booking-package-modal-group h4 { margin: 0 0 .55rem; font-size: .86rem; }
     .booking-package-modal-event { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid #e2e8f0; }
-    .booking-package-modal-event h3 { margin: 0; color: #172033; font-size: .98rem; font-weight: 800; }
-    .booking-package-modal-group ul { margin: 0; padding-left: 1.2rem; color: #475569; font-size: .82rem; line-height: 1.5; }
-    .booking-package-modal-group li + li { margin-top: .4rem; }
+    .booking-package-modal-event h3 { margin: 0; color: #172033; font-size: .94rem; font-weight: 800; overflow-wrap: anywhere; }
+    .booking-package-modal-event-meta { margin: .25rem 0 .55rem; color: #64748b; font-size: .72rem; line-height: 1.4; }
+    .booking-package-modal-group ul { display: grid; gap: .45rem; margin: 0; padding: 0; color: #475569; font-size: .8rem; line-height: 1.45; list-style: none; }
+    .booking-package-modal-group li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: .12rem .55rem; overflow-wrap: anywhere; }
+    .booking-package-modal-quantity { color: #64748b; font-size: .73rem; }
+    .booking-package-modal-price { color: #334155; font-size: .76rem; font-weight: 700; white-space: nowrap; }
+    .booking-package-modal-item-description { grid-column: 1 / -1; color: #64748b; font-size: .72rem; }
     .booking-package-modal-empty { color: #64748b; font-size: .84rem; }
     #package-inclusions-card { display: none !important; }
     .booking-menu-option,
@@ -330,9 +345,15 @@
         .custom-choice-item-detail { max-width: 45%; }
         .booking-event-card { padding: .75rem; }
         .booking-event-heading { align-items: flex-start; }
+        .booking-event-basics { grid-template-columns: minmax(0, 1fr); }
         .booking-event-package { align-items: flex-start; flex-direction: column; }
         .booking-event-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+    .details-grid .form-group:has(> .character-counter) { position: relative; }
+    .details-grid .form-group:has(> .character-counter) input[data-char-limit] { padding-right: 4.25rem; }
+    .details-grid .form-group > .character-counter { position: absolute; z-index: 1; top: 2.78rem; right: .85rem; max-width: 4.25rem; overflow: hidden; margin: 0; padding-left: .25rem; background: #fff; color: #94a3b8; font-size: .66rem; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+    .details-grid .form-group > .character-counter.is-limit-reached { color: #b45309; }
+    .details-grid .form-group > .character-counter.is-over-limit { color: #b91c1c; }
 </style>
 {% endblock %}
 
@@ -353,17 +374,14 @@
             <div class="calc-card">
                 <h3 class="calc-title">Price Estimate</h3>
                 <div class="calc-row">
-                    <span class="calc-label">{% if package and package.pricing_mode == 'customizable' %}Menu Included{% else %}Package Price{% endif %}</span>
+                    <span class="calc-label">Package total</span>
                     <span class="calc-val" id="calc-pkg-price-label">{% if package and package.pricing_mode == 'customizable' %}{% if customization and customization.estimated_total is defined and customization.estimated_total > 0 %}₱{{ "{:,.2f}".format(customization.estimated_total) }} (Customization){% else %}See choices above{% endif %}{% elif package and (package.pricing_mode == 'per_pax' or package.price_unit == 'per_guest') %}₱{{ "{:,.2f}".format(package.price_per_head or 0) }}/pax{% else %}₱{{ "{:,.2f}".format(package.price or 0) }} total{% endif %}</span>
                 </div>
                 <div class="calc-row">
-                    <span class="calc-label">Estimated Guests</span>
+                    <span class="calc-label">Guests across events</span>
                     <span class="calc-val" id="calc-guests">0</span>
                 </div>
-                <div class="calc-row">
-                    <span class="calc-label">Transportation fee</span>
-                    <span class="calc-val" id="calc-delivery-fee">₱0.00</span>
-                </div>
+                <div class="calc-breakdown" id="calc-event-breakdown" aria-live="polite"></div>
                 <div class="calc-divider"></div>
                 <div class="calc-total">
                     <span class="total-label">Estimated Total</span>
@@ -371,7 +389,7 @@
                 </div>
                 <div class="calc-info-box">
                     <i class="fas fa-circle-info"></i>
-                    <span>This is an estimate. The final amount may change after the caterer confirms your menu and transportation needs.</span>
+                    <span>This is an estimate. The final amount may change after the caterer confirms the selected services.</span>
                 </div>
             </div>
         </aside>
@@ -386,10 +404,10 @@
                 <div class="booking-main-package-inline" aria-label="Selected main package">
                     <div class="booking-main-package-label">Selected package</div>
                     <div class="booking-event-package booking-main-package-card">
-                        <div><strong>{{ package.name }}</strong><span>{% if package.pricing_mode == 'customizable' %}Customizable · starts at ₱{{ "{:,.2f}".format((package.price_per_head or package.price or 0)|float) }}/guest{% elif package.price_unit == 'per_guest' %}₱{{ "{:,.2f}".format((package.price_per_head or package.price or 0)|float) }}/guest{% else %}₱{{ "{:,.2f}".format((package.price or package.price_per_head or 0)|float) }} fixed price{% endif %} · {{ package.service_duration or 0 }}-hour service · {{ package.min_guests or 1 }}–{{ package.max_guests or 'No maximum' }} guests</span></div>
+                        <div><strong>{{ package.name }}</strong><span>{% if package.pricing_mode == 'customizable' %}Customizable · starts at ₱{{ "{:,.2f}".format((package.price_per_head or package.price or 0)|float) }}/guest{% elif package.price_unit == 'per_guest' %}₱{{ "{:,.2f}".format((package.price_per_head or package.price or 0)|float) }}/guest{% else %}₱{{ "{:,.2f}".format((package.price or package.price_per_head or 0)|float) }} fixed price{% endif %} · {{ package.service_duration or 0 }}-hour service · Min {{ package.min_guests or caterer.min_pax or 50 }} · Max {{ package.max_guests or 'No maximum' }} guests</span></div>
                         <button type="button" data-action="view-main-package-details" data-package-id="{{ package.id }}">View package details</button>
                     </div>
-                    <p class="booking-events-help">This package applies to every event date. Menu, services, and equipment choices are managed separately for each event.</p>
+                    <p class="booking-events-help booking-main-package-help"><i class="fas fa-circle-info" aria-hidden="true"></i><span>This package applies to every event. Custom menu, services, and equipment choices can be set per event.</span></p>
                 </div>
                 {% endif %}
 
@@ -433,6 +451,11 @@
                             <option value="{{ event_option }}" {% if selected_event_type == event_option %}selected{% endif %}>{{ event_option }}</option>
                             {% endfor %}
                         </select>
+                        <div id="other-event-wrap" class="form-group">
+                            <label class="form-label" for="other_event_type">Describe event type</label>
+                            <input type="text" name="other_event_type" id="other_event_type" class="form-input" maxlength="100" value="{{ booking_data.get('other_event_type', '') }}">
+                            <span class="field-error" id="err-other-type">Enter your event type.</span>
+                        </div>
                     {% else %}
                         <label class="form-label">
                             <span>Event Type</span>
@@ -453,12 +476,12 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Guest Count <small id="guest_range_label">(min <span id="min_guests_span">{{ package.min_guests or caterer.min_pax or 50 }}</span>, max <span id="max_guests_span">999999</span> pax)</small></label>
+                        <label class="form-label">Guest Count <small id="guest_range_label">(Min <span id="min_guests_span">{{ package.min_guests or caterer.min_pax or 50 }}</span> · Max <span id="max_guests_span">{{ package.max_guests or 'No maximum' }}</span>)</small></label>
                         <input type="text" inputmode="numeric" id="guest_count_display" class="form-input"
                             maxlength="6" pattern="[0-9]{1,6}" value="{{ initial_guest_count or 1 }}" oninput="formatGuestCount(this); updateCalculator()">
                         <input type="hidden" name="guest_count" id="guest_count"
                             value="{{ initial_guest_count or 1 }}">
-                        <span class="field-error" id="err-guests">Enter a guest count between 1 and 999999.</span>
+                        <span class="field-error" id="err-guests">Enter a guest count within this package’s limits.</span>
                     </div>
                 </div>
                 
@@ -479,8 +502,9 @@
                         <input type="date" name="event_date" id="event_date" class="form-input"
                             value="{{ booking_data.get('event_date', booking.event_date.isoformat() if booking and booking.event_date else '') }}"
                             required>
-                        <button class="booking-event-add" type="button" data-action="add-event" disabled>Add another event date</button>
+                        <button class="booking-event-add" type="button" data-action="add-event" disabled>Add another event</button>
                         </div>
+                        <small class="booking-add-event-hint" id="booking-add-event-hint" aria-live="polite">Choose an event date first to add another event.</small>
                         <span class="field-error" id="err-date">Please select a valid event date.</span>
                     </div>
                     <div class="event-time-grid">
@@ -510,15 +534,10 @@
                 <div class="booking-events-heading">
                     <div>
                         <h3 class="form-section-title" id="booking-events-title">Event schedules and choices</h3>
-                        <p class="booking-events-help">Choose the event date above to show its choices; add another date for more events.</p>
+                        <p class="booking-events-help">Each event keeps its own schedule, guest count, event type, and selections.</p>
                     </div>
                 </div>
                 <div id="booking-event-list" aria-live="polite"></div>
-                <div class="booking-total-row">
-                    <span>Estimated booking total</span>
-                    <strong id="booking-events-total">₱0.00</strong>
-                </div>
-                <p class="booking-events-help" id="booking-events-transport">Transportation: Coordinate with caterer until confirmed.</p>
                 <input type="hidden" name="events_json" id="booking-events-json" value="">
             </section>
 
@@ -570,7 +589,7 @@
                                 {% for dish in customization.selected_menu_extras %}
                                 <li class="custom-choice-item">
                                     <span class="custom-choice-item-name">{{ dish.name }}</span>
-                                    <span class="custom-choice-item-detail">{{ dish.qty }} × ₱{{ "{:,.2f}".format(dish.price|float) }} = ₱{{ "{:,.2f}".format(dish.subtotal|float) }}</span>
+                                    <span class="custom-choice-item-detail">{{ dish.qty }} {{ dish.unit|default('tray', true) }} · ₱{{ "{:,.2f}".format(dish.price|float) }} per {{ dish.unit|default('tray', true) }} = ₱{{ "{:,.2f}".format(dish.subtotal|float) }}</span>
                                 </li>
                                 {% endfor %}
                             </ul>
@@ -588,7 +607,7 @@
                                 {% set svc_price = svc.price|default(0, true)|float %}
                                 <li class="custom-choice-item">
                                     <span class="custom-choice-item-name">{{ svc.name }}</span>
-                                    <span class="custom-choice-item-detail">{% if svc.included %}Included in base package{% else %}₱{{ "{:,.2f}".format(svc_price) }}{% if svc.unit and svc.unit not in ['service', 'fixed'] %}/{{ svc.unit }}{% endif %}{% endif %}</span>
+                                    <span class="custom-choice-item-detail">{% if svc.included %}Included in base package{% else %}{{ svc.qty|default(1, true) }} {{ svc.unit|default('event', true)|replace('per_', '') }} · ₱{{ "{:,.2f}".format(svc_price) }} per {{ svc.unit|default('event', true)|replace('per_', '') }}{% endif %}</span>
                                 </li>
                                 {% endfor %}
                             </ul>
@@ -606,9 +625,10 @@
                                 {% set eq_qty = eq.qty|default(1, true)|int %}
                                 {% set eq_duration_qty = eq.duration_qty|default(1, true)|int %}
                                 {% set eq_price = eq.price|default(0, true)|float %}
+                                {% set eq_unit = eq.unit|default('piece', true) %}
                                 <li class="custom-choice-item">
                                     <span class="custom-choice-item-name">{{ eq.name }}</span>
-                                    <span class="custom-choice-item-detail">{% if eq.included %}Included in base package{% else %}{{ eq_qty }} × {{ eq_duration_qty }} {{ eq.unit|default('unit', true) }} × ₱{{ "{:,.2f}".format(eq_price) }} = ₱{{ "{:,.2f}".format(eq.subtotal|default(eq_qty * eq_duration_qty * eq_price, true)|float) }}{% endif %}</span>
+                                    <span class="custom-choice-item-detail">{% if eq.included %}Included in base package{% elif 'hour' in eq_unit or 'day' in eq_unit %}{{ eq_qty }} selected · {{ eq_duration_qty }} {{ 'hours' if 'hour' in eq_unit else 'days' }} · ₱{{ "{:,.2f}".format(eq_price) }} per {{ eq_unit }} = ₱{{ "{:,.2f}".format(eq.subtotal|default(eq_qty * eq_duration_qty * eq_price, true)|float) }}{% else %}{{ eq_qty }} {{ eq_unit }}{% if eq_qty != 1 %}s{% endif %} · ₱{{ "{:,.2f}".format(eq_price) }} per {{ eq_unit }} = ₱{{ "{:,.2f}".format(eq.subtotal|default(eq_qty * eq_duration_qty * eq_price, true)|float) }}{% endif %}</span>
                                 </li>
                                 {% endfor %}
                             </ul>
@@ -756,7 +776,7 @@
                         <label class="form-label" for="venue-search">Search for a venue or address</label>
                         <span class="venue-required-badge"><i class="fas fa-location-dot" aria-hidden="true"></i> Exact pin required</span>
                     </div>
-                    <input type="text" id="venue-search" class="form-input venue-search-input" autocomplete="off" placeholder="Search a venue, landmark, or address" value="{{ booking_data.get('venue_address', booking.venue_address if booking else '') }}">
+                    <input type="text" id="venue-search" class="form-input venue-search-input" autocomplete="off" value="{{ booking_data.get('venue_address', booking.venue_address if booking else '') }}">
                     <p class="venue-map-hint">Choose a search result, click the map, or drag the pin to the event site.</p>
                     <div id="venue-map" role="application" aria-label="Pin the exact event venue on the map"></div>
                     <section class="venue-address-details" aria-labelledby="venue-address-heading">
@@ -769,14 +789,14 @@
                         </div>
                         <div class="venue-landmark-field">
                             <label class="form-label" for="venue-landmark" id="venueLandmarkLabel">Venue name / Nearby landmark <small>(Optional)</small></label>
-                            <input type="text" class="form-input" name="venue_landmark" id="venue-landmark" list="venue-landmark-suggestions" value="{{ booking_data.get('venue_landmark', booking.venue_landmark if booking else '') }}" placeholder="e.g. resort, covered court, or nearby landmark" aria-describedby="venue-landmark-suggestion-status">
+                            <input type="text" class="form-input" name="venue_landmark" id="venue-landmark" list="venue-landmark-suggestions" value="{{ booking_data.get('venue_landmark', booking.venue_landmark if booking else '') }}" aria-describedby="venue-landmark-suggestion-status">
                             <datalist id="venue-landmark-suggestions"></datalist>
                             <small id="venue-landmark-suggestion-status" class="venue-landmark-suggestion-status" aria-live="polite"></small>
                         </div>
                         <div class="venue-address-grid">
                             <div>
                                 <label class="form-label" for="venue-street">Street / House Number</label>
-                                <input type="text" class="form-input" name="venue_street" id="venue-street" value="{{ booking_data.get('venue_street', booking.venue_street if booking else '') }}" autocomplete="address-line1" placeholder="e.g. 132 Daang Bakal Road">
+                                <input type="text" class="form-input" name="venue_street" id="venue-street" value="{{ booking_data.get('venue_street', booking.venue_street if booking else '') }}" autocomplete="address-line1">
                                 <small>Enter the street or house number manually if it is not detected.</small>
                             </div>
                             <div>
@@ -817,7 +837,7 @@
 
                 <div class="form-group">
                     <label class="form-label">Special Requests &amp; Notes <small>(e.g. Dietary needs, dish upgrades)</small></label>
-                    <textarea name="special_requests" class="form-input" rows="3">{{ booking_data.get('special_requests', booking.special_requests if booking else '') }}</textarea>
+                    <textarea id="booking-special-requests" name="special_requests" class="form-input" rows="3" maxlength="300">{{ (booking_data.get('special_requests') or (customization.special_requests if customization else '') or (booking.special_requests if booking else ''))[:300] }}</textarea>
                 </div>
             </div>
         </div>
@@ -950,8 +970,8 @@
     window.pricePerHead = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
     window.basePrice = parseFloat("{{ package.price_per_head or package.price or 0 }}") || 0;
     window.additionalGuestPrice = parseFloat("{{ package.additional_guest_price or 0 }}") || 0;
-    window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 1 }}") || 1;
-    window.maxGuests = 999999;
+    window.minGuests = parseInt("{{ package.min_guests or caterer.min_pax or 50 }}") || 50;
+    window.maxGuests = parseInt("{{ package.max_guests or 999999 }}") || 999999;
     {% else %}
     window.pricingMode = "per_pax";
     window.pricePerHead = 0;

@@ -390,7 +390,7 @@ textarea.form-input {
 /* ===== VALIDATION PILL STYLING ===== */
 .field-error {
     color: #ef4444;
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-weight: 400;
     margin-top: 0.25rem;
     display: none;
@@ -646,6 +646,34 @@ textarea.form-input {
     color: #1e293b;
     font-weight: 600;
 }
+
+.calc-breakdown { margin: .25rem 0 .75rem; }
+.calc-event-breakdown-item { padding: .6rem 0; border-top: 1px solid #f1f5f9; color: #64748b; font-size: .74rem; }
+.calc-event-breakdown-item > summary { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; cursor: pointer; list-style: none; }
+.calc-event-breakdown-item > summary::-webkit-details-marker { display: none; }
+.calc-event-breakdown-item > summary::after { content: '+'; flex: 0 0 auto; margin-left: auto; color: #94a3b8; }
+.calc-event-breakdown-item[open] > summary::after { content: '−'; }
+.calc-event-breakdown-item > summary strong { min-width: 0; overflow-wrap: anywhere; color: #334155; font-size: .78rem; }
+.calc-event-breakdown-item > summary b,
+.calc-event-breakdown-item .calc-event-lines b { color: #334155; font-weight: 650; white-space: nowrap; }
+.calc-event-lines { display: grid; gap: .32rem; margin-top: .65rem; padding-left: .5rem; }
+.calc-event-lines > span { display: flex; justify-content: space-between; gap: .65rem; overflow-wrap: anywhere; }
+.calc-event-lines .calc-event-subtotal { margin-top: .2rem; padding-top: .4rem; border-top: 1px dashed #e2e8f0; color: #0f172a; font-weight: 700; }
+.booking-event-basics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; margin: .85rem 0; }
+.booking-event-basics .booking-field-wide { grid-column: 1 / -1; }
+.booking-event-type { flex: 0 0 auto; color: #64748b; font-size: .72rem; font-weight: 600; }
+.booking-event-title-wrap { display: grid; gap: .15rem; min-width: 0; }
+.booking-event-title { overflow-wrap: anywhere; }
+.booking-field-range { color: #64748b; font-size: .67rem; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.form-area > .c-card-premium:first-child { padding: 1.6rem 1.75rem; }
+.form-area .form-group { margin-bottom: .8rem; }
+.form-area .form-label { margin-bottom: .35rem; font-size: .84rem; }
+.venue-map-hint,
+.venue-address-grid small,
+.venue-landmark-suggestion-status { color: #64748b; font-size: .7rem; line-height: 1.4; }
+#venue-pin-status { font-size: .72rem; line-height: 1.4; }
+.venue-location-section { gap: .45rem; }
+.venue-address-details { padding: .85rem; }
 
 .calc-divider {
     height: 1px;

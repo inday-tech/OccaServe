@@ -45,6 +45,82 @@ class PaymentService:
     """Centralised payment helper for OccaServe bookings."""
 
     @staticmethod
+    def booking_total(booking: models.Booking) -> float:
+        """Return the latest payable total from the saved quotation/event data.
+
+        `total_price` is a legacy alias and can lag behind `total_amount`.
+        Draft quotations and saved event estimates are more specific sources
+        when they exist, and auto-calculated legacy transport is excluded.
+        """
+        if not booking:
+            return 0.0
+
+        quotation = getattr(booking, "quotation", None)
+        if quotation is not None and getattr(quotation, "total_amount", None) is not None:
+            try:
+                total = float(quotation.total_amount or 0)
+            except (TypeError, ValueError):
+                total = 0.0
+            if total > 0:
+                if getattr(booking, "travel_fee_status", None) == "calculated":
+                    details = quotation.package_details if isinstance(quotation.package_details, dict) else {}
+                    transport_values = [details.get("transportation_total") or 0]
+                    for addon in quotation.addons if isinstance(quotation.addons, list) else []:
+                        if isinstance(addon, dict) and addon.get("id") == "travel_fee":
+                            transport_values.append(addon.get("price") or 0)
+                    try:
+                        quoted_transport = max(float(value or 0) for value in transport_values)
+                        # Older quotations may have included the automatic fee
+                        # without recording it as a quote line. Remove that
+                        # legacy amount when the booking still marks it as auto-calculated.
+                        total -= quoted_transport if quoted_transport > 0 else float(booking.travel_fee or 0)
+                    except (TypeError, ValueError):
+                        pass
+                return round(max(0.0, total), 2)
+
+        requirements = booking.custom_requirements if isinstance(booking.custom_requirements, dict) else {}
+        saved_events = requirements.get("events")
+        if isinstance(saved_events, list) and saved_events:
+            saved_subtotals = []
+            for event in saved_events:
+                if not isinstance(event, dict):
+                    saved_subtotals = []
+                    break
+                breakdown = event.get("price_breakdown") if isinstance(event.get("price_breakdown"), dict) else {}
+                value = event.get("estimated_subtotal")
+                if value is None:
+                    value = breakdown.get("subtotal")
+                if value is None:
+                    value = event.get("subtotal")
+                if value is None:
+                    customization = event.get("customization") if isinstance(event.get("customization"), dict) else {}
+                    value = customization.get("estimated_total")
+                if value is None:
+                    saved_subtotals = []
+                    break
+                try:
+                    saved_subtotals.append(float(value or 0))
+                except (TypeError, ValueError):
+                    saved_subtotals = []
+                    break
+            if saved_subtotals:
+                return round(max(0.0, sum(saved_subtotals)), 2)
+
+        raw_total = booking.total_amount
+        if raw_total is None or (float(raw_total or 0) == 0 and float(booking.total_price or 0) > 0):
+            raw_total = booking.total_price
+        try:
+            total = float(raw_total or 0)
+        except (TypeError, ValueError):
+            total = 0.0
+        if getattr(booking, "travel_fee_status", None) == "calculated":
+            try:
+                total -= max(0.0, float(booking.travel_fee or 0))
+            except (TypeError, ValueError):
+                pass
+        return round(max(0.0, total), 2)
+
+    @staticmethod
     def has_payment_requiring_cancellation_review(booking: models.Booking) -> bool:
         """Whether verified funds or a submitted payment need review before cancellation."""
         summary = PaymentService.get_payment_summary(booking)
@@ -53,7 +129,7 @@ class PaymentService:
     @staticmethod
     def required_deposit(booking: models.Booking) -> float:
         """Backend-calculated required deposit (never trust the frontend)."""
-        total = float(booking.total_price or booking.total_amount or 0.0)
+        total = PaymentService.booking_total(booking)
         if total <= 0:
             return 0.0
 
@@ -249,7 +325,7 @@ class PaymentService:
         if not booking:
             return empty
 
-        total_amount = float(booking.total_price or booking.total_amount or 0.0)
+        total_amount = PaymentService.booking_total(booking)
         payment_status = (booking.payment_status or "pending").lower()
         records = booking.payment_records or []
         required_deposit = PaymentService.required_deposit(booking)

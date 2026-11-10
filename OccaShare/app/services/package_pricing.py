@@ -597,7 +597,9 @@ def calculate_customization(
         removal_total += credit * guest_count
 
     estimate = max(Decimal("0.00"), base_total + food_total + extras_total + services_total + equipment_total - removal_total)
-    special_requests = str(payload.get("special_requests") or "").strip()[:4000]
+    special_requests = str(payload.get("special_requests") or "").strip()
+    if len(special_requests) > 300:
+        raise PackagePricingError("Special requests must be 300 characters or fewer.")
     return {
         "package_id": int(package.id),
         "package_name": str(package.name),
@@ -701,3 +703,35 @@ def load_and_calculate_customization(db: Any, package: Any, payload: Any) -> dic
         service_addons,
         equipment_addons,
     )
+
+
+def compact_customization_payload(customization: dict) -> dict:
+    """Keep only customer selections in cookie-backed sessions; recalculate prices from DB."""
+    def selected_ids(rows, include_quantity=False, include_size=False):
+        compact_rows = []
+        for row in rows if isinstance(rows, list) else []:
+            if not isinstance(row, dict) or not str(row.get("id", "")).isdigit():
+                continue
+            item = {"id": int(row["id"])}
+            if include_quantity:
+                item["qty"] = max(1, int(row.get("qty") or 1))
+            if include_size and row.get("size"):
+                item["size"] = str(row["size"])
+            if row.get("replacement_for"):
+                item["replacement_for"] = int(row["replacement_for"])
+            compact_rows.append(item)
+        return compact_rows
+
+    compact = {
+        "package_id": int(customization.get("package_id") or 0),
+        "guest_count": int(customization.get("guest_count") or 1),
+        "selected_food": selected_ids(customization.get("selected_food")),
+        "selected_menu_extras": selected_ids(customization.get("selected_menu_extras"), include_quantity=True, include_size=True),
+        "selected_services": selected_ids(customization.get("selected_services")),
+        "selected_equipment": selected_ids(customization.get("selected_equipment"), include_quantity=True),
+        "removed_categories": [str(value) for value in customization.get("removed_categories", []) if str(value).strip()],
+        "special_requests": str(customization.get("special_requests") or "")[:300],
+    }
+    if customization.get("event_id"):
+        compact["event_id"] = str(customization["event_id"])
+    return compact

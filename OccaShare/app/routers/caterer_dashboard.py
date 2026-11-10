@@ -4734,11 +4734,21 @@ async def get_booking_details_api(
     if PaymentService.heal_premature_completion(booking, db):
         db.refresh(booking)
 
+    if PaymentService.sync_review_status(booking, db):
+        db.commit()
+        db.refresh(booking)
+    pay_summary = PaymentService.get_payment_summary(booking)
+    actual_paid = pay_summary["verified_paid"]
+    pending_amount = pay_summary["pending_review"]
+    balance_amount = pay_summary["remaining_balance"]
+    remaining_after_verification = pay_summary["remaining_after_verification"]
+    computed_payment_status = pay_summary["computed_payment_status"]
+
     # Fetch commission settings
     config = db.query(models.WebsiteConfig).first()
     comm_rate = get_commission_rate_percent(config)
     
-    total = float(booking.total_price or booking.total_amount or 0)
+    total = float(pay_summary.get("total_amount") or 0)
     commission_invoice = db.query(models.BillingInvoice).filter(
         models.BillingInvoice.caterer_id == booking.caterer_id,
         models.BillingInvoice.booking_id == booking.id,
@@ -4760,7 +4770,7 @@ async def get_booking_details_api(
     except Exception:
         entry_method = 'online'
 
-    total_price = float(booking.total_price or booking.total_amount or 0)
+    total_price = total
     payment_records = sorted(booking.payment_records or [], key=lambda record: record.payment_date.isoformat() if record.payment_date else "", reverse=True)
     pending_payment_extension = db.query(models.PaymentExtensionRequest).filter(
         models.PaymentExtensionRequest.booking_id == booking.id,
@@ -4917,19 +4927,7 @@ async def get_booking_details_api(
     equipment_list = list(equipment_by_name.values())
 
     # Accurate payment calculations using unified PaymentService
-    from app.services.payment_service import PaymentService
     from app.services.preparation_service import build_prep_summary
-    # Heal drifted rows so caterer can review payments the customer already submitted
-    if PaymentService.sync_review_status(booking, db):
-        db.commit()
-        db.refresh(booking)
-
-    pay_summary = PaymentService.get_payment_summary(booking)
-    actual_paid = pay_summary["verified_paid"]
-    pending_amount = pay_summary["pending_review"]
-    balance_amount = pay_summary["remaining_balance"]
-    remaining_after_verification = pay_summary["remaining_after_verification"]
-    computed_payment_status = pay_summary["computed_payment_status"]
 
     sanitized_custom_reqs = {
         k: v for k, v in custom_reqs.items()
@@ -4995,6 +4993,325 @@ async def get_booking_details_api(
     )
     prep_summary = build_prep_summary(booking)
 
+    def package_display_details(package):
+        if not package:
+            return [], set(), set(), set(), False
+
+        package_rules = package.selection_rules or {}
+        if isinstance(package_rules, str):
+            try:
+                package_rules = json.loads(package_rules)
+            except (TypeError, ValueError):
+                package_rules = {}
+        if not isinstance(package_rules, dict):
+            package_rules = {}
+
+        def configured_ids(key):
+            values = package_rules.get(key, [])
+            if not isinstance(values, (list, tuple, set)):
+                return set()
+            return {
+                int(value)
+                for value in values
+                if str(value).isdigit() and int(value) > 0
+            }
+
+        is_customizable = str(package.pricing_mode or "").lower() == "customizable"
+        included_menu_ids = configured_ids("included_menu_ids") if is_customizable else {
+            item.id for item in package.menu_items or [] if not item.is_addon
+        }
+        included_service_ids = configured_ids("included_service_ids") if is_customizable else {
+            link.service_id for link in package.service_links or []
+        }
+        included_equipment_ids = configured_ids("included_equipment_ids") if is_customizable else {
+            link.equipment_id for link in package.equipment_links or []
+        }
+        inclusions = []
+
+        if is_customizable:
+            catalog_sets = (
+                (models.MenuItem, included_menu_ids, "Food", "serving_size"),
+                (models.Service, included_service_ids, "Service", "unit_type"),
+                (models.Equipment, included_equipment_ids, "Equipment", "unit_type"),
+            )
+            for catalog_model, item_ids, item_type, unit_field in catalog_sets:
+                rows = db.query(catalog_model).filter(
+                    catalog_model.id.in_(item_ids or {-1}),
+                    catalog_model.caterer_id == booking.caterer_id,
+                ).all() if item_ids else []
+                inclusions.extend({
+                    "name": item.name,
+                    "type": item_type,
+                    "quantity": 1,
+                    "unit": getattr(item, unit_field, None) or "",
+                    "included": True,
+                } for item in rows)
+        else:
+            inclusions.extend({
+                "name": item.name,
+                "type": "Food",
+                "quantity": 1,
+                "unit": item.serving_size or "",
+                "included": True,
+            } for item in package.menu_items or [] if not item.is_addon)
+            inclusions.extend({
+                "name": link.service.name,
+                "type": "Service",
+                "quantity": link.quantity or 1,
+                "unit": "",
+                "included": True,
+            } for link in package.service_links or [] if link.service)
+            inclusions.extend({
+                "name": link.equipment.name,
+                "type": "Equipment",
+                "quantity": link.quantity or 1,
+                "unit": link.equipment.unit_type or "",
+                "included": True,
+            } for link in package.equipment_links or [] if link.equipment)
+
+        for inclusion in _normalize_inclusions_for_api(package.inclusions):
+            if isinstance(inclusion, dict) and inclusion.get("name"):
+                inclusion_type = inclusion.get("item_type") or inclusion.get("type") or "Included"
+                if str(inclusion_type).strip().lower() in {"menu", "menu / food"}:
+                    inclusion_type = "Food"
+                inclusions.append({
+                    "name": inclusion["name"],
+                    "type": inclusion_type,
+                    "quantity": inclusion.get("quantity_num") or inclusion.get("quantity") or 1,
+                    "unit": inclusion.get("unit") or "",
+                    "description": " ".join(
+                        value for value in (
+                            str(inclusion.get("description") or "").strip(),
+                            str(inclusion.get("notes") or "").strip(),
+                        ) if value
+                    ),
+                    "included": True,
+                })
+
+        unique_inclusions = []
+        seen_inclusions = set()
+        for inclusion in inclusions:
+            key = (
+                str(inclusion.get("name") or "").strip().casefold(),
+                str(inclusion.get("type") or "").strip().casefold(),
+            )
+            if key[0] and key not in seen_inclusions:
+                seen_inclusions.add(key)
+                unique_inclusions.append(inclusion)
+        return (
+            unique_inclusions,
+            included_menu_ids,
+            included_service_ids,
+            included_equipment_ids,
+            is_customizable,
+        )
+
+    # A single booking can contain several event selections. Resolve each
+    # saved package_id independently so the modal never reuses the main
+    # booking.package for every event.
+    event_details = []
+    saved_events = custom_reqs.get("events", []) if isinstance(custom_reqs, dict) else []
+    if isinstance(saved_events, list):
+        for event_index, saved_event in enumerate(saved_events, start=1):
+            if not isinstance(saved_event, dict):
+                continue
+            try:
+                event_package_id = int(saved_event.get("package_id") or 0)
+            except (TypeError, ValueError):
+                event_package_id = 0
+            event_package = db.query(models.CateringPackage).filter(
+                models.CateringPackage.id == event_package_id,
+                models.CateringPackage.caterer_id == booking.caterer_id,
+            ).first() if event_package_id else None
+            event_customization = saved_event.get("customization") if isinstance(saved_event.get("customization"), dict) else {}
+            (
+                package_inclusions,
+                included_menu_ids,
+                included_service_ids,
+                included_equipment_ids,
+                is_customizable_package,
+            ) = package_display_details(event_package)
+
+            event_items = []
+            if event_customization:
+                for group_key, item_type in (("selected_food", "Food"), ("selected_menu_extras", "Menu add-on"), ("selected_services", "Service"), ("selected_equipment", "Equipment")):
+                    for selected in event_customization.get(group_key, []) if isinstance(event_customization.get(group_key), list) else []:
+                        if not isinstance(selected, dict):
+                            continue
+                        selected_id = int(selected.get("id")) if str(selected.get("id") or "").isdigit() else None
+                        included_ids = {
+                            "Food": included_menu_ids,
+                            "Service": included_service_ids,
+                            "Equipment": included_equipment_ids,
+                        }.get(item_type, set())
+                        event_items.append({
+                            "name": selected.get("name") or selected.get("item_name") or f"{item_type} selection",
+                            "type": item_type,
+                            "quantity": selected.get("qty") or selected.get("quantity") or 1,
+                            "unit": selected.get("unit") or selected.get("size") or "",
+                            "amount": float(selected.get("subtotal") or 0),
+                            "included": bool(selected.get("included")) or (
+                                selected_id is not None and selected_id in included_ids
+                            ),
+                        })
+            else:
+                event_catalog_fields = (
+                    ("menu_ids", models.MenuItem, "Food", included_menu_ids),
+                    ("service_ids", models.Service, "Service", included_service_ids),
+                    ("equipment_ids", models.Equipment, "Equipment", included_equipment_ids),
+                )
+                for field, catalog_model, item_type, included_ids in event_catalog_fields:
+                    raw_ids = saved_event.get(field, [])
+                    if not isinstance(raw_ids, list):
+                        continue
+                    selected_ids = {int(value) for value in raw_ids if str(value).isdigit()}
+                    selected_rows = db.query(catalog_model).filter(
+                        catalog_model.id.in_(selected_ids),
+                        catalog_model.caterer_id == booking.caterer_id,
+                    ).all() if selected_ids else []
+                    for selected in selected_rows:
+                        is_included = selected.id in included_ids
+                        if is_included and not is_customizable_package:
+                            continue
+                        event_items.append({
+                            "name": selected.name,
+                            "type": item_type,
+                            "quantity": 1,
+                            "unit": getattr(selected, "serving_size", None) or getattr(selected, "unit_type", None) or "",
+                            "amount": 0,
+                            "included": is_included,
+                        })
+
+            event_breakdown = saved_event.get("price_breakdown") if isinstance(saved_event.get("price_breakdown"), dict) else {}
+            has_saved_event_breakdown = (
+                "subtotal" in event_breakdown
+                or "estimated_subtotal" in saved_event
+                or "estimated_total" in event_customization
+            )
+            if not event_breakdown and event_customization:
+                event_breakdown = {
+                    "package": event_customization.get("base_package_total", 0),
+                    "menu": float(event_customization.get("food_upgrade_total") or 0)
+                        + float(event_customization.get("menu_extras_total") or 0)
+                        - float(event_customization.get("food_removal_credit") or 0),
+                    "equipment": event_customization.get("equipment_total", 0),
+                    "services": event_customization.get("services_total", 0),
+                    "subtotal": event_customization.get("estimated_total", 0),
+                }
+            event_details.append({
+                "number": event_index,
+                "name": str(saved_event.get("event_name") or f"Event {event_index}"),
+                "type": str(saved_event.get("event_type") or "Event"),
+                "date": str(saved_event.get("event_date") or (booking.event_date.isoformat() if event_index == 1 and booking.event_date else "")),
+                "ingress": str(saved_event.get("ingress") or (booking.event_time.strftime("%H:%M") if event_index == 1 and booking.event_time else "")),
+                "egress": str(saved_event.get("egress") or (booking.event_end_time.strftime("%H:%M") if event_index == 1 and booking.event_end_time else "")),
+                "guest_count": int(saved_event.get("guest_count") or 0),
+                "celebrant_name": str(saved_event.get("celebrant_name") or ""),
+                "theme_motif": str(saved_event.get("theme_motif") or ""),
+                "special_requests": str(saved_event.get("special_requests") or event_customization.get("special_requests") or ""),
+                "package_id": event_package_id,
+                "package_name": event_package.name if event_package else "Package details unavailable",
+                "package_type": event_package.service_type or "" if event_package else "",
+                "package_description": event_package.description or "" if event_package else "",
+                "package_duration": int(event_package.service_duration or 0) if event_package else 0,
+                "package_price": float((event_package.price_per_head or event_package.price or 0) if event_package else 0),
+                "package_price_unit": (
+                    "fixed" if str(event_package.pricing_mode or "").lower() == "fixed" else "per_guest"
+                ) if event_package else "",
+                "package_min_guests": int(event_package.min_guests or 0) if event_package else 0,
+                "package_max_guests": int(event_package.max_guests or 0) if event_package else 0,
+                "package_additional_guest_price": float(event_package.additional_guest_price or 0) if event_package else 0,
+                "package_inclusions": package_inclusions,
+                "selected_items": event_items,
+                "price_breakdown": {
+                    key: float(event_breakdown.get(key) or (saved_event.get("estimated_subtotal") if key == "subtotal" else 0) or 0)
+                    for key in ("package", "menu", "equipment", "services", "subtotal")
+                },
+                "has_price_breakdown": has_saved_event_breakdown,
+            })
+
+    # Older bookings may not have an event array. Build one from the saved
+    # booking and package records so the caterer sees the real package contents
+    # and selected items instead of a generic, hard-coded inclusions message.
+    if not event_details and booking.package:
+        package = booking.package
+        (
+            unique_inclusions,
+            included_menu_ids,
+            included_service_ids,
+            included_equipment_ids,
+            is_customizable_package,
+        ) = package_display_details(package)
+
+        event_customization = custom_reqs.get("customization") if isinstance(custom_reqs.get("customization"), dict) else {}
+        event_items = []
+        if event_customization:
+            for group_key, item_type in (("selected_food", "Food"), ("selected_menu_extras", "Menu add-on"), ("selected_services", "Service"), ("selected_equipment", "Equipment")):
+                for selected in event_customization.get(group_key, []) if isinstance(event_customization.get(group_key), list) else []:
+                    if isinstance(selected, dict):
+                        event_items.append({
+                            "name": selected.get("name") or selected.get("item_name") or f"{item_type} selection",
+                            "type": item_type,
+                            "quantity": selected.get("qty") or selected.get("quantity") or 1,
+                            "unit": selected.get("unit") or selected.get("size") or "",
+                            "amount": float(selected.get("subtotal") or 0),
+                            "included": bool(selected.get("included")) or (
+                                item_type == "Food" and str(selected.get("id") or "").isdigit()
+                                and int(selected.get("id")) in included_menu_ids
+                            ),
+                        })
+        else:
+            item_type_map = (
+                ("menu_item", "Food", included_menu_ids),
+                ("service", "Service", included_service_ids),
+                ("equipment", "Equipment", included_equipment_ids),
+            )
+            for booking_item in booking.selected_items or []:
+                relation = booking_item.menu_item or booking_item.service or booking_item.equipment
+                if not relation:
+                    continue
+                for relation_key, item_type, included_ids in item_type_map:
+                    if getattr(booking_item, relation_key, None):
+                        is_included = getattr(booking_item, f"{relation_key}_id", None) in included_ids
+                        if is_included and not is_customizable_package:
+                            break
+                        event_items.append({
+                            "name": booking_item.custom_name or relation.name,
+                            "type": item_type,
+                            "quantity": booking_item.quantity or 1,
+                            "unit": getattr(relation, "serving_size", None) or getattr(relation, "unit_type", None) or "",
+                            "amount": float(booking_item.price or 0) * int(booking_item.quantity or 1),
+                            "included": is_included,
+                        })
+                        break
+
+        event_details.append({
+            "number": 1,
+            "name": str(booking.event_name or "Event"),
+            "type": str(booking.event_type or package.service_type or "Event"),
+            "date": booking.event_date.isoformat() if booking.event_date else "",
+            "ingress": booking.event_time.strftime("%H:%M") if booking.event_time else "",
+            "egress": booking.event_end_time.strftime("%H:%M") if booking.event_end_time else "",
+            "guest_count": int(booking.guest_count or 0),
+            "celebrant_name": celebrant_name,
+            "theme_motif": motif_theme,
+            "special_requests": str(event_customization.get("special_requests") or booking.special_requests or ""),
+            "package_id": package.id,
+            "package_name": package.name,
+            "package_type": package.service_type or "",
+            "package_description": package.description or "",
+            "package_duration": int(package.service_duration or 0),
+            "package_price": float(package.price_per_head or package.price or 0),
+            "package_price_unit": "fixed" if str(package.pricing_mode or "").lower() == "fixed" else "per_guest",
+            "package_min_guests": int(package.min_guests or 0),
+            "package_max_guests": int(package.max_guests or 0),
+            "package_additional_guest_price": float(package.additional_guest_price or 0),
+            "package_inclusions": unique_inclusions,
+            "selected_items": event_items,
+            "price_breakdown": {},
+            "has_price_breakdown": False,
+        })
+
     return {
         "id": booking.id,
         "booking_ref": getattr(booking, "booking_ref", None) or getattr(booking, "display_booking_ref", None) or f"BK-{booking.id:06d}",
@@ -5034,7 +5351,7 @@ async def get_booking_details_api(
         "amount_paid": actual_paid,
         "pending_amount": pending_amount,
         "cash_requested_amount": (
-            max(0.0, float(booking.total_amount or booking.total_price or 0) - actual_paid)
+            max(0.0, total - actual_paid)
             if booking.payment_status == "cash_balance_requested"
             else float(booking.reservation_fee or 0)
             if booking.payment_status == "cash_payment_requested"
@@ -5125,6 +5442,7 @@ async def get_booking_details_api(
                 "quantity": link.quantity or 1
             } for link in booking.package.equipment_links if link.equipment]
         } if booking.package else None,
+        "events": event_details,
         "selected_items": selected_items,
         "services": services_list,
         "equipment_items": equipment_list,
@@ -10268,8 +10586,8 @@ async def toggle_availability(
         target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="Enter a valid availability date")
-    from zoneinfo import ZoneInfo
-    if not is_available and target_date < datetime.now(ZoneInfo("Asia/Manila")).date():
+    manila_tz = timezone(timedelta(hours=8), "Asia/Manila")
+    if not is_available and target_date < datetime.now(manila_tz).date():
         raise HTTPException(status_code=400, detail="Past dates cannot be blocked")
     
     # Check if entry already exists
@@ -10375,8 +10693,8 @@ async def add_internal_schedule(
     if not event_time:
         raise HTTPException(status_code=400, detail="Select a schedule time")
 
-    from zoneinfo import ZoneInfo
-    today = datetime.now(ZoneInfo("Asia/Manila")).date()
+    manila_tz = timezone(timedelta(hours=8), "Asia/Manila")
+    today = datetime.now(manila_tz).date()
     if event_date < today:
         raise HTTPException(status_code=400, detail="Past dates cannot be scheduled")
     rules = user.caterer_profile.scheduling_rules or {}
@@ -10416,7 +10734,7 @@ async def add_internal_schedule(
             raise HTTPException(status_code=404, detail="Schedule not found")
 
         # Prevent editing schedules that are in the past (Manila business date).
-        if schedule.date and schedule.date < datetime.now(ZoneInfo("Asia/Manila")).date():
+        if schedule.date and schedule.date < datetime.now(manila_tz).date():
             raise HTTPException(status_code=400, detail="Cannot modify past schedules")
 
         schedule.title = title
@@ -13712,9 +14030,11 @@ async def record_manual_payment(
         if not proof_url:
             raise HTTPException(status_code=502, detail="Receipt upload failed. Please try again.")
 
-    total = float(booking.total_price or booking.total_amount or 0)
-    already_paid = float(booking.amount_paid or 0)
-    remaining = max(0.0, total - already_paid)
+    from ..services.payment_service import PaymentService
+    payment_summary = PaymentService.get_payment_summary(booking)
+    total = float(payment_summary["total_amount"])
+    already_paid = float(payment_summary["verified_paid"])
+    remaining = float(payment_summary["remaining_balance"])
     if remaining <= 0:
         raise HTTPException(status_code=400, detail="This booking is already fully paid.")
     if amount > remaining + 0.01:

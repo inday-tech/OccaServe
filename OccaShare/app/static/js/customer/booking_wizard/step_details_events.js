@@ -16,7 +16,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const legacyGuests = document.getElementById('guest_count');
     const legacyGuestDisplay = document.getElementById('guest_count_display');
     const legacyEventName = document.getElementById('event_name');
+    const legacySpecialRequests = document.getElementById('booking-special-requests');
+    const legacyEventTypeSelect = document.getElementById('event_type_select');
+    const legacyOtherEventType = document.getElementById('other_event_type');
+    const legacyCelebrant = form.querySelector('[name="celebrant_name"]');
+    const legacyTheme = form.querySelector('[name="theme_motif"]');
     const eventType = document.getElementById('event_type_hidden');
+    const eventTypeOptions = ['Wedding', 'Birthday', 'Corporate', 'Debut', 'Baptism', 'Anniversary', 'Other'];
     const bookingId = form.querySelector('[name="booking_id"]')?.value || '';
     const eventStorageKey = `occaserve:booking-event-schedules:v2:${window.catererId || ''}:${bookingId || legacyPackage?.value || ''}`;
     const submitButton = document.getElementById('submitBtn');
@@ -69,6 +75,48 @@ document.addEventListener('DOMContentLoaded', function () {
     const getPackage = id => packages.find(item => String(item.id) === String(id));
     const getSelected = (event, key) => new Set((Array.isArray(event[key]) ? event[key] : []).map(Number));
     const packageAddon = (pkg, key, id) => (pkg?.[key] || []).find(item => Number(item.id) === Number(id) && item.enabled);
+    const isPerGuestUnit = unit => /pax|guest|person/.test(String(unit || '').toLowerCase());
+    const addonServiceQuantity = (item, event, pkg) => {
+        const unit = String(item.unit_type || '').toLowerCase();
+        const guests = Math.max(1, Number(event.guest_count || 1));
+        if (isPerGuestUnit(unit)) return guests;
+        if (unit.includes('hour')) return Math.max(Number(item.minimum_hours || 1), Number(pkg?.service_duration || 1));
+        if ((unit.includes('staff') || item.capacity_type === 'staff_based') && Number(item.staff_to_pax_ratio || 0) > 0) {
+            return Math.max(Number(item.min_staff_required || 1), Math.ceil(guests / Number(item.staff_to_pax_ratio)));
+        }
+        return 1;
+    };
+    const addonEquipmentDuration = (item, pkg) => {
+        const unit = String(item.unit_type || '').toLowerCase();
+        if (unit.includes('hour')) return Math.max(1, Number(pkg?.service_duration || 1));
+        if (unit.includes('day')) return Math.max(1, Math.ceil(Number(pkg?.service_duration || 1) / 24));
+        return 1;
+    };
+    const detailQuantity = item => {
+        const raw = item.quantity ?? item.qty;
+        const text = String(raw ?? '').trim();
+        if (!text) return '';
+        if (/\D/.test(text)) return text;
+        const count = Number(text);
+        const unit = String(item.unit || item.unit_type || '').toLowerCase().replace(/_/g, ' ').trim();
+        if (isPerGuestUnit(unit)) return `${count} ${count === 1 ? 'guest' : 'guests'}`;
+        if (unit.includes('event') && count === 1) return '';
+        const unitLabel = unit.replace(/^per\s+/, '').replace(/s$/, '');
+        const duration = Number(item.duration_qty || 0);
+        const durationLabel = unit.includes('hour') ? 'hours' : unit.includes('day') ? 'days' : '';
+        if (duration > 1 && durationLabel) return `${count * duration} ${durationLabel}`;
+        const pluralUnit = { box: 'boxes', dish: 'dishes', bus: 'buses' }[unitLabel] || `${unitLabel}s`;
+        return `${count} ${count === 1 || !unitLabel ? unitLabel : pluralUnit}`.trim();
+    };
+    const priceUnitSuffix = unit => {
+        const normalized = String(unit || '').toLowerCase().replace(/_/g, ' ').trim();
+        if (!normalized || normalized === 'fixed' || normalized === 'per event') return '/event';
+        if (isPerGuestUnit(normalized)) return '/guest';
+        return `/${normalized.replace(/^per\s+/, '')}`;
+    };
+    const displayEventType = event => event?.event_type === 'Other'
+        ? String(event.event_type_other || 'Other').trim()
+        : String(event?.event_type || 'Event').trim();
     const packageRate = pkg => {
         const price = Number(pkg.price_per_head || pkg.price || 0);
         const fixed = String(pkg.pricing_mode || '').toLowerCase() === 'fixed' ||
@@ -126,10 +174,15 @@ document.addEventListener('DOMContentLoaded', function () {
         return {
             id: String(source.id || nextEventId()),
             event_name: String(Object.prototype.hasOwnProperty.call(source, 'event_name') ? source.event_name : (sourceIndex === 0 ? legacyEventName?.value || '' : (source.id ? `Event ${sourceIndex + 1}` : ''))),
+            event_type: String(source.event_type || legacyEventTypeSelect?.value || eventType?.value || pkg?.event_type || 'General Catering'),
+            event_type_other: String(source.event_type_other || (sourceIndex === 0 ? legacyOtherEventType?.value || '' : '')),
+            celebrant_name: String(Object.prototype.hasOwnProperty.call(source, 'celebrant_name') ? source.celebrant_name : (sourceIndex === 0 ? legacyCelebrant?.value || '' : '')),
+            theme_motif: String(Object.prototype.hasOwnProperty.call(source, 'theme_motif') ? source.theme_motif : (sourceIndex === 0 ? legacyTheme?.value || '' : '')),
             event_date: String(Object.prototype.hasOwnProperty.call(source, 'event_date') ? source.event_date : (source.date || legacyDate?.value || '')),
             ingress: String(Object.prototype.hasOwnProperty.call(source, 'ingress') ? source.ingress : (source.event_time || legacyTime?.value || '')),
             egress: String(Object.prototype.hasOwnProperty.call(source, 'egress') ? source.egress : (source.event_end_time || legacyEndTime?.value || '')),
             guest_count: Math.max(1, Number(source.guest_count || legacyGuests?.value || 1)),
+            special_requests: String(source.special_requests || source.customization?.special_requests || ''),
             package_id: pkg ? Number(pkg.id) : '',
             menu_ids: selectedMenuIds.map(Number),
             equipment_ids: (source.equipment_ids || []).map(Number),
@@ -142,7 +195,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const events = initialData.length ? initialData.map((source, index) => makeEvent(source, index)) : [makeEvent()];
     const eventCustomizations = options.event_customizations || {};
     events.forEach((event, index) => {
-        const savedEventCustomization = eventCustomizations[event.id];
+        const savedEventCustomization = eventCustomizations[event.id] || Object.values(eventCustomizations).find(
+            customization => customization && String(customization.event_id || '') === String(event.id)
+        );
         const matchesEvent = customization => customization &&
             (!customization.event_id || String(customization.event_id) === String(event.id));
         event.customization = (matchesEvent(savedEventCustomization) ? savedEventCustomization : null)
@@ -151,13 +206,16 @@ document.addEventListener('DOMContentLoaded', function () {
             || null;
         if (!index && event.customization && !savedEventCustomization) event.customization_source_event_id = '__initial__';
         if (event.customization && Number(event.customization.package_id) !== Number(event.package_id)) event.customization = null;
+        if (!event.special_requests) event.special_requests = String(event.customization?.special_requests || '');
     });
-    const sharedEventName = legacyEventName?.value || events[0]?.event_name || '';
-    const sharedGuestCount = Math.max(1, Number(legacyGuests?.value || legacyGuestDisplay?.value?.replace(/\D/g, '') || events[0]?.guest_count || 1));
-    events.forEach(event => {
-        event.event_name = sharedEventName;
-        event.guest_count = sharedGuestCount;
-    });
+    if (events[0]) {
+        events[0].event_name = legacyEventName?.value || events[0].event_name || '';
+        events[0].event_type = legacyEventTypeSelect?.value || eventType?.value || events[0].event_type;
+        events[0].event_type_other = legacyOtherEventType?.value || events[0].event_type_other || '';
+        events[0].celebrant_name = legacyCelebrant?.value || events[0].celebrant_name || '';
+        events[0].theme_motif = legacyTheme?.value || events[0].theme_motif || '';
+        events[0].guest_count = Math.max(1, Number(legacyGuests?.value || legacyGuestDisplay?.value?.replace(/\D/g, '') || events[0].guest_count || 1));
+    }
 
     const isIncluded = (pkg, id, key) => (pkg?.[key] || []).some(value => Number(value) === Number(id));
     const packagesForEvent = event => {
@@ -166,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return packages.filter(pkg => {
-            const min = Number(pkg.min_guests || 1);
+            const min = Number(pkg.min_guests || 50);
             const max = Number(pkg.max_guests || 999999);
             const leadTime = Number(pkg.booking_lead_time || 0);
             const earliestDate = new Date(today);
@@ -192,10 +250,10 @@ document.addEventListener('DOMContentLoaded', function () {
             );
             const customServices = (customization.selected_services || []).reduce((sum, item) => {
                 const unit = String(item.unit || '').toLowerCase();
-                const quantity = ['per_pax', 'per_guest', 'per_person'].some(token => unit.includes(token))
+                const quantity = isPerGuestUnit(unit)
                     ? guests
                     : (unit.includes('hour') ? Math.max(Number(item.qty || 1), Number(pkg.service_duration || 1))
-                        : (item.capacity_type === 'staff_based' && Number(item.staff_ratio) > 0
+                        : ((unit.includes('staff') || item.capacity_type === 'staff_based') && Number(item.staff_ratio) > 0
                             ? Math.max(Number(item.min_staff || 1), Math.ceil(guests / Number(item.staff_ratio)))
                             : Number(item.qty || 1)));
                 return sum + Number(item.price || 0) * quantity;
@@ -206,15 +264,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const removalCredit = Number(customization.food_removal_credit || 0) / oldGuests * guests;
             const equipment = equipmentItems.reduce((sum, item) => {
                 if (!getSelected(event, 'equipment_ids').has(Number(item.id)) || isIncluded(pkg, item.id, 'included_equipment_ids')) return sum;
-                return sum + Number(packageAddon(pkg, 'equipment_addons', item.id)?.price ?? item.price ?? 0);
+                return sum + Number(packageAddon(pkg, 'equipment_addons', item.id)?.price ?? item.price ?? 0) * addonEquipmentDuration(item, pkg);
             }, 0);
             const services = serviceItems.reduce((sum, item) => {
                 if (!getSelected(event, 'service_ids').has(Number(item.id)) || isIncluded(pkg, item.id, 'included_service_ids')) return sum;
-                const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(item.unit_type || '').toLowerCase());
-                return sum + Number(packageAddon(pkg, 'service_addons', item.id)?.price ?? item.price ?? 0) * (perGuest ? Number(event.guest_count || 1) : 1);
+                return sum + Number(packageAddon(pkg, 'service_addons', item.id)?.price ?? item.price ?? 0) * addonServiceQuantity(item, event, pkg);
             }, 0);
             const core = Math.max(0, base + food + extras + customServices + customEquipment - removalCredit);
-            return { subtotal: core + equipment + services, package: base, menu: food + extras - removalCredit, equipment: customEquipment + equipment, services: customServices + services };
+            const subtotal = core + equipment + services;
+            return { subtotal, package: base, menu: food + extras - removalCredit, equipment: customEquipment + equipment, services: customServices + services };
         }
         const guests = Math.max(1, Number(event.guest_count || 1));
         const mode = String(pkg.pricing_mode || (pkg.price_unit === 'per_guest' ? 'per_pax' : 'fixed')).toLowerCase();
@@ -232,12 +290,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 0);
         const equipmentTotal = equipmentItems.reduce((sum, item) => {
             if (!getSelected(event, 'equipment_ids').has(Number(item.id)) || isIncluded(pkg, item.id, 'included_equipment_ids')) return sum;
-            return sum + Number(packageAddon(pkg, 'equipment_addons', item.id)?.price ?? item.price ?? 0);
+            return sum + Number(packageAddon(pkg, 'equipment_addons', item.id)?.price ?? item.price ?? 0) * addonEquipmentDuration(item, pkg);
         }, 0);
         const serviceTotal = serviceItems.reduce((sum, item) => {
             if (!getSelected(event, 'service_ids').has(Number(item.id)) || isIncluded(pkg, item.id, 'included_service_ids')) return sum;
-            const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(item.unit_type || '').toLowerCase());
-            return sum + Number(packageAddon(pkg, 'service_addons', item.id)?.price ?? item.price ?? 0) * (perGuest ? guests : 1);
+            return sum + Number(packageAddon(pkg, 'service_addons', item.id)?.price ?? item.price ?? 0) * addonServiceQuantity(item, event, pkg);
         }, 0);
         return {
             package: packageTotal,
@@ -256,10 +313,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const renderPackageDetailGroup = (title, items) => {
         if (!items.length) return '';
         return `<section class="booking-package-modal-group"><h4>${title}</h4><ul>${items.map(item => {
-            const quantity = String(item.quantity || item.qty || '').trim();
+            const quantity = detailQuantity(item);
             const description = String(item.description || '').trim();
             const price = Number(item.subtotal ?? item.price ?? 0);
-            return `<li><strong>${escapeHtml(item.name || 'Included item')}</strong>${quantity ? ` × ${escapeHtml(quantity)}` : ''}${price > 0 ? `<span class="booking-package-modal-price">${money(price)}</span>` : ''}${description ? `<div>${escapeHtml(description)}</div>` : ''}</li>`;
+            return `<li><strong>${escapeHtml(item.name || 'Included item')}</strong>${quantity ? `<span class="booking-package-modal-quantity">${escapeHtml(quantity)}</span>` : ''}${price > 0 ? `<span class="booking-package-modal-price">${money(price)}</span>` : ''}${description ? `<div class="booking-package-modal-item-description">${escapeHtml(description)}</div>` : ''}</li>`;
         }).join('')}</ul></section>`;
     };
     const openPackageDetails = (pkg, eventSelection, allEventSelections = null) => {
@@ -282,10 +339,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 .map(item => {
                     const configured = addonKey ? packageAddon(pkg, addonKey, item.id) : null;
                     const unit = String(item.pricing_unit || item.unit_type || '').toLowerCase();
-                    const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(unit);
-                    const quantity = perGuest ? Number(selectedEvent?.guest_count || 1) : 1;
+                    const quantity = addonKey === 'equipment_addons'
+                        ? addonEquipmentDuration(item, pkg)
+                        : addonKey === 'service_addons'
+                            ? addonServiceQuantity(item, selectedEvent || { guest_count: 1 }, pkg)
+                            : (isPerGuestUnit(unit) ? Number(selectedEvent?.guest_count || 1) : 1);
+                    const quantityUnit = addonKey === 'equipment_addons'
+                        ? (unit.includes('hour') ? 'hour' : unit.includes('day') ? 'day' : unit || 'piece')
+                        : addonKey === 'service_addons'
+                            ? (isPerGuestUnit(unit) ? 'guest' : unit.includes('hour') ? 'hour' : (unit.includes('staff') || item.capacity_type === 'staff_based') ? 'staff' : 'event')
+                            : isPerGuestUnit(unit) ? 'guest' : unit.replace(/^per[_ ]?/, '') || 'item';
                     const price = Number(configured?.price ?? item.addon_price ?? item.price ?? item.rental_price ?? item.selling_price ?? 0);
-                    return { id: Number(item.id), name: item.name, quantity: perGuest ? `${quantity} guests` : '1', price, subtotal: price * quantity, description: item.description || '' };
+                    return { id: Number(item.id), name: item.name, qty: quantity, unit: quantityUnit, price, subtotal: price * quantity, description: item.description || '' };
                 });
         };
         const title = document.getElementById('booking-package-details-title');
@@ -293,23 +358,26 @@ document.addEventListener('DOMContentLoaded', function () {
         const description = document.getElementById('booking-package-details-description');
         const content = document.getElementById('booking-package-details-inclusions');
         if (title) title.textContent = pkg.name || 'Package Details';
-        if (meta) meta.textContent = `${packageRate(pkg)} · ${Number(pkg.min_guests || 1)}–${Number(pkg.max_guests || 999999)} guests · ${Number(pkg.service_duration || 0)}-hour service`;
+        if (meta) meta.textContent = `${packageRate(pkg)} · Min ${Number(pkg.min_guests || 50)} · Max ${pkg.max_guests_display || 'No maximum'} · ${Number(pkg.service_duration || 0)}-hour service`;
         if (description) {
             description.textContent = pkg.description || '';
             description.hidden = !pkg.description;
         }
         if (content) {
             const blocks = [
-                renderPackageDetailGroup(isCustomizable ? 'Package inclusions' : 'Included in this fixed package · not editable', inclusions[0]),
+                renderPackageDetailGroup(isCustomizable ? 'Included menu items' : 'Included in this fixed package · not editable', inclusions[0]),
                 renderPackageDetailGroup('Included services', inclusions[1]),
                 renderPackageDetailGroup('Included equipment', inclusions[2]),
             ];
-            if (!inclusions.some(items => items.length)) blocks.push('<p class="booking-package-modal-empty">No package inclusions are listed.</p>');
+            if (!isCustomizable && !inclusions.some(items => items.length)) {
+                blocks.push('<p class="booking-package-modal-empty">The caterer has not provided a detailed inclusions list for this package.</p>');
+            }
             if (selectionsToShow.length) {
                 selectionsToShow.forEach((selection, index) => {
                     const customization = getCustomization(selection);
-                    const dayNumber = events.findIndex(item => String(item.id) === String(selection.id)) + 1 || index + 1;
-                    const dayTitle = `Day ${dayNumber}`;
+                    const eventIndex = events.findIndex(item => String(item.id) === String(selection.id));
+                    const eventTitle = String(selection.event_name || '').trim() || `Event ${eventIndex >= 0 ? eventIndex + 1 : index + 1}`;
+                    const eventMeta = [displayEventType(selection), selection.event_date ? formatDisplayDate(selection.event_date) : '', selection.ingress ? formatDisplayTime(selection.ingress) : ''].filter(Boolean).join(' · ');
                     const customFood = customization?.selected_food || [];
                     const customExtras = customization?.selected_menu_extras || [];
                     const customServices = customization?.selected_services || [];
@@ -332,10 +400,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         renderPackageDetailGroup('Optional services', services),
                         renderPackageDetailGroup('Optional equipment', equipment),
                     ].filter(Boolean);
-                    if (selectedGroups.length) blocks.push(`<section class="booking-package-modal-event"><h3>${dayTitle}</h3>${selectedGroups.join('')}</section>`);
+                    if (selectedGroups.length) blocks.push(`<section class="booking-package-modal-event"><h3>${escapeHtml(eventTitle)}</h3>${eventMeta ? `<p class="booking-package-modal-event-meta">${escapeHtml(eventMeta)}</p>` : ''}${selectedGroups.join('')}</section>`);
                 });
             } else if (isSelectedEvent && isCustomizable) {
-                blocks.push('<p class="booking-package-modal-empty">Customize this event to view its selected menu, services, and equipment here.</p>');
+                blocks.push('<p class="booking-package-modal-empty">No saved choices for this event yet. Customize the package to see its menu, services, and equipment here.</p>');
             }
             content.innerHTML = blocks.filter(Boolean).join('');
         }
@@ -351,8 +419,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const included = isIncluded(pkg, item.id, 'included_menu_ids');
             const price = itemPrice(item, pkg);
             const serving = [item.serving_size, item.serving_style].filter(Boolean).join(' · ');
-            const perGuest = ['per_pax', 'per_guest', 'per_person'].includes(String(item.pricing_unit || '').toLowerCase());
-            const priceText = included ? 'Included in package' : `${money(price)}${perGuest ? '/guest' : ''}`;
+            const priceText = included ? 'Included in package' : `${money(price)} ${priceUnitSuffix(item.pricing_unit)}`;
             return `<label class="booking-menu-option">
                 <input type="checkbox" data-choice="menu_ids" value="${Number(item.id)}" ${selected.has(Number(item.id)) ? 'checked' : ''}>
                 <span class="booking-choice-content"><strong>${escapeHtml(item.name)}</strong>
@@ -376,19 +443,19 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="booking-addon-grid">${available.map(item => {
                 const included = isIncluded(pkg, item.id, includedKey);
                 const configuredItem = packageAddon(pkg, addonKey, item.id);
-                const price = configuredItem ? Number(configuredItem.price || 0) : Number(item.price || 0);
+                const price = Number(configuredItem?.price ?? item.price ?? 0);
+                const unitSuffix = priceUnitSuffix(item.unit_type);
                 return `<label class="booking-addon-option">
                     <input type="checkbox" data-choice="${key}" value="${Number(item.id)}" ${selected.has(Number(item.id)) ? 'checked' : ''}>
                     <span class="booking-choice-content"><strong>${escapeHtml(item.name)}</strong>
                         ${item.description ? `<span class="booking-choice-meta">${escapeHtml(item.description)}</span>` : ''}
                     </span>
-                    <span class="booking-choice-price">${included ? 'Included' : `${money(price)}${['per_pax', 'per_guest', 'per_person'].includes(String(item.unit_type || '').toLowerCase()) ? '/guest' : ''}`}</span>
+                    <span class="booking-choice-price">${included ? 'Included' : `${money(price)} ${unitSuffix}`}</span>
                 </label>`;
             }).join('')}</div>
         </div>`;
     };
     const renderEvent = (event, index) => {
-        const price = selectedEventPrice(event);
         const pkg = getPackage(event.package_id);
         const isCustomizable = String(pkg?.pricing_mode || '').toLowerCase() === 'customizable';
         const customizeUrl = isCustomizable
@@ -402,7 +469,7 @@ document.addEventListener('DOMContentLoaded', function () {
             : (event.availability ? (event.availabilityMessage || 'This date and time is available.') : (event.availabilityMessage || 'This date and time is unavailable.'));
         const { min: minDate, max: maxDate } = eventDateBounds(event, index);
         const scheduleFields = index === 0
-            ? `<div class="booking-event-schedule-summary"><strong>Day 1</strong><span>${escapeHtml(event.event_date || 'Choose a date above')} · ${escapeHtml(formatDisplayTime(event.ingress) || 'Select ingress')}${event.egress ? ` – ${escapeHtml(formatDisplayTime(event.egress))}` : ''}</span></div>`
+            ? `<div class="booking-event-schedule-summary"><strong>${escapeHtml(event.event_name || 'Event 1')}</strong><span>${escapeHtml(displayEventType(event))}${event.event_date ? ` · ${escapeHtml(formatDisplayDate(event.event_date))}` : ' · Choose a date above'} · ${escapeHtml(formatDisplayTime(event.ingress) || 'Select ingress')}${event.egress ? ` – ${escapeHtml(formatDisplayTime(event.egress))}` : ''}</span></div>`
             : `<div class="booking-event-fields">
                 <div class="booking-field booking-date-field">
                     <label class="form-label" for="${escapeHtml(event.id)}-date">Event Date</label>
@@ -417,17 +484,30 @@ document.addEventListener('DOMContentLoaded', function () {
                     <input id="${escapeHtml(event.id)}-egress" class="form-input" type="time" value="${escapeHtml(event.egress || '')}" readonly aria-readonly="true">
                 </div>
             </div>`;
+        const eventTypeValues = eventTypeOptions.includes(event.event_type) ? eventTypeOptions : [event.event_type, ...eventTypeOptions];
+        const eventTypeChoices = eventTypeValues.map(value => `<option value="${escapeHtml(value)}" ${value === event.event_type ? 'selected' : ''}>${escapeHtml(value)}</option>`).join('');
+        const eventBasics = index === 0 ? '' : `<div class="booking-event-basics" aria-label="Event details">
+            <div class="booking-field"><label class="form-label" for="${escapeHtml(event.id)}-name">Event name</label><input id="${escapeHtml(event.id)}-name" class="form-input" data-field="event_name" maxlength="100" value="${escapeHtml(event.event_name || '')}" required></div>
+            <div class="booking-field"><label class="form-label" for="${escapeHtml(event.id)}-type">Event type</label><select id="${escapeHtml(event.id)}-type" class="form-input" data-field="event_type" required>${eventTypeChoices}</select></div>
+            ${event.event_type === 'Other' ? `<div class="booking-field"><label class="form-label" for="${escapeHtml(event.id)}-type-other">Describe event type</label><input id="${escapeHtml(event.id)}-type-other" class="form-input" data-field="event_type_other" maxlength="100" value="${escapeHtml(event.event_type_other || '')}" required></div>` : ''}
+            <div class="booking-field"><label class="form-label" for="${escapeHtml(event.id)}-guests">Guest count <span class="booking-field-range">(Min ${Number(pkg?.min_guests || 50)} · Max ${escapeHtml(pkg?.max_guests_display || 'No maximum')})</span></label><input id="${escapeHtml(event.id)}-guests" class="form-input" type="number" min="${Number(pkg?.min_guests || 50)}" max="${Number(pkg?.max_guests || 999999)}" data-field="guest_count" value="${Number(event.guest_count || 1)}" required></div>
+            <div class="booking-field"><label class="form-label" for="${escapeHtml(event.id)}-celebrant">Celebrant / guest of honor <span class="booking-field-range">(optional)</span></label><input id="${escapeHtml(event.id)}-celebrant" class="form-input" data-field="celebrant_name" data-char-limit="100" maxlength="100" value="${escapeHtml(event.celebrant_name || '')}"></div>
+            <div class="booking-field"><label class="form-label" for="${escapeHtml(event.id)}-theme">Theme / motif <span class="booking-field-range">(optional)</span></label><input id="${escapeHtml(event.id)}-theme" class="form-input" data-field="theme_motif" data-char-limit="100" maxlength="100" value="${escapeHtml(event.theme_motif || '')}"></div>
+            <div class="booking-field booking-field-wide"><label class="form-label" for="${escapeHtml(event.id)}-special-requests">Special Requests &amp; Notes <span class="booking-field-range">(optional)</span></label><textarea id="${escapeHtml(event.id)}-special-requests" class="form-input" data-field="special_requests" maxlength="300" rows="2">${escapeHtml(event.special_requests || '')}</textarea></div>
+        </div>`;
+        const eventTitle = event.event_name || `Event ${index + 1}`;
         return `<article class="booking-event-card" data-event-id="${escapeHtml(event.id)}" data-event-index="${index}">
             <div class="booking-event-heading">
-                <h4 class="booking-event-title">Day ${index + 1}</h4>
+                <div class="booking-event-title-wrap"><h4 class="booking-event-title">${escapeHtml(eventTitle)}</h4><span class="booking-event-type">${escapeHtml(displayEventType(event))}</span></div>
                 <button class="booking-event-remove" type="button" data-action="remove-event" ${events.length === 1 ? 'disabled' : ''}>Remove event</button>
             </div>
             ${scheduleFields}
+            ${eventBasics}
             <p class="booking-events-help">Egress is calculated from this event’s selected package duration.</p>
             <div class="booking-event-status${event.availability === false ? ' is-error' : ''}" role="status">${escapeHtml(status)}</div>
             ${pkg ? `<div class="booking-event-package"><div><strong>${escapeHtml(pkg.name)}</strong><span>${packageRate(pkg)} · ${Number(event.guest_count || 1)} guests · ${Number(pkg.service_duration || 0)}-hour service</span></div><button type="button" data-action="view-package-details" data-package-id="${Number(pkg.id)}">View details</button></div>` : '<p class="booking-event-status is-error">Select a package in the previous step before adding event dates.</p>'}
             ${isCustomizable ? `<div class="booking-event-customization"><span>${index === 0
-                ? (event.customization ? 'Day 1 choices are from your Step 1 package selection.' : 'Choose or update Day 1 package choices in Step 1.')
+                ? (event.customization ? 'Package choices are saved for this event.' : 'Choose or update this event’s package choices in Step 1.')
                 : (event.customization ? 'Custom choices saved for this event.' : 'Select this event’s menu, services, and equipment.')}</span>${index > 0 ? `<a class="booking-event-customize" href="${customizeUrl}">${event.customization ? 'Edit choices for this event' : 'Customize this event'}</a>` : ''}</div>` : ''}
             ${!isCustomizable ? `<details class="booking-event-menu">
                 <summary class="booking-menu-heading"><strong>Optional food add-ons</strong><span class="booking-choice-meta">Fixed package inclusions stay unchanged</span></summary>
@@ -435,7 +515,6 @@ document.addEventListener('DOMContentLoaded', function () {
             </details>` : ''}
             ${renderAddons(event, 'equipment', 'Equipment & rentals', equipmentItems, 'equipment_ids', 'included_equipment_ids')}
             ${renderAddons(event, 'services', 'Additional services', serviceItems, 'service_ids', 'included_service_ids')}
-            <div class="booking-event-subtotal"><span>Day ${index + 1} estimated subtotal</span><strong>${money(price.subtotal)}</strong></div>
         </article>`;
     };
 
@@ -455,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (legacyPackage) legacyPackage.value = pkg ? pkg.id : '';
         if (legacyGuests) legacyGuests.value = first.guest_count;
         if (legacyGuestDisplay) legacyGuestDisplay.value = Number(first.guest_count || 1).toLocaleString();
-        if (eventType && pkg) eventType.value = pkg.event_type || 'General Catering';
+        if (eventType && pkg) eventType.value = first.event_type || pkg.event_type || 'General Catering';
         if (pkg && String(window.currentPackageId) !== String(pkg.id) && typeof window.switchPackage === 'function') {
             window.switchPackage(String(pkg.id));
         }
@@ -477,34 +556,35 @@ document.addEventListener('DOMContentLoaded', function () {
         updateHiddenFirstEvent();
         const estimates = events.map(selectedEventPrice);
         const subtotal = estimates.reduce((sum, value) => sum + value.subtotal, 0);
-        const feeStatus = String(window.deliveryFeeStatus || '').toLowerCase();
-        const feeIsKnown = ['calculated', 'confirmed', 'available', 'success'].includes(feeStatus);
-        const fee = feeIsKnown ? Number(window.currentDeliveryFee || 0) : 0;
-        const total = subtotal + fee;
+        const total = subtotal;
         const guests = events.reduce((sum, event) => sum + Number(event.guest_count || 0), 0);
-        const totalElement = document.getElementById('booking-events-total');
         const sidebarTotal = document.getElementById('calc-grand-total');
         const sidebarGuests = document.getElementById('calc-guests');
         const sidebarPackage = document.getElementById('calc-pkg-price-label');
-        const sidebarFee = document.getElementById('calc-delivery-fee');
+        const breakdown = document.getElementById('calc-event-breakdown');
         const totalInput = document.getElementById('total_price_input');
         const reservationInput = document.getElementById('reservation_fee_input');
-        if (totalElement) totalElement.textContent = money(total);
         if (sidebarTotal) sidebarTotal.textContent = money(total);
         if (sidebarGuests) sidebarGuests.textContent = String(guests);
-        if (sidebarPackage) sidebarPackage.textContent = `${events.length} event${events.length === 1 ? '' : 's'} · packages, menu & add-ons`;
-        if (sidebarFee) sidebarFee.textContent = feeIsKnown ? money(fee) : 'Coordinate with caterer';
+        if (sidebarPackage) sidebarPackage.textContent = money(estimates.reduce((sum, estimate) => sum + estimate.package, 0));
+        if (events[0] && legacySpecialRequests) {
+            events[0].special_requests = legacySpecialRequests.value.slice(0, 300);
+            if (events[0].customization) events[0].customization = { ...events[0].customization, special_requests: events[0].special_requests };
+        }
+        if (breakdown) breakdown.innerHTML = events.map((event, index) => {
+            const estimate = estimates[index];
+            return `<details class="calc-event-breakdown-item"><summary><strong>${escapeHtml(event.event_name || `Event ${index + 1}`)}</strong><b>${money(estimate.subtotal)}</b></summary><div class="calc-event-lines"><span>Package <b>${money(estimate.package)}</b></span><span>Menu <b>${money(estimate.menu)}</b></span><span>Equipment <b>${money(estimate.equipment)}</b></span><span>Services <b>${money(estimate.services)}</b></span><span class="calc-event-subtotal">Event estimate <b>${money(estimate.subtotal)}</b></span></div></details>`;
+        }).join('');
         if (totalInput) totalInput.value = total.toFixed(2);
         if (reservationInput) reservationInput.value = (total * 0.3).toFixed(2);
-        const transport = document.getElementById('booking-events-transport');
-        if (transport) {
-            transport.textContent = feeIsKnown
-                ? `Transportation fee: ${money(fee)} (configured for this venue).`
-                : 'Transportation: Coordinate with caterer until confirmed.';
-        }
         eventsInput.value = JSON.stringify(events.map(event => ({
             id: event.id,
             event_name: event.event_name,
+            event_type: event.event_type,
+            event_type_other: event.event_type_other,
+            special_requests: String(event.special_requests || '').slice(0, 300),
+            celebrant_name: event.celebrant_name,
+            theme_motif: event.theme_motif,
             event_date: event.event_date,
             ingress: event.ingress,
             egress: event.egress,
@@ -522,6 +602,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    legacySpecialRequests?.addEventListener('input', updateEventTotals);
+
     const render = () => {
         const activeElement = document.activeElement;
         const activeId = activeElement && eventList.contains(activeElement) ? activeElement.id : '';
@@ -533,19 +615,59 @@ document.addEventListener('DOMContentLoaded', function () {
         if (legacyDate && events[0]) legacyDate.max = eventDateBounds(events[0], 0).max;
         updateEventTotals();
         const addEventButton = form.querySelector('[data-action="add-event"]');
+        const addEventHint = document.getElementById('booking-add-event-hint');
+        const canAddEvent = Boolean(getPackage(events[0]?.package_id)) && events.every(item => item.event_date);
         if (addEventButton) {
-            addEventButton.disabled = !getPackage(events[0]?.package_id) || !events.every(item => item.event_date);
+            addEventButton.disabled = !canAddEvent;
+        }
+        if (addEventHint) {
+            addEventHint.hidden = canAddEvent;
+            addEventHint.textContent = events.length > 1
+                ? 'Complete each event date before adding another event.'
+                : 'Choose an event date first to add another event.';
         }
     };
 
     legacyEventName?.addEventListener('input', () => {
-        events.forEach(event => { event.event_name = legacyEventName.value; });
+        if (events[0]) events[0].event_name = legacyEventName.value;
+        updateEventTotals();
+    });
+    eventList.addEventListener('input', event => {
+        if (event.target.dataset.field !== 'special_requests') return;
+        const card = event.target.closest('.booking-event-card');
+        const current = events.find(item => item.id === card?.dataset.eventId);
+        if (!current) return;
+        current.special_requests = event.target.value.slice(0, 300);
+        if (current.customization) {
+            current.customization = { ...current.customization, special_requests: current.special_requests };
+        }
+        updateEventTotals();
+    });
+    legacyEventTypeSelect?.addEventListener('change', () => {
+        if (!events[0]) return;
+        events[0].event_type = legacyEventTypeSelect.value;
+        events[0].event_type_other = legacyOtherEventType?.value || '';
+        render();
+    });
+    legacyOtherEventType?.addEventListener('input', () => {
+        if (!events[0]) return;
+        events[0].event_type_other = legacyOtherEventType.value;
+        updateEventTotals();
+    });
+    legacyCelebrant?.addEventListener('input', () => {
+        if (!events[0]) return;
+        events[0].celebrant_name = legacyCelebrant.value;
+        updateEventTotals();
+    });
+    legacyTheme?.addEventListener('input', () => {
+        if (!events[0]) return;
+        events[0].theme_motif = legacyTheme.value;
         updateEventTotals();
     });
     legacyGuestDisplay?.addEventListener('input', () => {
         const guestCount = Math.max(1, Math.min(999999, Number(legacyGuestDisplay.value.replace(/\D/g, '') || 1)));
         if (legacyGuests) legacyGuests.value = guestCount;
-        events.forEach(event => { event.guest_count = guestCount; });
+        if (events[0]) events[0].guest_count = guestCount;
         render();
     });
 
@@ -592,7 +714,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!Number.isFinite(turnoverHours) || turnoverHours < 0) turnoverHours = 2;
         const turnoverMilliseconds = turnoverHours * 60 * 60 * 1000;
         for (const [index, event] of events.entries()) {
-            if (!String(event.event_name || '').trim()) return `Enter a name for Day ${index + 1}.`;
+            if (!String(event.event_name || '').trim()) return `Enter a name for Event ${index + 1}.`;
+            if (!String(event.event_type_other || '').trim() && event.event_type === 'Other') return `Describe the type for Event ${index + 1}.`;
             if (!event.event_date || !event.ingress || !event.egress) return 'Complete each event date and ingress time. Egress is calculated automatically.';
             const start = new Date(`${event.event_date}T${event.ingress}:00`).getTime();
             const end = new Date(`${event.event_date}T${event.egress}:00`).getTime();
@@ -600,8 +723,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const pkg = getPackage(event.package_id);
             if (!pkg) return 'Choose the main package before setting up event dates.';
             const guests = Number(event.guest_count || 0);
-            if (guests < Number(pkg.min_guests || 1) || guests > Number(pkg.max_guests || 999999)) {
-                return `${pkg.name} supports ${pkg.min_guests || 1}–${pkg.max_guests || 999999} guests. Adjust this event’s guest count.`;
+            if (guests < Number(pkg.min_guests || 50) || guests > Number(pkg.max_guests || 999999)) {
+                const maximum = pkg.max_guests_display || pkg.max_guests || 'No maximum';
+                return `${pkg.name} supports ${pkg.min_guests || 50} to ${maximum} guests. Adjust this event's guest count.`;
             }
             if (event.availability !== true) return event.availabilityMessage || 'Wait for availability to be confirmed for each event.';
             for (const interval of intervals) {
@@ -625,6 +749,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!current) return;
         const field = event.target.dataset.field;
         if (field) {
+            if (['event_name', 'celebrant_name', 'theme_motif', 'event_type_other', 'special_requests'].includes(field)) {
+                current[field] = event.target.value;
+                if (field === 'special_requests' && current.customization) {
+                    current.customization = { ...current.customization, special_requests: current[field].slice(0, 300) };
+                }
+                if (field === 'event_name') {
+                    const title = card.querySelector('.booking-event-title');
+                    if (title) title.textContent = current.event_name || `Event ${events.indexOf(current) + 1}`;
+                }
+                if (field === 'event_type_other') {
+                    const typeLabel = card.querySelector('.booking-event-type');
+                    if (typeLabel) typeLabel.textContent = displayEventType(current);
+                }
+                updateEventTotals();
+                return;
+            }
             if (field === 'guest_count') {
                 current.guest_count = Math.max(1, Math.min(999999, Number(event.target.value || 1)));
             } else if (field === 'event_date') {
@@ -663,8 +803,6 @@ document.addEventListener('DOMContentLoaded', function () {
             else selected.delete(Number(event.target.value));
             current[choice] = Array.from(selected);
             updateEventTotals();
-            const subtotal = card.querySelector('.booking-event-subtotal strong');
-            if (subtotal) subtotal.textContent = money(selectedEventPrice(current).subtotal);
         }
     });
 
@@ -702,8 +840,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const previousEvent = events[events.length - 1];
         const pkg = getPackage(events[0]?.package_id || legacyPackage?.value || window.currentPackageId);
         const next = makeEvent({
-            event_name: legacyEventName?.value || '', event_date: '', ingress: '', egress: '', package_id: pkg?.id || '',
-            guest_count: legacyGuests?.value || previousEvent?.guest_count || 1,
+            event_name: `Event ${events.length + 1}`, event_type: previousEvent?.event_type || legacyEventTypeSelect?.value || eventType?.value || pkg?.event_type || 'General Catering',
+            event_type_other: '', celebrant_name: '', theme_motif: '', event_date: '', ingress: '', egress: '', package_id: pkg?.id || '',
+            guest_count: previousEvent?.guest_count || legacyGuests?.value || 1,
             menu_ids: pkg?.included_menu_ids || [],
             equipment_ids: [],
             service_ids: [],
@@ -713,6 +852,8 @@ document.addEventListener('DOMContentLoaded', function () {
         next.customization_source_event_id = null;
         events.push(next);
         render();
+        const eventCard = eventList.lastElementChild;
+        eventCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         const dateInputEl = document.getElementById(`${next.id}-date`);
         if (dateInputEl) {
             dateInputEl.focus({ preventScroll: true });
@@ -735,7 +876,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (duplicateDate || outOfOrder) {
             legacyDate.setCustomValidity(duplicateDate
                 ? 'This date is already selected for another event. Choose a different date.'
-                : 'Keep event dates in order: Day 1 must be before the next event date.');
+                : 'Keep events in date order. The first event must come before the next event.');
             legacyDate.reportValidity();
             legacyDate.value = first.event_date || '';
             return;

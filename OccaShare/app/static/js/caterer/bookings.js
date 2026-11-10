@@ -1460,6 +1460,7 @@ function hydrateButtonDataset(btn, detail) {
         verificationJson: '{}',
         contractJson: JSON.stringify(detail.contract || {}),
         packageJson: JSON.stringify(detail.package || {}),
+        eventsJson: JSON.stringify(Array.isArray(detail.events) ? detail.events : []),
         catererServicesJson: JSON.stringify(detail.caterer_services || []),
         selectedServicesJson: JSON.stringify(detail.services || []),
         selectedItemsJson: JSON.stringify(detail.selected_items || []),
@@ -1657,8 +1658,184 @@ function resolvePaymentDisplayStatus(rawStatus, computedStatus, total, verifiedP
     return { label: 'Unpaid', background: '#fff7ed', color: '#c2410c', border: '#fed7aa' };
 }
 
+function formatCatererEventTime(value) {
+    const text = String(value || '').trim();
+    if (!text) return 'Not set';
+    const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return text;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour > 23 || minute > 59) return text;
+    return `${hour % 12 || 12}:${match[2]} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
+function renderCatererEventCard(event, mode, sharedVenue = '') {
+    const card = document.createElement('article');
+    card.className = 'caterer-event-card';
+    const title = document.createElement('h3');
+    title.textContent = `${event.name || `Event ${event.number || ''}`} · ${event.package_name || 'Package details unavailable'}`;
+    card.appendChild(title);
+    const dateValue = event.date ? new Date(`${event.date}T00:00:00`) : null;
+    const dateLabel = dateValue && !Number.isNaN(dateValue.getTime())
+        ? dateValue.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'Date not set';
+    const subtitle = document.createElement('p');
+    subtitle.className = 'caterer-event-meta';
+    subtitle.textContent = `${event.type || 'Event'} · ${dateLabel} · ${Number(event.guest_count || 0).toLocaleString()} guests`;
+    card.appendChild(subtitle);
+    const addFact = (grid, label, value) => {
+        const fact = document.createElement('div');
+        const caption = document.createElement('small');
+        caption.textContent = label;
+        const text = document.createElement('strong');
+        text.textContent = value || 'Not specified';
+        fact.append(caption, text);
+        grid.appendChild(fact);
+    };
+    if (mode === 'overview') {
+        const grid = document.createElement('div');
+        grid.className = 'caterer-event-grid';
+        addFact(grid, 'Event name', event.name);
+        addFact(grid, 'Event type', event.type);
+        addFact(grid, 'Event date', dateLabel);
+        addFact(grid, 'Guests', `${Number(event.guest_count || 0).toLocaleString()} guests`);
+        addFact(grid, 'Ingress', formatCatererEventTime(event.ingress));
+        addFact(grid, 'Egress', formatCatererEventTime(event.egress));
+        if (Number(event.package_duration) > 0) addFact(grid, 'Package duration', `${Number(event.package_duration)} hours`);
+        if (event.celebrant_name) addFact(grid, 'Celebrant', event.celebrant_name);
+        if (event.theme_motif) addFact(grid, 'Theme / motif', event.theme_motif);
+        if (sharedVenue) addFact(grid, 'Venue', sharedVenue);
+        if (event.special_requests) addFact(grid, 'Special requests', event.special_requests);
+        card.appendChild(grid);
+    } else {
+        const packageFacts = document.createElement('div');
+        packageFacts.className = 'caterer-event-grid';
+        const packagePrice = Number(event.package_price || 0);
+        if (packagePrice > 0) {
+            const priceLabel = event.package_price_unit === 'fixed' ? 'Fixed package price' : 'Base price per guest';
+            addFact(packageFacts, priceLabel, `₱${packagePrice.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+        }
+        const minGuests = Number(event.package_min_guests || 0);
+        const maxGuests = Number(event.package_max_guests || 0);
+        if (minGuests || maxGuests) {
+            addFact(
+                packageFacts,
+                'Package guest range',
+                minGuests && maxGuests ? `${minGuests.toLocaleString()}–${maxGuests.toLocaleString()} guests`
+                    : minGuests ? `Minimum ${minGuests.toLocaleString()} guests`
+                        : `Up to ${maxGuests.toLocaleString()} guests`
+            );
+        }
+        if (Number(event.package_duration) > 0) addFact(packageFacts, 'Package duration', `${Number(event.package_duration)} hours`);
+        if (event.package_type) addFact(packageFacts, 'Package type', event.package_type);
+        if (event.package_price_unit === 'fixed' && Number(event.package_additional_guest_price) > 0) {
+            addFact(
+                packageFacts,
+                'Additional guest price',
+                `₱${Number(event.package_additional_guest_price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            );
+        }
+        if (packageFacts.childElementCount) card.appendChild(packageFacts);
+        if (event.package_description) {
+            const description = document.createElement('p');
+            description.className = 'caterer-event-meta';
+            description.textContent = event.package_description;
+            card.appendChild(description);
+        }
+        const addItems = (label, items, detailFor) => {
+            if (!Array.isArray(items) || !items.length) return;
+            const heading = document.createElement('div');
+            heading.className = 'caterer-event-section-label';
+            heading.textContent = label;
+            card.appendChild(heading);
+            const list = document.createElement('div');
+            list.className = 'caterer-event-items';
+            items.forEach(item => {
+                const line = document.createElement('div');
+                const name = document.createElement('span');
+                const detail = document.createElement('span');
+                name.textContent = [item.name || item.type || 'Booking item', item.description]
+                    .filter(Boolean)
+                    .join(' — ');
+                detail.textContent = detailFor(item);
+                line.append(name, detail);
+                list.appendChild(line);
+            });
+            card.appendChild(list);
+        };
+        addItems('Package inclusions', event.package_inclusions, item => {
+            const quantity = Number(item.quantity || 1);
+            const unit = String(item.unit || '').trim();
+            const amount = `${quantity > 1 ? `${quantity} ` : ''}${unit || 'Included'}`;
+            return [item.type || '', amount].filter(Boolean).join(' · ');
+        });
+        addItems('Customer selections and add-ons', event.selected_items, item => {
+            const quantity = Number(item.quantity || 1);
+            const unit = String(item.unit || '').trim();
+            const quantityText = item.type === 'Food' && quantity > 1
+                ? `${quantity.toLocaleString()} guests`
+                : (unit.toLowerCase().includes('event') && quantity === 1 ? 'Per event' : `${quantity}${unit ? ` ${unit}` : ''}`);
+            const amount = Number(item.amount || 0);
+            return [item.included ? 'Included' : '', quantityText, amount > 0 ? `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''].filter(Boolean).join(' · ');
+        });
+        const breakdown = event.price_breakdown || {};
+        if (event.has_price_breakdown) {
+            const rows = ['package', 'menu', 'equipment', 'services', 'subtotal'].map(key => ({
+                name: key === 'subtotal' ? 'Event estimate' : key[0].toUpperCase() + key.slice(1),
+                amount: Number(breakdown[key] || 0),
+            }));
+            addItems('Saved event price breakdown', rows, item => `₱${item.amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+        }
+        if (!event.package_inclusions?.length && !event.selected_items?.length) {
+            const empty = document.createElement('p');
+            empty.className = 'caterer-event-meta';
+            empty.textContent = 'No item selections were saved for this event.';
+            card.appendChild(empty);
+        }
+    }
+    return card;
+}
+
+function renderCatererEventPaymentBreakdown(events) {
+    const section = document.getElementById('catererEventPaymentBreakdown');
+    const container = document.getElementById('catererEventPaymentRows');
+    if (!section || !container) return;
+    container.replaceChildren();
+    const showDetails = Array.isArray(events) && events.length > 1;
+    section.hidden = !showDetails;
+    if (!showDetails) return;
+    events.forEach(event => {
+        const card = document.createElement('div');
+        card.style.cssText = 'padding:.65rem 0;border-bottom:1px solid #edf1f5;';
+        const heading = document.createElement('div');
+        heading.style.cssText = 'display:flex;justify-content:space-between;gap:.75rem;font-size:.73rem;font-weight:800;color:#334155;';
+        const name = document.createElement('span');
+        name.textContent = `${event.name || 'Event'} · ${event.package_name || 'Package'}`;
+        const total = document.createElement('span');
+        total.textContent = event.has_price_breakdown
+            ? `₱${Number(event.price_breakdown?.subtotal || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : 'Not recorded';
+        heading.append(name, total);
+        card.appendChild(heading);
+        if (event.has_price_breakdown) {
+            const lines = document.createElement('div');
+            lines.style.cssText = 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem .75rem;margin-top:.45rem;color:#64748b;font-size:.68rem;';
+            [['Package', 'package'], ['Menu', 'menu'], ['Equipment', 'equipment'], ['Services', 'services']].forEach(([label, key]) => {
+                const line = document.createElement('span');
+                line.textContent = `${label}: ₱${Number(event.price_breakdown?.[key] || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                lines.appendChild(line);
+            });
+            card.appendChild(lines);
+        }
+        container.appendChild(card);
+    });
+}
+
 function showBookingDetails(btn) {
     var data = btn.dataset;
+    var bookingEvents = [];
+    try { bookingEvents = JSON.parse(data.eventsJson || '[]'); } catch (e) {}
+    if (!Array.isArray(bookingEvents)) bookingEvents = [];
     var rawId = data.id || data.bookingId || '';
     var cleanId = String(rawId).replace(/\D/g, '') || String(rawId);
     var wasModalOpen = document.getElementById('bookingDetailModal')?.classList.contains('active');
@@ -1764,7 +1941,8 @@ function showBookingDetails(btn) {
     _syncFooterButtons(cleanId, bookingStatus, hasPaymentRequiringReviewNow);
 
     // Background hydration (silent, non-blocking)
-    if (btn.dataset.workspaceHydrated !== 'true' && btn.dataset.workspaceHydrated !== 'loading') {
+    if ((btn.dataset.workspaceHydrated !== 'true' || !wasModalOpen || previousBookingId !== cleanId)
+        && btn.dataset.workspaceHydrated !== 'loading') {
         btn.dataset.workspaceHydrated = 'loading';
         fetch(`/caterer/api/bookings/${cleanId}/details`, { headers: { 'Accept': 'application/json' } })
             .then(function(res) { return res.ok ? res.json() : null; })
@@ -1998,6 +2176,16 @@ function showBookingDetails(btn) {
     var ovPax = document.getElementById('ovGuestCount'); if (ovPax) ovPax.innerText = `${paxCount} pax`;
     var ovMot = document.getElementById('ovMotif'); if (ovMot) ovMot.innerText = data.motif || 'Not specified';
     var ovVen = document.getElementById('ovVenue'); if (ovVen) ovVen.innerText = data.venue || 'Not specified';
+    const overviewEventCards = document.getElementById('ovMultiEventCards');
+    if (overviewEventCards) {
+        overviewEventCards.replaceChildren();
+        overviewEventCards.hidden = bookingEvents.length === 0;
+        bookingEvents.forEach(event => overviewEventCards.appendChild(renderCatererEventCard(event, 'overview', data.venue || '')));
+    }
+    document.querySelectorAll('#btab-overview .ov-single-event-fact').forEach(element => {
+        element.style.display = bookingEvents.length ? 'none' : '';
+    });
+    renderCatererEventPaymentBreakdown(bookingEvents);
 
     // Booking Info Card
     var ovRef = document.getElementById('ovBookingRef'); if (ovRef) ovRef.innerText = '#' + formattedRefId;
@@ -2316,13 +2504,22 @@ function showBookingDetails(btn) {
                 } else {
                     onInclusions.innerHTML = `
                         <div style="padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; color: #475569; font-size: 0.85rem;">
-                            <i class="fas fa-info-circle" style="color: #0284c7; margin-right: 6px;"></i> Includes full setup, buffet station, service staff, dinnerware, and standard decor package.
+                            <i class="fas fa-info-circle" style="color: #0284c7; margin-right: 6px;"></i> No saved package inclusions or item selections are available for this booking.
                         </div>
                     `;
                 }
             }
         }
     }
+
+    const multiEventPackageDetails = document.getElementById('multiEventPackageDetails');
+    const onlinePackageView = document.getElementById('paneOnlinePackageView');
+    if (multiEventPackageDetails) {
+        multiEventPackageDetails.replaceChildren();
+        multiEventPackageDetails.hidden = bookingEvents.length === 0;
+        bookingEvents.forEach(event => multiEventPackageDetails.appendChild(renderCatererEventCard(event, 'items')));
+    }
+    if (onlinePackageView) onlinePackageView.style.display = bookingEvents.length ? 'none' : 'flex';
 
     // ─── 6. TAB 4: VERIFICATION (ONLINE ONLY) ────────────────────────────────
     if (!isManual && data.hasKycRecord === 'true') {
@@ -5636,6 +5833,36 @@ window.sendPaymentLink = function(bookingId) {
 };
 
 document.addEventListener("DOMContentLoaded", function() {
+    let financialRefreshInFlight = false;
+    window.setInterval(async function() {
+        const modal = document.getElementById('bookingDetailModal');
+        const bookingId = String(currentBookingId || '').replace(/\D/g, '');
+        if (!modal?.classList.contains('active') || !bookingId || financialRefreshInFlight) return;
+        const button = document.querySelector(`button.view-details[data-id="${bookingId}"]`);
+        if (!button) return;
+        financialRefreshInFlight = true;
+        try {
+            const response = await fetch(`/caterer/api/bookings/${bookingId}/details`, {
+                headers: { Accept: 'application/json' },
+                cache: 'no-store'
+            });
+            if (!response.ok) return;
+            const detail = await response.json();
+            if (String(currentBookingId || '') !== bookingId || !modal.classList.contains('active')) return;
+            hydrateButtonDataset(button, detail);
+            button.dataset.workspaceHydrated = 'true';
+            showBookingDetails(button);
+            if (document.querySelector('#bookingDetailModal .mtab-btn-pro.active')?.dataset?.tab === 'invoice'
+                && window.OccaBookingInvoice) {
+                window.OccaBookingInvoice.load(document.getElementById('bookingInvoiceHost'), bookingId);
+            }
+        } catch (error) {
+            console.warn('Could not refresh booking financial details.', error);
+        } finally {
+            financialRefreshInFlight = false;
+        }
+    }, 30000);
+
     const urlParams = new URLSearchParams(window.location.search);
     const focusId = urlParams.get("focus") || urlParams.get("focus_id") || urlParams.get("booking_id");
     if (focusId) {

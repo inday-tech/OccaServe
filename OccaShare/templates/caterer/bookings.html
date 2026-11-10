@@ -980,7 +980,7 @@
                         }.get(status_display.tone, 'badge-draft') %}
 
                         {% set pay = booking.payment_status or 'no_payment' %}
-                        {% set total_val = booking.total_price or booking.total_amount or 0 %}
+                        {% set total_val = booking._pay_summary.total_amount if booking._pay_summary is defined else (booking.total_amount or booking.total_price or 0) %}
                         {% set paid_val = booking._pay_verified if booking._pay_verified is defined else (booking.amount_paid or 0) %}
                         {% set pending_val = booking._pay_pending if booking._pay_pending is defined else 0 %}
                         {% set balance_val = booking._pay_balance if booking._pay_balance is defined else ([total_val - paid_val, 0]|max) %}
@@ -1064,7 +1064,7 @@
                             data-event-type="{{ (booking.event_type or 'Booking')|e }}"
                             data-specific-name="{{ ((booking.package.name if booking.package else booking.event_type) or 'Booking')|e }}"
                             data-guest-count="{{ booking.guest_count or 0 }}"
-                            data-total-raw-amount="{{ booking.total_price or booking.total_amount or 0 }}"
+                            data-total-raw-amount="{{ booking._pay_summary.total_amount if booking._pay_summary is defined else (booking.total_amount or booking.total_price or 0) }}"
                             data-amount-paid="{{ paid_val }}"
                             data-is-under-review="{{ 'true' if is_under_review else 'false' }}"
                             data-needs-verification="{{ 'true' if is_under_review else 'false' }}"
@@ -2254,6 +2254,21 @@
     #prepStatusOptions .prep-status-option.is-disabled { opacity:.48;filter:saturate(.45);cursor:not-allowed; }
     #prepStatusOptions .prep-status-option.is-disabled:hover { transform:none; }
     #bookingDetailModal .overview-grid { min-width:0; }
+    #bookingDetailModal .caterer-multi-event-list { display:grid; gap:.75rem; width:100%; min-width:0; }
+    #bookingDetailModal .caterer-multi-event-list[hidden] { display:none !important; }
+    #bookingDetailModal .caterer-event-card { min-width:0; padding:.9rem 1rem; border:1px solid #e2e8f0; border-radius:10px; background:#fff; }
+    #bookingDetailModal .caterer-event-card h3 { margin:0; color:#0f172a; font-size:.9rem; overflow-wrap:anywhere; }
+    #bookingDetailModal .caterer-event-meta { margin:.25rem 0 .65rem; color:#64748b; font-size:.74rem; line-height:1.45; overflow-wrap:anywhere; }
+    #bookingDetailModal .caterer-event-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem .8rem; }
+    #bookingDetailModal .caterer-event-grid > div { min-width:0; }
+    #bookingDetailModal .caterer-event-grid small { display:block; color:#94a3b8; font-size:.62rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+    #bookingDetailModal .caterer-event-grid strong { display:block; margin-top:.12rem; color:#334155; font-size:.75rem; overflow-wrap:anywhere; }
+    #bookingDetailModal .caterer-event-package { margin-top:.7rem; padding-top:.65rem; border-top:1px solid #edf1f5; color:#334155; font-size:.75rem; overflow-wrap:anywhere; }
+    #bookingDetailModal .caterer-event-items { display:grid; gap:.35rem; margin-top:.5rem; }
+    #bookingDetailModal .caterer-event-items > div { display:flex; justify-content:space-between; gap:.7rem; padding:.4rem 0; border-bottom:1px solid #edf1f5; font-size:.72rem; }
+    #bookingDetailModal .caterer-event-items > div span:first-child { min-width:0; overflow-wrap:anywhere; }
+    #bookingDetailModal .caterer-event-items > div span:last-child { flex:0 0 auto; text-align:right; color:#64748b; }
+    #bookingDetailModal .caterer-event-section-label { margin:.7rem 0 .1rem; color:#64748b; font-size:.66rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
     #bookingDetailModal .financial-overview-card { background:color-mix(in srgb,var(--primary-color) 6%,white) !important;border:1px solid color-mix(in srgb,var(--primary-color) 24%,white) !important;color:#172033 !important; }
     #bookingDetailModal .financial-overview-card * { color:#172033 !important; }
     #bookingDetailModal button.ov-customer-details-button { height:18px !important;min-height:18px !important;max-height:18px !important;padding:0 6px !important;line-height:16px !important;box-sizing:border-box;flex:0 0 auto;align-self:center;font-size:10px !important; }
@@ -2501,6 +2516,7 @@
                     <div id="modalOverviewAttentionList" style="display: flex; flex-direction: column; gap: 3px;"></div>
                 </div>
 
+                <div id="ovMultiEventCards" class="caterer-multi-event-list" hidden></div>
                 <div class="overview-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.25rem;">
                     <!-- Event Information Card -->
                     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
@@ -2508,27 +2524,27 @@
                             <i class="fas fa-calendar-alt" style="color: var(--primary-color, #800020);"></i> Event Information
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem; font-size: 0.83rem;">
-                            <div>
+                            <div class="ov-single-event-fact">
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Event Type</span>
                                 <strong id="ovEventType" style="color: #0f172a;">—</strong>
                             </div>
-                            <div>
+                            <div class="ov-single-event-fact">
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Event Name / Special Person</span>
                                 <strong id="ovCelebrant" style="color: #0f172a;">N/A</strong>
                             </div>
-                            <div>
+                            <div class="ov-single-event-fact">
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Event Date</span>
                                 <strong id="ovEventDate" style="color: #0f172a;">—</strong>
                             </div>
-                            <div>
+                            <div class="ov-single-event-fact">
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Event Time</span>
                                 <strong id="ovEventTime" style="color: #0f172a;">TBA</strong>
                             </div>
-                            <div>
+                            <div class="ov-single-event-fact">
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Number of Pax</span>
                                 <strong id="ovGuestCount" style="color: #0f172a;">0 pax</strong>
                             </div>
-                            <div>
+                            <div class="ov-single-event-fact">
                                 <span style="display: block; font-size: 0.7rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Motif / Theme</span>
                                 <span id="ovMotif" style="color: #334155; font-weight: 600;">Not specified</span>
                             </div>
@@ -2723,6 +2739,7 @@
 
             <!-- ─── TAB 3: EVENT & PACKAGE / SERVICES ─── -->
             <div id="btab-services" class="mtab-pane-pro" style="display: none; flex-direction: column; gap: 1.25rem;">
+                <div id="multiEventPackageDetails" class="caterer-multi-event-list" hidden></div>
                 <!-- ONLINE PACKAGE VIEW -->
                 <div id="paneOnlinePackageView" style="display: flex; flex-direction: column; gap: 1.25rem;">
                     <!-- Package Card -->
@@ -2987,6 +3004,11 @@
                             <div id="payBalance" style="font-size: 1.35rem; font-weight: 900; color: #1e40af; margin-top: 2px;">₱0.00</div>
                         </div>
                     </div>
+
+                    <section id="catererEventPaymentBreakdown" hidden style="margin:0 0 1.25rem;padding:1rem;background:#fff;border:1px solid #e2e8f0;border-radius:10px;">
+                        <div style="font-size:.78rem;font-weight:800;color:#334155;margin-bottom:.45rem;">Per-event price breakdown</div>
+                        <div id="catererEventPaymentRows" class="caterer-event-items"></div>
+                    </section>
 
                     <!-- Uploaded Payment Proofs Section -->
                     <div id="modalProofSection" style="display: none; margin-bottom: 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">

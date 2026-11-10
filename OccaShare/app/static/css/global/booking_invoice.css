@@ -11,25 +11,28 @@
 .booking-invoice-identity { display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;padding:1.25rem 0 .75rem; }
 .booking-invoice-identity h3 { margin:0 0 .25rem;font-size:1.05rem; }
 .booking-invoice-identity p,.booking-invoice-date { margin:0;color:#64748b;font-size:.82rem; }
-.booking-invoice-facts { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;margin:.5rem 0 1.2rem; }
+.booking-invoice-facts { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;margin:.5rem 0 1.35rem; }
 .booking-invoice-fact { display:grid;gap:.2rem;padding:.75rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;min-width:0; }
 .booking-invoice-fact span { color:#64748b;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em; }
-.booking-invoice-fact strong { overflow-wrap:anywhere;font-size:.85rem; }
-.booking-invoice-section-title { margin:1.1rem 0 .55rem;font-size:.9rem;font-weight:850; }
+.booking-invoice-fact strong { overflow-wrap:anywhere;white-space:pre-line;font-size:.85rem; }
+.booking-invoice-section-title { margin:1.35rem 0 .65rem;padding-bottom:.5rem;border-bottom:1px solid #e2e8f0;font-size:.9rem;font-weight:850; }
+.booking-invoice-empty { margin:0;padding:.9rem 1rem;border:1px dashed #cbd5e1;border-radius:9px;background:#f8fafc;color:#64748b;font-size:.8rem;line-height:1.5; }
 .booking-invoice-table { width:100%;border-collapse:collapse;table-layout:fixed;font-size:.78rem; }
 .booking-invoice-table th,.booking-invoice-table td { padding:.6rem .55rem;text-align:left;border-bottom:1px solid #e2e8f0;overflow-wrap:anywhere;vertical-align:top; }
 .booking-invoice-table th { background:#fff7ed;color:#9a3412;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em; }
-.booking-invoice-table th:nth-child(2),.booking-invoice-table td:nth-child(2) { width:54px;text-align:center; }
+.booking-invoice-table tbody tr:nth-child(even) { background:#fcfcfd; }
+.booking-invoice-table td:first-child { font-weight:600;color:#334155; }
 .booking-invoice-table th:last-child,.booking-invoice-table td:last-child { width:115px;text-align:right; }
 .booking-invoice-payment-table th:first-child,.booking-invoice-payment-table td:first-child { width:88px; }
 .booking-invoice-payment-table th:nth-child(2),.booking-invoice-payment-table td:nth-child(2) { width:130px;text-align:left; }
 .booking-invoice-payment-table th:nth-child(3),.booking-invoice-payment-table td:nth-child(3) { width:auto;text-align:left; }
 .booking-invoice-payment-table th:last-child,.booking-invoice-payment-table td:last-child { width:100px;text-align:right; }
-.booking-invoice-totals { display:grid;gap:.45rem;width:min(100%,360px);margin:1rem 0 0 auto; }
+.booking-invoice-totals { display:grid;gap:.55rem;width:min(100%,380px);margin:1.1rem 0 0 auto;padding:1rem;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc; }
 .booking-invoice-total-row { display:flex;justify-content:space-between;gap:1rem;color:#475569;font-size:.84rem; }
 .booking-invoice-total-row strong { color:#0f172a;white-space:nowrap; }
 .booking-invoice-total-row.invoice-total { padding-top:.6rem;border-top:1px solid #cbd5e1;font-size:.95rem;font-weight:800; }
 .booking-invoice-total-row.invoice-balance { color:#c2410c;font-weight:800; }
+.booking-invoice-total-row.invoice-balance strong { color:#c2410c; }
 .booking-invoice-note { margin:1.2rem 0 0;color:#64748b;font-size:.72rem;line-height:1.5; }
 .booking-invoice-actions { display:flex;justify-content:flex-end;flex-wrap:wrap;gap:.55rem;max-width:900px;margin:1rem auto 0; }
 .booking-invoice-button { display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:.65rem 1rem;border:1px solid #ea580c;border-radius:8px;background:#ea580c;color:white;font:inherit;font-size:.8rem;font-weight:800;cursor:pointer; }
@@ -37,8 +40,10 @@
 @media(max-width:600px) {
     .booking-invoice-facts { grid-template-columns:minmax(0,1fr); }
     .booking-invoice-table { font-size:.68rem; }
+    .booking-invoice-label { font-size:.65rem; }
+    .booking-invoice-heading { align-items:flex-start; }
     .booking-invoice-table th,.booking-invoice-table td { padding:.45rem .35rem; }
-    .booking-invoice-table th:last-child,.booking-invoice-table td:last-child { width:78px; }
+    .booking-invoice-table:not(.booking-invoice-payment-table) th:last-child,.booking-invoice-table:not(.booking-invoice-payment-table) td:last-child { width:100px; }
     .booking-invoice-payment-table th:first-child,.booking-invoice-payment-table td:first-child { width:72px; }
     .booking-invoice-payment-table th:nth-child(2),.booking-invoice-payment-table td:nth-child(2) { width:90px; }
     .booking-invoice-payment-table th:last-child,.booking-invoice-payment-table td:last-child { width:76px; }

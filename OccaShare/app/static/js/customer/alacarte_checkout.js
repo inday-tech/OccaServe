@@ -6,8 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let deliveryFee = 0;
     window.currentScreen = 1;
 
-    // Delivery Fee logic will be determined by server.
-    const DEFAULT_FEE = 0;
+    // Transportation stays out of the estimate until the caterer adds a fee.
     window.isManualQuote = true;
 
     // RECOVER SESSION: Use a more robust check
@@ -988,28 +987,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const isPickup = fulfillment === 'pickup';
 
         const feeRow = document.getElementById('delivery-row');
-        const feeEl = document.getElementById('sum-delivery-fee');
-        if (feeRow) {
-            feeRow.style.display = isPickup ? 'none' : 'flex';
-            feeRow.querySelector('span:first-child').innerText = window.isServiceOnly ? 'Travel Fee' : 'Delivery Fee';
-        }
-
-        let effectiveFee = 0;
-        if (!isPickup) {
-            if (window.isManualQuote) {
-                effectiveFee = 0;
-                if (feeEl) feeEl.innerText = 'TBD';
-            } else if (window.outOfCoverageReject) {
-                effectiveFee = 0;
-                if (feeEl) feeEl.innerHTML = '<span style="color:red; font-size:0.85rem;">Out of Coverage</span>';
-            } else {
-                effectiveFee = deliveryFee;
-                if (feeEl) feeEl.innerText = '₱' + effectiveFee.toLocaleString(undefined, { minimumFractionDigits: 2 });
-            }
-        } else {
-            effectiveFee = 0;
-            if (feeEl) feeEl.innerText = '₱0.00';
-        }
+        if (feeRow) feeRow.style.display = 'none';
+        const effectiveFee = 0;
 
         const total = base + effectiveFee + securityDepositTotal;
         window.lastCalculatedTotal = total;
@@ -1100,7 +1079,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 deliveryFee = 0;
             }
             const delRow = document.getElementById('delivery-row');
-            if (delRow) delRow.style.display = 'flex';
+            if (delRow) delRow.style.display = 'none';
             if (addressSection) addressSection.style.display = 'block';
             if (lblDelDate) lblDelDate.innerText = window.isServiceOnly ? 'Event Date' : (window.isRentalOnly ? 'Delivery & Setup Date' : 'Delivery Date');
             if (lblDelTime) lblDelTime.innerText = window.isServiceOnly ? 'Call Time' : (window.isRentalOnly ? 'Setup Time' : 'Delivery Time');
@@ -1179,9 +1158,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const sumDelEl = document.getElementById('sum-delivery-fee');
             revDelFee.innerText = sumDelEl ? sumDelEl.innerText : '₱0.00';
         }
-        if (revDelRow) {
-            revDelRow.style.display = mode === 'pickup' ? 'none' : 'flex';
-        }
+        if (revDelRow) revDelRow.style.display = 'none';
 
         const revDepRow = document.getElementById('rev-deposit-row');
         const revDepFee = document.getElementById('rev-deposit-fee');
@@ -1456,34 +1433,31 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (data.is_manual_quote) {
                                 window.isManualQuote = true;
                                 window.outOfCoverageReject = false;
-                                document.getElementById('sum-delivery-fee').innerText = '₱0.00 (TBD)';
                                 deliveryFee = 0;
                             } else {
                                 window.isManualQuote = false;
                                 window.outOfCoverageReject = false;
-                                deliveryFee = data.fee;
+                                deliveryFee = 0;
                             }
                         } else {
                             if (data.out_of_coverage_action === 'manual') {
                                 window.isManualQuote = true;
                                 window.outOfCoverageReject = false;
-                                document.getElementById('sum-delivery-fee').innerText = '₱0.00 (TBD)';
                                 deliveryFee = 0;
                             } else if (data.out_of_coverage_action === 'reject') {
                                 window.isManualQuote = false;
                                 window.outOfCoverageReject = true;
-                                document.getElementById('sum-delivery-fee').innerHTML = '<span style="color:red;">Out of Coverage</span>';
                                 deliveryFee = 0;
                             } else {
                                 window.isManualQuote = false;
                                 window.outOfCoverageReject = false;
-                                deliveryFee = data.base_fee || DEFAULT_FEE;
+                                deliveryFee = 0;
                             }
                         }
                     }
                 } catch (e) { console.error('Fee fetch error', e); }
             } else if (fulfillment === 'delivery') {
-                deliveryFee = window.isServiceOnly ? 0 : DEFAULT_FEE;
+                deliveryFee = 0;
                 window.isManualQuote = false;
                 window.outOfCoverageReject = false;
             }
@@ -1525,29 +1499,26 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (data.is_manual_quote) {
                                 window.isManualQuote = true;
                                 window.outOfCoverageReject = false;
-                                document.getElementById('sum-delivery-fee').innerText = '₱0.00 (TBD)';
                                 deliveryFee = 0;
                             } else {
                                 window.isManualQuote = false;
                                 window.outOfCoverageReject = false;
-                                deliveryFee = data.fee;
+                                deliveryFee = 0;
                             }
                         } else {
                             if (data.out_of_coverage_action === 'manual') {
                                 window.isManualQuote = true;
                                 window.outOfCoverageReject = false;
-                                document.getElementById('sum-delivery-fee').innerText = '₱0.00 (TBD)';
                                 deliveryFee = 0;
                             } else if (data.out_of_coverage_action === 'reject') {
                                 window.isManualQuote = false;
                                 window.outOfCoverageReject = true;
-                                document.getElementById('sum-delivery-fee').innerHTML = '<span style="color:red;">Out of Coverage</span>';
                                 deliveryFee = 0;
                             } else {
                                 // Default to base fee if action is something else
                                 window.isManualQuote = false;
                                 window.outOfCoverageReject = false;
-                                deliveryFee = data.base_fee || DEFAULT_FEE;
+                                deliveryFee = 0;
                             }
                         }
                     }
@@ -1556,14 +1527,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             hiddenInput.value = "";
             if (fulfillment === 'delivery') {
-                deliveryFee = window.isServiceOnly ? 0 : DEFAULT_FEE;
+                deliveryFee = 0;
                 window.isManualQuote = false;
             }
-        }
-
-        if (window.isManualQuote) {
-            const feeEl = document.getElementById('sum-delivery-fee');
-            if (feeEl) feeEl.innerText = 'TBD';
         }
 
         updateCheckoutSummary();

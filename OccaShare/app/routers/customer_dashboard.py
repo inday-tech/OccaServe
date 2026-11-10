@@ -49,6 +49,148 @@ def _is_legacy_food_order(booking: models.Booking) -> bool:
     )
 
 
+def _customer_booking_event_details(db: Session, booking: models.Booking) -> list[dict]:
+    """Build per-event modal data from the saved booking event records and live catalog names."""
+    requirements = booking.custom_requirements if isinstance(booking.custom_requirements, dict) else {}
+    saved_events = requirements.get("events")
+    if not isinstance(saved_events, list) or not saved_events:
+        return []
+
+    event_details = []
+    for index, saved in enumerate(saved_events, start=1):
+        if not isinstance(saved, dict):
+            continue
+        try:
+            package_id = int(saved.get("package_id") or 0)
+        except (TypeError, ValueError):
+            package_id = 0
+        package = db.query(models.CateringPackage).filter(
+            models.CateringPackage.id == package_id,
+            models.CateringPackage.caterer_id == booking.caterer_id,
+        ).first() if package_id else None
+        customization = saved.get("customization") if isinstance(saved.get("customization"), dict) else {}
+
+        inclusions = []
+        if package:
+            raw_inclusions = package.inclusions
+            if isinstance(raw_inclusions, list):
+                for item in raw_inclusions:
+                    if isinstance(item, str) and item.strip():
+                        inclusions.append({"name": item.strip(), "detail": "Included"})
+                    elif isinstance(item, dict) and (item.get("name") or item.get("title")):
+                        inclusions.append({
+                            "name": str(item.get("name") or item.get("title")),
+                            "detail": str(item.get("quantity") or item.get("unit") or "Included"),
+                        })
+            elif isinstance(raw_inclusions, dict):
+                inclusions.extend(
+                    {"name": str(name), "detail": str(detail) if isinstance(detail, str) else "Included"}
+                    for name, detail in raw_inclusions.items() if detail
+                )
+            elif isinstance(raw_inclusions, str) and raw_inclusions.strip():
+                inclusions.append({"name": raw_inclusions.strip(), "detail": "Included"})
+            if not inclusions:
+                for item in package.menu_items or []:
+                    if not item.is_addon:
+                        inclusions.append({"name": item.name, "detail": item.serving_size or "Food & beverage"})
+                for link in package.service_links or []:
+                    if link.service:
+                        inclusions.append({"name": link.service.name, "detail": f"{link.quantity or 1} included"})
+                for link in package.equipment_links or []:
+                    if link.equipment:
+                        inclusions.append({"name": link.equipment.name, "detail": f"{link.quantity or 1} included"})
+
+        selected = []
+        custom_rows = (
+            ("Food", customization.get("selected_food", [])),
+            ("Menu add-on", customization.get("selected_menu_extras", [])),
+            ("Service", customization.get("selected_services", [])),
+            ("Equipment", customization.get("selected_equipment", [])),
+        )
+        if customization:
+            for item_type, rows in custom_rows:
+                for item in rows if isinstance(rows, list) else []:
+                    if not isinstance(item, dict):
+                        continue
+                    try:
+                        qty = max(1, int(item.get("qty") or item.get("quantity") or 1))
+                    except (TypeError, ValueError):
+                        qty = 1
+                    price = float(item.get("price") or item.get("upgrade_fee") or 0)
+                    selected.append({
+                        "name": str(item.get("name") or item.get("item_name") or f"{item_type} selection"),
+                        "type": item_type,
+                        "quantity": qty,
+                        "unit": str(item.get("unit") or item.get("size") or ""),
+                        "price": price,
+                        "amount": float(item.get("subtotal") or 0),
+                        "included": bool(item.get("included")),
+                    })
+        else:
+            id_fields = (("menu_ids", models.MenuItem, "Food", "price"),
+                         ("service_ids", models.Service, "Service", "selling_price"),
+                         ("equipment_ids", models.Equipment, "Equipment", "rental_price"))
+            included_ids = {
+                "menu_ids": {item.id for item in (package.menu_items or []) if package} if package else set(),
+                "service_ids": {link.service_id for link in (package.service_links or []) if package} if package else set(),
+                "equipment_ids": {link.equipment_id for link in (package.equipment_links or []) if package} if package else set(),
+            }
+            for field, model, item_type, price_field in id_fields:
+                raw_ids = saved.get(field, [])
+                if not isinstance(raw_ids, list):
+                    continue
+                ids = {int(value) for value in raw_ids if str(value).isdigit()}
+                if item_type == "Food":
+                    catalog = {item.id: item for item in db.query(model).filter(
+                        model.id.in_(ids), model.caterer_id == booking.caterer_id
+                    ).all()} if ids else {}
+                else:
+                    catalog = {item.id: item for item in db.query(model).filter(
+                        model.id.in_(ids), model.caterer_id == booking.caterer_id
+                    ).all()} if ids else {}
+                for item_id in sorted(ids - included_ids[field]):
+                    item = catalog.get(item_id)
+                    if item:
+                        price = float(getattr(item, "addon_price", 0) or getattr(item, price_field, 0) or 0)
+                        selected.append({"name": item.name, "type": item_type, "quantity": 1, "unit": "", "price": price, "amount": None, "included": False})
+
+        breakdown = saved.get("price_breakdown") if isinstance(saved.get("price_breakdown"), dict) else {}
+        has_saved_breakdown = "subtotal" in breakdown or "estimated_subtotal" in saved or "estimated_total" in customization
+        if not breakdown and customization:
+            breakdown = {
+                "package": customization.get("base_package_total", 0),
+                "menu": float(customization.get("food_upgrade_total") or 0)
+                    + float(customization.get("menu_extras_total") or 0)
+                    - float(customization.get("food_removal_credit") or 0),
+                "equipment": customization.get("equipment_total", 0),
+                "services": customization.get("services_total", 0),
+                "subtotal": customization.get("estimated_total", 0),
+            }
+        event_details.append({
+            "number": index,
+            "name": str(saved.get("event_name") or f"Event {index}"),
+            "type": str(saved.get("event_type") or "Event"),
+            "date": str(saved.get("event_date") or (booking.event_date.isoformat() if index == 1 and booking.event_date else "")),
+            "ingress": str(saved.get("ingress") or (booking.event_time.strftime("%H:%M") if index == 1 and booking.event_time else "")),
+            "egress": str(saved.get("egress") or (booking.event_end_time.strftime("%H:%M") if index == 1 and booking.event_end_time else "")),
+            "guests": int(saved.get("guest_count") or 0),
+            "celebrant": str(saved.get("celebrant_name") or ""),
+            "theme": str(saved.get("theme_motif") or ""),
+            "special_requests": str(saved.get("special_requests") or customization.get("special_requests") or ""),
+            "package_id": package_id,
+            "package_name": package.name if package else "Package details unavailable",
+            "package_description": package.description or "" if package else "",
+            "inclusions": inclusions,
+            "selected_items": selected,
+            "has_breakdown": has_saved_breakdown,
+            "breakdown": {
+                key: float(breakdown.get(key) or (saved.get("estimated_subtotal") if key == "subtotal" else 0) or 0)
+                for key in ("package", "menu", "equipment", "services", "subtotal")
+            },
+        })
+    return event_details
+
+
 @router.get("/dashboard", response_class=HTMLResponse)
 async def customer_dashboard(
     request: Request, 
@@ -138,11 +280,9 @@ async def customer_dashboard(
             
         # Safe Amount Formatting
         try:
-            if b.total_amount is not None:
-                amount = float(b.total_amount)
-                b_data["display_amount"] = f"₱{amount:,.2f}"
-            else:
-                b_data["display_amount"] = "₱0.00"
+            from ..services.payment_service import PaymentService
+            amount = PaymentService.booking_total(b)
+            b_data["display_amount"] = f"₱{amount:,.2f}"
         except:
             b_data["display_amount"] = f"₱{b.total_amount or '0.00'}"
             
@@ -500,6 +640,10 @@ async def customer_bookings(
         "user": user,
         "bookings": sorted(active_bookings, key=lambda x: x.id, reverse=True),
         "payment_summaries": payment_summaries,
+        "modal_event_details": {
+            booking.id: _customer_booking_event_details(db, booking)
+            for booking in active_bookings
+        },
         "booking_status_displays": booking_status_displays,
         "upcoming_booking_ids": upcoming_booking_ids,
         "initial_stat_filter": view if view in {"upcoming", "paid", "balance", "action"} else "all",
@@ -625,18 +769,17 @@ async def view_secure_document(
         raise HTTPException(status_code=404, detail="Booking not found")
         
     # We will reuse the caterer's contract view or create a specific public invoice template
+    wconfig = db.query(models.WebsiteConfig).first()
+    from ..services.payment_service import PaymentService
+    payment_summary = PaymentService.get_payment_summary(booking)
     quotation = booking.quotation
     if not quotation:
         quotation = {
-            "total_amount": booking.total_amount,
+            "total_amount": payment_summary["total_amount"],
             "package_details": {"name": booking.event_type},
             "addons": [],
             "terms": "Standard terms apply."
         }
-        
-    wconfig = db.query(models.WebsiteConfig).first()
-    from ..services.payment_service import PaymentService
-    payment_summary = PaymentService.get_payment_summary(booking)
     reservation = payment_summary["required_deposit"]
         
     return templates.TemplateResponse("customer/public_invoice.html", {

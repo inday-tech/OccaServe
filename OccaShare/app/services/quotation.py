@@ -97,6 +97,11 @@ class QuotationService:
             else:
                 retained_addons.append(addon)
 
+        # Older drafts stored the automatically calculated zone fee directly
+        # on the booking total, without a separate quotation add-on row.
+        if getattr(booking, "travel_fee_status", None) == "calculated":
+            transport_total = max(transport_total, Decimal(str(booking.travel_fee or 0)))
+
         if transport_total <= 0:
             return False
 
@@ -106,8 +111,16 @@ class QuotationService:
         )
         quotation.addons = retained_addons
         quotation.total_amount = float(new_total)
+        package_details = quotation.package_details if isinstance(quotation.package_details, dict) else {}
+        package_details["transportation_total"] = 0
+        package_details["base_amount"] = float(new_total)
+        if "customized_total" in package_details:
+            package_details["customized_total"] = float(new_total)
+        quotation.package_details = package_details
         booking.total_amount = float(new_total)
         booking.total_price = float(new_total)
+        booking.travel_fee = 0.0
+        booking.travel_fee_status = "pending"
         deposit_percent = Decimal(str(quotation.downpayment_percent or 30))
         booking.reservation_fee = float(
             (new_total * deposit_percent / Decimal("100")).quantize(Decimal("0.01"))
@@ -281,8 +294,8 @@ class QuotationService:
                 "subtotal": float(subtotal),
             })
 
-        transportation = Decimal(str(booking.travel_fee or 0)) if booking.travel_fee_status == "calculated" else Decimal("0")
-        total = event_subtotal + transportation
+        transportation = Decimal("0")
+        total = event_subtotal
         if downpayment_percent < 20 or downpayment_percent > 100 or downpayment_percent % 5:
             downpayment_percent = 30
         details = {
@@ -487,12 +500,7 @@ class QuotationService:
         except Exception:
             food_removal_credit = Decimal("0")
         customized_subtotal = max(Decimal("0"), base_total + food_total + menu_extras_total + services_total + equipment_total - food_removal_credit)
-        transportation_total = (
-            Decimal(str(booking.travel_fee or 0))
-            if getattr(booking, "travel_fee_status", None) == "calculated"
-            else Decimal("0")
-        )
-        customized_subtotal += transportation_total
+        transportation_total = Decimal("0")
 
         addons = []
         total_amount = customized_subtotal

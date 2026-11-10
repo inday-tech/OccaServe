@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from typing import Optional
 from datetime import date, time, datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 from ..db import database, models
 from ..core import security as auth
 from ..services.verification import verification_service
@@ -23,7 +22,7 @@ from ..services.notification import NotificationService
 from ..services.payment_verification import payment_verification_service
 from ..services.booking_validator import BookingValidator
 from ..services.payment_deadline import format_payment_deadline
-from ..services.package_pricing import PackagePricingError, load_and_calculate_customization
+from ..services.package_pricing import PackagePricingError, compact_customization_payload, load_and_calculate_customization
 from ..services.booking_duration import expected_same_day_end_time
 from ..core.utils import is_customer_profile_complete, is_valid_ph_coordinates
 from ..core.location_validation import validate_location_details
@@ -91,6 +90,163 @@ async def get_booking_invoice_data(
             "amount": remaining_charge if line_items else total,
         })
 
+    invoice_events = []
+    def invoice_amount(value):
+        try:
+            return round(float(value or 0), 2)
+        except (TypeError, ValueError):
+            return 0.0
+
+    quotation_details = (
+        booking.quotation.package_details
+        if booking.quotation and isinstance(booking.quotation.package_details, dict)
+        else {}
+    )
+    quoted_events = quotation_details.get("events") if isinstance(quotation_details.get("events"), list) else None
+    saved_events = quoted_events or (
+        (booking.custom_requirements or {}).get("events", [])
+        if isinstance(booking.custom_requirements, dict) else []
+    )
+    if isinstance(saved_events, list):
+        for index, event in enumerate(saved_events, start=1):
+            if not isinstance(event, dict):
+                continue
+            try:
+                event_package_id = int(event.get("package_id") or 0)
+            except (TypeError, ValueError):
+                event_package_id = 0
+            event_package = db.query(models.CateringPackage).filter(
+                models.CateringPackage.id == event_package_id,
+                models.CateringPackage.caterer_id == booking.caterer_id,
+            ).first()
+            breakdown = event.get("price_breakdown") if isinstance(event.get("price_breakdown"), dict) else {}
+            customization = event.get("customization") if isinstance(event.get("customization"), dict) else {}
+            if not breakdown and customization:
+                breakdown = {
+                    "package": customization.get("base_package_total") or 0,
+                    "menu": float(customization.get("food_upgrade_total") or 0)
+                        + float(customization.get("menu_extras_total") or 0)
+                        - float(customization.get("food_removal_credit") or 0),
+                    "equipment": customization.get("equipment_total") or 0,
+                    "services": customization.get("services_total") or 0,
+                    "subtotal": event.get("estimated_subtotal") or customization.get("estimated_total") or 0,
+                }
+            try:
+                event_guest_count = max(int(event.get("guest_count") or 0), 0)
+            except (TypeError, ValueError):
+                event_guest_count = 0
+            invoice_events.append({
+                "name": str(event.get("event_name") or f"Event {index}"),
+                "type": str(event.get("event_type") or "Event"),
+                "date": str(event.get("event_date") or (booking.event_date.isoformat() if index == 1 and booking.event_date else "")),
+                "time": str(event.get("ingress") or (booking.event_time.strftime("%H:%M") if index == 1 and booking.event_time else "")),
+                "end_time": str(event.get("egress") or (booking.event_end_time.strftime("%H:%M") if index == 1 and booking.event_end_time else "")),
+                "guest_count": event_guest_count,
+                "package_name": event_package.name if event_package else str(event.get("package_name") or "Package details unavailable"),
+                "subtotal": invoice_amount(breakdown.get("subtotal") or event.get("estimated_subtotal")),
+                "breakdown": {
+                    key: invoice_amount(breakdown.get(key))
+                    for key in ("package", "menu", "equipment", "services")
+                },
+            })
+    # These are the saved package/customization amounts for each event. Do not
+    # turn an unexplained difference from the booking total into a transport fee.
+    if invoice_events:
+        line_items = []
+        for event in invoice_events:
+            event_line_count = 0
+            event_line_total = 0.0
+            for key, label in (("package", "Package"), ("menu", "Menu"), ("services", "Services"), ("equipment", "Equipment")):
+                amount = event["breakdown"][key]
+                if amount != 0:
+                    line_items.append({
+                        "description": f"{event['name']} · {label}",
+                        "quantity": 1,
+                        "amount": amount,
+                    })
+                    event_line_count += 1
+                    event_line_total += amount
+            # Older saved events may only have a subtotal. Preserve that saved
+            # event amount without inventing a category or transportation fee.
+            if event_line_count == 0:
+                if event["subtotal"] > 0:
+                    line_items.append({
+                        "description": f"{event['name']} · {event['package_name']}",
+                        "quantity": 1,
+                        "amount": event["subtotal"],
+                    })
+                    event_line_count = 1
+                    event_line_total = event["subtotal"]
+            event_difference = round(event["subtotal"] - event_line_total, 2)
+            if event_line_count and abs(event_difference) > 0.01:
+                line_items.append({
+                    "description": f"{event['name']} · Other saved event charges",
+                    "quantity": 1,
+                    "amount": event_difference,
+                })
+
+    if booking.quotation and not invoice_events:
+        line_items = []
+
+    if booking.quotation and (not invoice_events or quoted_events):
+        quotation_addons = booking.quotation.addons if isinstance(booking.quotation.addons, list) else []
+        for addon in quotation_addons:
+            if not isinstance(addon, dict):
+                continue
+            if addon.get("id") == "travel_fee" and booking.travel_fee_status == "calculated":
+                continue
+            amount = invoice_amount(addon.get("price"))
+            if amount:
+                line_items.append({
+                    "description": str(addon.get("name") or addon.get("description") or "Quoted add-on"),
+                    "quantity": max(int(addon.get("quantity") or 1), 1),
+                    "amount": amount,
+                })
+
+        if not invoice_events and not line_items:
+            package_total = quotation_details.get("base_package_total")
+            if package_total is not None:
+                quote_components = (
+                    ("Package", invoice_amount(package_total)),
+                    ("Menu", invoice_amount(quotation_details.get("food_upgrade_total"))
+                        + invoice_amount(quotation_details.get("menu_extras_total"))
+                        - invoice_amount(quotation_details.get("food_removal_credit"))),
+                    ("Services", invoice_amount(quotation_details.get("services_total"))),
+                    ("Equipment", invoice_amount(quotation_details.get("equipment_total"))),
+                )
+                for label, amount in quote_components:
+                    if amount:
+                        line_items.append({"description": label, "quantity": 1, "amount": amount})
+            else:
+                base_amount = invoice_amount(quotation_details.get("base_amount"))
+                if base_amount:
+                    line_items.append({
+                        "description": str(quotation_details.get("name") or (booking.package.name if booking.package else "Booking package")),
+                        "quantity": 1,
+                        "amount": base_amount,
+                    })
+
+        line_total = round(sum(invoice_amount(item.get("amount")) for item in line_items), 2)
+        quote_difference = round(total - line_total, 2)
+        if abs(quote_difference) > 0.01:
+            line_items.append({
+                "description": "Other confirmed quotation charges",
+                "quantity": 1,
+                "amount": quote_difference,
+            })
+
+    # Keep the displayed breakdown mathematically tied to the payable total,
+    # including event based bookings whose saved component totals are partial.
+    if invoice_events and not booking.quotation:
+        event_line_total = round(sum(invoice_amount(item.get("amount")) for item in line_items), 2)
+        event_difference = round(total - event_line_total, 2)
+        if abs(event_difference) > 0.01:
+            line_items.append({
+                "description": "Other confirmed event charges",
+                "quantity": 1,
+                "amount": event_difference,
+            })
+
     payment_status = PaymentService.display_payment_label(booking, summary)
     pending_initial = (booking.payment_status or "").strip().lower() in {
         "proof_submitted", "cash_payment_requested", "pending_verification"
@@ -142,13 +298,18 @@ async def get_booking_invoice_data(
             "event_type": booking.event_type or "Event",
             "event_date": booking.event_date.isoformat() if booking.event_date else "",
             "event_time": booking.event_time.strftime("%I:%M %p") if booking.event_time else "",
+            "event_end_time": booking.event_end_time.strftime("%I:%M %p") if booking.event_end_time else "",
             "guest_count": int(booking.guest_count or 0),
+            "events": invoice_events,
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "payment_method": booking.payment_method or "Not selected",
             "payment_status": payment_status,
             "total_amount": total,
             "verified_paid": round(float(summary.get("verified_paid") or 0), 2),
+            "pending_review": round(float(summary.get("pending_review") or 0), 2),
             "remaining_balance": round(float(summary.get("remaining_balance") or 0), 2),
+            "remaining_after_verification": round(float(summary.get("remaining_after_verification") or 0), 2),
+            "required_deposit": round(float(summary.get("required_deposit") or 0), 2),
             "line_items": line_items,
             "payments": verified_payments,
         },
@@ -1110,30 +1271,9 @@ async def alacarte_checkout_submit(
                 if security_deposit_amount > 0:
                     booking.security_deposit_status = "held" if payment_status in ["paid", "proof_submitted"] else "unpaid"
                 
-                if fulfillment == "delivery" and province and municipality:
-                    caterer = db.query(models.CatererProfile).get(caterer_id)
-                    if caterer:
-                        zone = db.query(models.DeliveryZone).filter(
-                            models.DeliveryZone.caterer_id == caterer.id,
-                            models.DeliveryZone.province.ilike(f"%{province}%"),
-                            models.DeliveryZone.city_municipality.ilike(f"%{municipality}%")
-                        ).first()
-                        if zone:
-                            if zone.is_manual_quote:
-                                booking.travel_fee_status = "manual_quote"
-                                booking.travel_fee = 0.0
-                            else:
-                                booking.travel_fee_status = "calculated"
-                                booking.travel_fee = zone.fee
-                        else:
-                            if caterer.out_of_coverage_action == "manual" or (
-                                package and package.pricing_mode == "fixed" and caterer.out_of_coverage_action == "reject"
-                            ):
-                                booking.travel_fee_status = "manual_quote"
-                                booking.travel_fee = 0.0
-                            else:
-                                booking.travel_fee_status = "calculated"
-                                booking.travel_fee = caterer.base_delivery_fee or 150.0
+                if fulfillment == "delivery":
+                    booking.travel_fee_status = "pending"
+                    booking.travel_fee = 0.0
                 else:
                     booking.travel_fee_status = "waived"
                     booking.travel_fee = 0.0
@@ -1183,28 +1323,9 @@ async def alacarte_checkout_submit(
                 }
             )
             
-            if fulfillment == "delivery" and province and municipality:
-                caterer = db.query(models.CatererProfile).get(caterer_id)
-                if caterer:
-                    zone = db.query(models.DeliveryZone).filter(
-                        models.DeliveryZone.caterer_id == caterer.id,
-                        models.DeliveryZone.province.ilike(f"%{province}%"),
-                        models.DeliveryZone.city_municipality.ilike(f"%{municipality}%")
-                    ).first()
-                    if zone:
-                        if zone.is_manual_quote:
-                            booking.travel_fee_status = "manual_quote"
-                            booking.travel_fee = 0.0
-                        else:
-                            booking.travel_fee_status = "calculated"
-                            booking.travel_fee = zone.fee
-                    else:
-                        if caterer.out_of_coverage_action == "manual":
-                            booking.travel_fee_status = "manual_quote"
-                            booking.travel_fee = 0.0
-                        else:
-                            booking.travel_fee_status = "calculated"
-                            booking.travel_fee = caterer.base_delivery_fee or 150.0
+            if fulfillment == "delivery":
+                booking.travel_fee_status = "pending"
+                booking.travel_fee = 0.0
             else:
                 booking.travel_fee_status = "waived"
                 booking.travel_fee = 0.0
@@ -1358,8 +1479,10 @@ async def alacarte_checkout_submit(
                     deposit_rate = float(eq.security_deposit_pct) / 100.0
                     total_security_deposit += (float(eq.cost_value) * deposit_rate) * int(b_item.quantity or 1)
 
-        server_delivery_fee = float(booking.travel_fee or 0.0)
-        recalculated_total = round(total_items_subtotal + server_delivery_fee + total_security_deposit, 2)
+        # Transportation is excluded until the caterer explicitly adds it.
+        booking.travel_fee = 0.0
+        booking.travel_fee_status = "pending"
+        recalculated_total = round(total_items_subtotal + total_security_deposit, 2)
 
         booking.total_amount = recalculated_total
         booking.total_price = recalculated_total
@@ -1631,7 +1754,7 @@ async def customize_package_page(
     raw_guest_count = guest_count or sess_data.get("guest_count") or package.min_guests or caterer.min_pax or 50
     try:
         initial_guest_count = min(
-            max(int(raw_guest_count), int(package.min_guests or caterer.min_pax or 10)),
+            max(int(raw_guest_count), int(package.min_guests or caterer.min_pax or 50)),
             int(package.max_guests or 999999),
         )
     except (ValueError, TypeError):
@@ -1728,12 +1851,13 @@ async def save_customization_selection(
         )
 
     booking_data = request.session.get("booking_data", {})
+    compact_customization = compact_customization_payload(parsed_customization)
     if event_id:
-        parsed_customization["event_id"] = str(event_id)
+        compact_customization["event_id"] = str(event_id)
         event_customizations = booking_data.get("event_customizations", {})
         if not isinstance(event_customizations, dict):
             event_customizations = {}
-        event_customizations[str(event_id)] = parsed_customization
+        event_customizations[str(event_id)] = compact_customization
         booking_data["event_customizations"] = event_customizations
         request.session["booking_data"] = booking_data
         return RedirectResponse(url="/bookings/step/details", status_code=303)
@@ -1743,8 +1867,9 @@ async def save_customization_selection(
     booking_data["user_id"] = user.id
     # Prevent step_details_page from reopening an unrelated old draft.
     booking_data.pop("booking_id", None)
-    booking_data["customization"] = parsed_customization
-    booking_data["guest_count"] = parsed_customization["guest_count"]
+    booking_data["customization"] = compact_customization
+    booking_data["guest_count"] = compact_customization["guest_count"]
+    booking_data["special_requests"] = compact_customization.get("special_requests", "")
     booking_data["custom_estimated_total"] = parsed_customization["estimated_total"]
     request.session["booking_data"] = booking_data
 
@@ -2088,8 +2213,9 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
             "price": float(p.price or p.price_per_head or 0),
             "price_unit": p.price_unit or 'per_guest',
             "additional_guest_price": float(p.additional_guest_price or 0),
-            "min_guests": p.min_guests or caterer.min_pax or 1,
+            "min_guests": p.min_guests or caterer.min_pax or 50,
             "max_guests": int(p.max_guests or 999999),
+            "max_guests_display": int(p.max_guests) if p.max_guests else "No maximum",
             "service_duration": int(p.service_duration or 0),
             "booking_lead_time": p.booking_lead_time or caterer.booking_lead_time or 0,
             "grouped_inclusions": get_package_grouped_inclusions(p),
@@ -2159,10 +2285,34 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
     if not isinstance(initial_events, list):
         initial_events = []
 
+    saved_event_customizations = data.get("event_customizations", {})
+    if not isinstance(saved_event_customizations, dict):
+        saved_event_customizations = {}
+
+    def _rehydrate_saved_customization(value):
+        if not package or package.pricing_mode != "customizable" or not isinstance(value, dict):
+            return None
+        if int(value.get("package_id") or 0) != int(package.id):
+            return None
+        try:
+            hydrated = load_and_calculate_customization(db, package, value)
+        except (PackagePricingError, TypeError, ValueError):
+            return None
+        if value.get("event_id"):
+            hydrated["event_id"] = str(value["event_id"])
+        return hydrated
+
+    hydrated_event_customizations = {
+        str(event_key): hydrated
+        for event_key, value in saved_event_customizations.items()
+        if (hydrated := _rehydrate_saved_customization(value)) is not None
+    }
+    initial_customization = _rehydrate_saved_customization(data.get("customization"))
+
     event_options = {
         "packages": list(packages_map.values()),
-        "event_customizations": data.get("event_customizations", {}) if isinstance(data.get("event_customizations", {}), dict) else {},
-        "initial_customization": data.get("customization") if package and package.pricing_mode == "customizable" else None,
+        "event_customizations": hydrated_event_customizations,
+        "initial_customization": initial_customization,
         "menu_items": [{
             "id": item.id,
             "name": item.name,
@@ -2184,6 +2334,7 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
             "image_url": item.image_url or "",
             "unit_type": item.unit_type or "piece",
             "price": float(item.addon_price or item.rental_price or 0),
+            "available_qty": int(item.available_qty or 0),
         } for item in addon_equipment],
         "services": [{
             "id": item.id,
@@ -2192,6 +2343,10 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
             "image_url": item.image_url or "",
             "unit_type": item.unit_type or "per_event",
             "price": float(item.addon_price or item.selling_price or 0),
+            "capacity_type": item.capacity_type or "unit_based",
+            "staff_to_pax_ratio": int(item.staff_to_pax_ratio or 0),
+            "min_staff_required": int(item.min_staff_required or 1),
+            "minimum_hours": int(item.minimum_hours or 1),
         } for item in addon_services],
     }
 
@@ -2206,9 +2361,12 @@ async def step_details_page(request: Request, booking_id: Optional[int] = None, 
 
     grouped_inclusions = get_package_grouped_inclusions(package) if package else {"food": [], "services": [], "equipment": []}
 
-    customization = data.get("customization") if package and package.pricing_mode == "customizable" else None
+    customization = initial_customization
     if not customization and package and package.pricing_mode == "customizable" and booking and booking.custom_requirements:
-        customization = booking.custom_requirements.get("customization")
+        customization = _rehydrate_saved_customization(booking.custom_requirements.get("customization"))
+    if not customization and package and package.pricing_mode == "customizable":
+        first_event_id = str((initial_events[0] or {}).get("id") or "") if initial_events else ""
+        customization = hydrated_event_customizations.get(first_event_id) if first_event_id else None
 
     # Preserve the guest count entered on the customization step when the
     # user continues to event details. A new draft has no Booking row yet.
@@ -2507,9 +2665,9 @@ async def step_details_submit(
         for index, event_data in enumerate(submitted_events, start=1):
             event_name_for_day = str(event_data.get("event_name") or "").strip()
             if not event_name_for_day:
-                return _event_error(f"Day {index} needs an event name.")
+                return _event_error(f"Event {index} needs a name.")
             if len(event_name_for_day) > 100:
-                return _event_error(f"Day {index} event name must be 100 characters or fewer.")
+                return _event_error(f"Event {index} name must be 100 characters or fewer.")
             try:
                 event_date_value = date.fromisoformat(str(event_data.get("event_date") or ""))
                 event_ingress = time.fromisoformat(str(event_data.get("ingress") or ""))
@@ -2534,21 +2692,62 @@ async def step_details_submit(
                 return _event_error(f"Event {index} package is no longer available.")
             if package_id_int and event_package.id != package_id_int:
                 return _event_error("All event dates must use the selected main package.")
+            event_type_value = str(event_data.get("event_type") or event_package.service_type or "General Catering").strip()
+            event_type_other = str(event_data.get("event_type_other") or "").strip()
+            if event_type_value == "Other":
+                if not event_type_other:
+                    return _event_error(f"Event {index} needs a description for its type.")
+                event_type_value = event_type_other
+            if len(event_type_value) > 100:
+                return _event_error(f"Event {index} type must be 100 characters or fewer.")
+            celebrant_value = str(event_data.get("celebrant_name") or "").strip()
+            theme_value = str(event_data.get("theme_motif") or "").strip()
+            if len(celebrant_value) > 100 or len(theme_value) > 100:
+                return _event_error(f"Event {index} celebrant and theme fields must be 100 characters or fewer.")
+            event_special_requests = str(event_data.get("special_requests") or "").strip()
+            if len(event_special_requests) > 300:
+                return _event_error(f"Event {index} special requests must be 300 characters or fewer.")
             event_key = str(event_data.get("id") or f"event-{index}")
             event_customization = event_data.get("customization")
-            if not isinstance(event_customization, dict):
-                booking_data_for_events = request.session.get("booking_data", {})
-                saved_event_customizations = booking_data_for_events.get("event_customizations", {})
-                if isinstance(saved_event_customizations, dict):
-                    event_customization = saved_event_customizations.get(event_key)
-                if not isinstance(event_customization, dict) and index == 1:
-                    event_customization = booking_data_for_events.get("customization")
+            booking_data_for_events = request.session.get("booking_data", {})
+            saved_event_customizations = booking_data_for_events.get("event_customizations", {})
+            if not isinstance(saved_event_customizations, dict):
+                saved_event_customizations = {}
+            if (
+                not isinstance(event_customization, dict)
+                or int(event_customization.get("package_id") or 0) != event_package.id
+                or (
+                    str(event_customization.get("event_id") or "").strip()
+                    and str(event_customization.get("event_id") or "").strip() != event_key
+                )
+            ):
+                event_customization = None
+            if event_customization is None:
+                saved_for_event = saved_event_customizations.get(event_key)
+                if not isinstance(saved_for_event, dict):
+                    saved_for_event = next((
+                        value for value in saved_event_customizations.values()
+                        if isinstance(value, dict) and str(value.get("event_id") or "") == event_key
+                    ), None)
+                if isinstance(saved_for_event, dict) and int(saved_for_event.get("package_id") or 0) == event_package.id:
+                    event_customization = saved_for_event
+            if event_customization is None and index == 1:
+                primary_customization = booking_data_for_events.get("customization")
+                if (
+                    isinstance(primary_customization, dict)
+                    and int(primary_customization.get("package_id") or 0) == event_package.id
+                    and str(primary_customization.get("event_id") or event_key) == event_key
+                ):
+                    event_customization = primary_customization
             if isinstance(event_customization, dict):
                 customization_event_id = str(event_customization.get("event_id") or "").strip()
                 if customization_event_id and customization_event_id != event_key:
-                    return _event_error(f"Day {index} choices belong to a different event. Reopen its customization and try again.")
-            if isinstance(event_customization, dict) and int(event_customization.get("package_id") or 0) != event_package.id:
-                event_customization = None
+                    return _event_error(f"Event {index} choices belong to a different event. Reopen its customization and try again.")
+            if isinstance(event_customization, dict):
+                event_customization = dict(event_customization)
+                if "special_requests" not in event_data:
+                    event_special_requests = str(event_customization.get("special_requests") or "").strip()
+                event_customization["special_requests"] = event_special_requests
             if str(event_package.pricing_mode or "").lower() == "customizable":
                 if not isinstance(event_customization, dict):
                     return RedirectResponse(
@@ -2573,7 +2772,7 @@ async def step_details_submit(
                     )
             else:
                 event_customization = None
-            minimum_guests = int(event_package.min_guests or caterer.min_pax or 1)
+            minimum_guests = int(event_package.min_guests or caterer.min_pax or (50 if package_id_int else 1))
             maximum_guests = int(event_package.max_guests or 999999)
             if event_guests < minimum_guests or event_guests > maximum_guests:
                 return _event_error(f"Event {index} guest count must be between {minimum_guests} and {maximum_guests}.")
@@ -2604,7 +2803,8 @@ async def step_details_submit(
                     f"Event {index}: {availability_check.get('message', 'This date and time is unavailable.')}"
                 )
             package_lead_time = max(0, int(event_package.booking_lead_time or caterer.booking_lead_time or 0))
-            manila_today = datetime.now(ZoneInfo("Asia/Manila")).date()
+            manila_tz = timezone(timedelta(hours=8), "Asia/Manila")
+            manila_today = datetime.now(manila_tz).date()
             if event_date_value < manila_today + timedelta(days=package_lead_time):
                 return _event_error(
                     f"Event {index} must be scheduled at least {package_lead_time} days in advance for this package."
@@ -2767,10 +2967,15 @@ async def step_details_submit(
             validated_event_selections.append({
                 "id": event_key,
                 "event_name": event_name_for_day,
+                "event_type": event_type_value,
+                "celebrant_name": celebrant_value,
+                "theme_motif": theme_value,
+                "special_requests": event_special_requests,
                 "event_date": event_date_value.isoformat(),
                 "ingress": event_ingress.strftime("%H:%M"),
                 "egress": event_egress.strftime("%H:%M"),
                 "guest_count": event_guests,
+                "_minimum_guest_count": minimum_guests,
                 "package_id": event_package.id,
                 "menu_ids": menu_ids,
                 "equipment_ids": equipment_ids,
@@ -2992,7 +3197,11 @@ async def step_details_submit(
         # Update existing
         booking.package_id = package_id_int
         booking.event_name = event_name_clean
-        booking.event_type = package.service_type if package and package.service_type else final_event_type
+        booking.event_type = (
+            validated_event_selections[0].get("event_type")
+            if validated_event_selections
+            else package.service_type if package and package.service_type else final_event_type
+        )
         booking.event_date = event_date_parsed
         booking.event_time = event_time_parsed
         booking.event_end_time = event_end_time_parsed
@@ -3052,7 +3261,11 @@ async def step_details_submit(
             caterer_id=caterer_id,
             package_id=package_id_int,
             event_name=event_name_clean,
-            event_type=package.service_type if package and package.service_type else final_event_type,
+            event_type=(
+                validated_event_selections[0].get("event_type")
+                if validated_event_selections
+                else package.service_type if package and package.service_type else final_event_type
+            ),
             event_date=event_date_parsed,
             event_time=event_time_parsed,
             event_end_time=event_end_time_parsed,
@@ -3078,29 +3291,9 @@ async def step_details_submit(
         )
         db.add(booking)
     
-    # Update Travel Fee
-    if province and city:
-        zone = db.query(models.DeliveryZone).filter(
-            models.DeliveryZone.caterer_id == caterer.id,
-            models.DeliveryZone.province.ilike(f"%{province}%"),
-            models.DeliveryZone.city_municipality.ilike(f"%{city}%")
-        ).first()
-        if zone:
-            if zone.is_manual_quote:
-                booking.travel_fee_status = "manual_quote"
-                booking.travel_fee = 0.0
-            else:
-                booking.travel_fee_status = "calculated"
-                booking.travel_fee = zone.fee
-        else:
-            if package_is_customizable or caterer.out_of_coverage_action == "manual":
-                booking.travel_fee_status = "manual_quote"
-                booking.travel_fee = 0.0
-            else:
-                booking.travel_fee_status = "calculated"
-                booking.travel_fee = caterer.base_delivery_fee or 0.0
-    else:
-        booking.travel_fee_status = "pending"
+    # Leave transportation blank for the caterer to add later, if applicable.
+    booking.travel_fee_status = "pending"
+    booking.travel_fee = 0.0
 
     db.commit()
     db.refresh(booking)
@@ -3296,7 +3489,7 @@ async def step_details_submit(
         sess_cust["food_removal_credit"] = food_removal_credit
         sess_cust["services_total"] = srv_tot
         sess_cust["equipment_total"] = eq_tot
-        computed_total = max(0.0, base_pkg_tot + food_tot + menu_extras_tot + srv_tot + eq_tot - food_removal_credit + float(booking.travel_fee or 0.0))
+        computed_total = max(0.0, base_pkg_tot + food_tot + menu_extras_tot + srv_tot + eq_tot - food_removal_credit)
         sess_cust["estimated_total"] = computed_total
         
         c_req = booking.custom_requirements or {}
@@ -3426,7 +3619,7 @@ async def step_details_submit(
         custom_requirements = dict(booking.custom_requirements or {})
         custom_requirements["events"] = persisted_events
         booking.custom_requirements = custom_requirements
-        booking.total_amount = round(subtotal + float(booking.travel_fee or 0), 2)
+        booking.total_amount = round(subtotal, 2)
         booking.total_price = booking.total_amount
         booking.reservation_fee = booking.total_amount * 0.30
 

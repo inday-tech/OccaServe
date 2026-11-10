@@ -193,12 +193,52 @@ class NotificationService:
         event_name = booking.event_name or booking.event_type or f"{subject_prefix} {ref_id}"
         event_date_str = booking.event_date.strftime('%B %d, %Y') if booking.event_date else 'TBD'
         customer_name = f"{customer.first_name or ''} {customer.last_name or ''}".strip() or customer.email or "Customer"
+        saved_events = (booking.custom_requirements or {}).get("events", []) if isinstance(booking.custom_requirements, dict) else []
+        event_lines = []
+        event_confirmation_details = []
+        if isinstance(saved_events, list):
+            for index, event in enumerate(saved_events, start=1):
+                if not isinstance(event, dict):
+                    continue
+                try:
+                    package_id = int(event.get("package_id") or 0)
+                except (TypeError, ValueError):
+                    package_id = 0
+                event_package = booking.package if booking.package and booking.package.id == package_id else None
+                if package_id and event_package is None:
+                    event_package = db.query(models.CateringPackage).filter(
+                        models.CateringPackage.id == package_id,
+                        models.CateringPackage.caterer_id == booking.caterer_id,
+                    ).first()
+                package_name = event_package.name if event_package else "Package details unavailable"
+                event_date = str(event.get("event_date") or "Date TBD")
+                event_label = str(event.get("event_name") or f"Event {index}")
+                event_type = str(event.get("event_type") or "Event")
+                guests = int(event.get("guest_count") or 0)
+                event_lines.append(f"{event_label} ({event_type}) — {package_name}, {event_date}, {guests:,} guests")
+                event_confirmation_details.append({
+                    "event_name": event_label,
+                    "event_type": event_type,
+                    "package_name": package_name,
+                    "event_date": event_date,
+                    "ingress": str(event.get("ingress") or ""),
+                    "egress": str(event.get("egress") or ""),
+                    "guest_count": guests,
+                })
+        event_summary = " | ".join(event_lines[:4])
+        if len(event_lines) > 4:
+            event_summary += f" | +{len(event_lines) - 4} more event(s)"
+        notification_message = (
+            f"Review booking {ref_id} with {len(event_lines)} event(s): {event_summary}. From {customer_name}."
+            if event_lines else
+            f"Review {subject_prefix.lower()} {ref_id} for '{event_name}' on {event_date_str} from {customer_name}."
+        )
 
         # 1. In-App Notification to Caterer
         notif = models.Notification(
             user_id=user.id,
             title=f"New {subject_prefix} Received!",
-            message=f"Review {subject_prefix.lower()} {ref_id} for '{event_name}' on {event_date_str} from {customer_name}.",
+            message=notification_message,
             type="Booking",
             link=f"/caterer/bookings?open_booking={booking.id}"
         )
@@ -217,7 +257,12 @@ class NotificationService:
             event_date=event_date_str,
             total_amount=float(booking.total_amount) if booking.total_amount else None,
             guest_count=booking.guest_count,
-            venue=venue
+            venue=venue,
+            events=event_confirmation_details or None,
+        )
+
+        email_event_summary = "\n".join(event_lines) if event_lines else (
+            f"{event_name} — {event_date_str} — {booking.guest_count or 'TBD'} guests"
         )
         
         # Email to Caterer
@@ -226,9 +271,7 @@ class NotificationService:
             f"You have received a new {subject_prefix.lower()} request on OccaServe.\n\n"
             f"Reference: {ref_id}\n"
             f"Customer: {customer_name}\n"
-            f"Event: {event_name}\n"
-            f"Date: {event_date_str}\n"
-            f"Guests: {booking.guest_count or 'TBD'}\n\n"
+            f"Events and packages:\n{email_event_summary}\n\n"
             f"Please log in to your dashboard to review and respond to this request.\n\n"
             f"Best regards,\nThe OccaServe Team"
         )
@@ -241,11 +284,19 @@ class NotificationService:
         # 3. SMS Notification to Caterer
         phone = caterer.contact_phone or user.phone_number
         if phone:
-            sms_msg = f"OccaServe: New {subject_prefix.lower()} {ref_id} for '{event_name}' on {event_date_str}. Log in to review!"
+            sms_msg = (
+                f"OccaServe: New {subject_prefix.lower()} {ref_id} with {len(event_lines)} event(s). {event_lines[0]}. Log in to review!"
+                if event_lines else
+                f"OccaServe: New {subject_prefix.lower()} {ref_id} for '{event_name}' on {event_date_str}. Log in to review!"
+            )
             await NotificationService._send_sms(phone, sms_msg)
 
         # 4. Real-time WebSocket
-        await manager.broadcast_to_user(user.id, {"type": "booking_update", "message": f"New {subject_prefix.lower()}: {booking.event_name}"})
+        await manager.broadcast_to_user(user.id, {
+            "type": "booking_update",
+            "message": notification_message,
+            "booking_id": booking.id,
+        })
 
     @staticmethod
     async def notify_quotation_ready(db: Session, booking: models.Booking):

@@ -3,6 +3,7 @@ import ssl
 import logging
 import traceback
 import datetime
+from html import escape
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formatdate, make_msgid
@@ -125,7 +126,8 @@ class EmailService:
     def send_booking_confirmation(email: str, booking_id: int, doc_type: str = "booking", 
                                    event_name: str = None, caterer_name: str = None, 
                                    event_date: str = None, total_amount: float = None,
-                                   guest_count: int = None, venue: str = None):
+                                   guest_count: int = None, venue: str = None,
+                                   events: list = None):
         prefix = "ORD" if doc_type == "invoice" else "BK"
         ref_id = f"{prefix}-{booking_id:03d}"
         is_order = doc_type == "invoice"
@@ -136,13 +138,29 @@ class EmailService:
         manage_link = f"{site_url}/customer/{'orders' if is_order else 'bookings'}/manage/{booking_id}"
         
         details_rows = ""
-        if event_name:
+        if events:
+            for index, event in enumerate(events, start=1):
+                if not isinstance(event, dict):
+                    continue
+                event_title = escape(str(event.get("event_name") or "Event"))
+                event_type_value = escape(str(event.get("event_type") or "Event"))
+                package_title = escape(str(event.get("package_name") or "Package details unavailable"))
+                event_day = escape(str(event.get("event_date") or "Date TBD"))
+                event_time = escape(str(event.get("ingress") or "TBA"))
+                event_guests = int(event.get("guest_count") or 0)
+                details_rows += (
+                    f'<tr><td colspan="2" style="color:#c2410c;padding:12px 0 5px;border-bottom:1px solid #f1f5f9;font-weight:800;">Event {index}</td></tr>'
+                    f'<tr><td style="color:#64748b;padding:6px 0;">Event</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:6px 0;">{event_title} · {event_type_value}</td></tr>'
+                    f'<tr><td style="color:#64748b;padding:6px 0;">Package</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:6px 0;">{package_title}</td></tr>'
+                    f'<tr><td style="color:#64748b;padding:6px 0;border-bottom:1px solid #f1f5f9;">Date · Time · Guests</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:6px 0;border-bottom:1px solid #f1f5f9;">{event_day} · {event_time} · {event_guests:,} guests</td></tr>'
+                )
+        elif event_name:
             details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Event Name</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{event_name}</td></tr>'
         if caterer_name:
             details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Caterer</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{caterer_name}</td></tr>'
-        if event_date:
-            details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Event Date</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{event_date}</td></tr>'
-        if guest_count:
+        if not events and event_date:
+            details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Event Date</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{escape(str(event_date))}</td></tr>'
+        if not events and guest_count:
             details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Guest Count</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{guest_count:,} guests</td></tr>'
         if venue:
             details_rows += f'<tr><td style="color:#64748b;padding:10px 0;border-bottom:1px solid #f1f5f9;font-weight:500;">Venue</td><td style="text-align:right;font-weight:700;color:#1e293b;padding:10px 0;border-bottom:1px solid #f1f5f9;">{venue}</td></tr>'
@@ -178,7 +196,11 @@ class EmailService:
 </div>
 </body></html>"""
         
-        body = f"Hello,\n\nWe have received your {doc_label.lower()} request {ref_id}.\nEvent: {event_name or 'N/A'}\nCaterer: {caterer_name or 'N/A'}\nDate: {event_date or 'TBD'}\nTotal: ₱{total_amount:,.2f}" if total_amount else f"Hello,\n\nWe have received your {doc_label.lower()} request {ref_id}.\nWe will verify your details and contact you shortly.\n\nThank you for choosing OccaServe."
+        plain_event_details = "\n".join(
+            f"Event {index}: {event.get('event_name') or 'Event'} | {event.get('package_name') or 'Package'} | {event.get('event_date') or 'Date TBD'} | {event.get('guest_count') or 0} guests"
+            for index, event in enumerate(events or [], start=1) if isinstance(event, dict)
+        ) or f"Event: {event_name or 'N/A'}\nDate: {event_date or 'TBD'}"
+        body = f"Hello,\n\nWe have received your {doc_label.lower()} request {ref_id}.\n{plain_event_details}\nCaterer: {caterer_name or 'N/A'}\nTotal: ₱{total_amount:,.2f}" if total_amount else f"Hello,\n\nWe have received your {doc_label.lower()} request {ref_id}.\nWe will verify your details and contact you shortly.\n\nThank you for choosing OccaServe."
         return EmailService._send_email(email, subject, body, html_body)
 
     

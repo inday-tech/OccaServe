@@ -255,6 +255,22 @@ body, .customer-page-content { background: #f1f5f9 !important; }
 .bk-detail-list-item { display:flex; justify-content:space-between; gap:.75rem; padding:.65rem .15rem; border:0; border-bottom:1px solid #edf1f5; border-radius:0; background:transparent; font-size:.77rem; }
 .bk-detail-list-item span:first-child { min-width:0; overflow-wrap:anywhere; color:#334155; font-weight:650; }
 .bk-detail-list-item span:last-child { flex:0 1 45%; min-width:0; color:#64748b; font-size:.7rem; text-align:right; overflow-wrap:anywhere; }
+.bk-modal-event-list { grid-column:1/-1; display:grid; gap:.8rem; min-width:0; }
+.bk-modal [hidden] { display:none !important; }
+.bk-modal-event-card { min-width:0; padding:.85rem; border:1px solid #e2e8f0; border-radius:11px; background:#fff; }
+.bk-modal-event-card h3 { margin:0; color:#0f172a; font-size:.88rem; overflow-wrap:anywhere; }
+.bk-modal-event-subtitle { margin:.25rem 0 .65rem; color:#64748b; font-size:.72rem; line-height:1.5; overflow-wrap:anywhere; }
+.bk-modal-event-facts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem .8rem; }
+.bk-modal-event-fact { min-width:0; display:grid; gap:.15rem; }
+.bk-modal-event-fact span:first-child { color:#94a3b8; font-size:.62rem; font-weight:750; text-transform:uppercase; letter-spacing:.04em; }
+.bk-modal-event-fact span:last-child { color:#334155; font-size:.74rem; overflow-wrap:anywhere; }
+.bk-modal-event-package { margin-top:.7rem; padding-top:.65rem; border-top:1px solid #edf1f5; color:#334155; font-size:.74rem; overflow-wrap:anywhere; }
+.bk-modal-event-group-title { margin:.65rem 0 .1rem; color:#475569; font-size:.67rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+.bk-modal-event-items { display:grid; }
+.bk-modal-event-items > div,.bk-modal-event-breakdown-row { display:flex; justify-content:space-between; gap:.7rem; padding:.4rem 0; border-bottom:1px solid #edf1f5; color:#475569; font-size:.7rem; }
+.bk-modal-event-items > div span:first-child,.bk-modal-event-breakdown-row span:first-child { min-width:0; overflow-wrap:anywhere; }
+.bk-modal-event-items > div span:last-child,.bk-modal-event-breakdown-row span:last-child { flex:0 0 auto; text-align:right; white-space:nowrap; }
+.bk-modal-event-breakdown { display:grid; min-width:0; }
 .bk-detail-empty { grid-column:1/-1; padding:.8rem .15rem; border:0; color:#64748b; font-size:.78rem; }
 .bk-modal-foot { flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.55rem; padding:.75rem 1.25rem; border-top:1px solid var(--bk-border); background:#fff; }
 .bk-modal-actions { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:.55rem; }
@@ -410,7 +426,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             {% set needs_action = ps in ['reupload_requested','balance_reupload_requested'] or (bs in ['pending_payment','awaiting_payment'] and not waiting_for_review and not payment_already_submitted) %}
             {% set modal_payment_summary = payment_summaries.get(b.id, {}) %}
             {% set modal_paid = modal_payment_summary.get('verified_paid', b.amount_paid or 0)|float %}
-            {% if modal_paid <= 0 and ps in ['paid', 'fully_paid'] %}{% set modal_paid = b.total_amount or 0 %}{% elif modal_paid <= 0 and ps == 'deposit_paid' %}{% set modal_paid = b.reservation_fee or 0 %}{% endif %}
+            {% if modal_paid <= 0 and ps in ['paid', 'fully_paid'] %}{% set modal_paid = modal_payment_summary.get('total_amount', b.total_amount or b.total_price or 0) %}{% elif modal_paid <= 0 and ps == 'deposit_paid' %}{% set modal_paid = modal_payment_summary.get('required_deposit', b.reservation_fee or 0) %}{% endif %}
             {% set has_balance_due = bs not in ['cancelled', 'expired'] and modal_payment_summary.get('remaining_after_verification', 0)|float > 0 %}
             {% set modal_items = namespace(items=[]) %}
             {% for selected in b.selected_items or [] %}
@@ -465,7 +481,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                 data-review-amount="{{ '{:,.2f}'.format(modal_payment_summary.get('pending_review', 0)|float) }}"
                 data-balance-amount="{{ '{:,.2f}'.format(modal_payment_summary.get('remaining_after_verification', [((b.total_amount or 0) - modal_paid), 0]|max)|float) }}"
                 data-reservation-fee="{{ '{:,.2f}'.format(b.reservation_fee or 0) }}"
-                data-travel-fee="{{ '{:,.2f}'.format(b.package.transportation_cost if b.package and b.package.transportation_cost else (b.caterer.default_transport_cost or b.travel_fee or 0)) }}"
+                data-travel-fee="{{ '{:,.2f}'.format(b.travel_fee or 0) }}"
+                data-travel-fee-status="{{ (b.travel_fee_status or 'pending')|e }}"
                 data-payment-method="{{ (b.payment_method or '')|e }}"
                 data-payment-status-label="{{ ps|replace('_',' ')|title|e }}"
                 data-payment-records="{{ modal_payments.items|tojson|forceescape }}"
@@ -480,6 +497,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
                 data-contract-customer-signed="{{ 'true' if (b.contract and b.contract.customer_signed_at) or (b.quotation and b.quotation.customer_signed_at) else 'false' }}"
                 data-contract-caterer-signed="{{ 'true' if (b.contract and b.contract.caterer_signed_at) or (b.quotation and b.quotation.caterer_signed_at) else 'false' }}"
                 data-booking-history="{{ modal_history.items|tojson|forceescape }}"
+                data-event-details="{{ modal_event_details.get(b.id, [])|tojson|forceescape }}"
                 data-search="{{ (display_title or '')|lower }} {{ (b.caterer.business_name or '')|lower }} bk-{{ '%03d'|format(b.id) }} {{ booking_type_label|lower }}">
                 <td data-label="Booking">
                     <div class="cell-name">{{ display_title or 'Booking' }}</div>
@@ -585,6 +603,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             <button type="button" role="tab" aria-selected="false" class="bk-modal-tab" data-booking-pane="chat" onclick="switchBookingDetailTab('chat',this)">Chat</button>
         </nav>
         <div class="bk-modal-body is-active" id="bkPaneOverview" data-booking-pane-content="overview">
+            <div class="bk-modal-event-list" id="bkModalEventsOverview" hidden></div>
             <div class="bk-detail-item"><span class="bk-detail-label">Status</span><span class="bk-detail-value" id="bkModalStatus"></span></div>
             <section id="bkCancellationPanel" class="bk-detail-item wide bk-cancellation-panel" style="display:none;">
                 <div class="bk-cancellation-head">
@@ -625,6 +644,7 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             <div class="bk-detail-item wide"><span class="bk-detail-label">What happens next</span><span class="bk-detail-value" id="bkModalGuidance"></span></div>
         </div>
         <div class="bk-modal-body" id="bkPaneItems" data-booking-pane-content="items">
+            <div class="bk-modal-event-list" id="bkModalEventsItems" hidden></div>
             <div class="bk-detail-item wide"><span class="bk-detail-label">Selected package / service</span><span class="bk-detail-value" id="bkModalPackage"></span></div>
             <div class="bk-detail-item wide" id="bkModalPackageDescriptionItem"><span class="bk-detail-label">Package description</span><span class="bk-detail-value" id="bkModalPackageDescription"></span></div>
             <h3 class="bk-detail-section-title">Package inclusions</h3>
@@ -640,7 +660,8 @@ body, .customer-page-content { background: #f1f5f9 !important; }
             <div class="bk-detail-item"><span class="bk-detail-label">Under review</span><span class="bk-detail-value" id="bkModalUnderReview"></span></div>
             <div class="bk-detail-item"><span class="bk-detail-label">Balance after review</span><span class="bk-detail-value" id="bkModalBalance"></span></div>
             <div class="bk-detail-item"><span class="bk-detail-label">Reservation fee</span><span class="bk-detail-value" id="bkModalReservationFee"></span></div>
-            <div class="bk-detail-item"><span class="bk-detail-label">Transportation fee</span><span class="bk-detail-value" id="bkModalTravelFee"></span></div>
+            <div class="bk-detail-item" id="bkModalTravelFeeItem" style="display:none"><span class="bk-detail-label">Transportation fee</span><span class="bk-detail-value" id="bkModalTravelFee"></span></div>
+            <div class="bk-detail-item wide" id="bkModalEventPaymentBreakdownItem" hidden><span class="bk-detail-label">Per-event estimate</span><div class="bk-modal-event-breakdown" id="bkModalEventPaymentBreakdown"></div></div>
             <h3 class="bk-detail-section-title">Payment entries</h3>
             <div class="bk-detail-list" id="bkModalPaymentRecords"></div>
             <div class="bk-detail-item wide" id="bkModalReupload" hidden>
@@ -894,6 +915,44 @@ function parseDetailJson(value, fallback) {
 }
 
 let currentModalBookingId = null;
+async function refreshCustomerModalPaymentSummary() {
+    const bookingId = currentModalBookingId;
+    if (!bookingId) return;
+    try {
+        const response = await fetch(`/bookings/${encodeURIComponent(bookingId)}/invoice-data`, {
+            headers: { Accept: 'application/json' }, cache: 'no-store'
+        });
+        const result = await response.json();
+        const invoice = result?.invoice;
+        if (!response.ok || !result.success || !invoice || String(currentModalBookingId) !== String(bookingId)) return;
+        const money = value => `₱${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const values = {
+            amount: money(invoice.total_amount),
+            paidAmount: money(invoice.verified_paid),
+            reviewAmount: money(invoice.pending_review),
+            balanceAmount: money(invoice.remaining_after_verification),
+            reservationFee: money(invoice.required_deposit),
+            paymentStatusLabel: invoice.payment_status || 'Unpaid'
+        };
+        const row = Array.from(document.querySelectorAll('.bk-row')).find(item => String(item.dataset.bookingId) === String(bookingId));
+        if (row) Object.entries(values).forEach(([key, value]) => { row.dataset[key] = value.replace(/^₱/, ''); });
+        const fields = {
+            bkModalAmount: values.amount,
+            bkModalPaid: values.paidAmount,
+            bkModalUnderReview: values.reviewAmount,
+            bkModalBalance: values.balanceAmount,
+            bkModalReservationFee: values.reservationFee,
+            bkModalPaymentStatus: values.paymentStatusLabel
+        };
+        Object.entries(fields).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = value;
+        });
+    } catch (error) {
+        console.error('Could not refresh the latest booking totals.', error);
+    }
+}
+
 async function loadBookingDetailMessages() {
     const list = document.getElementById('bkModalChatMessages');
     const error = document.getElementById('bkChatError');
@@ -1033,6 +1092,130 @@ function renderDetailList(containerId, values, emptyMessage, formatter) {
     });
 }
 
+function formatModalEventDate(value) {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return value || 'Not set';
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+        .toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function formatModalEventTime(value) {
+    const text = String(value || '').trim();
+    if (!text) return 'Not set';
+    const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return text;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (hour > 23 || minute > 59) return text;
+    return `${hour % 12 || 12}:${match[2]} ${hour >= 12 ? 'PM' : 'AM'}`;
+}
+
+function addModalFact(container, label, value) {
+    const fact = document.createElement('div');
+    fact.className = 'bk-modal-event-fact';
+    const caption = document.createElement('span');
+    caption.textContent = label;
+    const detail = document.createElement('span');
+    detail.textContent = value || 'Not specified';
+    fact.append(caption, detail);
+    container.appendChild(fact);
+}
+
+function buildModalEventCard(event, mode, venue = '') {
+    const card = document.createElement('article');
+    card.className = 'bk-modal-event-card';
+    const heading = document.createElement('h3');
+    heading.textContent = `${event.name || `Event ${event.number || ''}`} · ${event.package_name || 'Package details unavailable'}`;
+    card.appendChild(heading);
+    const subtitle = document.createElement('p');
+    subtitle.className = 'bk-modal-event-subtitle';
+    subtitle.textContent = `${event.type || 'Event'} · ${formatModalEventDate(event.date)} · ${Number(event.guests || 0).toLocaleString()} guests`;
+    card.appendChild(subtitle);
+
+    if (mode === 'overview') {
+        const facts = document.createElement('div');
+        facts.className = 'bk-modal-event-facts';
+        addModalFact(facts, 'Event name', event.name);
+        addModalFact(facts, 'Event type', event.type);
+        addModalFact(facts, 'Event date', formatModalEventDate(event.date));
+        addModalFact(facts, 'Guests', `${Number(event.guests || 0).toLocaleString()} guests`);
+        addModalFact(facts, 'Ingress', formatModalEventTime(event.ingress));
+        addModalFact(facts, 'Egress', formatModalEventTime(event.egress));
+        if (event.celebrant) addModalFact(facts, 'Celebrant', event.celebrant);
+        if (event.theme) addModalFact(facts, 'Theme / motif', event.theme);
+        if (venue) addModalFact(facts, 'Venue', venue);
+        if (event.special_requests) addModalFact(facts, 'Special requests', event.special_requests);
+        card.appendChild(facts);
+        const packageLine = document.createElement('div');
+        packageLine.className = 'bk-modal-event-package';
+        packageLine.textContent = event.package_description || `Package ID ${event.package_id || 'unavailable'}`;
+        card.appendChild(packageLine);
+    } else {
+        if (event.package_description) {
+            const description = document.createElement('p');
+            description.className = 'bk-modal-event-subtitle';
+            description.textContent = event.package_description;
+            card.appendChild(description);
+        }
+        const addRows = (title, rows, detailFor) => {
+            if (!Array.isArray(rows) || !rows.length) return;
+            const label = document.createElement('h4');
+            label.className = 'bk-modal-event-group-title';
+            label.textContent = title;
+            card.appendChild(label);
+            const list = document.createElement('div');
+            list.className = 'bk-modal-event-items';
+            rows.forEach(item => {
+                const row = document.createElement('div');
+                const name = document.createElement('span');
+                const detail = document.createElement('span');
+                name.textContent = item.name || item.type || 'Booking item';
+                detail.textContent = detailFor(item);
+                row.append(name, detail);
+                list.appendChild(row);
+            });
+            card.appendChild(list);
+        };
+        addRows('Package inclusions', event.inclusions, item => item.detail || 'Included');
+        addRows('Selected items and add-ons', event.selected_items, item => {
+            const qty = Number(item.quantity || 1);
+            const unit = String(item.unit || '').toLowerCase();
+            const quantityText = item.type === 'Food' && qty > 1
+                ? `${qty.toLocaleString()} guests`
+                : (unit.includes('event') && qty === 1 ? 'Per event' : `${qty}${unit ? ` ${unit}` : ''}`);
+            const amountText = Number(item.amount) > 0
+                ? `₱${Number(item.amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : '';
+            return [item.included ? 'Included' : '', quantityText, amountText].filter(Boolean).join(' · ');
+        });
+        if (!event.inclusions?.length && !event.selected_items?.length) {
+            const empty = document.createElement('p');
+            empty.className = 'bk-modal-event-subtitle';
+            empty.textContent = 'No item selections were saved for this event.';
+            card.appendChild(empty);
+        }
+    }
+    return card;
+}
+
+function renderModalEventBreakdown(container, events) {
+    if (!container) return;
+    container.replaceChildren();
+    events.forEach(event => {
+        const breakdown = event.breakdown || {};
+        const row = document.createElement('div');
+        row.className = 'bk-modal-event-breakdown-row';
+        const title = document.createElement('span');
+        title.textContent = `${event.name || 'Event'} · ${event.package_name || 'Package'}`;
+        const amount = document.createElement('span');
+        amount.textContent = event.has_breakdown
+            ? `₱${Number(breakdown.subtotal || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : 'Not recorded';
+        row.append(title, amount);
+        container.appendChild(row);
+    });
+}
+
 function openBookingDetails(button, openPane = 'overview') {
     const row = button?.closest('.bk-row');
     const modal = document.getElementById('bookingDetailsModal');
@@ -1040,6 +1223,7 @@ function openBookingDetails(button, openPane = 'overview') {
     if (modal.parentElement !== document.body) document.body.appendChild(modal);
     const id = row.dataset.bookingId;
     currentModalBookingId = id;
+    refreshCustomerModalPaymentSummary();
     document.getElementById('bkPaneInvoice').dataset.bookingId = id;
     const status = row.dataset.status || '';
     const paymentStatus = row.dataset.paymentStatus || '';
@@ -1065,7 +1249,11 @@ function openBookingDetails(button, openPane = 'overview') {
     setText('bkModalUnderReview', `₱${row.dataset.reviewAmount || '0.00'}`);
     setText('bkModalBalance', `₱${row.dataset.balanceAmount || '0.00'}`);
     setText('bkModalReservationFee', `₱${row.dataset.reservationFee || '0.00'}`);
-    setText('bkModalTravelFee', `₱${row.dataset.travelFee || '0.00'}`);
+    const confirmedTravelFee = Number(String(row.dataset.travelFee || '0').replace(/,/g, ''));
+    const travelFeeItem = document.getElementById('bkModalTravelFeeItem');
+    const hasConfirmedTravelFee = row.dataset.travelFeeStatus === 'confirmed' && confirmedTravelFee > 0;
+    if (travelFeeItem) travelFeeItem.style.display = hasConfirmedTravelFee ? '' : 'none';
+    if (hasConfirmedTravelFee) setText('bkModalTravelFee', `₱${confirmedTravelFee.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
     setText('bkModalPaymentStatus', row.dataset.paymentStatusLabel || 'Pending');
     setText('bkModalPaymentMethod', row.dataset.paymentMethod || 'Not selected');
     setText('bkModalVenue', row.dataset.venue);
@@ -1076,6 +1264,46 @@ function openBookingDetails(button, openPane = 'overview') {
     const notesItem = document.getElementById('bkModalNotesItem');
     if (notesItem) notesItem.hidden = !row.dataset.specialRequests;
     setText('bkModalNotes', row.dataset.specialRequests || '');
+
+    const eventDetails = parseDetailJson(row.dataset.eventDetails, []);
+    const hasSavedEvents = Array.isArray(eventDetails) && eventDetails.length > 0;
+    const overviewEvents = document.getElementById('bkModalEventsOverview');
+    if (overviewEvents) {
+        overviewEvents.replaceChildren();
+        overviewEvents.hidden = !hasSavedEvents;
+        if (hasSavedEvents) eventDetails.forEach(event => overviewEvents.appendChild(buildModalEventCard(event, 'overview', row.dataset.venue || '')));
+    }
+    if (hasSavedEvents) {
+        ['bkModalType', 'bkModalEventName', 'bkModalCelebrant', 'bkModalDate', 'bkModalGuests', 'bkModalTime', 'bkModalEndTime', 'bkModalTheme', 'bkModalNotes'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element?.closest('.bk-detail-item')) element.closest('.bk-detail-item').hidden = true;
+        });
+    } else {
+        ['bkModalType', 'bkModalEventName', 'bkModalCelebrant', 'bkModalDate', 'bkModalGuests', 'bkModalTime', 'bkModalEndTime', 'bkModalTheme', 'bkModalNotes'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element?.closest('.bk-detail-item')) element.closest('.bk-detail-item').hidden = false;
+        });
+        if (notesItem) notesItem.hidden = !row.dataset.specialRequests;
+    }
+
+    const itemsEvents = document.getElementById('bkModalEventsItems');
+    if (itemsEvents) {
+        itemsEvents.replaceChildren();
+        itemsEvents.hidden = !hasSavedEvents;
+        if (hasSavedEvents) eventDetails.forEach(event => itemsEvents.appendChild(buildModalEventCard(event, 'items')));
+    }
+    const singleItemElements = [
+        'bkModalPackage', 'bkModalPackageDescriptionItem', 'bkModalInclusions', 'bkModalSelectedItems'
+    ].map(id => document.getElementById(id)).filter(Boolean);
+    singleItemElements.forEach(element => {
+        const target = element.matches('.bk-detail-item') || element.matches('.bk-detail-list')
+            ? element : (element.closest('.bk-detail-item') || element);
+        target.hidden = hasSavedEvents;
+    });
+    document.querySelectorAll('#bkPaneItems > .bk-detail-section-title').forEach(element => { element.hidden = hasSavedEvents; });
+    const eventPaymentBreakdown = document.getElementById('bkModalEventPaymentBreakdownItem');
+    if (eventPaymentBreakdown) eventPaymentBreakdown.hidden = !hasSavedEvents;
+    if (hasSavedEvents) renderModalEventBreakdown(document.getElementById('bkModalEventPaymentBreakdown'), eventDetails);
 
     const packageInclusions = parseDetailJson(row.dataset.packageInclusions, []);
     const packageItems = parseDetailJson(row.dataset.packageItems, []);
@@ -1136,9 +1364,13 @@ function openBookingDetails(button, openPane = 'overview') {
             detail: `${item.type || 'Item'} · Qty ${quantity}${unit ? ` ${unit}` : ''}`
         };
     }));
-    renderDetailList('bkModalInclusions', allPackageItems, 'No package inclusions were recorded.', values =>
+    renderDetailList('bkModalInclusions', allPackageItems, '', values =>
         values.map(item => [item.name, item.detail])
     );
+    const inclusionsList = document.getElementById('bkModalInclusions');
+    if (inclusionsList) inclusionsList.hidden = hasSavedEvents || allPackageItems.length === 0;
+    const inclusionHeading = inclusionsList?.previousElementSibling;
+    if (inclusionHeading) inclusionHeading.hidden = hasSavedEvents || allPackageItems.length === 0;
 
     const selectedItems = parseDetailJson(row.dataset.selectedItems, []);
     renderDetailList('bkModalSelectedItems', selectedItems, 'No separately selected items or add-ons.', values =>
@@ -1497,6 +1729,15 @@ if (!_origWsPatched) {
             console.error('Could not update booking details in real time.', error);
         }
     }
+    window.setInterval(() => {
+        if (document.getElementById('bookingDetailsModal')?.classList.contains('is-open') && currentModalBookingId) {
+            refreshCustomerModalPaymentSummary();
+            if (document.querySelector('[data-booking-pane-content="invoice"]')?.classList.contains('is-active')
+                && window.OccaBookingInvoice) {
+                window.OccaBookingInvoice.load(document.getElementById('bookingInvoiceHost'), currentModalBookingId);
+            }
+        }
+    }, 30000);
     _patchWS();
 }
 </script>

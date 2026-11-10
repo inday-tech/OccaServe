@@ -360,6 +360,31 @@
     .cust-flow-note { margin:-.25rem 0 1rem; color:#64748b; font-size:.84rem; line-height:1.5; }
     .cust-price-note { margin:.75rem 0 0; padding:.65rem .75rem; border-radius:9px; background:#f8fafc; color:#64748b; font-size:.74rem; line-height:1.45; }
     .cust-summary-card { position:static; top:auto; align-self:start; }
+    .calc-card { padding:1.1rem; border:1px solid #e2e8f0; border-radius:14px; box-shadow:0 5px 18px rgba(15,23,42,.08); }
+    .calc-title { display:flex; align-items:center; gap:.4rem; margin:0 0 .75rem; padding:0 0 .65rem; border-bottom:1px solid #f1f5f9; color:#0f172a; font-size:1rem; font-weight:800; }
+    .calc-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.65rem; align-items:start; margin-bottom:.6rem; color:#64748b; font-size:.8rem; }
+    .calc-row > * { min-width:0; overflow-wrap:anywhere; }
+    .calc-val { max-width:100%; color:#1e293b; font-weight:700; text-align:right; }
+    .calc-breakdown { margin:.25rem 0 .65rem; }
+    .calc-event-breakdown-item { padding:.55rem 0; border-top:1px solid #f1f5f9; color:#64748b; font-size:.74rem; }
+    .calc-event-breakdown-item > summary { display:flex; align-items:flex-start; justify-content:space-between; gap:.65rem; cursor:pointer; list-style:none; }
+    .calc-event-breakdown-item > summary::-webkit-details-marker { display:none; }
+    .calc-event-breakdown-item > summary::after { content:'+'; flex:0 0 auto; margin-left:auto; color:#94a3b8; }
+    .calc-event-breakdown-item[open] > summary::after { content:'−'; }
+    .calc-event-breakdown-item > summary strong { min-width:0; overflow-wrap:anywhere; color:#334155; font-size:.78rem; }
+    .calc-event-breakdown-item > summary b, .calc-event-lines b { color:#334155; font-weight:650; white-space:nowrap; }
+    .calc-event-lines { display:grid; gap:.32rem; margin-top:.55rem; padding-left:.45rem; }
+    .calc-event-lines > span { display:flex; justify-content:space-between; gap:.6rem; overflow-wrap:anywhere; }
+    .calc-event-lines > span > :first-child { min-width:0; }
+    .calc-event-lines .calc-event-subtotal { margin-top:.15rem; padding-top:.35rem; border-top:1px dashed #e2e8f0; color:#0f172a; font-weight:700; }
+    .cust-estimate-details { margin:.4rem 0 .25rem; }
+    .cust-estimate-details > summary { color:#475569; font-size:.74rem; font-weight:750; cursor:pointer; }
+    .cust-estimate-breakdown { display:grid; gap:.2rem; max-height:280px; overflow:auto; margin:.35rem 0 0; }
+    .calc-divider { height:1px; border-top:1px dashed #e2e8f0; margin:.8rem 0; }
+    .calc-total { display:flex; justify-content:space-between; align-items:baseline; gap:.6rem; margin:.5rem 0 0; padding:.75rem .85rem; border:1px solid #e2e8f0; border-radius:11px; background:#f8fafc; }
+    .total-label { color:#334155; font-size:.82rem; font-weight:700; }
+    .total-price { color:#ea580c; font-size:1.25rem; font-weight:900; text-align:right; overflow-wrap:anywhere; }
+    #custSpecialRequests::placeholder { color:#a8b2c1; opacity:1; }
     .cust-addon-sidebar { margin-top:.85rem; }
     .cust-sidebar-addon-section { padding:.9rem; }
     .cust-sidebar-addon-section .cust-section-header { margin-bottom:.7rem; }
@@ -876,8 +901,23 @@
         transform: none;
         box-shadow: none;
     }
-    .customize-package-banner { margin:0 0 .85rem; }
-    .customize-package-banner .cust-badge-type { display:inline-flex; padding:.35rem .65rem; border:1px solid #fed7aa; border-radius:999px; background:#fff7ed; color:#9a3412; font-size:.75rem; font-weight:700; }
+    .customize-package-banner { max-width:1120px; margin:0 auto 1.1rem; padding:1rem 1.15rem; border:1px solid #e2e8f0; border-radius:14px; background:linear-gradient(135deg,#fff 0%,#fffaf5 100%); }
+    .customize-package-banner .cust-badge-type { display:inline-flex; padding:.35rem .65rem; border:1px solid #fed7aa; border-radius:999px; background:#fff7ed; color:#9a3412; font-size:.72rem; font-weight:750; letter-spacing:.02em; }
+    .customize-package-banner .cust-flow-note { max-width:78ch; margin:.55rem 0 0; color:#475569; font-size:.82rem; line-height:1.55; overflow-wrap:anywhere; }
+    .cust-inline-notice { display:flex; align-items:flex-start; gap:.6rem; margin:0 0 .85rem; padding:.7rem .85rem; border:1px solid #fecaca; border-radius:10px; background:#fff7f7; color:#991b1b; font-size:.78rem; font-weight:600; line-height:1.45; overflow-wrap:anywhere; }
+    .cust-inline-notice i { flex:0 0 auto; margin-top:.1rem; }
+    .cust-guest-header { align-items:flex-start !important; gap:.6rem !important; margin-bottom:.75rem !important; padding-bottom:.65rem !important; }
+    .cust-guest-minimum { flex:0 0 auto; padding:.32rem .55rem; border:1px solid #fed7aa; border-radius:999px; background:#fff7ed; color:#9a3412; font-size:.72rem; font-weight:750; }
+    .cust-guest-layout { align-items:flex-start !important; gap:.85rem !important; }
+    .cust-guest-help { flex:1 1 250px; min-width:0; padding:.65rem .75rem; border:1px solid #e2e8f0; border-radius:9px; background:#fff; color:#64748b; font-size:.78rem; line-height:1.45; overflow-wrap:anywhere; }
+    .cust-guest-input-wrap { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; }
+    .cust-guest-input-wrap .form-input { max-width:100%; }
+    .cust-flow-note, .cust-section-card p, .cust-item-card, .customer-addon-copy, .menu-choice-description { overflow-wrap:anywhere; }
+    .cust-section-card { min-width:0; }
+    .cust-section-header, .cust-section-title { min-width:0; }
+    .cust-section-header > *, .cust-section-title { overflow-wrap:anywhere; }
+    .cust-item-card strong, .menu-choice-name, .menu-slot-name { overflow-wrap:anywhere; word-break:normal; }
+    .menu-choice-description { line-height:1.45; }
     @media (max-width: 992px) {
         #customizationForm { padding-bottom:4.75rem; }
         .cust-estimate-dock {
@@ -907,6 +947,11 @@
         .cust-layout-grid { display:flex; flex-direction:column; gap:.75rem; }
         .cust-sidebar-col { order:-1; position:static !important; top:auto !important; z-index:auto; align-self:stretch; }
         .cust-section-card { padding:.8rem !important; margin:0 0 .75rem !important; border-radius:12px !important; }
+        .customize-package-banner { margin-bottom:.75rem; padding:.8rem; border-radius:12px; }
+        .cust-guest-header > div:first-child { width:100%; flex-wrap:wrap; }
+        .cust-guest-minimum { margin-left:0; }
+        .cust-inline-notice { margin-bottom:.7rem; padding:.6rem .7rem; font-size:.74rem; }
+        .cust-guest-help { flex-basis:100%; }
         .cust-section-header { gap:.35rem; margin-bottom:.65rem; padding-bottom:.5rem; }
         .cust-section-title { font-size:.92rem !important; line-height:1.3; gap:.35rem; }
         .cust-tag-section { display:none !important; }
@@ -928,6 +973,9 @@
         .menu-cat-group { min-width:0; }
         .cust-section-card > div[style*="flex-direction: column"] { gap:.65rem !important; }
         .cust-summary-card { padding:.9rem !important; position:static; border-radius:12px; box-shadow:0 5px 18px rgba(15,23,42,.12); }
+        .calc-card { padding:.9rem !important; }
+        .calc-total { align-items:flex-start; flex-wrap:wrap; padding:.65rem .7rem; }
+        .total-price { font-size:1.15rem; }
         .cust-summary-card > h3 { font-size:.95rem !important; margin-bottom:.7rem !important; padding-bottom:.5rem !important; }
         .summary-row { min-width:0; grid-template-columns:minmax(0,1fr) auto; gap:.5rem; align-items:start; font-size:.78rem; margin-bottom:.55rem; }
         .summary-row > * { min-width:0; overflow-wrap:anywhere; }
@@ -946,8 +994,8 @@
 
 {% block wizard_content %}
 <div class="customize-package-banner">
-    <span class="cust-badge-type">{% if event_id %}{% if event_day %}Customize Day {{ event_day }}{% else %}Customize this event{% endif %}{% else %}Customize your package{% endif %}</span>
-    <p class="cust-flow-note">{% if event_id %}{% if event_day %}These choices and the estimate apply to Day {{ event_day }} only.{% else %}These choices and the estimate apply to this event only.{% endif %} Other event dates keep their own menu, services, equipment, and price.{% else %}Choose your guest count and package options. Review what is included and any added or deducted costs, then continue to your event details.{% endif %}</p>
+    <span class="cust-badge-type">{% if event_id %}Customize event choices{% else %}Customize your package{% endif %}</span>
+    <p class="cust-flow-note">{% if event_id %}These choices and the estimate apply only to this event. Other events keep their own menu, services, equipment, and price.{% else %}Choose your guest count and package options. Review what is included and any added or deducted costs, then continue to your event details.{% endif %}</p>
 </div>
 
 {% macro service_option(svc, service_included, service_price, service_notes, package_duration) %}
@@ -1039,51 +1087,51 @@
         <div class="cust-main-col">
 
             {% if request.query_params.get('error_msg') %}
-            <div style="background: #fef2f2; border: 1.5px solid #fecaca; border-radius: 12px; padding: 1rem 1.25rem; color: #b91c1c; font-weight: 700; font-size: 0.88rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-exclamation-circle" style="font-size: 1.2rem; flex-shrink: 0;"></i>
+            <div class="cust-inline-notice" role="alert">
+                <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                 <span>{{ request.query_params.get('error_msg') }}</span>
             </div>
             {% endif %}
 
             <!-- SECTION 0: GUEST CAPACITY SELECTION -->
             <div class="cust-section-card" style="border-color: #fed7aa; background: #fffcf9;">
-                <div class="cust-section-header" style="border-bottom-color: #fed7aa;">
+                <div class="cust-section-header cust-guest-header" style="border-bottom-color: #fed7aa;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="cust-tag-section" style="background: #ffedd5; color: #9a3412;">Step 1</span>
                         <h3 class="cust-section-title">
                             <i class="fas fa-users" style="color: #ea580c;"></i> Event Guest Count
                         </h3>
                     </div>
-                    <span style="font-size: 0.8rem; font-weight: 700; color: #9a3412;">
-                        Minimum: {{ package.min_guests or caterer.min_pax or 10 }} Pax
+                    <span class="cust-guest-minimum">
+                        Minimum: {{ package.min_guests or caterer.min_pax or 50 }} guests
                     </span>
                 </div>
                 
-                <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
+                <div class="cust-guest-layout" style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 200px;">
                         <label for="custGuestCount" style="display: block; font-size: 0.85rem; font-weight: 800; color: #0f172a; margin-bottom: 0.35rem;">
                             Expected Number of Guests *
                         </label>
-                        <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="cust-guest-input-wrap">
                             <input type="number" 
                                    id="custGuestCount" 
                                    name="guest_count"
                                    class="form-input" 
         value="{{ [initial_guest_count or 50, 999999] | min }}"
-                                   min="{{ package.min_guests or caterer.min_pax or 10 }}" 
+                                   min="{{ package.min_guests or caterer.min_pax or 50 }}"
                                    max="{{ package.max_guests or 999999 }}"
                                    maxlength="6"
                                    step="1"
                                    oninput="if(this.value.length > 6) this.value = this.value.slice(0, 6); handleGuestCountChange(this.value)"
                                    onblur="handleGuestCountBlur(this)"
                                    style="width: 140px; font-size: 1.1rem; font-weight: 800; padding: 0.6rem 0.9rem; border: 1.5px solid #cbd5e1; border-radius: 10px;">
-                            <span style="font-size: 0.9rem; font-weight: 700; color: #64748b;">guests / persons</span>
+                            <span style="font-size: 0.82rem; font-weight: 700; color: #64748b;">guests</span>
                         </div>
                         <div id="custGuestCountError" style="display: none; color: #dc2626; font-size: 0.78rem; font-weight: 700; margin-top: 4px;"></div>
                     </div>
-                    <div style="flex: 2; min-width: 250px; font-size: 0.82rem; color: #64748b; line-height: 1.5; background: #ffffff; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #fed7aa;">
-                        <i class="fas fa-calculator" style="color: #ea580c; margin-right: 4px;"></i>
-                        Per-guest food items and catering packages will automatically multiply by this number to give you an accurate real-time estimate.
+                    <div class="cust-guest-help">
+                        <i class="fas fa-calculator" style="color: #ea580c; margin-right: 4px;" aria-hidden="true"></i>
+                        Your guest count updates the estimate for items priced per guest.
                     </div>
                 </div>
             </div>
@@ -1103,7 +1151,7 @@
                 </div>
 
                 <p style="font-size: 0.82rem; color: #64748b; margin-top: -.35rem; margin-bottom: .8rem; line-height:1.45;">
-                    Keep the included dishes or choose an approved swap. A swap may come from another category; any per-guest upgrade fee is shown in your estimate. You may also remove a category if the caterer allows it.
+                    Keep included dishes or choose an approved swap. Any upgrade fee appears in the estimate. You can remove a category when the caterer allows it.
                 </p>
 
                 <!-- Menu Selection Quota & Progress Tracker -->
@@ -1323,7 +1371,7 @@
                     {% for equipment in available_equipment %}
                     {% set equipment_prices = selection_rules.get('equipment_prices', {}) %}
                     {% set equipment_limits = selection_rules.get('equipment_quantity_limits', {}) %}
-                    {% set equipment_price = equipment_prices.get(equipment.id|string, equipment.addon_price or equipment.rental_price or 0) %}
+                    {% set equipment_price = equipment_prices.get(equipment.id|string, equipment.rental_price or 0) %}
                     {% set equipment_max_quantity = equipment_limits.get(equipment.id|string, equipment.available_qty or 0) %}
                     {% set equipment_unit_lower = (equipment.unit_type or 'piece')|lower %}
                     {% set equipment_duration_qty = (package.service_duration or 1) if 'hour' in equipment_unit_lower else ((((package.service_duration or 1) + 23) // 24) if 'day' in equipment_unit_lower else 1) %}
@@ -1340,68 +1388,36 @@
                 <h3 class="cust-section-title" style="margin-bottom: 0.75rem;">
                     <i class="fas fa-comment-alt" style="color: #ea580c;"></i> Special Requests &amp; Notes
                 </h3>
-                <textarea name="special_requests" id="custSpecialRequests" class="form-input" rows="3" 
-                          placeholder="Let the caterer know about allergies, dietary preferences, or specific preparation instructions..."
-                          style="width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; padding: 0.75rem 1rem; font-size: 0.88rem;">{{ saved_customization.special_requests or '' }}</textarea>
+                <textarea name="special_requests" id="custSpecialRequests" class="form-input" rows="3" maxlength="300" placeholder="Only add notes that may affect your menu or service." style="width: 100%; border-radius: 10px; border: 1.5px solid #cbd5e1; padding: 0.75rem 1rem; font-size: 0.88rem;">{{ (saved_customization.special_requests or '')[:300] }}</textarea>
             </div>
         </div>
 
         <!-- Sticky Summary Sidebar -->
         <div class="cust-sidebar-col">
-            <div class="cust-summary-card">
-                <h3 style="font-size: 1.1rem; font-weight: 900; color: #0f172a; margin: 0 0 1rem 0; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
-                    <i class="fas fa-receipt" style="color: #ea580c; margin-right: 6px;"></i> Live Estimate
+            <div class="cust-summary-card calc-card">
+                <h3 class="calc-title">
+                    <i class="fas fa-receipt" style="color: #ea580c; margin-right: 6px;"></i> Price Estimate
                 </h3>
 
-                <div class="summary-row">
-                    <span>Guest Count:</span>
-                    <strong id="summaryGuestCountDisplay" style="color: #0f172a;">{{ initial_guest_count }} Pax</strong>
+                <div class="calc-row" id="rowBasePrice" style="{% if not (package.price_per_head or package.price) %}display: none;{% endif %}">
+                    <span class="calc-label">Package total</span>
+                    <span class="calc-val" id="valBasePackageSummary">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}</span>
                 </div>
-
-                <div class="summary-row" id="rowBasePrice" style="{% if not (package.price_per_head or package.price) %}display: none;{% endif %}">
-                    <span id="lblBasePackageSummary">Base package{% if package.pricing_mode != 'fixed' %} ({{ '{:,.2f}'.format(package.price_per_head or package.price or 0) }}/guest){% endif %}:</span>
-                    <strong id="valBasePackageSummary" style="color: #0f172a;">₱{{ "{:,.2f}".format(package.price_per_head or package.price or 0) }}</strong>
+                <div class="calc-row">
+                    <span class="calc-label">Guest count</span>
+                    <span class="calc-val" id="summaryGuestCountDisplay">{{ initial_guest_count }}</span>
                 </div>
-
-                <div class="summary-row" id="rowFoodSubtotal">
-                    <span id="lblFoodSummary">Included menu choices:</span>
-                    <strong id="valFoodSummary" style="color: #15803d;">Included</strong>
-                </div>
-                <div class="summary-row adjustment-row addition" id="rowFoodUpgradeSubtotal" style="display:none;">
-                    <span id="lblFoodUpgradeSummary">Menu upgrades:</span><strong id="valFoodUpgradeSummary" style="color:#b45309;">+₱0.00</strong>
-                </div>
-                <div class="summary-row adjustment-row credit" id="rowFoodCreditSubtotal" style="display:none;">
-                    <span id="lblFoodCreditSummary">Removed category credit:</span><strong id="valFoodCreditSummary" style="color:#15803d;">−₱0.00</strong>
-                </div>
-                <div class="summary-row" id="rowMenuExtrasSubtotal" style="display:none;">
-                    <span id="lblMenuExtrasSummary">Extra dishes:</span>
-                    <strong id="valMenuExtrasSummary" style="color:#9a3412;">₱0.00</strong>
-                </div>
-
-                <div class="summary-row" id="rowServicesSubtotal" style="display:none;">
-                    <span id="lblServicesSummary">Add-on services (0 selected):</span>
-                    <strong id="valServicesSummary" style="color: #1e40af;">₱0.00</strong>
-                </div>
-                <div class="summary-row" id="rowEquipmentSubtotal" style="display:none;">
-                    <span>Equipment:</span><strong id="valEquipmentSummary" style="color:#9a3412;">₱0.00</strong>
-                </div>
-                <div class="summary-row" id="rowTransportationEstimate">
-                    <span>Transportation fee:</span><strong>Contact caterer to confirm</strong>
-                </div>
-                <p class="cust-price-note">Estimate updates with your selections. Please coordinate with the caterer to confirm the transportation fee.</p>
+                <div class="calc-breakdown" id="calc-event-breakdown"></div>
 
                 <details class="cust-estimate-details" id="custEstimateDetails">
-                    <summary>See how this estimate is calculated</summary>
-                    <ul id="custEstimateBreakdown" class="cust-estimate-breakdown"></ul>
+                    <summary>View itemized breakdown</summary>
+                    <div id="custEstimateBreakdown" class="cust-estimate-breakdown"></div>
                 </details>
 
-                <div class="summary-total-row">
-                    <div>
-                        <span style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Estimated Total</span>
-                        <div id="summaryEstimatedTotal" style="font-size: 1.65rem; font-weight: 900; color: #ea580c; line-height: 1.1;">
-                            ₱0.00
-                        </div>
-                    </div>
+                <div class="calc-divider"></div>
+                <div class="calc-total">
+                    <span class="total-label">Estimated total</span>
+                    <span class="total-price" id="summaryEstimatedTotal">₱0.00</span>
                 </div>
 
                 <!-- Validation Alert Box -->
@@ -1506,7 +1522,7 @@
                         {% for equipment in addon_equipment %}
                         {% set equipment_prices = selection_rules.get('equipment_prices', {}) %}
                         {% set equipment_limits = selection_rules.get('equipment_quantity_limits', {}) %}
-                        {% set equipment_price = equipment_prices.get(equipment.id|string, equipment.addon_price or equipment.rental_price or 0) %}
+                        {% set equipment_price = equipment_prices.get(equipment.id|string, equipment.rental_price or 0) %}
                         {% set equipment_max_quantity = equipment_limits.get(equipment.id|string, equipment.available_qty or 0) %}
                         {% set equipment_unit_lower = (equipment.unit_type or 'piece')|lower %}
                         {% set equipment_duration_qty = (package.service_duration or 1) if 'hour' in equipment_unit_lower else ((((package.service_duration or 1) + 23) // 24) if 'day' in equipment_unit_lower else 1) %}
@@ -1534,7 +1550,7 @@
 const packagePricingMode = {{ (package.pricing_mode or 'per_pax') | tojson }};
 const isPerPax = packagePricingMode !== 'fixed';
 const basePackagePrice = parseFloat({{ (package.price_per_head or package.price or 0) | tojson }}) || 0;
-const minGuestCapacity = {{ (package.min_guests or caterer.min_pax or 10) | tojson }};
+const minGuestCapacity = {{ (package.min_guests or caterer.min_pax or 50) | tojson }};
 const maxGuestCapacity = {{ (package.max_guests or 999999) | tojson }};
 let currentGuestCount = Math.min(Math.max(parseInt(document.getElementById('custGuestCount')?.value, 10) || minGuestCapacity, minGuestCapacity), maxGuestCapacity);
 
@@ -2140,105 +2156,122 @@ function renderEstimateBreakdown(basePackageTotal, menuReplacementAssignments, t
     const list = document.getElementById('custEstimateBreakdown');
     const details = document.getElementById('custEstimateDetails');
     if (!list || !details) return;
-    const entries = [];
-    const money = amount => `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-    const add = (label, amount, kind = 'base') => entries.push({ label, amount, kind });
+    const money = amount => `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const groups = [];
+    const addGroup = (name, lines) => {
+        if (lines.length) groups.push({ name, lines });
+    };
+    addGroup('Package', [{
+        label: isPerPax ? `${money(basePackagePrice)} per guest × ${currentGuestCount} guests` : 'Fixed package price',
+        amount: basePackageTotal
+    }]);
 
-    add(
-        isPerPax
-            ? `Base package · ${money(basePackagePrice)} × ${currentGuestCount} guests`
-            : 'Base package · fixed price',
-        basePackageTotal
-    );
-
+    const menuLines = [];
     document.querySelectorAll('.food-checkbox:checked').forEach(input => {
-        const isIncluded = input.dataset.includedDefault === '1';
         const replacement = menuReplacementAssignments[Number(input.value)];
-        if (isIncluded) {
-            add(`${input.dataset.name} · included`, null);
-        } else if (replacement && replacement.fee > 0) {
-            add(
-                `${input.dataset.name} · swap for ${replacement.replacement_for_name || 'included dish'} · ${money(replacement.fee)} × ${currentGuestCount} guests`,
-                replacement.fee * currentGuestCount,
-                'addition'
-            );
+        if (input.dataset.includedDefault === '1') {
+            menuLines.push({ label: `${input.dataset.name} · included`, amount: null });
         } else if (replacement) {
-            add(`${input.dataset.name} · free approved swap`, 0);
+            menuLines.push({
+                label: `${input.dataset.name} · swap for ${replacement.replacement_for_name || 'included dish'} · ${money(replacement.fee)} per guest × ${currentGuestCount} guests`,
+                amount: replacement.fee * currentGuestCount
+            });
         } else {
             const fee = Number(input.dataset.upgradeFee) || 0;
-            add(`${input.dataset.name} · menu upgrade`, fee * currentGuestCount, fee > 0 ? 'addition' : 'base');
+            menuLines.push({ label: `${input.dataset.name} · ${money(fee)} per guest × ${currentGuestCount} guests`, amount: fee * currentGuestCount });
         }
     });
+    addGroup('Menu choices and upgrades', menuLines);
 
-    Array.from(removedCategories).sort().forEach(category => {
+    const creditLines = Array.from(removedCategories).sort().map(category => {
         const creditPerGuest = Math.max(0, Number(categoryRemovalCredits[category]) || 0);
-        if (creditPerGuest > 0) {
-            add(
-                `${category} removed · ${money(creditPerGuest)} × ${currentGuestCount} guests`,
-                -(creditPerGuest * currentGuestCount),
-                'credit'
-            );
-        } else {
-            add(`${category} removed · no price credit configured`, null);
-        }
+        return {
+            label: creditPerGuest > 0 ? `${category} removed · ${money(creditPerGuest)} per guest × ${currentGuestCount} guests` : `${category} removed · no credit configured`,
+            amount: creditPerGuest > 0 ? -(creditPerGuest * currentGuestCount) : null
+        };
     });
+    addGroup('Category credits', creditLines);
 
+    const extraLines = [];
     document.querySelectorAll('.menu-extra-checkbox:checked').forEach(input => {
         const card = input.closest('.cust-item-card');
-        const size = card?.querySelector('.menu-extra-size')?.selectedOptions[0]?.value || 'Tray';
+        const variant = card?.querySelector('.menu-extra-size')?.selectedOptions[0];
+        const size = variant?.value || 'Tray';
         const quantity = Math.max(1, parseInt(card?.querySelector('.menu-extra-quantity')?.value, 10) || 1);
-        const price = Number(card?.querySelector('.menu-extra-size')?.selectedOptions[0]?.dataset.price ?? input.dataset.price) || 0;
-        add(`${input.dataset.name} · ${size} · ${quantity} × ${money(price)}/tray`, price * quantity, 'addition');
+        const price = Number(variant?.dataset.price ?? input.dataset.price) || 0;
+        extraLines.push({ label: `${input.dataset.name} · ${size} · ${quantity} ${quantity === 1 ? 'tray' : 'trays'} × ${money(price)} per tray`, amount: price * quantity });
     });
+    addGroup('Extra dishes', extraLines);
 
+    const serviceLines = [];
     document.querySelectorAll('.service-checkbox:checked').forEach(input => {
         const quantity = getServiceQuantity(input, currentGuestCount);
         const price = Number(input.dataset.price) || 0;
-        const isIncluded = input.dataset.included === '1';
-        const unit = input.dataset.unit || 'service';
-        add(
-            isIncluded ? `${input.dataset.name} · included` : `${input.dataset.name} · ${quantity} × ${money(price)}/${unit}`,
-            isIncluded ? null : price * quantity,
-            price > 0 ? 'addition' : 'base'
-        );
+        const included = input.dataset.included === '1';
+        const rawUnit = String(input.dataset.unitType || input.dataset.unit || 'event').toLowerCase().replace(/^per_/, '').replace(/_/g, ' ');
+        const unit = /pax|guest|person/.test(rawUnit) ? 'guest' : rawUnit;
+        const quantityUnit = unit === 'staff' ? 'staff' : unit.endsWith('s') ? unit : `${unit}s`;
+        serviceLines.push({
+            label: included ? `${input.dataset.name} · included` : `${input.dataset.name} · ${quantity} ${quantity === 1 ? unit : quantityUnit} × ${money(price)} per ${unit}`,
+            amount: included ? null : price * quantity
+        });
     });
+    addGroup('Services', serviceLines);
 
+    const equipmentLines = [];
     document.querySelectorAll('.equipment-checkbox:checked').forEach(input => {
         const card = input.closest('.cust-item-card');
-        const quantity = input.dataset.included === '1'
-            ? 1
-            : Math.max(1, parseInt(card?.querySelector('.equipment-quantity')?.value, 10) || 1);
-        const durationQuantity = Number(input.dataset.durationQuantity) || 1;
+        const included = input.dataset.included === '1';
+        const quantity = included ? 1 : Math.max(1, parseInt(card?.querySelector('.equipment-quantity')?.value, 10) || 1);
+        const duration = Number(input.dataset.durationQuantity) || 1;
         const price = Number(input.dataset.price) || 0;
-        const isIncluded = input.dataset.included === '1';
-        const unit = input.dataset.unit || 'piece';
-        add(
-            isIncluded ? `${input.dataset.name} · included` : `${input.dataset.name} · ${quantity}${durationQuantity > 1 ? ` × ${durationQuantity}` : ''} × ${money(price)}/${unit}`,
-            isIncluded ? null : price * quantity * durationQuantity,
-            price > 0 ? 'addition' : 'base'
-        );
+        const unit = String(input.dataset.unit || 'piece').toLowerCase().replace(/_/g, ' ');
+        const durationUnit = unit.includes('hour') ? 'hours' : unit.includes('day') ? 'days' : '';
+        const rateUnit = unit.replace(/^per /, '');
+        const quantityUnit = durationUnit ? 'item' : rateUnit;
+        const quantityText = `${quantity} ${quantity === 1 ? quantityUnit : `${quantityUnit}s`}`;
+        const rateText = `${money(price)} per ${rateUnit}`;
+        equipmentLines.push({
+            label: included ? `${input.dataset.name} · included` : `${input.dataset.name} · ${quantityText}${durationUnit ? ` × ${duration} ${durationUnit}` : ''} × ${rateText}`,
+            amount: included ? null : price * quantity * duration
+        });
     });
+    addGroup('Equipment', equipmentLines);
 
     list.replaceChildren();
-    entries.forEach(entry => {
-        const row = document.createElement('li');
-        row.className = `breakdown-${entry.kind}`;
-        const label = document.createElement('span');
-        label.textContent = entry.label;
-        const amount = document.createElement('strong');
-        amount.textContent = entry.amount === null
-            ? 'Included'
-            : `${entry.amount < 0 ? '−' : entry.kind === 'addition' && entry.amount > 0 ? '+' : ''}${money(Math.abs(entry.amount))}`;
-        row.append(label, amount);
-        list.appendChild(row);
+    groups.forEach(group => {
+        const numericTotal = group.lines.reduce((sum, line) => sum + (Number(line.amount) || 0), 0);
+        const block = document.createElement('details');
+        block.className = 'calc-event-breakdown-item';
+        const summary = document.createElement('summary');
+        const title = document.createElement('strong');
+        title.textContent = group.name;
+        const total = document.createElement('b');
+        total.textContent = `${numericTotal < 0 ? '−' : ''}${money(Math.abs(numericTotal))}`;
+        summary.append(title, total);
+        const lines = document.createElement('div');
+        lines.className = 'calc-event-lines';
+        group.lines.forEach(line => {
+            const row = document.createElement('span');
+            const label = document.createElement('span');
+            label.textContent = line.label;
+            const amount = document.createElement('b');
+            amount.textContent = line.amount === null ? 'Included' : `${line.amount < 0 ? '−' : line.amount > 0 && group.name !== 'Package' ? '+' : ''}${money(Math.abs(line.amount))}`;
+            row.append(label, amount);
+            lines.append(row);
+        });
+        const subtotal = document.createElement('span');
+        subtotal.className = 'calc-event-subtotal';
+        subtotal.append(document.createTextNode(`${group.name} total`));
+        const subtotalAmount = document.createElement('b');
+        subtotalAmount.textContent = `${numericTotal < 0 ? '−' : ''}${money(Math.abs(numericTotal))}`;
+        subtotal.append(subtotalAmount);
+        lines.append(subtotal);
+        block.append(summary, lines);
+        list.append(block);
     });
-
     if (details.dataset.userToggled !== 'true') {
-        details.open = totals.foodUpgradeSubtotal > 0
-            || totals.foodRemovalCredit > 0
-            || totals.menuExtrasSubtotal > 0
-            || totals.servicesSubtotal > 0
-            || totals.equipmentSubtotal > 0;
+        details.open = groups.length > 1 && (totals.foodUpgradeSubtotal > 0 || totals.foodRemovalCredit > 0 || totals.menuExtrasSubtotal > 0 || totals.servicesSubtotal > 0 || totals.equipmentSubtotal > 0);
     }
 }
 
@@ -2280,7 +2313,7 @@ function updateCustomizationState() {
             if (subtotalPill) {
                 subtotalPill.style.display = 'inline-block';
                 if (upgradeFee > 0) {
-                    subtotalPill.innerHTML = `+₱${itemUpgradeTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })} (+₱${upgradeFee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/pax × ${currentGuestCount} pax)`;
+                    subtotalPill.innerHTML = `+₱${itemUpgradeTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })} (+₱${upgradeFee.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/guest · ${currentGuestCount} guests)`;
                     subtotalPill.style.color = '#b45309';
                     subtotalPill.style.background = '#fef3c7';
                     subtotalPill.style.borderColor = '#fde68a';
@@ -2366,7 +2399,7 @@ function updateCustomizationState() {
     if (valBase) {
         if (isPerPax && basePackagePrice > 0) {
             valBase.innerText = `₱${basePackageTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-            valBase.title = `₱${basePackagePrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/pax × ${currentGuestCount} pax`;
+            valBase.title = `₱${basePackagePrice.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/guest · ${currentGuestCount} guests`;
         } else {
             valBase.innerText = `₱${basePackageTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
         }

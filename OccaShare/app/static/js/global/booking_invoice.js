@@ -2,8 +2,23 @@
     const money = value => `₱${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const safeDate = value => {
         if (!value) return '—';
+        const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (match) {
+            return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+                .toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+    };
+    const displayTime = value => {
+        const text = String(value || '').trim();
+        if (!text) return '';
+        const match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+        if (!match) return text;
+        const hour = Number(match[1]);
+        const minute = Number(match[2]);
+        if (hour > 23 || minute > 59) return text;
+        return `${hour % 12 || 12}:${match[2]} ${hour >= 12 ? 'PM' : 'AM'}`;
     };
 
     function element(tag, className, text) {
@@ -31,6 +46,7 @@
 
     function renderInvoice(host, data) {
         host.replaceChildren();
+        const events = Array.isArray(data.events) ? data.events : [];
         const section = element('section', 'booking-invoice-sheet');
         section.id = 'bookingInvoicePreview';
         const heading = element('div', 'booking-invoice-heading');
@@ -46,11 +62,21 @@
         section.appendChild(identity);
 
         const facts = element('div', 'booking-invoice-facts');
+        const eventSummary = events.length
+            ? events.map((event, index) => {
+                const parts = [event.type || 'Event'];
+                if (event.package_name) parts.push(event.package_name);
+                if (event.guest_count) parts.push(`${Number(event.guest_count).toLocaleString()} guests`);
+                return `${index + 1}. ${event.name || event.type || 'Event'} — ${parts.join(' · ')}`;
+            }).join('\n')
+            : `${data.event_name || data.event_type || 'Event'}${data.guest_count ? ` · ${Number(data.guest_count).toLocaleString()} guests` : ''}`;
         [
             ['Bill to', data.customer_name || 'Customer'],
             ['Booking reference', data.booking_ref || `BK-${data.booking_id}`],
-            ['Event', `${data.event_name || data.event_type || 'Event'}${data.guest_count ? ` · ${data.guest_count} guests` : ''}`],
-            ['Event date', `${safeDate(data.event_date)}${data.event_time ? ` · ${data.event_time}` : ''}`],
+            ['Events', eventSummary],
+            ['Event date', events.length
+                ? events.map((event, index) => `${index + 1}. ${event.name || event.type || 'Event'}: ${safeDate(event.date)}${displayTime(event.time) ? ` · Ingress ${displayTime(event.time)}` : ''}${displayTime(event.end_time) ? ` · Egress ${displayTime(event.end_time)}` : ''}`).join('\n')
+                : `${safeDate(data.event_date)}${displayTime(data.event_time) ? ` · Ingress ${displayTime(data.event_time)}` : ''}${displayTime(data.event_end_time) ? ` · Egress ${displayTime(data.event_end_time)}` : ''}`],
         ].forEach(([label, value]) => {
             const fact = element('div', 'booking-invoice-fact');
             fact.append(element('span', '', label), element('strong', '', value));
@@ -58,13 +84,17 @@
         });
         section.appendChild(facts);
 
-        section.append(element('h4', 'booking-invoice-section-title', 'Itemized charges'));
+        section.append(element('h4', 'booking-invoice-section-title', 'Price breakdown'));
         const lines = Array.isArray(data.line_items) ? data.line_items : [];
-        section.appendChild(buildTable(
-            ['Description', 'Qty', 'Amount'],
-            lines.map(line => [line.description || 'Booking charge', String(line.quantity || 1), money(line.amount)]),
-            'booking-invoice-table'
-        ));
+        if (lines.length) {
+            section.appendChild(buildTable(
+                ['Event / charge', 'Amount'],
+                lines.map(line => [line.description || 'Booking charge', money(line.amount)]),
+                'booking-invoice-table'
+            ));
+        } else {
+            section.appendChild(element('p', 'booking-invoice-empty', 'No itemized charges have been saved for this booking yet.'));
+        }
 
         const totals = element('div', 'booking-invoice-totals');
         [
@@ -81,13 +111,15 @@
 
         section.append(element('h4', 'booking-invoice-section-title', 'Verified payment history'));
         const payments = Array.isArray(data.payments) ? data.payments : [];
-        section.appendChild(buildTable(
-            ['Date', 'Payment', 'Method / reference', 'Amount'],
-            payments.length
-                ? payments.map(payment => [safeDate(payment.date), payment.type || 'Payment', [payment.method, payment.reference].filter(Boolean).join(' · ') || '—', money(payment.amount)])
-                : [['—', 'No verified payments recorded', '—', money(0)]],
-            'booking-invoice-table booking-invoice-payment-table'
-        ));
+        if (payments.length) {
+            section.appendChild(buildTable(
+                ['Date', 'Payment', 'Method / reference', 'Amount'],
+                payments.map(payment => [safeDate(payment.date), payment.type || 'Payment', [payment.method, payment.reference].filter(Boolean).join(' · ') || '—', money(payment.amount)]),
+                'booking-invoice-table booking-invoice-payment-table'
+            ));
+        } else {
+            section.appendChild(element('p', 'booking-invoice-empty', 'No verified payments recorded yet.'));
+        }
         section.append(element('p', 'booking-invoice-note', 'This invoice reflects the current booking total and verified payment records. Unverified submissions are not counted as paid.'));
         host.appendChild(section);
 
@@ -131,12 +163,29 @@
             pdf.setFont(undefined, 'normal'); pdf.setFontSize(9);
             pdf.text(`Invoice for booking ${data.booking_ref || data.booking_id}`, 42, 119);
             pdf.text(`Generated ${safeDate(data.generated_at)}`, 42, 134);
-            pdf.autoTable({ startY: 149, theme: 'grid', head: [['Bill to', 'Booking', 'Event', 'Event date']], body: [[data.customer_name || 'Customer', data.booking_ref || `BK-${data.booking_id}`, data.event_name || data.event_type || 'Event', safeDate(data.event_date)]], styles: { fontSize: 8, cellPadding: 6 }, headStyles: { fillColor: [255, 247, 237], textColor: [154, 52, 18] } });
+            const invoiceEvents = Array.isArray(data.events) ? data.events : [];
+            const invoiceEventLabel = invoiceEvents.length
+                ? invoiceEvents.map(event => `${event.name || event.type || 'Event'} — ${event.package_name || 'Package'} (${Number(event.guest_count || 0).toLocaleString()} guests)`).join('\n')
+                : data.event_name || data.event_type || 'Event';
+            const invoiceDateLabel = invoiceEvents.length
+                ? invoiceEvents.map(event => `${event.name || 'Event'}: ${safeDate(event.date)}${displayTime(event.time) ? ` · Ingress ${displayTime(event.time)}` : ''}${displayTime(event.end_time) ? ` · Egress ${displayTime(event.end_time)}` : ''}`).join('\n')
+                : safeDate(data.event_date);
+            pdf.autoTable({ startY: 149, theme: 'grid', head: [['Bill to', 'Booking', 'Event', 'Event date']], body: [[data.customer_name || 'Customer', data.booking_ref || `BK-${data.booking_id}`, invoiceEventLabel, invoiceDateLabel]], styles: { fontSize: 8, cellPadding: 6, overflow: 'linebreak' }, headStyles: { fillColor: [255, 247, 237], textColor: [154, 52, 18] } });
             const pdfMoney = value => `PHP ${Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            const lines = (data.line_items || []).map(item => [item.description || 'Booking charge', String(item.quantity || 1), pdfMoney(item.amount)]);
-            pdf.autoTable({ startY: pdf.lastAutoTable.finalY + 14, theme: 'grid', head: [['Itemized charges', 'Qty', 'Amount']], body: lines, styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [234, 88, 12] }, columnStyles: { 2: { halign: 'right' } } });
+            const lines = (data.line_items || []).map(item => [item.description || 'Booking charge', pdfMoney(item.amount)]);
+            if (lines.length) {
+                pdf.autoTable({ startY: pdf.lastAutoTable.finalY + 14, theme: 'grid', head: [['Price breakdown', 'Amount']], body: lines, styles: { fontSize: 9, cellPadding: 6 }, headStyles: { fillColor: [234, 88, 12] }, columnStyles: { 1: { halign: 'right' } } });
+            } else {
+                pdf.setFontSize(9); pdf.setTextColor(100, 116, 139); pdf.text('No itemized charges have been saved for this booking yet.', 42, pdf.lastAutoTable.finalY + 28);
+                pdf.lastAutoTable = { finalY: pdf.lastAutoTable.finalY + 34 };
+            }
             pdf.autoTable({ startY: pdf.lastAutoTable.finalY + 12, theme: 'plain', body: [['Total amount', pdfMoney(data.total_amount)], ['Verified payments', pdfMoney(data.verified_paid)], ['Remaining balance', pdfMoney(data.remaining_balance)], ['Payment status', data.payment_status || 'Unpaid']], styles: { fontSize: 9, cellPadding: 4 }, columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } }, tableWidth: 240, margin: { left: 313 } });
-            pdf.autoTable({ startY: pdf.lastAutoTable.finalY + 10, theme: 'grid', head: [['Verified payment history', 'Payment', 'Method / reference', 'Amount']], body: (data.payments || []).length ? data.payments.map(payment => [safeDate(payment.date), payment.type || 'Payment', [payment.method, payment.reference].filter(Boolean).join(' · ') || '—', pdfMoney(payment.amount)]) : [['—', 'No verified payments recorded', '—', pdfMoney(0)]], styles: { fontSize: 8, cellPadding: 5 }, headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85] } });
+            if ((data.payments || []).length) {
+                pdf.autoTable({ startY: pdf.lastAutoTable.finalY + 10, theme: 'grid', head: [['Verified payment history', 'Payment', 'Method / reference', 'Amount']], body: data.payments.map(payment => [safeDate(payment.date), payment.type || 'Payment', [payment.method, payment.reference].filter(Boolean).join(' · ') || '—', pdfMoney(payment.amount)]), styles: { fontSize: 8, cellPadding: 5 }, headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85] } });
+            } else {
+                pdf.setFontSize(8); pdf.setTextColor(100, 116, 139); pdf.text('No verified payments recorded yet.', 42, pdf.lastAutoTable.finalY + 18);
+                pdf.lastAutoTable = { finalY: pdf.lastAutoTable.finalY + 24 };
+            }
             pdf.setFontSize(8); pdf.setTextColor(100, 116, 139); pdf.text('Unverified payment submissions are not counted as paid.', 42, Math.min(pdf.lastAutoTable.finalY + 18, 805));
             pdf.save(`OccaServe-Invoice-${String(data.booking_ref || data.booking_id).replace(/[^a-z0-9-]/gi, '-')}.pdf`);
         } catch (error) {
