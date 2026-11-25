@@ -32,8 +32,11 @@ from ..core.utils import (
 @router.get("/check-phone")
 async def check_phone(phone: str, db: Session = Depends(database.get_db)):
     """Check if phone number is already registered."""
-    phone = phone.strip().replace(" ", "")
-    existing = db.query(models.User).filter(models.User.phone_number == phone).first()
+    from ..core.utils import normalize_ph_mobile
+    clean = normalize_ph_mobile(phone) or phone.strip().replace(" ", "")
+    existing = db.query(models.User).filter(
+        (models.User.phone_number == clean) | (models.User.phone_number == phone.strip())
+    ).first()
     if existing and existing.is_email_verified:
         return {"available": False, "message": "This mobile number is already registered to another account."}
     return {"available": True}
@@ -285,6 +288,9 @@ async def register(
         name_parts = full_name.lower().split()
         if len(name_parts) > 1 and len(set(name_parts)) < len(name_parts):
             errors["full_name"] = "Name contains repetitive parts (e.g., John John)"
+
+    from ..core.utils import normalize_ph_mobile
+    mobile_number = normalize_ph_mobile(mobile_number) or mobile_number.strip().replace(" ", "").replace("-", "")
 
     if not mobile_number.isdigit():
         errors["mobile_number"] = "Mobile number must contain only digits"
@@ -1250,8 +1256,24 @@ async def onboarding_submit(
         raise HTTPException(status_code=401)
 
     if role == "customer":
+        if mobile_number:
+            from ..core.utils import normalize_ph_mobile, is_dummy_phone
+            clean_mobile = normalize_ph_mobile(mobile_number) or mobile_number.strip().replace(" ", "").replace("-", "")
+            phone_err = is_dummy_phone(clean_mobile)
+            if phone_err:
+                return templates.TemplateResponse("auth/onboarding.html", {
+                    "request": request, "user": user, "error": phone_err
+                })
+            existing_phone = db.query(models.User).filter(
+                models.User.phone_number == clean_mobile,
+                models.User.id != user.id
+            ).first()
+            if existing_phone and existing_phone.is_email_verified:
+                return templates.TemplateResponse("auth/onboarding.html", {
+                    "request": request, "user": user, "error": "This mobile number is already registered to another account."
+                })
+            user.phone_number = clean_mobile
         user.role = "customer"
-        user.phone_number = mobile_number
         user.address = address
         db.commit()
         return RedirectResponse(url="/customer/dashboard", status_code=status.HTTP_303_SEE_OTHER)

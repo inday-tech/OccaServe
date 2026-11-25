@@ -72,10 +72,11 @@
                     <span class="phone-country-code" aria-hidden="true">+63</span>
                     <input type="tel" id="mobile_number" name="mobile_number"
                         class="minimal-input phone-national-input" required inputmode="numeric"
-                        autocomplete="tel-national" maxlength="16" placeholder="9XXXXXXXXX"
+                        autocomplete="tel-national" maxlength="10" minlength="10" pattern="^9[0-9]{9}$"
+                        title="Enter 10 digits starting with 9 after +63" placeholder="9XXXXXXXXX"
                     value="{{ user.phone_number if user else (submitted_data.mobile_number if submitted_data else '') }}">
                 </div>
-                <div id="mobileError" class="error-drawer">Required</div>
+                <div id="mobileError" class="error-drawer">Enter 10 digits starting with 9 (e.g. 9171234567)</div>
             </div>
         </div>
 

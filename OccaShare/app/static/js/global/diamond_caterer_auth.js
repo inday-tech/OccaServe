@@ -1065,6 +1065,16 @@
             const mn = document.getElementById('middle_name_cat')?.value.trim() || '';
             const mobileEl = document.getElementById('mobile_number_cat');
             if (mobileEl) {
+                const res = window.diamondValidators.mobile(mobileEl.value);
+                if (!res.valid) {
+                    window.setDiamondError('mobileCat', res.message, true);
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalHtml;
+                    }
+                    if (typeof changeStepCat === 'function') changeStepCat(-1);
+                    return false;
+                }
                 formData.set('mobile_number', window.normalizePhilippineMobileNumber(mobileEl.value));
             }
             formData.set('last_name', ln);

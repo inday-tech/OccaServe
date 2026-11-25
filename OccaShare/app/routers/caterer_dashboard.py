@@ -1821,10 +1821,11 @@ async def upload_dispatch_proof(
     if not proof_image.filename:
         raise HTTPException(status_code=400, detail="No file selected")
 
+    is_food_order = (booking.document_type == 'invoice')
     allowed_dispatch_from = {
-        "ready_for_delivery": {"preparing"},
-        "ready_for_pickup": {"preparing"},
-        "on_the_way": {"ready_for_delivery", "ready_for_pickup"},
+        "ready_for_delivery": {"preparing", "confirmed"},
+        "ready_for_pickup": {"preparing", "confirmed"},
+        "on_the_way": {"ready_for_delivery", "ready_for_pickup", "preparing", "confirmed"},
     }
     if stage not in allowed_dispatch_from:
         raise HTTPException(status_code=400, detail="Invalid dispatch stage.")
@@ -1837,7 +1838,7 @@ async def upload_dispatch_proof(
         from app.services.preparation_service import PREP_STATUSES, normalize_prep_status
         current_preparation = normalize_prep_status(booking.preparation_status, booking.status)
         preparation_order = [status["key"] for status in PREP_STATUSES]
-        if preparation_order.index(current_preparation) != preparation_order.index("preparing"):
+        if not is_food_order and preparation_order.index(current_preparation) < preparation_order.index("preparing"):
             raise HTTPException(
                 status_code=409,
                 detail="Update the preparation tracker through its stages before marking this booking ready for delivery or pickup.",
@@ -1989,7 +1990,8 @@ async def update_booking_status(
     if has_pending_cancellation and new_status != current_status:
         raise HTTPException(status_code=409, detail="Resolve the pending customer cancellation request before changing the booking status.")
 
-    if new_status == "preparing":
+    is_food_order = (booking.document_type == 'invoice')
+    if new_status == "preparing" and not is_food_order:
         raise HTTPException(
             status_code=409,
             detail="Open the Preparation tab and complete its checklist before starting preparation.",
@@ -2025,21 +2027,35 @@ async def update_booking_status(
             )
 
     # --- STRICT STATE MACHINE ENFORCEMENT ---
-    valid_transitions = {
-        "pending": ["confirmed", "cancelled"],
-        "confirmed": ["preparing", "cancelled", "no_show"],
-        "preparing": ["ready_for_delivery", "ready_for_pickup", "cancelled"],
-        "ready_for_delivery": ["on_the_way", "cancelled"],
-        "on_the_way": ["arrived", "cancelled"],
-        "arrived": ["setup_ongoing", "cancelled"],
-        "setup_ongoing": ["completed", "cancelled"],
-        "in_progress": ["completed", "cancelled"],
-        "ready_for_event": ["completed", "cancelled"],
-        "ready_for_pickup": ["completed", "cancelled"],
-        "completed": [],
-        "cancelled": [],
-        "no_show": []
-    }
+    if is_food_order:
+        valid_transitions = {
+            "pending": ["confirmed", "cancelled"],
+            "confirmed": ["preparing", "ready_for_delivery", "ready_for_pickup", "on_the_way", "cancelled", "no_show"],
+            "preparing": ["ready_for_delivery", "ready_for_pickup", "on_the_way", "cancelled"],
+            "ready_for_delivery": ["on_the_way", "arrived", "completed", "cancelled"],
+            "on_the_way": ["arrived", "completed", "cancelled"],
+            "arrived": ["completed", "cancelled"],
+            "ready_for_pickup": ["completed", "cancelled"],
+            "completed": [],
+            "cancelled": [],
+            "no_show": []
+        }
+    else:
+        valid_transitions = {
+            "pending": ["confirmed", "cancelled"],
+            "confirmed": ["preparing", "cancelled", "no_show"],
+            "preparing": ["ready_for_delivery", "ready_for_pickup", "cancelled"],
+            "ready_for_delivery": ["on_the_way", "cancelled"],
+            "on_the_way": ["arrived", "cancelled"],
+            "arrived": ["setup_ongoing", "cancelled"],
+            "setup_ongoing": ["completed", "cancelled"],
+            "in_progress": ["completed", "cancelled"],
+            "ready_for_event": ["completed", "cancelled"],
+            "ready_for_pickup": ["completed", "cancelled"],
+            "completed": [],
+            "cancelled": [],
+            "no_show": []
+        }
     
     current_status = (booking.status or "pending").lower()
     allowed_next = valid_transitions.get(current_status, [])
@@ -11286,11 +11302,12 @@ async def update_booking_preparation_status(
             detail="Mark the event ready and finish the service before starting post-event cleanup.",
         )
 
+    old_booking_status = booking.status
     if old_key != new_key:
         booking.preparation_status = new_key
         booking.preparation_updated_at = datetime.now(timezone.utc)
-
-    old_booking_status = booking.status
+        if new_key == "preparing" and (booking.status or "").lower() == "confirmed":
+            booking.status = "preparing" 
 
     history = models.BookingHistory(
         booking_id=booking.id,

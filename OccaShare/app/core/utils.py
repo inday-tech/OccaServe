@@ -123,10 +123,32 @@ def is_valid_person_name(name: str) -> Optional[str]:
 def is_dummy_name(name: str) -> Optional[str]:
     return is_valid_person_name(name)
 
+def normalize_ph_mobile(phone: Optional[str]) -> str:
+    """Normalize Philippine mobile number to standard 09XXXXXXXXX (11 digits)."""
+    if not phone:
+        return ""
+    digits = re.sub(r"\D", "", str(phone).strip())
+    if digits.startswith("63"):
+        digits = digits[2:]
+    if digits.startswith("0"):
+        digits = digits[1:]
+    if len(digits) == 10 and digits.startswith("9"):
+        return "0" + digits
+    return digits
+
 def is_dummy_phone(phone: str) -> Optional[str]:
     if not phone:
         return None
-    phone = phone.strip().replace(' ', '')
+    phone = phone.strip().replace(' ', '').replace('-', '')
+    
+    # Handle international or 10-digit formats cleanly
+    if phone.startswith('+63'):
+        phone = '0' + phone[3:]
+    elif phone.startswith('63') and len(phone) == 12:
+        phone = '0' + phone[2:]
+    elif len(phone) == 10 and phone.startswith('9'):
+        phone = '0' + phone
+
     if not phone.startswith('09'):
         return "Mobile number must start with 09"
     if len(phone) != 11:
@@ -137,7 +159,19 @@ def is_dummy_phone(phone: str) -> Optional[str]:
         return "Mobile number contains too many repetitive digits"
     if re.search(r'(.{2,3})\1\1', phone):
         return "Mobile number contains repetitive patterns"
-    dummy_nums = ['09123456789', '09111111111', '09000000000', '09999999999']
+    
+    # Check for excessive paired duplicates like 99445566 (4 or more double digits in suffix)
+    if len(re.findall(r'(\d)\1', phone[2:])) >= 4:
+        return "Mobile number contains repetitive patterns"
+
+    # Entropy check: at least 4 unique digits in the 9-digit subscriber number
+    if len(set(phone[2:])) < 4:
+        return "Please use a real mobile number"
+
+    dummy_nums = [
+        '09123456789', '09987654321', '09111111111', '09000000000',
+        '09999999999', '09876543210', '09121212121', '09090909090'
+    ]
     if phone in dummy_nums:
         return "Please use a real mobile number"
     return None
@@ -217,7 +251,7 @@ def is_customer_profile_complete(user) -> tuple:
         if not user.dob: missing.append("Date of Birth")
         
     # 2. Contact Number
-    if user.phone_number and len(str(user.phone_number).strip()) >= 10:
+    if user.phone_number and is_dummy_phone(str(user.phone_number)) is None:
         points += 1
     else:
         missing.append("Contact Number")

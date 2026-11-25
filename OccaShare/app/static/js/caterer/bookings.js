@@ -4574,6 +4574,29 @@ function updateBookingStage(bookingId, status) {
     }
 
     if (status === 'preparing') {
+        const viewBtn = document.querySelector(`.view-details[data-id="${String(bookingId).replace(/\D/g, '')}"]`);
+        const isFoodOrder = viewBtn?.dataset?.isFoodOrder === 'true';
+        if (isFoodOrder) {
+            window.showConfirm('Start preparation for this order?',
+                async function() {
+                    var result = await window.apiAction('/caterer/bookings/' + bookingId + '/update-status', { 
+                        method: 'POST', 
+                        body: JSON.stringify({ status: 'preparing' }),
+                        muteToast: true
+                    });
+
+                    if (result && result.status === 'success') {
+                        await refreshBookingUiRealtime(bookingId, {
+                            toast: BOOKING_ACTION_TOASTS['preparing'] || 'Preparation started. Customer notified.',
+                            newStatus: 'preparing'
+                        });
+                    }
+                },
+                'Start Preparation?', 'Yes, Start', 'primary'
+            );
+            return;
+        }
+
         if (String(bookingId) !== String(currentBookingId)) {
             window.showError('Open the booking details to complete the preparation checklist.');
             return;
@@ -5250,7 +5273,10 @@ window.confirmSelectedPrepStatus = async function() {
 window.requestReadyForDelivery = function(bookingId) {
     const cleanId = String(bookingId || currentBookingId || '').replace(/\D/g, '');
     if (!cleanId) return;
-    if (String(window.currentBookingStatus || '').toLowerCase() !== 'preparing') {
+    const currentStatus = String(window.currentBookingStatus || '').toLowerCase();
+    const viewBtn = document.querySelector(`.view-details[data-id="${cleanId}"]`);
+    const isFoodOrder = viewBtn?.dataset?.isFoodOrder === 'true';
+    if (!isFoodOrder && !['preparing', 'confirmed'].includes(currentStatus)) {
         window.showError('Start preparation before marking the booking ready for delivery.');
         return;
     }

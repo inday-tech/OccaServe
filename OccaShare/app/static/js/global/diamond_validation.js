@@ -199,11 +199,23 @@
             const valClean = window.normalizePhilippineMobileNumber(val);
 
             if (!valClean) return { valid: false, message: "Required" };
-            if (!/^09\d{9}$/.test(valClean)) return { valid: false, message: "Enter 9XXXXXXXXX; +63 is already added." };
+            if (!/^09\d{9}$/.test(valClean)) return { valid: false, message: "Enter 10 digits starting with 9 after +63." };
 
-            // Check for excessive repeating identical digits (e.g., 09333333333 or 09333354545 with many 3s)
-            if (/(.)\1{4,}/.test(valClean)) {
+            // Check for 3+ consecutive repeating digits (e.g., 111, 777)
+            if (/(.)\1{2,}/.test(valClean)) {
                 return { valid: false, message: "Repetitive numbers are not allowed" };
+            }
+
+            // Check for excessive repeating paired duplicates (e.g. 99445566)
+            const doubleDigits = (valClean.slice(2).match(/(\d)\1/g) || []).length;
+            if (doubleDigits >= 4) {
+                return { valid: false, message: "Repetitive patterns are not allowed" };
+            }
+
+            // Entropy check: at least 4 unique digits in suffix
+            const uniqueDigits = new Set(valClean.slice(2)).size;
+            if (uniqueDigits < 4) {
+                return { valid: false, message: "Please use a real, valid mobile number" };
             }
 
             // Check for repetitive sequences (e.g., 545454)
@@ -212,7 +224,7 @@
             }
 
             // Check for common test sequences
-            if (/09123456789/.test(valClean) || /09987654321/.test(valClean) || /09000000000/.test(valClean)) {
+            if (/09123456789/.test(valClean) || /09987654321/.test(valClean) || /09000000000/.test(valClean) || /09876543210/.test(valClean)) {
                 return { valid: false, message: "Invalid contact number pattern" };
             }
 

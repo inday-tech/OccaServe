@@ -126,6 +126,11 @@
                 } catch (err) { console.error(err); }
             }
 
+            if (mobileEl) {
+                const res = window.diamondValidators.mobile(mobileEl.value);
+                window.setDiamondError('mobile', res.message, !res.valid);
+            }
+
             if (mobileEl && mobileEl.value && !regForm.querySelector('#mobileWrapper.error')) {
                 const val = window.normalizePhilippineMobileNumber(mobileEl.value);
                 try {

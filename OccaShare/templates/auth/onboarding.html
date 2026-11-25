@@ -258,13 +258,20 @@
             </div>
             {% endif %}
 
+            {% if error %}
+            <div class="alert-error" style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 0.85rem 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem; text-align: left; font-size: 0.9rem;">
+                <i class="fas fa-exclamation-circle" style="margin-right: 6px;"></i> {{ error }}
+            </div>
+            {% endif %}
+
             <div id="customerForm" class="onboarding-form">
                 <form action="/auth/onboarding" method="post">
                     <input type="hidden" name="role" value="customer">
                     <div class="form-group">
                         <label for="mobile_number">Mobile Number</label>
                         <input type="tel" id="mobile_number" name="mobile_number" class="minimal-input" required
-                            placeholder="0917 123 4567">
+                            placeholder="09XXXXXXXXX" pattern="^(09|9)[0-9]{9}$" maxlength="11" minlength="10" inputmode="numeric"
+                            title="Enter 11 digits starting with 09 (e.g. 09171234567)">
                     </div>
                     <div class="form-group">
                         <label for="address">Default Delivery Address</label>
