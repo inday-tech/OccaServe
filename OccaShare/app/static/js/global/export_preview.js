@@ -83,148 +83,106 @@
         return Number.isFinite(num) ? num : null;
     }
 
-    // Status Pill Detection Helper
+    // Status Pill Badge Detection matching OccaServe template
     function getStatusBadgeHtml(value) {
         if (value == null) return null;
         const str = String(value).trim();
         const low = str.toLowerCase();
 
-        // Success / Positive
-        if (/^(confirmed|completed|paid|active|approved|verified|delivered|healthy|success)$/i.test(low)) {
-            return `<span class="occa-badge occa-badge-success"><i class="fas fa-check-circle" aria-hidden="true"></i> ${escapeHtml(str)}</span>`;
+        // Fully Paid / Confirmed / Completed
+        if (/^(fully[ -]?paid|confirmed|completed|paid|active|approved|verified)$/i.test(low)) {
+            return `<span class="occa-status-pill status-fully-paid">${escapeHtml(str)}</span>`;
         }
-        // Warning / Pending / In-progress
-        if (/^(pending|in[ -]?progress|partial|partially[ -]?paid|review|under[ -]?review|draft|resubmit|waiting)$/i.test(low)) {
-            return `<span class="occa-badge occa-badge-warning"><i class="fas fa-clock" aria-hidden="true"></i> ${escapeHtml(str)}</span>`;
+        // Partially Paid / Pending / Review
+        if (/^(partially[ -]?paid|partial|pending|in[ -]?progress|under[ -]?review|review|draft|resubmit)$/i.test(low)) {
+            return `<span class="occa-status-pill status-partially-paid">${escapeHtml(str)}</span>`;
         }
-        // Danger / Cancelled / Rejected
-        if (/^(cancelled|rejected|failed|unpaid|inactive|suspended|disputed|declined|terminated|fraud)$/i.test(low)) {
-            return `<span class="occa-badge occa-badge-danger"><i class="fas fa-times-circle" aria-hidden="true"></i> ${escapeHtml(str)}</span>`;
-        }
-        // Info / Neutral
-        if (/^(info|scheduled|assigned|inquiry|processing|new)$/i.test(low)) {
-            return `<span class="occa-badge occa-badge-info"><i class="fas fa-info-circle" aria-hidden="true"></i> ${escapeHtml(str)}</span>`;
+        // Cancelled / Rejected / Failed / Unpaid
+        if (/^(cancelled|rejected|failed|unpaid|disputed|declined|terminated)$/i.test(low)) {
+            return `<span class="occa-status-pill status-cancelled">${escapeHtml(str)}</span>`;
         }
         return null;
     }
 
-    // Calculate Summary Metrics for a section
-    function calculateSectionMetrics(section) {
-        const totalRows = section.rows.length;
-        let currencySum = 0;
-        let hasCurrency = false;
-        let currencyColIndex = -1;
+    // Centered Report Header Block matching image
+    function appendReportHeader(sheet, config, totalRecords) {
+        const header = document.createElement('div');
+        header.className = 'occa-report-header';
 
-        section.columns.forEach((col, idx) => {
-            const isCurr = col.type === 'currency' ||
-                /amount|price|total|revenue|collected|fee|dues|cost/i.test(String(col.label || ''));
-            if (isCurr && currencyColIndex === -1) {
-                currencyColIndex = idx;
-                hasCurrency = true;
-            }
-        });
-
-        if (hasCurrency && currencyColIndex !== -1) {
-            section.rows.forEach(row => {
-                const val = valueFor(row, section.columns[currencyColIndex], currencyColIndex);
-                const num = parseNumericValue(val);
-                if (num !== null) currencySum += num;
-            });
-        }
-
-        return {
-            totalRows,
-            hasCurrency,
-            currencyColIndex,
-            currencySum,
-            avgAmount: totalRows > 0 ? (currencySum / totalRows) : 0
+        // 1. Centered Brand Logo
+        const logoWrap = document.createElement('div');
+        logoWrap.className = 'occa-report-logo-wrap';
+        const logoImg = document.createElement('img');
+        logoImg.src = '/static/images/occaserve_logo_clean.png';
+        logoImg.alt = 'OccaServe';
+        logoImg.className = 'occa-report-brand-logo';
+        logoImg.onerror = function () {
+            this.src = '/static/images/brand_icon.png';
         };
+        logoWrap.appendChild(logoImg);
+        header.appendChild(logoWrap);
+
+        // 2. OFFICIAL REPORT Divider
+        const badge = document.createElement('div');
+        badge.className = 'occa-report-official-badge';
+        badge.textContent = 'OFFICIAL REPORT';
+        header.appendChild(badge);
+
+        // 3. Report Title (e.g. Bookings Database Report)
+        const titleEl = document.createElement('h1');
+        titleEl.className = 'occa-report-title';
+        titleEl.textContent = config.title || 'Bookings Database Report';
+        header.appendChild(titleEl);
+
+        // 4. Metadata Line (Calendar icon | Date | matching count)
+        const metaLine = document.createElement('div');
+        metaLine.className = 'occa-report-meta-line';
+        const dateStr = config.generatedAt || new Date().toLocaleString('en-US', {
+            month: 'short', day: '2-digit', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+        });
+        const countText = `${totalRecords} bookings matching current search and filters`;
+        metaLine.innerHTML = `<i class="fas fa-calendar-alt" aria-hidden="true"></i> Generated on ${dateStr} <span class="occa-report-meta-sep">|</span> ${countText}`;
+        header.appendChild(metaLine);
+
+        // 5. Orange Divider Bar above the table
+        const orangeBar = document.createElement('div');
+        orangeBar.className = 'occa-report-orange-divider';
+        header.appendChild(orangeBar);
+
+        sheet.appendChild(header);
     }
 
-    function appendReportHeader(sheet, config) {
-        const brand = document.createElement('div');
-        brand.className = 'occa-export-document-brand';
-        const logo = document.createElement('img');
-        logo.src = '/static/images/brand_icon.png';
-        logo.alt = 'OccaServe Brand';
-        brand.appendChild(logo);
-        const brandName = document.createElement('strong');
-        brandName.textContent = 'OCCASERVE';
-        brand.appendChild(brandName);
-        sheet.appendChild(brand);
+    function appendReportFooter(sheet) {
+        const orangeBar = document.createElement('div');
+        orangeBar.className = 'occa-report-footer-divider';
+        sheet.appendChild(orangeBar);
 
-        const heading = document.createElement('h1');
-        heading.textContent = config.title || 'OccaServe Official Report';
-        sheet.appendChild(heading);
-
-        if (config.catererName) {
-            const caterer = document.createElement('div');
-            caterer.className = 'occa-export-caterer';
-            caterer.innerHTML = `<i class="fas fa-utensils" aria-hidden="true"></i> ${escapeHtml(config.catererName)}`;
-            sheet.appendChild(caterer);
-        }
-
-        const metadata = document.createElement('div');
-        metadata.className = 'occa-export-meta';
-        metadata.textContent = [`Generated ${config.generatedAt || new Date().toLocaleString()}`]
-            .concat(config.metadata || []).filter(Boolean).join(' · ');
-        sheet.appendChild(metadata);
-    }
-
-    function renderKpiRibbon(metrics) {
-        const ribbon = document.createElement('div');
-        ribbon.className = 'occa-export-kpi-ribbon';
-
-        const cardTotal = document.createElement('div');
-        cardTotal.className = 'occa-kpi-card';
-        cardTotal.innerHTML = `
-            <span class="occa-kpi-label"><i class="fas fa-list-check" aria-hidden="true"></i> Total Entries</span>
-            <strong class="occa-kpi-val">${metrics.totalRows.toLocaleString()}</strong>
-            <small class="occa-kpi-sub">Matching records in report</small>
+        const footerRow = document.createElement('div');
+        footerRow.className = 'occa-report-footer-row';
+        footerRow.innerHTML = `
+            <div class="occa-report-footer-left">
+                <span class="occa-report-footer-brand">OccaServe</span>
+                <span class="occa-report-footer-sep">|</span>
+                <span>Confidential Platform Report</span>
+            </div>
+            <div class="occa-report-footer-right">
+                Page 1 of 1
+            </div>
         `;
-        ribbon.appendChild(cardTotal);
-
-        if (metrics.hasCurrency) {
-            const cardSum = document.createElement('div');
-            cardSum.className = 'occa-kpi-card occa-kpi-card-highlight';
-            cardSum.innerHTML = `
-                <span class="occa-kpi-label"><i class="fas fa-peso-sign" aria-hidden="true"></i> Total Gross Sum</span>
-                <strong class="occa-kpi-val">${formatCurrency(metrics.currencySum)}</strong>
-                <small class="occa-kpi-sub">Combined value of entries</small>
-            `;
-            ribbon.appendChild(cardSum);
-
-            const cardAvg = document.createElement('div');
-            cardAvg.className = 'occa-kpi-card';
-            cardAvg.innerHTML = `
-                <span class="occa-kpi-label"><i class="fas fa-chart-pie" aria-hidden="true"></i> Average Amount</span>
-                <strong class="occa-kpi-val">${formatCurrency(metrics.avgAmount)}</strong>
-                <small class="occa-kpi-sub">Per item baseline</small>
-            `;
-            ribbon.appendChild(cardAvg);
-        }
-        return ribbon;
+        sheet.appendChild(footerRow);
     }
 
     function renderFormatPreview(config, sections, format) {
         const sheet = document.createElement('article');
         sheet.className = `occa-export-sheet occa-export-sheet-${format}`;
-        appendReportHeader(sheet, config);
+        const totalRecords = sections.reduce((sum, s) => sum + s.rows.length, 0);
 
-        sections.forEach((section, sIndex) => {
+        appendReportHeader(sheet, config, totalRecords);
+
+        sections.forEach(section => {
             const sectionEl = document.createElement('section');
             sectionEl.className = 'occa-export-section';
-
-            if (section.title) {
-                const sectionTitle = document.createElement('h2');
-                sectionTitle.textContent = section.title;
-                sectionEl.appendChild(sectionTitle);
-            }
-
-            const metrics = calculateSectionMetrics(section);
-            if (sIndex === 0 && metrics.totalRows > 0) {
-                sectionEl.appendChild(renderKpiRibbon(metrics));
-            }
 
             if (!section.columns.length || !section.rows.length) {
                 const empty = document.createElement('div');
@@ -233,27 +191,14 @@
                 sectionEl.appendChild(empty);
             } else {
                 const wrap = document.createElement('div');
-                wrap.className = 'occa-export-table-wrap';
+                wrap.className = 'occa-report-table-wrap';
                 const table = document.createElement('table');
-                table.className = 'occa-export-table';
+                table.className = 'occa-report-table';
 
                 if (format === 'xlsx') {
-                    table.style.minWidth = `${Math.max(760, section.columns.length * 115)}px`;
+                    table.style.minWidth = `${Math.max(760, section.columns.length * 125)}px`;
                 } else {
                     table.style.width = '100%';
-                }
-
-                if (format === 'word' || format === 'pdf') {
-                    table.style.tableLayout = 'fixed';
-                    const weights = wordColumnWeights(section);
-                    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || 1;
-                    const colgroup = document.createElement('colgroup');
-                    weights.forEach(weight => {
-                        const col = document.createElement('col');
-                        col.style.width = `${(weight / totalWeight) * 100}%`;
-                        colgroup.appendChild(col);
-                    });
-                    table.appendChild(colgroup);
                 }
 
                 const head = document.createElement('thead');
@@ -271,18 +216,31 @@
                     section.columns.forEach((column, index) => {
                         const td = document.createElement('td');
                         const value = valueFor(row, column, index);
+                        const labelLow = String(column.label || '').toLowerCase();
                         const isCurrency = column.type === 'currency' ||
-                            /amount|price|total|revenue|fee|dues|cost/i.test(String(column.label || ''));
+                            /amount|price|total|revenue|fee|dues/i.test(labelLow);
+                        const isStatus = /status|payment/i.test(labelLow);
+                        const isBookingId = /booking[ -]?id|reference|ref/i.test(labelLow);
 
                         if (isCurrency) {
                             td.textContent = formatCurrency(value);
                             td.classList.add('is-currency');
-                        } else {
+                        } else if (isStatus) {
+                            td.classList.add('is-status');
                             const badgeHtml = getStatusBadgeHtml(value);
                             if (badgeHtml) {
                                 td.innerHTML = badgeHtml;
                             } else {
                                 td.textContent = safeText(value);
+                            }
+                        } else {
+                            if (isBookingId) td.classList.add('is-booking-id');
+                            // Format multi-line event text nicely
+                            const textVal = safeText(value);
+                            if (textVal.includes('\n')) {
+                                td.innerHTML = textVal.split('\n').map(l => escapeHtml(l)).join('<br>');
+                            } else {
+                                td.textContent = textVal;
                             }
                         }
                         tr.appendChild(td);
@@ -291,33 +249,13 @@
                 });
 
                 table.append(head, body);
-
-                // Add Table Footer / Total Row if currency exists
-                if (metrics.hasCurrency && metrics.totalRows > 0) {
-                    const tfoot = document.createElement('tfoot');
-                    const footRow = document.createElement('tr');
-                    footRow.className = 'occa-export-total-row';
-                    section.columns.forEach((column, index) => {
-                        const td = document.createElement('td');
-                        if (index === 0) {
-                            td.innerHTML = `<strong>TOTAL (${metrics.totalRows})</strong>`;
-                        } else if (index === metrics.currencyColIndex) {
-                            td.className = 'is-currency';
-                            td.innerHTML = `<strong>${formatCurrency(metrics.currencySum)}</strong>`;
-                        } else {
-                            td.textContent = '';
-                        }
-                        footRow.appendChild(td);
-                    });
-                    tfoot.appendChild(footRow);
-                    table.appendChild(tfoot);
-                }
-
                 wrap.appendChild(table);
                 sectionEl.appendChild(wrap);
             }
             sheet.appendChild(sectionEl);
         });
+
+        appendReportFooter(sheet);
         return sheet;
     }
 
@@ -332,15 +270,15 @@
         const dialog = document.createElement('div');
         dialog.className = 'occa-export-dialog';
 
-        // Toolbar
+        // Top Toolbar
         const toolbar = document.createElement('div');
         toolbar.className = 'occa-export-toolbar';
         toolbar.innerHTML = `
             <div class="occa-export-brand">
-                <img src="/static/images/brand_icon.png" alt="OccaServe logo">
+                <img src="/static/images/occaserve_logo_clean.png" alt="OccaServe" onerror="this.src='/static/images/brand_icon.png'">
                 <div>
                     <span>OCCASERVE REPORT</span>
-                    <strong>${escapeHtml(config.title || 'Export Preview')}</strong>
+                    <strong>${escapeHtml(config.title || 'Bookings Database Report')}</strong>
                 </div>
             </div>
         `;
@@ -354,7 +292,7 @@
         const content = document.createElement('main');
         content.className = 'occa-export-content';
 
-        // Segmented Format Navigation
+        // Segmented Format Navigation (PDF, Excel, Word)
         const formatNav = document.createElement('nav');
         formatNav.className = 'occa-export-formats';
         formatNav.setAttribute('aria-label', 'Preview format');
@@ -400,7 +338,7 @@
             <button type="button" class="occa-zoom-btn" id="occaZoomOut" title="Zoom Out" aria-label="Zoom Out"><i class="fas fa-minus" aria-hidden="true"></i></button>
             <span class="occa-zoom-label" id="occaZoomVal" title="Click to reset zoom">100%</span>
             <button type="button" class="occa-zoom-btn" id="occaZoomIn" title="Zoom In" aria-label="Zoom In"><i class="fas fa-plus" aria-hidden="true"></i></button>
-            <button type="button" class="occa-zoom-reset" id="occaZoomFit" title="Fit to container">Fit</button>
+            <button type="button" class="occa-zoom-reset" id="occaZoomFit" title="Fit to width">Fit</button>
         `;
         canvasBar.append(canvasMeta, zoomControls);
 
@@ -478,7 +416,7 @@
         footer.className = 'occa-export-footer';
         const footerNote = document.createElement('span');
         footerNote.className = 'occa-export-footer-note';
-        footerNote.innerHTML = '<i class="fas fa-shield-halved" aria-hidden="true"></i> Certified accurate live snapshot from OccaServe system.';
+        footerNote.innerHTML = '<i class="fas fa-shield-halved" aria-hidden="true"></i> Official OccaServe platform report generated from live database records.';
         footer.append(footerNote, status, actions);
 
         selectFormat(selectedFormat);
@@ -521,8 +459,11 @@
     }
 
     async function loadBrandImage() {
-        const response = await fetch('/static/images/brand_icon.png', { credentials: 'same-origin' });
-        if (!response.ok) throw new Error('Brand image unavailable');
+        let response = await fetch('/static/images/occaserve_logo_clean.png', { credentials: 'same-origin' });
+        if (!response.ok) {
+            response = await fetch('/static/images/brand_icon.png', { credentials: 'same-origin' });
+        }
+        if (!response.ok) throw new Error('Brand logo image unavailable');
         const image = new Image();
         image.src = URL.createObjectURL(await response.blob());
         await new Promise((resolve, reject) => {
@@ -569,36 +510,53 @@
         }
     }
 
+    // =========================================================================
+    // WORD (.docx) EXPORT GENERATOR - MATCHING USER BLUEPRINT
+    // =========================================================================
     async function downloadWordDocument(config, sections) {
         await loadLibrary(libraries.docx);
         const word = window.docx;
         if (!word || !word.Document || !word.Packer) throw new Error('Word document library is unavailable.');
         const brandImage = await loadBrandImage();
+        const totalRecords = sections.reduce((sum, s) => sum + s.rows.length, 0);
+        const dateStr = config.generatedAt || new Date().toLocaleString('en-US', {
+            month: 'short', day: '2-digit', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+        });
+
         const children = [
+            // Centered Logo
             new word.Paragraph({
+                alignment: word.AlignmentType.CENTER,
                 children: [
-                    new word.ImageRun({ data: imageBytes(brandImage), transformation: { width: 48, height: 48 } }),
-                    new word.TextRun({ text: '  OCCASERVE REPORT', bold: true, color: 'F07835', size: 22 })
+                    new word.ImageRun({ data: imageBytes(brandImage), transformation: { width: 140, height: 28 } })
                 ],
-                spacing: { after: 100 },
-                alignment: word.AlignmentType.LEFT
-            }),
-            new word.Paragraph({
-                children: [new word.TextRun({ text: config.title || 'OccaServe Official Report', bold: true, color: '0F172A', size: 34 })],
                 spacing: { after: 60 }
             }),
-            ...(config.catererName ? [new word.Paragraph({
-                children: [new word.TextRun({ text: `Caterer: ${config.catererName}`, bold: true, color: '334155', size: 22 })],
-                spacing: { after: 60 }
-            })] : []),
+            // OFFICIAL REPORT
             new word.Paragraph({
-                children: [new word.TextRun({
-                    text: `Generated ${config.generatedAt || new Date().toLocaleString()}${(config.metadata || []).length ? ` · ${(config.metadata || []).join(' · ')}` : ''}`,
-                    color: '64748B',
-                    size: 18
-                })],
-                border: { bottom: { color: 'F07835', space: 8, style: word.BorderStyle.SINGLE, size: 12 } },
-                spacing: { after: 200 }
+                alignment: word.AlignmentType.CENTER,
+                children: [
+                    new word.TextRun({ text: '——————  OFFICIAL REPORT  ——————', bold: true, color: '061D38', size: 18 })
+                ],
+                spacing: { after: 60 }
+            }),
+            // Title
+            new word.Paragraph({
+                alignment: word.AlignmentType.CENTER,
+                children: [
+                    new word.TextRun({ text: config.title || 'Bookings Database Report', bold: true, color: '061D38', size: 36 })
+                ],
+                spacing: { after: 60 }
+            }),
+            // Metadata Line
+            new word.Paragraph({
+                alignment: word.AlignmentType.CENTER,
+                children: [
+                    new word.TextRun({ text: `Generated on ${dateStr}   |   ${totalRecords} bookings matching current search and filters`, color: '334155', size: 18 })
+                ],
+                border: { bottom: { color: 'F05A28', space: 10, style: word.BorderStyle.SINGLE, size: 16 } },
+                spacing: { after: 180 }
             })
         ];
 
@@ -607,7 +565,9 @@
         const tableWidth = pageWidth - margins.left - margins.right;
 
         sections.forEach(section => {
-            if (section.title) children.push(new word.Paragraph({ text: section.title, heading: word.HeadingLevel.HEADING_1, spacing: { before: 240, after: 120 } }));
+            if (section.title) {
+                children.push(new word.Paragraph({ text: section.title, heading: word.HeadingLevel.HEADING_2, spacing: { before: 200, after: 100 } }));
+            }
             const widths = wordColumnWidths(section, tableWidth);
             const rows = [new word.TableRow({
                 children: section.columns.map((column, index) => makeWordCell(
@@ -615,36 +575,60 @@
                     column.label,
                     true,
                     widths[index],
-                    column.type === 'currency' || column.type === 'number'
+                    column.type === 'currency' || /amount|price|total|revenue/i.test(String(column.label || ''))
                 )),
                 tableHeader: true
             })];
+
             section.rows.forEach(row => rows.push(new word.TableRow({
                 cantSplit: true,
-                children: section.columns.map((column, index) => makeWordCell(
-                    word,
-                    column.type === 'currency' ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index),
-                    false,
-                    widths[index],
-                    column.type === 'currency' || column.type === 'number'
-                ))
+                children: section.columns.map((column, index) => {
+                    const val = valueFor(row, column, index);
+                    const isCurr = column.type === 'currency' || /amount|price|total|revenue/i.test(String(column.label || ''));
+                    return makeWordCell(
+                        word,
+                        isCurr ? formatCurrency(val) : safeText(val),
+                        false,
+                        widths[index],
+                        isCurr
+                    );
+                })
             })));
-            if (!section.columns.length) children.push(new word.Paragraph({ text: 'No matching records.' }));
-            else children.push(new word.Table({
-                rows,
-                width: { size: tableWidth, type: word.WidthType.DXA },
-                columnWidths: widths,
-                layout: word.TableLayoutType.FIXED,
-                borders: Object.fromEntries(['top', 'bottom', 'left', 'right', 'insideHorizontal', 'insideVertical'].map(edge => [edge, { style: word.BorderStyle.SINGLE, size: 1, color: 'D7DEE8' }]))
-            }));
+
+            if (!section.columns.length) {
+                children.push(new word.Paragraph({ text: 'No matching records.' }));
+            } else {
+                children.push(new word.Table({
+                    rows,
+                    width: { size: tableWidth, type: word.WidthType.DXA },
+                    columnWidths: widths,
+                    layout: word.TableLayoutType.FIXED,
+                    borders: {
+                        top: { style: word.BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                        bottom: { style: word.BorderStyle.SINGLE, size: 1, color: 'E2E8F0' },
+                        left: { style: word.BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                        right: { style: word.BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                        insideHorizontal: { style: word.BorderStyle.SINGLE, size: 1, color: 'E2E8F0' },
+                        insideVertical: { style: word.BorderStyle.NONE, size: 0, color: 'FFFFFF' }
+                    }
+                }));
+            }
         });
+
+        // Bottom Orange Line before footer
+        children.push(new word.Paragraph({
+            border: { top: { color: 'F05A28', space: 8, style: word.BorderStyle.SINGLE, size: 14 } },
+            spacing: { before: 180, after: 40 }
+        }));
 
         const pageNumber = word.PageNumber;
         const footer = word.Footer && pageNumber ? {
             default: new word.Footer({
                 children: [new word.Paragraph({
-                    alignment: word.AlignmentType.RIGHT,
+                    alignment: word.AlignmentType.BOTH,
                     children: [
+                        new word.TextRun({ text: 'OccaServe  |  Confidential Platform Report', bold: true, color: '061D38', size: 16 }),
+                        new word.TextRun({ text: '\t\tPage ' }),
                         new word.TextRun({ children: [pageNumber.CURRENT] }),
                         new word.TextRun({ text: ' of ' }),
                         new word.TextRun({ children: [pageNumber.TOTAL_PAGES] })
@@ -655,7 +639,7 @@
 
         const document = new word.Document({
             creator: 'OccaServe',
-            title: config.title || 'OccaServe Report',
+            title: config.title || 'Bookings Database Report',
             sections: [{
                 properties: {
                     page: {
@@ -678,13 +662,13 @@
                 children: [new word.TextRun({
                     text: safeText(value),
                     bold: header,
-                    color: header ? 'FFFFFF' : '1E293B',
+                    color: header ? 'FFFFFF' : (alignRight ? '000000' : '0F172A'),
                     size: header ? 17 : 16
                 })]
             })],
-            shading: header ? { fill: '0F172A', type: word.ShadingType.CLEAR } : undefined,
+            shading: header ? { fill: '061D38', type: word.ShadingType.CLEAR } : undefined,
             margins: { top: 70, bottom: 70, left: 90, right: 90 },
-            verticalAlign: word.VerticalAlign.TOP,
+            verticalAlign: word.VerticalAlign.CENTER,
             ...(width ? { width: { size: width, type: word.WidthType.DXA } } : {})
         });
     }
@@ -708,14 +692,8 @@
         });
     }
 
-    function estimateWrappedLines(value, width) {
-        return safeText(value).split(/\r?\n/).reduce((total, line) => (
-            total + Math.max(1, Math.ceil(line.length / Math.max(1, width - 2)))
-        ), 0);
-    }
-
     function downloadText(config, sections) {
-        const lines = [config.title || 'OccaServe Report', `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || []), ''];
+        const lines = [config.title || 'Bookings Database Report', `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || []), ''];
         sections.forEach(section => {
             if (section.title) lines.push(section.title);
             lines.push(section.columns.map(column => column.label).join(' | '));
@@ -726,7 +704,7 @@
     }
 
     // =========================================================================
-    // EXCEL (XLSX) EXPORT GENERATOR - EXECUTIVE DESIGN
+    // EXCEL (XLSX) EXPORT GENERATOR - EXACT BLUEPRINT MATCHING USER IMAGE
     // =========================================================================
     async function downloadXlsx(config, sections) {
         await loadScript(libraries.xlsx);
@@ -736,23 +714,30 @@
         workbook.created = new Date();
         const brandImage = await loadBrandImage();
         const brandImageId = workbook.addImage({ base64: brandImage, extension: 'png' });
+        const totalRecords = sections.reduce((sum, s) => sum + s.rows.length, 0);
+        const dateStr = config.generatedAt || new Date().toLocaleString('en-US', {
+            month: 'short', day: '2-digit', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+        });
 
         sections.forEach((section, sectionIndex) => {
             const worksheetName = (section.title || 'Report').replace(/[\\/?*:[\]]/g, '').slice(0, 31) || `Report ${sectionIndex + 1}`;
             const worksheet = workbook.addWorksheet(worksheetName);
-            const metrics = calculateSectionMetrics(section);
+            const columnCount = Math.max(1, section.columns.length);
 
             // Columns setup
             worksheet.columns = section.columns.map((column, index) => {
-                const isCurr = column.type === 'currency' || /amount|price|total|revenue|fee|dues/i.test(String(column.label || ''));
+                const labelLow = String(column.label || '').toLowerCase();
+                const isCurr = column.type === 'currency' || /amount|price|total|revenue/i.test(labelLow);
+                const isStatus = /status|payment/i.test(labelLow);
                 return {
                     key: `field${index}`,
-                    width: Math.min(48, Math.max(15, String(column.label).length + 5, ...section.rows.slice(0, 150).map(row => safeText(valueFor(row, column, index)).length + 2))),
+                    width: Math.min(46, Math.max(16, String(column.label).length + 6, ...section.rows.slice(0, 150).map(row => safeText(valueFor(row, column, index)).length + 3))),
                     style: {
                         font: { name: 'Arial', size: 9 },
                         ...(isCurr ? { numFmt: '"₱"#,##0.00' } : {}),
                         alignment: {
-                            horizontal: isCurr ? 'right' : 'left',
+                            horizontal: isCurr ? 'right' : (isStatus ? 'center' : 'left'),
                             vertical: 'middle',
                             wrapText: true
                         }
@@ -760,116 +745,76 @@
                 };
             });
 
-            const columnCount = Math.max(1, section.columns.length);
             const addMergedLine = (text, style = {}) => {
                 const row = worksheet.addRow([text]);
                 if (columnCount > 1) worksheet.mergeCells(row.number, 1, row.number, columnCount);
-                row.alignment = { vertical: 'middle', wrapText: true, indent: style.indent || 0 };
+                row.alignment = { vertical: 'middle', horizontal: style.align || 'center', wrapText: true };
                 row.height = style.height || 22;
                 row.font = {
                     name: 'Arial',
                     ...(style.font || {}),
                     ...(style.color ? { color: { argb: style.color } } : {})
                 };
-                if (style.fill) {
-                    row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: style.fill } };
-                }
                 return row;
             };
 
-            // Brand Header Row
-            const brandRow = addMergedLine('OCCASERVE ENTERPRISE REPORT', {
-                font: { bold: true, size: 10 },
-                color: 'FFF07835',
-                height: 48,
-                indent: 5
-            });
-
+            // Row 1: Logo Spacer Row
+            const logoRow = addMergedLine('', { height: 42 });
+            const midCol = Math.max(0, Math.floor(columnCount / 2) - 1);
             worksheet.addImage(brandImageId, {
-                tl: { col: 0, row: brandRow.number - 1 },
-                ext: { width: 44, height: 44 }
+                tl: { col: midCol + 0.2, row: logoRow.number - 1 + 0.1 },
+                ext: { width: 140, height: 28 }
             });
 
-            // Report Title
-            addMergedLine(config.title || 'OccaServe Official Report', {
-                font: { bold: true, size: 14 },
-                color: 'FF0F172A',
-                height: 26
-            });
-
-            if (config.catererName) {
-                addMergedLine(`Caterer Partner: ${config.catererName}`, {
-                    font: { bold: true, size: 11 },
-                    color: 'FF334155',
-                    height: 20
-                });
-            }
-
-            const metadata = [`Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])];
-            const metadataRow = addMergedLine(metadata.filter(Boolean).join(' · '), {
-                font: { size: 9 },
-                color: 'FF64748B',
+            // Row 2: —— OFFICIAL REPORT ——
+            addMergedLine('——  OFFICIAL REPORT  ——', {
+                font: { bold: true, size: 9 },
+                color: 'FF061D38',
                 height: 18
             });
-            metadataRow.border = { bottom: { style: 'medium', color: { argb: 'FFF07835' } } };
 
-            worksheet.addRow([]); // Blank spacer
+            // Row 3: Report Title (Bookings Database Report)
+            addMergedLine(config.title || 'Bookings Database Report', {
+                font: { bold: true, size: 16 },
+                color: 'FF061D38',
+                height: 28
+            });
 
-            // KPI Summary block in Excel
-            if (metrics.totalRows > 0) {
-                const kpiTitleRow = addMergedLine('EXECUTIVE SNAPSHOT', {
-                    font: { bold: true, size: 9 },
-                    color: 'FF64748B',
-                    height: 18
-                });
-                kpiTitleRow.border = { bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } } };
+            // Row 4: Generated on Date | Matching records
+            addMergedLine(`Generated on ${dateStr}   |   ${totalRecords} bookings matching current search and filters`, {
+                font: { size: 9 },
+                color: 'FF334155',
+                height: 20
+            });
 
-                const kpiRow = worksheet.addRow([]);
-                kpiRow.height = 24;
-                const kpiValRow = worksheet.addRow([]);
-                kpiValRow.height = 28;
-
-                kpiRow.getCell(1).value = 'TOTAL RECORDS';
-                kpiRow.getCell(1).font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF64748B' } };
-                kpiValRow.getCell(1).value = metrics.totalRows;
-                kpiValRow.getCell(1).font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF0F172A' } };
-
-                if (metrics.hasCurrency) {
-                    kpiRow.getCell(2).value = 'TOTAL GROSS AMOUNT';
-                    kpiRow.getCell(2).font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFC2410C' } };
-                    kpiValRow.getCell(2).value = metrics.currencySum;
-                    kpiValRow.getCell(2).numFmt = '"₱"#,##0.00';
-                    kpiValRow.getCell(2).font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFF07835' } };
-
-                    if (columnCount >= 3) {
-                        kpiRow.getCell(3).value = 'AVERAGE AMOUNT';
-                        kpiRow.getCell(3).font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF64748B' } };
-                        kpiValRow.getCell(3).value = metrics.avgAmount;
-                        kpiValRow.getCell(3).numFmt = '"₱"#,##0.00';
-                        kpiValRow.getCell(3).font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FF0F172A' } };
-                    }
-                }
-                worksheet.addRow([]); // Blank spacer
+            // Row 5: Orange Bar Divider above table
+            const orangeBarRow = worksheet.addRow([]);
+            orangeBarRow.height = 6;
+            for (let c = 1; c <= columnCount; c++) {
+                orangeBarRow.getCell(c).border = { bottom: { style: 'medium', color: { argb: 'FFF05A28' } } };
             }
 
-            if (section.title) {
-                addMergedLine(section.title, { font: { bold: true, size: 11 }, color: 'FF0F172A', height: 22 });
-            }
-
-            // Table Header Row
+            // Row 6: Table Header in Deep Navy #061D38 with White Text and White Vertical Borders
             const headerRow = worksheet.addRow(section.columns.map(column => column.label));
             const headerRowNumber = headerRow.number;
             headerRow.height = 26;
             headerRow.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF061D38' } };
             headerRow.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
 
-            // Align header for currency columns to right
+            // Apply white borders to header cells
             section.columns.forEach((col, cIndex) => {
-                const isCurr = col.type === 'currency' || /amount|price|total|revenue|fee|dues/i.test(String(col.label || ''));
-                if (isCurr) {
-                    headerRow.getCell(cIndex + 1).alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
-                }
+                const cell = headerRow.getCell(cIndex + 1);
+                const labelLow = String(col.label || '').toLowerCase();
+                const isCurr = col.type === 'currency' || /amount|price|total|revenue/i.test(labelLow);
+                const isStatus = /status|payment/i.test(labelLow);
+                if (isCurr) cell.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+                else if (isStatus) cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+                cell.border = {
+                    right: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+                    left: cIndex === 0 ? undefined : { style: 'thin', color: { argb: 'FFFFFFFF' } }
+                };
             });
 
             // Data Rows
@@ -878,7 +823,8 @@
                 section.rows.forEach(row => {
                     const rowValues = section.columns.map((column, index) => {
                         const val = valueFor(row, column, index);
-                        const isCurr = column.type === 'currency' || /amount|price|total|revenue|fee|dues/i.test(String(column.label || ''));
+                        const labelLow = String(column.label || '').toLowerCase();
+                        const isCurr = column.type === 'currency' || /amount|price|total|revenue/i.test(labelLow);
                         if (isCurr) {
                             const num = parseNumericValue(val);
                             return num !== null ? num : safeText(val);
@@ -892,31 +838,69 @@
             }
             let endDataRow = worksheet.rowCount;
 
-            // Excel Footer Row with =SUM() Formula
-            if (metrics.hasCurrency && metrics.totalRows > 0) {
-                const colLetter = String.fromCharCode(65 + metrics.currencyColIndex);
-                const totalRowValues = new Array(section.columns.length).fill('');
-                totalRowValues[0] = `TOTAL (${metrics.totalRows} ENTRIES)`;
-                const totalExcelRow = worksheet.addRow(totalRowValues);
-                totalExcelRow.height = 24;
-                totalExcelRow.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF0F172A' } };
-                totalExcelRow.getCell(metrics.currencyColIndex + 1).value = {
-                    formula: `SUM(${colLetter}${startDataRow}:${colLetter}${endDataRow})`,
-                    result: metrics.currencySum
-                };
-                totalExcelRow.getCell(metrics.currencyColIndex + 1).numFmt = '"₱"#,##0.00';
-                totalExcelRow.getCell(metrics.currencyColIndex + 1).font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFF07835' } };
+            // Zebra Striping & Status Cell Coloring matching the image
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber <= headerRowNumber || rowNumber > endDataRow) return;
+                const isEven = (rowNumber - headerRowNumber) % 2 === 0;
+                row.eachCell(cell => {
+                    cell.border = { bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } } };
+                    if (isEven) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF4F8FA' } };
+                    } else {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                    }
+                    const column = section.columns[cell.col - 1];
+                    const labelLow = column ? String(column.label || '').toLowerCase() : '';
+                    const isStatus = /status|payment/i.test(labelLow);
+                    const isBookingId = /booking[ -]?id|reference|ref/i.test(labelLow);
+                    const isCurr = column && (column.type === 'currency' || /amount|price|total|revenue/i.test(labelLow));
 
-                totalExcelRow.eachCell(cell => {
-                    cell.border = {
-                        top: { style: 'thin', color: { argb: 'FF0F172A' } },
-                        bottom: { style: 'double', color: { argb: 'FF0F172A' } }
-                    };
-                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
+                    if (isBookingId) {
+                        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF061D38' } };
+                    }
+                    if (isCurr) {
+                        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF000000' } };
+                        cell.alignment = { vertical: 'middle', horizontal: 'right' };
+                    }
+                    if (isStatus) {
+                        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                        const valLow = String(cell.value || '').trim().toLowerCase();
+                        if (/^(fully[ -]?paid|confirmed|completed|paid|active)$/i.test(valLow)) {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+                            cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF15803D' } };
+                        } else if (/^(partially[ -]?paid|pending|review|draft)$/i.test(valLow)) {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEDD5' } };
+                            cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFEA580C' } };
+                        } else if (/^(cancelled|rejected|failed|unpaid)$/i.test(valLow)) {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+                            cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FFB91C1C' } };
+                        }
+                    }
                 });
+                row.height = 22;
+            });
+
+            // Orange bottom bar below data
+            const bottomOrangeRow = worksheet.addRow([]);
+            bottomOrangeRow.height = 6;
+            for (let c = 1; c <= columnCount; c++) {
+                bottomOrangeRow.getCell(c).border = { bottom: { style: 'medium', color: { argb: 'FFF05A28' } } };
             }
 
-            // Freeze Panes & Auto-filters
+            // Footer Row: OccaServe | Confidential Platform Report (Left) and Page 1 of 1 (Right)
+            const footerRow = worksheet.addRow([]);
+            footerRow.height = 22;
+            footerRow.getCell(1).value = 'OccaServe  |  Confidential Platform Report';
+            footerRow.getCell(1).font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF061D38' } };
+            footerRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' };
+
+            if (columnCount > 1) {
+                footerRow.getCell(columnCount).value = 'Page 1 of 1';
+                footerRow.getCell(columnCount).font = { name: 'Arial', size: 9, color: { argb: 'FF334155' } };
+                footerRow.getCell(columnCount).alignment = { vertical: 'middle', horizontal: 'right' };
+            }
+
+            // Freeze Panes and Auto Filter
             worksheet.views = [{ state: 'frozen', ySplit: headerRowNumber }];
             if (section.columns.length) {
                 worksheet.autoFilter = {
@@ -933,24 +917,6 @@
                 fitToHeight: 0,
                 margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
             };
-
-            // Zebra Striping and Styling
-            worksheet.eachRow((row, rowNumber) => {
-                if (rowNumber <= headerRowNumber || rowNumber > endDataRow) return;
-                const isEven = (rowNumber - headerRowNumber) % 2 === 0;
-                row.eachCell(cell => {
-                    cell.border = { bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } } };
-                    if (isEven) {
-                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-                    }
-                    const column = section.columns[cell.col - 1];
-                    const isCurr = column && (column.type === 'currency' || /amount|price|total|revenue|fee|dues/i.test(String(column.label || '')));
-                    if (isCurr) {
-                        cell.alignment = { vertical: 'middle', horizontal: 'right' };
-                    }
-                });
-                row.height = 22;
-            });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -958,7 +924,7 @@
     }
 
     // =========================================================================
-    // PDF EXPORT GENERATOR - EXECUTIVE DESIGN WITH KPI CARDS & STATUS BADGES
+    // PDF EXPORT GENERATOR - EXACT BLUEPRINT MATCHING USER IMAGE
     // =========================================================================
     async function downloadPdf(config, sections) {
         await loadScript(libraries.pdf);
@@ -970,10 +936,14 @@
         const margin = 36;
         const pageWidth = doc.internal.pageSize.getWidth();
         const pageHeight = doc.internal.pageSize.getHeight();
+        const totalRecords = sections.reduce((sum, s) => sum + s.rows.length, 0);
+        const dateStr = config.generatedAt || new Date().toLocaleString('en-US', {
+            month: 'short', day: '2-digit', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+        });
 
         sections.forEach((section, index) => {
-            const metrics = calculateSectionMetrics(section);
-            let tableStartY = 112;
+            let tableStartY = 96;
 
             if (index > 0 && doc.lastAutoTable) {
                 tableStartY = doc.lastAutoTable.finalY + 24;
@@ -982,186 +952,147 @@
             const needsNewPage = index > 0 && (tableStartY > pageHeight - 120);
             if (needsNewPage) {
                 doc.addPage();
-                tableStartY = 112;
+                tableStartY = 96;
             }
 
             const drawPageHeader = () => {
+                // 1. Top Corner Orange Wave Swooshes (matching image)
+                doc.setFillColor(254, 215, 170); // peach outer
+                doc.ellipse(0, 0, 115, 42, 'F');
+                doc.setFillColor(240, 90, 40); // orange inner
+                doc.ellipse(0, 0, 75, 26, 'F');
+
+                doc.setFillColor(254, 215, 170); // peach outer
+                doc.ellipse(pageWidth, 0, 115, 42, 'F');
+                doc.setFillColor(240, 90, 40); // orange inner
+                doc.ellipse(pageWidth, 0, 75, 26, 'F');
+
+                // 2. Centered Logo Image
+                const logoW = 120;
+                const logoH = 24.25;
+                const logoX = (pageWidth - logoW) / 2;
+                doc.addImage(brandImage, 'PNG', logoX, 14, logoW, logoH);
+
+                // 3. —— OFFICIAL REPORT ——
+                const midX = pageWidth / 2;
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(9);
-                doc.setTextColor(240, 120, 53);
-                doc.addImage(brandImage, 'PNG', margin, 12, 42, 42);
-                doc.text('OCCASERVE OFFICIAL REPORT', margin + 50, 34);
+                doc.setFontSize(8.5);
+                doc.setTextColor(6, 29, 56);
+                doc.text('OFFICIAL REPORT', midX, 47, { align: 'center' });
 
-                doc.setFontSize(15);
-                doc.setTextColor(15, 23, 42);
-                const titleLines = doc.splitTextToSize(config.title || 'Official Report', pageWidth - margin * 2 - 60);
-                doc.text(titleLines, margin, 58);
+                doc.setDrawColor(6, 29, 56);
+                doc.setLineWidth(1.2);
+                doc.line(midX - 90, 44.5, midX - 48, 44.5);
+                doc.line(midX + 48, 44.5, midX + 90, 44.5);
 
+                // 4. Report Title
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(18);
+                doc.setTextColor(6, 29, 56);
+                doc.text(config.title || 'Bookings Database Report', midX, 66, { align: 'center' });
+
+                // 5. Metadata Line
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(8);
-                doc.setTextColor(100, 116, 139);
-                const subtitle = [config.catererName ? `Caterer: ${config.catererName}` : null, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · ');
-                const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - margin * 2);
-                doc.text(subtitleLines, margin, 74);
+                doc.setTextColor(51, 65, 85);
+                const metaText = `Generated on ${dateStr}   |   ${totalRecords} bookings matching current search and filters`;
+                doc.text(metaText, midX, 79, { align: 'center' });
 
-                // Orange Brand Accent Rule
-                doc.setDrawColor(240, 120, 53);
-                doc.setLineWidth(1.5);
-                doc.line(margin, 84, pageWidth - margin, 84);
+                // 6. Orange Divider Bar above table
+                doc.setDrawColor(240, 90, 40);
+                doc.setLineWidth(2.2);
+                doc.line(margin, 87, pageWidth - margin, 87);
             };
 
             if (!index || needsNewPage) drawPageHeader();
-
-            // Draw KPI Metric Cards on Page 1 if currency metrics exist
-            if (index === 0 && metrics.totalRows > 0) {
-                const cardY = 94;
-                const cardH = 34;
-                const cardW = 160;
-
-                // Card 1: Total Records
-                doc.setFillColor(248, 250, 252);
-                doc.setDrawColor(226, 232, 240);
-                doc.roundedRect(margin, cardY, cardW, cardH, 4, 4, 'FD');
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(7);
-                doc.setTextColor(100, 116, 139);
-                doc.text('TOTAL RECORDS', margin + 8, cardY + 12);
-                doc.setFontSize(12);
-                doc.setTextColor(15, 23, 42);
-                doc.text(String(metrics.totalRows), margin + 8, cardY + 27);
-
-                if (metrics.hasCurrency) {
-                    // Card 2: Total Gross Sum (Highlighted)
-                    const card2X = margin + cardW + 12;
-                    doc.setFillColor(255, 247, 237);
-                    doc.setDrawColor(254, 215, 170);
-                    doc.roundedRect(card2X, cardY, cardW + 20, cardH, 4, 4, 'FD');
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(7);
-                    doc.setTextColor(194, 65, 12);
-                    doc.text('TOTAL GROSS AMOUNT', card2X + 8, cardY + 12);
-                    doc.setFontSize(12);
-                    doc.setTextColor(240, 120, 53);
-                    doc.text(formatCurrency(metrics.currencySum), card2X + 8, cardY + 27);
-
-                    // Card 3: Average Amount
-                    const card3X = card2X + cardW + 32;
-                    doc.setFillColor(248, 250, 252);
-                    doc.setDrawColor(226, 232, 240);
-                    doc.roundedRect(card3X, cardY, cardW, cardH, 4, 4, 'FD');
-                    doc.setFont('helvetica', 'bold');
-                    doc.setFontSize(7);
-                    doc.setTextColor(100, 116, 139);
-                    doc.text('AVERAGE AMOUNT', card3X + 8, cardY + 12);
-                    doc.setFontSize(12);
-                    doc.setTextColor(15, 23, 42);
-                    doc.text(formatCurrency(metrics.avgAmount), card3X + 8, cardY + 27);
-                }
-
-                tableStartY = cardY + cardH + 16;
-            }
-
-            if (section.title) {
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(11);
-                doc.setTextColor(15, 23, 42);
-                const titleLines = doc.splitTextToSize(section.title, pageWidth - margin * 2);
-                doc.text(titleLines, margin, tableStartY);
-                tableStartY += titleLines.length * 14;
-            }
 
             const columnCount = Math.max(1, section.columns.length);
             const sectionStartPage = doc.internal.getCurrentPageInfo().pageNumber;
             const pdfColumnWeights = wordColumnWeights(section);
             const totalPdfColumnWeight = pdfColumnWeights.reduce((sum, weight) => sum + weight, 0) || 1;
 
-            // Prepare Foot Row
-            let footData = null;
-            if (metrics.hasCurrency && metrics.totalRows > 0) {
-                const footRow = new Array(section.columns.length).fill('');
-                footRow[0] = `TOTAL (${metrics.totalRows})`;
-                footRow[metrics.currencyColIndex] = formatCurrency(metrics.currencySum);
-                footData = [footRow];
-            }
-
             doc.autoTable({
-                startY: tableStartY,
+                startY: 94,
                 head: [section.columns.map(column => column.label)],
                 body: section.rows.map(row => section.columns.map((column, columnIndex) => {
-                    const isCurr = column.type === 'currency' || /amount|price|total|revenue|fee|dues/i.test(String(column.label || ''));
-                    return isCurr ? formatCurrency(valueFor(row, column, columnIndex)) : safeText(valueFor(row, column, columnIndex));
+                    const labelLow = String(column.label || '').toLowerCase();
+                    const isCurr = column.type === 'currency' || /amount|price|total|revenue/i.test(labelLow);
+                    const val = valueFor(row, column, columnIndex);
+                    return isCurr ? formatCurrency(val) : safeText(val);
                 })),
-                foot: footData,
-                margin: { top: 96, left: margin, right: margin, bottom: 32 },
+                margin: { top: 94, left: margin, right: margin, bottom: 38 },
                 theme: 'grid',
                 styles: {
                     font: 'helvetica',
                     fontSize: Math.max(6, Math.min(8.5, 8.5 - Math.max(0, columnCount - 6) * 0.4)),
-                    cellPadding: columnCount > 8 ? 3.5 : 5.5,
+                    cellPadding: 6,
                     overflow: 'linebreak',
                     valign: 'middle',
-                    textColor: [30, 41, 59],
+                    textColor: [15, 23, 42],
                     lineColor: [226, 232, 240],
                     lineWidth: 0.5
                 },
                 headStyles: {
-                    fillColor: [15, 23, 42],
+                    fillColor: [6, 29, 56], // Deep Navy matching image
                     textColor: [255, 255, 255],
                     fontStyle: 'bold',
-                    valign: 'middle'
-                },
-                footStyles: {
-                    fillColor: [241, 245, 249],
-                    textColor: [15, 23, 42],
-                    fontStyle: 'bold',
-                    lineWidth: 0.8,
-                    lineColor: [15, 23, 42]
+                    valign: 'middle',
+                    lineColor: [255, 255, 255],
+                    lineWidth: 0.6
                 },
                 alternateRowStyles: {
-                    fillColor: [248, 250, 252]
+                    fillColor: [244, 248, 250] // Pale Cool Mint/Slate matching image
                 },
                 columnStyles: Object.fromEntries(section.columns.map((column, columnIndex) => {
-                    const isCurr = column.type === 'currency' || /amount|price|total|revenue|fee|dues/i.test(String(column.label || ''));
+                    const labelLow = String(column.label || '').toLowerCase();
+                    const isCurr = column.type === 'currency' || /amount|price|total|revenue/i.test(labelLow);
+                    const isStatus = /status|payment/i.test(labelLow);
                     return [
                         columnIndex,
                         {
                             cellWidth: (pageWidth - margin * 2) * pdfColumnWeights[columnIndex] / totalPdfColumnWeight,
-                            halign: isCurr ? 'right' : 'left'
+                            halign: isCurr ? 'right' : (isStatus ? 'center' : 'left'),
+                            fontStyle: isCurr ? 'bold' : 'normal',
+                            textColor: isCurr ? [0, 0, 0] : [15, 23, 42]
                         }
                     ];
                 })),
                 didDrawCell: (data) => {
-                    // Draw soft badge pills behind status cells in the body
+                    // Status Pill Badges drawn in exact soft pastel colors
                     if (data.section === 'body') {
                         const rawText = String(data.cell.raw || '').trim().toLowerCase();
-                        let badgeColor = null;
+                        let badgeBg = null;
+                        let badgeTextColor = null;
 
-                        if (/^(confirmed|completed|paid|active|approved|verified)$/i.test(rawText)) {
-                            badgeColor = [220, 252, 231]; // soft green
-                        } else if (/^(pending|partial|review|draft)$/i.test(rawText)) {
-                            badgeColor = [254, 249, 195]; // soft yellow
-                        } else if (/^(cancelled|rejected|failed|unpaid|disputed)$/i.test(rawText)) {
-                            badgeColor = [254, 226, 226]; // soft red
+                        if (/^(fully[ -]?paid|confirmed|completed|paid|active)$/i.test(rawText)) {
+                            badgeBg = [220, 252, 231]; // soft green #DCFCE7
+                            badgeTextColor = [21, 128, 61]; // dark green #15803D
+                        } else if (/^(partially[ -]?paid|pending|review|draft)$/i.test(rawText)) {
+                            badgeBg = [255, 237, 213]; // soft orange #FFEDD5
+                            badgeTextColor = [234, 88, 12]; // dark orange #EA580C
+                        } else if (/^(cancelled|rejected|failed|unpaid)$/i.test(rawText)) {
+                            badgeBg = [254, 226, 226]; // soft red #FEE2E2
+                            badgeTextColor = [185, 28, 28]; // dark red #B91C1C
                         }
 
-                        if (badgeColor) {
-                            const padding = 2;
-                            doc.setFillColor(badgeColor[0], badgeColor[1], badgeColor[2]);
-                            doc.roundedRect(
-                                data.cell.x + padding,
-                                data.cell.y + padding,
-                                data.cell.width - padding * 2,
-                                data.cell.height - padding * 2,
-                                3, 3, 'F'
-                            );
-                            // redraw text in crisp color over pill
+                        if (badgeBg && badgeTextColor) {
+                            const paddingH = 6;
+                            const pillH = 15;
+                            const pillW = Math.min(data.cell.width - 8, Math.max(48, String(data.cell.raw).length * 5.6 + 12));
+                            const pillX = data.cell.x + (data.cell.width - pillW) / 2;
+                            const pillY = data.cell.y + (data.cell.height - pillH) / 2;
+
+                            doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
+                            doc.roundedRect(pillX, pillY, pillW, pillH, 3, 3, 'F');
+
                             doc.setFont('helvetica', 'bold');
                             doc.setFontSize(data.cell.styles.fontSize);
-                            doc.setTextColor(30, 41, 59);
+                            doc.setTextColor(badgeTextColor[0], badgeTextColor[1], badgeTextColor[2]);
                             doc.text(
                                 String(data.cell.raw),
-                                data.cell.x + padding + 4,
-                                data.cell.y + data.cell.height / 2 + 2.5
+                                data.cell.x + data.cell.width / 2,
+                                pillY + pillH / 2 + 3,
+                                { align: 'center' }
                             );
                         }
                     }
@@ -1170,21 +1101,39 @@
                     if (doc.internal.getCurrentPageInfo().pageNumber > sectionStartPage) {
                         drawPageHeader();
                     }
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(8);
-                    doc.setTextColor(100, 116, 139);
-                    doc.text('OccaServe Event Platform · Official & Confidential Report', margin, pageHeight - 16);
                 }
             });
+
+            // Orange divider bar below table on last page
+            if (doc.lastAutoTable) {
+                const bottomY = Math.min(pageHeight - 28, doc.lastAutoTable.finalY + 12);
+                doc.setDrawColor(240, 90, 40);
+                doc.setLineWidth(2.2);
+                doc.line(margin, bottomY, pageWidth - margin, bottomY);
+            }
         });
 
         const pageCount = doc.internal.getNumberOfPages();
         for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
             doc.setPage(pageNumber);
+            const footY = pageHeight - 15;
+
+            // Left footer: OccaServe  |  Confidential Platform Report
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10);
+            doc.setTextColor(6, 29, 56);
+            doc.text('OccaServe', margin, footY);
+
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.setTextColor(100, 116, 139);
-            doc.text(`Page ${pageNumber} of ${pageCount}`, pageWidth - margin, pageHeight - 16, { align: 'right' });
+            doc.setFontSize(8.5);
+            doc.setTextColor(51, 65, 85);
+            doc.text('  |   Confidential Platform Report', margin + 50, footY);
+
+            // Right footer: Page X of Y
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(51, 65, 85);
+            doc.text(`Page ${pageNumber} of ${pageCount}`, pageWidth - margin, footY, { align: 'right' });
         }
         doc.save(`${fileBase(config)}.pdf`);
     }
@@ -1192,54 +1141,43 @@
     function printReport(config, sections) {
         const win = window.open('', '_blank');
         if (!win) throw new Error('Please allow pop-ups to print this report.');
-        const sectionHtml = sections.map(section => {
-            const metrics = calculateSectionMetrics(section);
-            const kpiHtml = metrics.totalRows > 0 ? `
-                <div style="display:flex;gap:12px;margin-bottom:14px;">
-                    <div style="padding:10px 14px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;">
-                        <div style="font-size:9px;font-weight:700;color:#64748b;">TOTAL RECORDS</div>
-                        <div style="font-size:16px;font-weight:800;color:#0f172a;">${metrics.totalRows}</div>
-                    </div>
-                    ${metrics.hasCurrency ? `
-                    <div style="padding:10px 14px;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;">
-                        <div style="font-size:9px;font-weight:700;color:#c2410c;">TOTAL GROSS SUM</div>
-                        <div style="font-size:16px;font-weight:800;color:#f07835;">${formatCurrency(metrics.currencySum)}</div>
-                    </div>` : ''}
-                </div>
-            ` : '';
+        const totalRecords = sections.reduce((sum, s) => sum + s.rows.length, 0);
+        const dateStr = config.generatedAt || new Date().toLocaleString('en-US', {
+            month: 'short', day: '2-digit', year: 'numeric',
+            hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true
+        });
 
-            return `
-                <section>
-                    ${section.title ? `<h2>${escapeHtml(section.title)}</h2>` : ''}
-                    ${kpiHtml}
-                    <table>
-                        <thead>
-                            <tr>${section.columns.map(column => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr>
-                        </thead>
-                        <tbody>
-                            ${section.rows.map(row => `<tr>${section.columns.map((column, index) => {
-                                const isCurr = column.type === 'currency' || /amount|price|total|revenue|fee|dues/i.test(String(column.label || ''));
-                                return `<td style="${isCurr ? 'text-align:right;font-weight:600;' : ''}">${escapeHtml(isCurr ? formatCurrency(valueFor(row, column, index)) : valueFor(row, column, index))}</td>`;
-                            }).join('')}</tr>`).join('')}
-                        </tbody>
-                        ${metrics.hasCurrency && metrics.totalRows > 0 ? `
-                        <tfoot>
-                            <tr style="background:#f1f5f9;font-weight:bold;">
-                                <td>TOTAL (${metrics.totalRows})</td>
-                                ${section.columns.slice(1).map((col, idx) => {
-                                    if (idx + 1 === metrics.currencyColIndex) {
-                                        return `<td style="text-align:right;color:#f07835;">${formatCurrency(metrics.currencySum)}</td>`;
-                                    }
-                                    return '<td></td>';
-                                }).join('')}
-                            </tr>
-                        </tfoot>` : ''}
-                    </table>
-                </section>
-            `;
-        }).join('');
+        const sectionHtml = sections.map(section => `
+            <section>
+                ${section.title ? `<h2>${escapeHtml(section.title)}</h2>` : ''}
+                <table>
+                    <thead>
+                        <tr>${section.columns.map(column => `<th>${escapeHtml(column.label)}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${section.rows.map(row => `<tr>${section.columns.map((column, index) => {
+                            const labelLow = String(column.label || '').toLowerCase();
+                            const isCurrency = column.type === 'currency' || /amount|price|total|revenue/i.test(labelLow);
+                            const isStatus = /status|payment/i.test(labelLow);
+                            const isBookingId = /booking[ -]?id|reference|ref/i.test(labelLow);
+                            const val = valueFor(row, column, index);
 
-        win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(config.title || 'OccaServe Report')}</title><style>@page{size:landscape;margin:12mm}body{font:10px/1.45 'Segoe UI',Arial,sans-serif;color:#0f172a}.brand{display:flex;align-items:center;gap:10px;margin-bottom:10px;color:#f07835;font-size:14px;font-weight:800;letter-spacing:.08em}.brand img{width:42px;height:42px;object-fit:contain}header{border-bottom:2px solid #f07835;padding-bottom:10px;margin-bottom:14px}h1{font-size:18px;line-height:1.2;margin:0 0 4px 0;color:#0f172a}header small{display:block;color:#64748b;font-size:9.5px}section{margin:14px 0 18px;break-inside:avoid}h2{font-size:12px;color:#0f172a;margin:0 0 8px}table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.5px}th,td{border:1px solid #cbd5e1;padding:5px 6px;text-align:left;vertical-align:middle;overflow-wrap:anywhere}th{background:#0f172a;color:white;font-weight:700}tr:nth-child(even){background:#f8fafc}footer{position:fixed;bottom:0;color:#64748b;font-size:8px}</style></head><body><header><div class="brand"><img src="${window.location.origin}/static/images/brand_icon.png" alt="">OCCASERVE OFFICIAL REPORT</div><h1>${escapeHtml(config.title || 'Report')}</h1><small>${escapeHtml([config.catererName ? `Caterer: ${config.catererName}` : null, `Generated ${config.generatedAt || new Date().toLocaleString()}`, ...(config.metadata || [])].filter(Boolean).join(' · '))}</small></header>${sectionHtml}<footer>OccaServe · Official & Confidential Platform Report</footer><script>window.onload=()=>window.print()<\/script></body></html>`);
+                            if (isCurrency) {
+                                return `<td style="text-align:right;font-weight:700;">${escapeHtml(formatCurrency(val))}</td>`;
+                            } else if (isStatus) {
+                                const badge = getStatusBadgeHtml(val);
+                                return `<td style="text-align:center;">${badge || escapeHtml(safeText(val))}</td>`;
+                            } else if (isBookingId) {
+                                return `<td style="font-weight:700;">${escapeHtml(safeText(val))}</td>`;
+                            }
+                            return `<td>${escapeHtml(safeText(val))}</td>`;
+                        }).join('')}</tr>`).join('')}
+                    </tbody>
+                </table>
+            </section>
+        `).join('');
+
+        win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(config.title || 'Bookings Database Report')}</title><style>@page{size:landscape;margin:10mm}body{font:10px/1.45 'Poppins',Arial,sans-serif;color:#061D38;padding:12px}.logo{text-align:center;margin-bottom:6px}.logo img{height:42px}.badge{text-align:center;font-size:11px;font-weight:800;letter-spacing:.2em;color:#061D38;margin:4px 0 8px}h1{font-size:22px;text-align:center;margin:0 0 6px 0;color:#061D38}.meta{text-align:center;font-size:10px;color:#334155;margin-bottom:14px}.orange-bar{width:100%;height:2.5px;background:#F05A28;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:9px}th{background:#061D38;color:#fff;padding:8px 10px;text-align:left;border:none;border-right:1px solid rgba(255,255,255,.3)}td{padding:8px 10px;border-bottom:1px solid #E2E8F0}tr:nth-child(even){background:#F4F8FA}.status-fully-paid{background:#DCFCE7;color:#15803D;padding:3px 8px;border-radius:4px;font-weight:700}.status-partially-paid{background:#FFEDD5;color:#EA580C;padding:3px 8px;border-radius:4px;font-weight:700}.status-cancelled{background:#FEE2E2;color:#B91C1C;padding:3px 8px;border-radius:4px;font-weight:700}footer{margin-top:14px;border-top:2px solid #F05A28;padding-top:8px;display:flex;justify-content:space-between;font-size:10px;color:#334155}</style></head><body><div class="logo"><img src="${window.location.origin}/static/images/occaserve_logo_clean.png" alt="OccaServe" onerror="this.src='${window.location.origin}/static/images/brand_icon.png'"></div><div class="badge">—— OFFICIAL REPORT ——</div><h1>${escapeHtml(config.title || 'Bookings Database Report')}</h1><div class="meta">Generated on ${dateStr}   |   ${totalRecords} bookings matching current search and filters</div><div class="orange-bar"></div>${sectionHtml}<footer><div><strong>OccaServe</strong> | Confidential Platform Report</div><div>Page 1 of 1</div></footer><script>window.onload=()=>window.print()<\/script></body></html>`);
         win.document.close();
     }
 

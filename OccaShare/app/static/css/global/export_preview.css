@@ -1,34 +1,28 @@
 /* ==========================================================================
    OCCASERVE ENTERPRISE EXPORT & PREVIEW DESIGN SYSTEM
-   Modern, Executive-Ready Document Preview & Export Styling
+   Exact Template Implementation matching OccaServe Official Report
    ========================================================================== */
 
 :root {
-    --occa-exp-primary: #f07835;
-    --occa-exp-primary-hover: #d96522;
-    --occa-exp-primary-soft: rgba(240, 120, 53, 0.1);
-    --occa-exp-navy: #0f172a;
-    --occa-exp-navy-light: #1e293b;
-    --occa-exp-slate-50: #f8fafc;
-    --occa-exp-slate-100: #f1f5f9;
-    --occa-exp-slate-200: #e2e8f0;
-    --occa-exp-slate-300: #cbd5e1;
-    --occa-exp-slate-400: #94a3b8;
-    --occa-exp-slate-500: #64748b;
+    --occa-exp-primary: #F05A28;
+    --occa-exp-primary-hover: #D94818;
+    --occa-exp-navy: #061D38;
+    --occa-exp-navy-deep: #0A2540;
+    --occa-exp-slate-50: #F4F8FA;
+    --occa-exp-slate-100: #F1F5F9;
+    --occa-exp-slate-200: #E2E8F0;
+    --occa-exp-slate-300: #CBD5E1;
+    --occa-exp-slate-500: #64748B;
     --occa-exp-slate-700: #334155;
-    --occa-exp-slate-900: #0f172a;
-    --occa-exp-success-bg: #ecfdf5;
-    --occa-exp-success-border: #a7f3d0;
-    --occa-exp-success-text: #065f46;
-    --occa-exp-warning-bg: #fffbeb;
-    --occa-exp-warning-border: #fde68a;
-    --occa-exp-warning-text: #92400e;
-    --occa-exp-danger-bg: #fef2f2;
-    --occa-exp-danger-border: #fecaca;
-    --occa-exp-danger-text: #991b1b;
-    --occa-exp-info-bg: #eff6ff;
-    --occa-exp-info-border: #bfdbfe;
-    --occa-exp-info-text: #1e40af;
+    --occa-exp-slate-900: #0F172A;
+    --occa-exp-green-bg: #DCFCE7;
+    --occa-exp-green-text: #15803D;
+    --occa-exp-orange-bg: #FFEDD5;
+    --occa-exp-orange-text: #EA580C;
+    --occa-exp-red-bg: #FEE2E2;
+    --occa-exp-red-text: #B91C1C;
+    --occa-exp-blue-bg: #EFF6FF;
+    --occa-exp-blue-text: #1E40AF;
 }
 
 /* Modal Overlay with Glassmorphism */
@@ -40,7 +34,7 @@
     align-items: center;
     justify-content: center;
     padding: clamp(10px, 2.5vw, 28px);
-    background: rgba(15, 23, 42, 0.72);
+    background: rgba(10, 37, 64, 0.75);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     animation: occaExpFadeIn 0.2s ease-out;
@@ -59,11 +53,11 @@
     height: min(920px, calc(100dvh - 36px));
     min-height: 0;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 20px;
     background: #f8fafc;
     color: var(--occa-exp-slate-900);
-    box-shadow: 0 28px 90px -15px rgba(2, 6, 23, 0.55), 0 0 0 1px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 28px 90px -15px rgba(2, 6, 23, 0.6), 0 0 0 1px rgba(6, 29, 56, 0.1);
     font-family: 'Poppins', system-ui, -apple-system, sans-serif;
     animation: occaExpScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -94,12 +88,10 @@
 }
 
 .occa-export-brand img {
-    width: 44px;
-    height: 44px;
+    height: 38px;
+    width: auto;
     flex: 0 0 auto;
     object-fit: contain;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(240, 120, 53, 0.15);
 }
 
 .occa-export-brand div {
@@ -136,7 +128,7 @@
     border-radius: 10px;
     background: #ffffff;
     color: var(--occa-exp-slate-500);
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
     transition: all 0.15s ease;
 }
@@ -159,7 +151,7 @@
     padding: 16px 24px 12px;
 }
 
-/* Segmented Format Selector */
+/* Segmented Format Navigation */
 .occa-export-formats {
     display: grid;
     flex: 0 0 auto;
@@ -175,7 +167,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    min-height: 48px;
+    min-height: 46px;
     padding: 8px 16px;
     border: none;
     border-radius: 10px;
@@ -214,7 +206,7 @@
     background: #ffffff;
     color: var(--occa-exp-primary);
     font-weight: 700;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 4px 14px rgba(6, 29, 56, 0.08), 0 1px 3px rgba(6, 29, 56, 0.04);
 }
 
 .occa-export-format.is-active i {
@@ -222,18 +214,18 @@
 }
 
 .occa-export-format.is-active small {
-    background: var(--occa-exp-primary-soft);
+    background: rgba(240, 90, 40, 0.12);
     color: var(--occa-exp-primary);
 }
 
-/* Canvas Toolbar (Controls & Indicators) */
+/* Canvas Toolbar */
 .occa-export-canvas-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
-    padding: 4px 2px;
+    padding: 2px 2px;
 }
 
 .occa-export-canvas-meta {
@@ -317,7 +309,7 @@
     color: var(--occa-exp-primary);
 }
 
-/* Preview Host / Viewport */
+/* Viewport / Scroll Container */
 .occa-export-preview-host {
     display: flex;
     min-height: 0;
@@ -334,279 +326,300 @@
     overscroll-behavior: contain;
 }
 
-/* Realistic A4 Paper Sheet */
+/* ==========================================================================
+   OCCASERVE REPORT SHEET (EXACT BLUEPRINT MATCHING USER IMAGE)
+   ========================================================================== */
 .occa-export-sheet {
+    position: relative;
     box-sizing: border-box;
     width: min(100%, 1060px);
     min-height: 100%;
     align-self: flex-start;
     flex: 0 0 auto;
     margin: 0 auto;
-    padding: clamp(28px, 4vw, 48px);
-    border-radius: 6px;
-    border: 1px solid #ffffff;
+    padding: clamp(32px, 4vw, 44px) clamp(30px, 4.5vw, 52px) clamp(24px, 3vw, 36px);
+    border-radius: 8px;
     background: #ffffff;
-    box-shadow: 0 16px 45px -8px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.05);
+    box-shadow: 0 18px 50px -10px rgba(6, 29, 56, 0.18), 0 2px 6px rgba(6, 29, 56, 0.06);
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--occa-exp-slate-900);
+    overflow: hidden;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     transform-origin: top center;
 }
 
-/* Header inside Document */
-.occa-export-document-brand {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    color: var(--occa-exp-primary);
-    font-size: 14px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+/* Top Corner Orange Wave Swooshes (matching user image) */
+.occa-export-sheet::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 250px;
+    height: 85px;
+    background: radial-gradient(ellipse at 0% 0%, #F05A28 0%, #FB923C 35%, #FFEDD5 65%, transparent 75%);
+    opacity: 0.9;
+    border-bottom-right-radius: 200px 90px;
+    pointer-events: none;
+    z-index: 1;
 }
 
-.occa-export-document-brand img {
-    width: 48px;
+.occa-export-sheet::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 250px;
+    height: 85px;
+    background: radial-gradient(ellipse at 100% 0%, #F05A28 0%, #FB923C 35%, #FFEDD5 65%, transparent 75%);
+    opacity: 0.9;
+    border-bottom-left-radius: 200px 90px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Centered Report Header Block */
+.occa-report-header {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.occa-report-logo-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.occa-report-brand-logo {
     height: 48px;
-    flex: 0 0 auto;
+    width: auto;
+    max-width: 280px;
     object-fit: contain;
 }
 
-.occa-export-sheet h1 {
-    margin: 0 0 6px 0;
-    color: var(--occa-exp-navy);
-    font-size: clamp(20px, 2.4vw, 26px);
-    font-weight: 800;
-    line-height: 1.25;
-}
-
-.occa-export-caterer {
-    display: inline-block;
-    color: var(--occa-exp-slate-700);
-    font-size: 14px;
-    font-weight: 700;
-    margin-bottom: 6px;
-}
-
-.occa-export-meta {
-    margin: 8px 0 20px 0;
-    padding-bottom: 12px;
-    border-bottom: 2.5px solid var(--occa-exp-primary);
-    color: var(--occa-exp-slate-500);
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 1.5;
-}
-
-/* Executive KPI Summary Ribbon */
-.occa-export-kpi-ribbon {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 14px;
-    margin-bottom: 24px;
-}
-
-.occa-kpi-card {
-    padding: 14px 18px;
-    border-radius: 12px;
-    background: var(--occa-exp-slate-50);
-    border: 1px solid var(--occa-exp-slate-200);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.occa-kpi-card-highlight {
-    background: #fff7ed;
-    border-color: #ffedd5;
-}
-
-.occa-kpi-label {
+.occa-report-official-badge {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--occa-exp-slate-500);
-}
-
-.occa-kpi-card-highlight .occa-kpi-label {
-    color: #c2410c;
-}
-
-.occa-kpi-val {
-    font-size: 22px;
+    justify-content: center;
+    gap: 16px;
+    margin: 4px 0 8px;
+    font-size: 13px;
     font-weight: 800;
+    letter-spacing: 0.22em;
     color: var(--occa-exp-navy);
-    font-variant-numeric: tabular-nums;
-    line-height: 1.2;
+    text-transform: uppercase;
 }
 
-.occa-kpi-card-highlight .occa-kpi-val {
-    color: var(--occa-exp-primary);
+.occa-report-official-badge::before,
+.occa-report-official-badge::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 1.5px;
+    background: var(--occa-exp-navy);
 }
 
-.occa-kpi-sub {
-    font-size: 11px;
+.occa-report-title {
+    color: var(--occa-exp-navy);
+    font-size: clamp(22px, 2.5vw, 28px);
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+.occa-report-meta-line {
+    color: var(--occa-exp-slate-700);
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.occa-report-meta-line i {
+    color: var(--occa-exp-navy);
+    font-size: 13px;
+}
+
+.occa-report-meta-sep {
     color: var(--occa-exp-slate-400);
-    font-weight: 500;
+    margin: 0 2px;
 }
 
-/* Sections & Tables */
-.occa-export-section {
-    margin: 20px 0 28px 0;
+/* Orange Divider Bar (above & below table) */
+.occa-report-orange-divider {
+    width: 100%;
+    height: 2.8px;
+    background: var(--occa-exp-primary);
+    border-radius: 2px;
+    margin-bottom: 14px;
 }
 
-.occa-export-section h2 {
-    margin: 0 0 12px 0;
-    color: var(--occa-exp-slate-900);
-    font-size: 15px;
+/* Table Wrap & Styling */
+.occa-report-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 16px;
+}
+
+.occa-report-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+/* Navy Header with Rounded Corners and White Vertical Dividers */
+.occa-report-table th {
+    background: var(--occa-exp-navy);
+    color: #ffffff;
+    font-size: 11px;
     font-weight: 700;
+    padding: 11px 14px;
+    text-align: left;
+    border: none;
+    white-space: nowrap;
+}
+
+.occa-report-table th:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+.occa-report-table th:last-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.occa-report-table th:not(:last-child) {
+    border-right: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.occa-report-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--occa-exp-slate-200);
+    vertical-align: middle;
+    color: var(--occa-exp-slate-900);
+}
+
+.occa-report-table tbody tr:nth-child(even) {
+    background: var(--occa-exp-slate-50);
+}
+
+.occa-report-table tbody tr:nth-child(odd) {
+    background: #ffffff;
+}
+
+.occa-report-table td.is-booking-id {
+    font-weight: 700;
+    color: var(--occa-exp-navy);
+}
+
+.occa-report-table td.is-currency {
+    text-align: right;
+    font-weight: 800;
+    color: #000000;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.occa-report-table td.is-status {
+    text-align: center;
+}
+
+/* Status Pill Badges (Exact match to image) */
+.occa-status-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.occa-status-pill.status-fully-paid,
+.occa-status-pill.status-confirmed,
+.occa-status-pill.status-completed,
+.occa-status-pill.status-paid,
+.occa-status-pill.status-active {
+    background: var(--occa-exp-green-bg);
+    color: var(--occa-exp-green-text);
+}
+
+.occa-status-pill.status-partially-paid,
+.occa-status-pill.status-pending,
+.occa-status-pill.status-review,
+.occa-status-pill.status-draft {
+    background: var(--occa-exp-orange-bg);
+    color: var(--occa-exp-orange-text);
+}
+
+.occa-status-pill.status-cancelled,
+.occa-status-pill.status-rejected,
+.occa-status-pill.status-failed,
+.occa-status-pill.status-unpaid {
+    background: var(--occa-exp-red-bg);
+    color: var(--occa-exp-red-text);
+}
+
+/* Footer Row matching user image */
+.occa-report-footer-divider {
+    width: 100%;
+    height: 2.5px;
+    background: var(--occa-exp-primary);
+    border-radius: 2px;
+    margin: 18px 0 12px;
+}
+
+.occa-report-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--occa-exp-slate-700);
+}
+
+.occa-report-footer-left {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-.occa-export-section h2::before {
-    content: '';
-    display: inline-block;
-    width: 4px;
-    height: 16px;
-    border-radius: 2px;
-    background: var(--occa-exp-primary);
+.occa-report-footer-brand {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--occa-exp-navy);
+    letter-spacing: -0.01em;
 }
 
-.occa-export-table-wrap {
-    max-width: 100%;
-    overflow-x: auto;
-    border-radius: 10px;
-    border: 1px solid var(--occa-exp-slate-200);
+.occa-report-footer-sep {
+    color: var(--occa-exp-slate-400);
+    font-weight: 400;
 }
 
-.occa-export-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-    line-height: 1.45;
-}
-
-.occa-export-table th {
-    background: var(--occa-exp-navy);
-    color: #ffffff;
-    text-align: left;
-    font-weight: 700;
-    padding: 10px 12px;
-    font-size: 10.5px;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    border: none;
-    white-space: nowrap;
-}
-
-.occa-export-table td {
-    padding: 9px 12px;
-    border-top: 1px solid var(--occa-exp-slate-200);
-    vertical-align: middle;
+.occa-report-footer-right {
+    font-weight: 600;
     color: var(--occa-exp-slate-700);
 }
 
-.occa-export-table tbody tr:nth-child(even) {
-    background: var(--occa-exp-slate-50);
-}
-
-.occa-export-table tbody tr:hover {
-    background: #f1f5f9;
-}
-
-.occa-export-table td.is-currency {
-    text-align: right;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    color: var(--occa-exp-navy);
-}
-
-/* Total Row Footer */
-.occa-export-total-row td {
-    background: #f1f5f9;
-    border-top: 2px solid var(--occa-exp-navy);
-    border-bottom: 2px solid var(--occa-exp-navy);
-    font-weight: 800;
-    color: var(--occa-exp-navy);
-    font-size: 12px;
-}
-
-.occa-export-total-row td.is-currency {
-    color: var(--occa-exp-primary);
-    font-size: 13px;
-}
-
-/* Status Badges */
-.occa-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 9px;
-    border-radius: 14px;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: capitalize;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-}
-
-.occa-badge i {
-    font-size: 9px;
-}
-
-.occa-badge-success {
-    background: var(--occa-exp-success-bg);
-    color: var(--occa-exp-success-text);
-    border: 1px solid var(--occa-exp-success-border);
-}
-
-.occa-badge-warning {
-    background: var(--occa-exp-warning-bg);
-    color: var(--occa-exp-warning-text);
-    border: 1px solid var(--occa-exp-warning-border);
-}
-
-.occa-badge-danger {
-    background: var(--occa-exp-danger-bg);
-    color: var(--occa-exp-danger-text);
-    border: 1px solid var(--occa-exp-danger-border);
-}
-
-.occa-badge-info {
-    background: var(--occa-exp-info-bg);
-    color: var(--occa-exp-info-text);
-    border: 1px solid var(--occa-exp-info-border);
-}
-
+/* Empty State */
 .occa-export-empty {
-    padding: 32px 20px;
-    color: var(--occa-exp-slate-400);
+    padding: 36px 20px;
+    color: var(--occa-exp-slate-500);
     text-align: center;
-    font-weight: 500;
+    font-weight: 600;
     font-size: 13px;
 }
 
-/* Format Variations in Preview */
-.occa-export-sheet-xlsx .occa-export-table {
-    border: 1px solid #cbd5e1;
-}
-
-.occa-export-sheet-xlsx .occa-export-table th {
-    background: #0f172a;
-}
-
-.occa-export-sheet-pdf {
-    width: min(100%, 1060px);
-}
-
-/* Sticky Dialog Footer */
+/* Dialog Footer Bar */
 .occa-export-footer {
     z-index: 10;
     display: grid;
@@ -617,7 +630,7 @@
     padding: 14px 24px;
     border-top: 1px solid var(--occa-exp-slate-200);
     background: #ffffff;
-    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 -4px 16px rgba(6, 29, 56, 0.04);
 }
 
 .occa-export-footer-note {
@@ -682,7 +695,7 @@
     border-color: var(--occa-exp-primary);
     background: var(--occa-exp-primary);
     color: #ffffff;
-    box-shadow: 0 4px 14px rgba(240, 120, 53, 0.28);
+    box-shadow: 0 4px 14px rgba(240, 90, 40, 0.28);
 }
 
 .occa-export-actions .occa-export-download:hover {
@@ -690,7 +703,7 @@
     background: var(--occa-exp-primary-hover);
     color: #ffffff;
     transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(240, 120, 53, 0.35);
+    box-shadow: 0 6px 18px rgba(240, 90, 40, 0.35);
 }
 
 .occa-export-actions button:disabled {
@@ -710,10 +723,7 @@
         border-radius: 16px;
     }
 
-    .occa-export-toolbar {
-        padding: 12px 16px;
-    }
-
+    .occa-export-toolbar,
     .occa-export-content {
         padding: 12px 16px;
     }
@@ -723,7 +733,7 @@
     }
 
     .occa-export-sheet {
-        padding: 20px 16px;
+        padding: 24px 16px;
     }
 
     .occa-export-footer {
@@ -799,8 +809,8 @@
         transform: none !important;
     }
 
-    .occa-export-table th {
-        background: #0f172a !important;
+    .occa-report-table th {
+        background: #061D38 !important;
         color: #ffffff !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
