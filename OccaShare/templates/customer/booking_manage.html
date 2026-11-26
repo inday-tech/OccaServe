@@ -609,19 +609,27 @@
                     confirmButtonColor: '#ef4444'
                 });
             }
-            window.history.replaceState({}, document.title, window.location.pathname);
+            urlParams.delete('error');
+            urlParams.delete('error_msg');
+            const cleanErrQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+            window.history.replaceState({}, document.title, window.location.pathname + cleanErrQuery);
         }
         
         if (urlParams.has('success_msg')) {
-            const successMessage = urlParams.get('success_msg');
+            const rawSuccess = urlParams.get('success_msg');
+            let successMessage = rawSuccess;
+            try { successMessage = decodeURIComponent(rawSuccess.replace(/\+/g, ' ')); } catch (_) {}
             if (window.showToast) {
                 window.showToast(successMessage, 'success');
             } else {
                 Swal.fire({
-                    title: 'Success!',
-                    text: successMessage,
+                    toast: true,
+                    position: 'bottom-end',
                     icon: 'success',
-                    confirmButtonColor: 'var(--up-emerald-500)'
+                    title: successMessage,
+                    showConfirmButton: false,
+                    timer: 3500,
+                    timerProgressBar: true
                 });
             }
             try {
@@ -631,7 +639,9 @@
             } catch (storageError) {
                 console.warn('Could not clear submitted event details:', storageError);
             }
-            window.history.replaceState({}, document.title, window.location.pathname);
+            urlParams.delete('success_msg');
+            const cleanSuccessQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+            window.history.replaceState({}, document.title, window.location.pathname + cleanSuccessQuery);
         }
     });
 
@@ -662,17 +672,48 @@
             
             if (data.success) {
                 closeReportModal();
-                Swal.fire({
-                    title: 'Report Submitted',
-                    text: data.message,
-                    icon: 'success',
-                    confirmButtonColor: '#ef4444'
-                });
+                if (window.showToast) {
+                    window.showToast(data.message || 'Report submitted successfully.', 'success');
+                } else {
+                    Swal.fire({
+                        toast: true,
+                        position: 'bottom-end',
+                        icon: 'success',
+                        title: data.message || 'Report submitted successfully.',
+                        showConfirmButton: false,
+                        timer: 3500,
+                        timerProgressBar: true
+                    });
+                }
             } else {
-                Swal.fire('Error', data.message, 'error');
+                if (window.showToast) {
+                    window.showToast(data.message || 'Failed to submit report.', 'error');
+                } else {
+                    Swal.fire({
+                        toast: true,
+                        position: 'bottom-end',
+                        icon: 'error',
+                        title: data.message || 'Failed to submit report.',
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true
+                    });
+                }
             }
         } catch (error) {
-            Swal.fire('Error', 'An unexpected error occurred. Please try again.', 'error');
+            if (window.showToast) {
+                window.showToast('An unexpected error occurred. Please try again.', 'error');
+            } else {
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    icon: 'error',
+                    title: 'An unexpected error occurred. Please try again.',
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true
+                });
+            }
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Submit Report <i class="fas fa-paper-plane"></i>';

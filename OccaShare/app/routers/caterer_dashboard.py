@@ -1956,6 +1956,129 @@ def snapshot_booking_actual_cost(booking):
     booking.actual_cost = total_cost
     booking.actual_cost_breakdown = breakdown
 
+
+# Canonical booking.status transition machines. Fulfillment stages that are
+# driven by the preparation tracker (setup_ongoing, ready_for_event) are
+# reached through POST /api/bookings/{id}/preparation-status, which syncs
+# booking.status; this endpoint handles the remaining transitions.
+_BOOKING_STATUS_TRANSITIONS_FOOD = {
+    "pending": ["confirmed", "cancelled"],
+    "confirmed": ["preparing", "ready_for_delivery", "ready_for_pickup", "on_the_way", "cancelled", "no_show"],
+    "preparing": ["ready_for_delivery", "ready_for_pickup", "on_the_way", "cancelled"],
+    "ready_for_delivery": ["on_the_way", "arrived", "completed", "cancelled"],
+    "ready_for_pickup": ["completed", "cancelled"],
+    "on_the_way": ["arrived", "completed", "cancelled"],
+    "arrived": ["completed", "cancelled"],
+    "setup_ongoing": ["completed", "cancelled"],
+    "in_progress": ["completed", "cancelled"],
+    "ready_for_event": ["completed", "cancelled"],
+    "completed": [],
+    "cancelled": [],
+    "no_show": [],
+}
+
+_BOOKING_STATUS_TRANSITIONS_EVENT = {
+    "pending": ["confirmed", "cancelled"],
+    "confirmed": ["preparing", "cancelled", "no_show"],
+    "preparing": ["ready_for_delivery", "ready_for_pickup", "cancelled"],
+    "ready_for_delivery": ["on_the_way", "cancelled"],
+    "ready_for_pickup": ["completed", "cancelled"],
+    "on_the_way": ["arrived", "cancelled"],
+    "arrived": ["setup_ongoing", "cancelled"],
+    "setup_ongoing": ["completed", "cancelled"],
+    "in_progress": ["completed", "cancelled"],
+    "ready_for_event": ["completed", "cancelled"],
+    "completed": [],
+    "cancelled": [],
+    "no_show": [],
+}
+
+def _booking_transition_machine(booking):
+    if (booking.document_type or "") == "invoice":
+        return _BOOKING_STATUS_TRANSITIONS_FOOD
+    return _BOOKING_STATUS_TRANSITIONS_EVENT
+
+
+def allowed_status_transitions(booking) -> list:
+    """Next booking.status values reachable via POST update-status."""
+    machine = _booking_transition_machine(booking)
+    current = (booking.status or "pending").strip().lower()
+    return list(machine.get(current, []))
+
+
+def can_complete_booking(booking, payment_summary=None) -> bool:
+    """True when the booking may be marked completed right now."""
+    from app.services.payment_service import PaymentService
+    from app.services.preparation_service import completion_stage_block_reason
+
+    if payment_summary is None:
+        payment_summary = PaymentService.get_payment_summary(booking)
+    if not payment_summary.get("can_mark_completed"):
+        return False
+    return completion_stage_block_reason(booking) is None
+
+
+def _finalize_booking_completion(db, booking, user):
+    """Canonical completion mutation shared by all completion endpoints.
+
+    Aligns payment flags, snapshots actual cost, and bills commission
+    idempotently (BillingInvoice existence + commission_calculated flag).
+    Caller is responsible for committing and notifications.
+    """
+    from app.services.payment_service import PaymentService
+    from app.services.preparation_service import completion_stage_block_reason
+
+    stage_block_reason = completion_stage_block_reason(booking)
+    if stage_block_reason:
+        raise HTTPException(status_code=409, detail=stage_block_reason)
+    gate = PaymentService.assert_can_mark_completed(booking)
+    if not gate["ok"]:
+        raise HTTPException(status_code=400, detail=gate["message"])
+
+    booking.status = "completed"
+    booking.preparation_status = "completed"
+    booking.payment_status = "paid"
+    total_p = float(booking.total_amount or booking.total_price or 0.0)
+    if (booking.amount_paid or 0.0) < total_p:
+        booking.amount_paid = total_p
+    snapshot_booking_actual_cost(booking)
+
+    if not is_pre_deployment_manual_booking(booking):
+        config = db.query(models.WebsiteConfig).first()
+        comm_rate_percent = get_commission_rate_percent(config)
+        comm_rate = comm_rate_percent / 100.0
+        booking_total = float(booking.total_amount or booking.total_price or 0.0)
+        commission_amount = calculate_booking_commission(booking_total, comm_rate_percent)
+
+        caterer_prof = booking.caterer or user.caterer_profile
+        existing_inv = db.query(models.BillingInvoice).filter(
+            models.BillingInvoice.booking_id == booking.id
+        ).first()
+        if not existing_inv:
+            db.add(models.BillingInvoice(
+                caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
+                booking_id=booking.id,
+                billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+                due_date=billing_period_due_date(
+                    booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
+                    booking.event_date
+                ),
+                amount=commission_amount,
+                commission_rate=comm_rate,
+                status='pending'
+            ))
+
+        if not booking.commission_calculated:
+            if caterer_prof:
+                caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_amount
+            booking.commission_calculated = True
+            db.add(models.AuditLog(
+                user_id=user.id,
+                action="COMMISSION_BILLED",
+                notes=f"Billed PHP {commission_amount:.2f} commission for completed booking #{booking.id}."
+            ))
+
+
 @router.post("/bookings/{booking_id}/update-status")
 async def update_booking_status(
     booking_id: str,
@@ -2010,13 +2133,6 @@ async def update_booking_status(
     if new_status == "cancelled":
         ensure_booking_cancellation_has_no_verified_payment(booking)
 
-    if new_status == "completed":
-        from app.services.preparation_service import completion_stage_block_reason
-
-        stage_block_reason = completion_stage_block_reason(booking)
-        if stage_block_reason:
-            raise HTTPException(status_code=409, detail=stage_block_reason)
-
     if new_status in {"preparing", "ready_for_delivery", "on_the_way", "arrived", "setup_ongoing"}:
         from app.services.payment_service import PaymentService
         payment_summary = PaymentService.get_payment_summary(booking)
@@ -2027,63 +2143,21 @@ async def update_booking_status(
             )
 
     # --- STRICT STATE MACHINE ENFORCEMENT ---
-    if is_food_order:
-        valid_transitions = {
-            "pending": ["confirmed", "cancelled"],
-            "confirmed": ["preparing", "ready_for_delivery", "ready_for_pickup", "on_the_way", "cancelled", "no_show"],
-            "preparing": ["ready_for_delivery", "ready_for_pickup", "on_the_way", "cancelled"],
-            "ready_for_delivery": ["on_the_way", "arrived", "completed", "cancelled"],
-            "on_the_way": ["arrived", "completed", "cancelled"],
-            "arrived": ["completed", "cancelled"],
-            "ready_for_pickup": ["completed", "cancelled"],
-            "completed": [],
-            "cancelled": [],
-            "no_show": []
-        }
-    else:
-        valid_transitions = {
-            "pending": ["confirmed", "cancelled"],
-            "confirmed": ["preparing", "cancelled", "no_show"],
-            "preparing": ["ready_for_delivery", "ready_for_pickup", "cancelled"],
-            "ready_for_delivery": ["on_the_way", "cancelled"],
-            "on_the_way": ["arrived", "cancelled"],
-            "arrived": ["setup_ongoing", "cancelled"],
-            "setup_ongoing": ["completed", "cancelled"],
-            "in_progress": ["completed", "cancelled"],
-            "ready_for_event": ["completed", "cancelled"],
-            "ready_for_pickup": ["completed", "cancelled"],
-            "completed": [],
-            "cancelled": [],
-            "no_show": []
-        }
-    
+    valid_transitions = _booking_transition_machine(booking)
+
     current_status = (booking.status or "pending").lower()
     allowed_next = valid_transitions.get(current_status, [])
     if new_status not in allowed_next:
         raise HTTPException(status_code=400, detail=f"Cannot transition directly from '{current_status}' to '{new_status}'. Please follow proper status progression.")
 
-    # --- COMPLETION GATE: must be Fully Paid (no remaining balance), all methods ---
-    if new_status == "completed":
-        from app.services.payment_service import PaymentService
-        gate = PaymentService.assert_can_mark_completed(booking)
-        if not gate["ok"]:
-            raise HTTPException(status_code=400, detail=gate["message"])
-        # Align status flag once amounts confirm full settlement
-        booking.payment_status = "paid"
-
-    if new_status == "completed":
-        booking.preparation_status = "completed"
-        booking.payment_status = "paid"
-        total_p = float(booking.total_amount or booking.total_price or 0.0)
-        if (booking.amount_paid or 0.0) < total_p:
-            booking.amount_paid = total_p
-
     old_status = booking.status
-    booking.status = new_status
-    
     if new_status == "completed":
-        snapshot_booking_actual_cost(booking)
-    
+        # Canonical completion path: payment gate, cleanup gate, cost snapshot,
+        # and idempotent commission billing all live in one place.
+        _finalize_booking_completion(db, booking, user)
+    else:
+        booking.status = new_status
+
     # Log History
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -2092,48 +2166,6 @@ async def update_booking_status(
     )
     db.add(history)
 
-    # BILLING: Calculate Commission and Add to Outstanding Balance
-    if (
-        new_status == "completed"
-        and not booking.commission_calculated
-        and not is_pre_deployment_manual_booking(booking)
-    ):
-        caterer_prof = user.caterer_profile
-        
-        # Use Global Admin Commission Setting
-        config = db.query(models.WebsiteConfig).first()
-        comm_rate_percent = get_commission_rate_percent(config)
-        comm_rate = comm_rate_percent / 100.0
-        booking_total = float(booking.total_amount or booking.total_price or 0.0)
-        commission_amount = calculate_booking_commission(booking_total, comm_rate_percent)
-        
-        caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_amount
-        booking.commission_calculated = True
-
-        # Generate BillingInvoice record so it reflects in Caterer's Invoices and Payments & Earnings
-        existing_inv = db.query(models.BillingInvoice).filter(models.BillingInvoice.booking_id == booking.id).first()
-        if not existing_inv:
-            commission_record = models.BillingInvoice(
-                caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
-                booking_id=booking.id,
-                billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
-                due_date=billing_period_due_date(
-                    booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
-                    booking.event_date
-                ),
-                amount=commission_amount,
-                commission_rate=comm_rate,
-                status='pending'
-            )
-            db.add(commission_record)
-        
-        billing_audit = models.AuditLog(
-            user_id=user.id,
-            action="COMMISSION_BILLED",
-            notes=f"Billed PHP {commission_amount:.2f} commission for completed booking #{booking.id}."
-        )
-        db.add(billing_audit)
-            
     db.commit()
 
     # Trigger Notifications
@@ -5007,7 +5039,7 @@ async def get_booking_details_api(
             else ""
         )
     )
-    prep_summary = build_prep_summary(booking)
+    prep_summary = build_prep_summary(booking, pay_summary)
 
     def package_display_details(package):
         if not package:
@@ -5421,7 +5453,7 @@ async def get_booking_details_api(
             if booking.preparation_updated_at else None
         ),
         "preparation_date": booking.preparation_date.isoformat() if booking.preparation_date else None,
-        "preparation": build_prep_summary(booking),
+        "preparation": build_prep_summary(booking, pay_summary),
         "actual_cost": float(booking.actual_cost or 0),
         "created_at": booking.created_at.isoformat() if booking.created_at else None,
         "updated_at": booking.updated_at.isoformat() if booking.updated_at else None,
@@ -5490,6 +5522,8 @@ async def get_booking_details_api(
         "needs_verification": pay_summary.get("needs_verification", False),
         "can_start_preparation": pay_summary.get("can_start_preparation", False),
         "can_mark_completed": pay_summary.get("can_mark_completed", False),
+        "can_complete": can_complete_booking(booking, pay_summary),
+        "allowed_status_transitions": allowed_status_transitions(booking),
         "required_deposit": pay_summary.get("required_deposit", 0),
         "quotation_id": booking.quotation.id if booking.quotation else None,
         "contract_url": booking.quotation.contract_url if booking.quotation else None,
@@ -6154,30 +6188,18 @@ async def complete_booking(
     if booking.status not in ['confirmed', 'paid', 'setup_ongoing', 'in_progress', 'ready_for_event', 'arrived', 'on_the_way', 'ready_for_delivery', 'preparing', 'ready_for_pickup']:
         raise HTTPException(status_code=400, detail="Only active confirmed bookings can be marked as completed")
 
-    from app.services.preparation_service import completion_stage_block_reason
-    stage_block_reason = completion_stage_block_reason(booking)
-    if stage_block_reason:
-        raise HTTPException(status_code=409, detail=stage_block_reason)
-
-    # --- COMPLETION GATING: Fully Paid required (Cash included; no remaining balance) ---
-    from app.services.payment_service import PaymentService
+    # Canonical completion path shared with POST update-status: cleanup gate,
+    # full-payment gate, cost snapshot, and idempotent commission billing.
     from urllib.parse import quote
-    gate = PaymentService.assert_can_mark_completed(booking)
-    if not gate["ok"]:
+    try:
+        _finalize_booking_completion(db, booking, user)
+    except HTTPException as exc:
         if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.headers.get("Content-Type") == "application/json":
-            return JSONResponse(status_code=400, content={"status": "error", "message": gate["message"]})
+            return JSONResponse(status_code=exc.status_code, content={"status": "error", "message": exc.detail})
         return RedirectResponse(
-            url=f"/caterer/bookings?error_msg={quote(gate['message'])}",
+            url=f"/caterer/bookings?error_msg={quote(str(exc.detail))}",
             status_code=303,
         )
-    booking.payment_status = "paid"
-    total_p = float(booking.total_amount or booking.total_price or 0.0)
-    if (booking.amount_paid or 0.0) < total_p:
-        booking.amount_paid = total_p
-
-    booking.status = 'completed'
-    booking.preparation_status = 'completed'
-    snapshot_booking_actual_cost(booking)
 
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -6186,36 +6208,6 @@ async def complete_booking(
     )
     db.add(history)
 
-    if not is_pre_deployment_manual_booking(booking):
-        config = db.query(models.WebsiteConfig).first()
-        comm_rate_percent = get_commission_rate_percent(config)
-        comm_rate = comm_rate_percent / 100.0
-        booking_total = float(booking.total_amount or booking.total_price or 0.0)
-        commission_due = calculate_booking_commission(booking_total, comm_rate_percent)
-
-        caterer_prof = booking.caterer or user.caterer_profile
-
-        existing_inv = db.query(models.BillingInvoice).filter(models.BillingInvoice.booking_id == booking.id).first()
-        if not existing_inv:
-            commission_record = models.BillingInvoice(
-                caterer_id=booking.caterer_id or (caterer_prof.id if caterer_prof else None),
-                booking_id=booking.id,
-                billing_period=booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
-                due_date=billing_period_due_date(
-                    booking.event_date.strftime('%B %Y') if booking.event_date else 'General',
-                    booking.event_date
-                ),
-                amount=commission_due,
-                commission_rate=comm_rate,
-                status='pending'
-            )
-            db.add(commission_record)
-
-            if caterer_prof and not booking.commission_calculated:
-                caterer_prof.outstanding_balance = float(caterer_prof.outstanding_balance or 0.0) + commission_due
-        
-        booking.commission_calculated = True
-    
     db.commit()
 
     # Real-time alert to customer & caterer
@@ -11171,6 +11163,7 @@ async def get_booking_preparation(
     user: models.User = Depends(caterer_only)
 ):
     from app.services.preparation_service import build_prep_summary
+    from app.services.payment_service import PaymentService
 
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
@@ -11179,7 +11172,7 @@ async def get_booking_preparation(
     ).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    return build_prep_summary(booking)
+    return build_prep_summary(booking, PaymentService.get_payment_summary(booking))
 
 
 @router.post("/api/bookings/{booking_id}/preparation-status")
@@ -11191,8 +11184,11 @@ async def update_booking_preparation_status(
 ):
     """Update the preparation tracker after its required checklist is confirmed."""
     from app.services.preparation_service import (
-        PREP_STATUSES, PREP_STATUS_KEYS, get_prep_meta, build_prep_summary, normalize_prep_status
+        get_prep_meta, build_prep_summary, normalize_prep_status,
+        canonical_prep_key, preparation_transition_error,
+        sync_booking_status_from_preparation,
     )
+    from app.services.payment_service import PaymentService
 
     numeric_id = sanitize_booking_id(booking_id)
     booking = db.query(models.Booking).filter(
@@ -11201,113 +11197,47 @@ async def update_booking_preparation_status(
     ).with_for_update().first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
-    if booking.is_archived or booking.status in ["cancelled", "expired", "completed", "delivered"]:
-        raise HTTPException(status_code=400, detail="Cannot update preparation on this booking.")
-    if db.query(models.BookingCancellationRequest.id).filter(
-        models.BookingCancellationRequest.booking_id == booking.id,
-        models.BookingCancellationRequest.status == "pending",
-    ).first():
-        raise HTTPException(status_code=409, detail="Resolve the pending customer cancellation request before updating preparation.")
-
-    accepted_statuses = {
-        "confirmed", "preparing", "ready_for_delivery", "ready_for_pickup",
-        "on_the_way", "arrived", "setup_ongoing", "in_progress", "ready_for_event",
-    }
-    current_booking_status = (booking.status or "").lower()
-    if current_booking_status not in accepted_statuses:
-        raise HTTPException(
-            status_code=409,
-            detail="Accept the booking before updating its preparation status.",
-        )
 
     new_key = str(data.get("status") or data.get("preparation_status") or "").strip().lower()
-    if new_key not in PREP_STATUS_KEYS:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid preparation status. Choose one of the available options."
-        )
-    if new_key == "ready_for_delivery":
-        raise HTTPException(
-            status_code=409,
-            detail="Upload dispatch proof from the preparation checklist before marking the booking ready for delivery.",
-        )
-    if new_key == "completed":
-        raise HTTPException(
-            status_code=409,
-            detail="Use the booking completion action after post-event cleanup and full payment verification.",
-        )
+    has_pending_cancellation = db.query(models.BookingCancellationRequest.id).filter(
+        models.BookingCancellationRequest.booking_id == booking.id,
+        models.BookingCancellationRequest.status == "pending",
+    ).first() is not None
+    payment_summary = PaymentService.get_payment_summary(booking)
+    transition_error = preparation_transition_error(
+        booking, new_key, payment_summary,
+        has_pending_cancellation=has_pending_cancellation,
+    )
+    if transition_error:
+        raise HTTPException(status_code=transition_error[0], detail=transition_error[1])
 
     old_key = normalize_prep_status(booking.preparation_status, booking.status)
     old_meta = get_prep_meta(old_key)
     new_meta = get_prep_meta(new_key)
-    if old_key == new_key:
+    # Early-return only when the stored preparation_status already resolves to
+    # the requested stage; a NULL/legacy value that merely aliases to the same
+    # stage through booking.status must still be written.
+    if old_key == new_key and canonical_prep_key(booking.preparation_status) == new_key:
         return {
             "status": "success",
             "message": f"Preparation status is already {new_meta['label']}.",
-            "preparation": build_prep_summary(booking),
+            "preparation": build_prep_summary(booking, payment_summary),
             "booking_status": booking.status,
             "previous_preparation_status": old_key,
             "previous_booking_status": booking.status,
         }
-    if old_key != new_key and data.get("checklist_confirmed") is not True:
+    if data.get("checklist_confirmed") is not True:
         raise HTTPException(
             status_code=400,
             detail="Complete and confirm the preparation checklist before updating the status.",
         )
-    if old_key == "completed" and new_key != "completed":
-        raise HTTPException(
-            status_code=400,
-            detail="Event preparation is already completed and cannot be changed.",
-        )
-    status_order = [status["key"] for status in PREP_STATUSES]
-    old_index = status_order.index(old_key)
-    new_index = status_order.index(new_key)
-    if new_index < old_index:
-        raise HTTPException(
-            status_code=400,
-            detail="Preparation status cannot move backward. Choose the current or next stage.",
-        )
-    if new_index > old_index + 1:
-        raise HTTPException(
-            status_code=409,
-            detail="Complete the current preparation stage before moving to the next one.",
-        )
-
-    from app.services.payment_service import PaymentService
-    payment_summary = PaymentService.get_payment_summary(booking)
-    if new_key == "preparing" and not payment_summary.get("can_start_preparation"):
-        raise HTTPException(
-            status_code=409,
-            detail="Verify the required downpayment before starting preparation.",
-        )
-    if new_key == "setup_in_progress" and (
-        old_key != "ready_for_delivery" or current_booking_status != "arrived"
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail="Mark the booking as arrived at the venue before starting setup.",
-        )
-    if new_key == "ready_for_event" and (
-        old_key != "setup_in_progress" or current_booking_status not in {"setup_ongoing", "in_progress"}
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail="Start and complete venue setup before marking the event ready.",
-        )
-    if new_key == "post_event_cleanup" and (
-        old_key != "ready_for_event" or current_booking_status not in {"setup_ongoing", "in_progress", "ready_for_event"}
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail="Mark the event ready and finish the service before starting post-event cleanup.",
-        )
 
     old_booking_status = booking.status
-    if old_key != new_key:
-        booking.preparation_status = new_key
-        booking.preparation_updated_at = datetime.now(timezone.utc)
-        if new_key == "preparing" and (booking.status or "").lower() == "confirmed":
-            booking.status = "preparing" 
+    booking.preparation_status = new_key
+    booking.preparation_updated_at = datetime.now(timezone.utc)
+    # preparation_status is the source of truth: derive booking.status from it
+    # so on-site stages (setup_ongoing, ready_for_event) stay reachable.
+    sync_booking_status_from_preparation(booking)
 
     history = models.BookingHistory(
         booking_id=booking.id,
@@ -11350,7 +11280,7 @@ async def update_booking_preparation_status(
     return {
         "status": "success",
         "message": f"Preparation status updated to {new_meta['label']}.",
-        "preparation": build_prep_summary(booking),
+        "preparation": build_prep_summary(booking, payment_summary),
         "booking_status": booking.status,
         "previous_preparation_status": old_key,
         "previous_booking_status": old_booking_status,

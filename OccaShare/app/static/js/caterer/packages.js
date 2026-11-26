@@ -666,7 +666,8 @@ window.previewPackageGallery = function (input) {
 
     // Check if total files exceed 4
     if (input.files.length > 4) {
-        alert("You can only select up to 4 images for the gallery.");
+        if (window.showToast) window.showToast("You can only select up to 4 images for the gallery.", "warning");
+        else alert("You can only select up to 4 images for the gallery.");
         input.value = ""; // clear
         container.innerHTML = "";
         return;
@@ -913,7 +914,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 if (window.showToast) window.showToast(result.message || 'Package saved successfully.', 'success');
-                window.location.reload();
+                setTimeout(() => window.location.reload(), 1200);
             } catch (error) {
                 console.error('[Packages] Package save failed:', error);
                 const message = 'Unable to save the package because of a network or server error. Please try again.';
@@ -1116,11 +1117,15 @@ function validateTab(tabName) {
         if (mode === 'customizable') {
             const total = customizableMenuIds.size + customizableServiceIds.size + customizableEquipmentIds.size;
             if (total === 0) {
-                alert("Please select at least one menu item or service for customers to choose from.");
+                const msg = "Please select at least one menu item or service for customers to choose from.";
+                if (window.showToast) window.showToast(msg, "warning");
+                else alert(msg);
                 return false;
             }
         } else if (packageInclusions.length === 0) {
-            alert('Add at least one inclusion to this package before continuing.');
+            const msg = 'Add at least one inclusion to this package before continuing.';
+            if (window.showToast) window.showToast(msg, "warning");
+            else alert(msg);
             return false;
         }
     }
@@ -2739,15 +2744,21 @@ window.archivePackage = function (id) {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 if (res.ok) {
-                    window.location.reload();
+                    if (window.showToast) window.showToast('Package archived successfully.', 'success');
+                    setTimeout(() => window.location.reload(), 1200);
                 } else {
-                    alert('Failed to archive package.');
+                    const data = await res.json().catch(() => null);
+                    const msg = (data && data.message) || 'Failed to archive package.';
+                    if (window.showToast) window.showToast(msg, 'error');
+                    else alert(msg);
                     confirmBtn.disabled = false;
                     confirmBtn.innerText = 'Archive package';
                 }
             } catch (err) {
                 console.error('Error archiving package:', err);
-                alert('An error occurred while archiving.');
+                const errMsg = err.message || 'An error occurred while archiving.';
+                if (window.showToast) window.showToast(errMsg, 'error');
+                else alert(errMsg);
                 confirmBtn.disabled = false;
                 confirmBtn.innerText = 'Archive package';
             }

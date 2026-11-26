@@ -1,5 +1,7 @@
 from typing import Dict
 
+from .preparation_service import derive_booking_status
+
 
 _PAYMENT_REVIEW_STATUSES = {
     "proof_submitted",
@@ -59,24 +61,6 @@ _STATUS_PRESENTATION = {
     "no_show": ("No show", "cancelled", "Contact the caterer if you need help", "Review the booking record"),
 }
 
-_PREPARATION_PRESENTATION = {
-    "preparing": "preparing",
-    "ready_for_delivery": "ready_for_delivery",
-    "ready_for_pickup": "ready_for_pickup",
-    "on_the_way": "on_the_way",
-    "arrived": "arrived",
-    "setup_in_progress": "setup_in_progress",
-    "ready_for_event": "ready_for_event",
-    "post_event_cleanup": "post_event_cleanup",
-    "in_progress": "in_progress",
-    "completed": "completed",
-}
-_CONFIRMED_PREPARATION_STATUSES = {
-    "preparing", "ready_for_delivery", "on_the_way", "arrived",
-    "setup_in_progress", "ready_for_event", "post_event_cleanup", "in_progress", "completed",
-}
-
-
 def booking_status_display(
     status: str,
     payment_status: str = "",
@@ -125,11 +109,7 @@ def booking_status_display(
                 "caterer_action": "Review the booking and update its progress",
             }
 
-    effective_status = booking_status
-    if preparation in {"ready_for_event", "post_event_cleanup"} and booking_status in {"setup_ongoing", "in_progress", "ready_for_event"}:
-        effective_status = _PREPARATION_PRESENTATION[preparation]
-    elif booking_status == "confirmed" and preparation in _CONFIRMED_PREPARATION_STATUSES:
-        effective_status = _PREPARATION_PRESENTATION[preparation]
+    effective_status = derive_booking_status(booking_status, preparation)
     presentation = _STATUS_PRESENTATION.get(effective_status)
     if presentation:
         label, tone, customer_action, caterer_action = presentation

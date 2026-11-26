@@ -2210,7 +2210,7 @@
         if (!email.toLowerCase().endsWith('@gmail.com')) return Swal.fire('Error', 'Gmail addresses only.', 'error');
 
         const phone = normalizeAdminPhoneNumber(fd.get('phone'));
-        if (!phone.startsWith('09') || phone.length !== 11) return Swal.fire('Error', 'Enter a valid 10-digit mobile number after +63.', 'error');
+        if (!phone.startsWith('09') || phone.length !== 11) return Swal.fire('Error', 'Enter a valid Philippine mobile number (e.g. 09XXXXXXXXX).', 'error');
         fd.set('phone', phone);
 
         if (fd.get('business_name').trim().length < 3) return Swal.fire('Error', 'Business name is too short.', 'error');

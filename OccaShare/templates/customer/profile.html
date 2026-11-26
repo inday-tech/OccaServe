@@ -812,6 +812,10 @@
                     confirmButtonText: 'Complete Now'
                 });
             }
+            urlParams.delete('alert');
+            urlParams.delete('missing');
+            const cleanQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+            window.history.replaceState({}, document.title, window.location.pathname + cleanQuery);
         }
     });
 
@@ -940,9 +944,21 @@
             const data = await res.json();
             
             if (data.success) {
-                Swal.fire('Saved', data.message, 'success');
-                if(url.includes('personal') || url.includes('address') || url.includes('emergency')) {
-                    setTimeout(() => window.location.reload(), 1500);
+                if (url.includes('personal') || url.includes('address') || url.includes('emergency')) {
+                    if (window.showToast) {
+                        window.showToast(data.message || 'Profile saved successfully.', 'success');
+                    } else {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Saved',
+                            text: data.message || 'Profile saved successfully.',
+                            timer: 1200,
+                            showConfirmButton: false
+                        });
+                    }
+                    setTimeout(() => window.location.reload(), 1200);
+                } else {
+                    Swal.fire('Saved', data.message, 'success');
                 }
             } else {
                 Swal.fire('Error', data.message || 'Failed to save', 'error');
@@ -1034,7 +1050,7 @@
             const data = await res.json();
             
             if (data.success) {
-                Swal.fire('Success', data.message, 'success');
+                window.showToast(data.message || 'Password updated successfully.', 'success');
                 form.reset();
                 currentPwd.style.borderColor = '';
                 currentPwd.dataset.verified = "";
@@ -1047,11 +1063,11 @@
                     errSpan.style.display = 'block';
                     currentPwd.dataset.verified = "false";
                 } else {
-                    Swal.fire('Error', data.message, 'error');
+                    window.showToast(data.message || 'Failed to update password.', 'error');
                 }
             }
         } catch(err) {
-            Swal.fire('Error', 'Network error', 'error');
+            window.showToast('Network error. Please try again.', 'error');
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
@@ -1074,12 +1090,12 @@
         });
         if (!confirmation.isConfirmed) { input.value = ''; return; }
         if (!['image/jpeg', 'image/png'].includes(file.type)) {
-            Swal.fire('Invalid image', 'Choose a JPG or PNG picture.', 'error');
+            window.showToast('Choose a JPG or PNG picture.', 'warning');
             input.value = '';
             return;
         }
         if (file.size > 5 * 1024 * 1024) {
-            Swal.fire('Image too large', 'Choose an image that is 5 MB or smaller.', 'error');
+            window.showToast('Choose an image that is 5 MB or smaller.', 'warning');
             input.value = '';
             return;
         }
@@ -1095,13 +1111,13 @@
                 const initEl = document.getElementById('avatar-initials');
                 if(initEl) initEl.style.display = 'none';
                 
-                Swal.fire('Success', 'Profile picture updated', 'success');
-                setTimeout(() => window.location.reload(), 1500);
+                window.showToast('Profile picture updated successfully.', 'success');
+                setTimeout(() => window.location.reload(), 1200);
             } else {
-                Swal.fire('Error', data.detail || 'Upload failed', 'error');
+                window.showToast(data.detail || 'Upload failed', 'error');
             }
         } catch(e) {
-            Swal.fire('Error', 'Network error', 'error');
+            window.showToast('Network error while uploading image.', 'error');
         }
     }
 
@@ -1121,9 +1137,14 @@
             const res = await fetch('/customer/profile/remove-image', { method: 'POST' });
             const data = await res.json();
             if(data.success) {
-                window.location.reload();
+                window.showToast('Profile picture removed successfully.', 'success');
+                setTimeout(() => window.location.reload(), 1200);
+            } else {
+                window.showToast(data.detail || 'Failed to remove picture.', 'error');
             }
-        } catch(e) {}
+        } catch(e) {
+            window.showToast('Network error while removing image.', 'error');
+        }
     }
 
     function validateCustomerDob(input) {

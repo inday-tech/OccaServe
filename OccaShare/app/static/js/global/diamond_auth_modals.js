@@ -59,6 +59,14 @@ function closeAuthModal() {
     overlay.classList.remove('active');
     document.body.classList.remove('modal-open');
 
+    // Stop background verification polling and timer
+    if (typeof window.stopVerifyPolling === 'function') {
+        window.stopVerifyPolling();
+    }
+    if (typeof window.stopTimer === 'function') {
+        window.stopTimer();
+    }
+
     // Optional: Clean up URL hash
     if (window.location.hash.includes('#login') || window.location.hash.includes('#signup')) {
         history.pushState("", document.title, window.location.pathname + window.location.search);

@@ -360,7 +360,7 @@
                     } else if (window.softRefresh) {
                         setTimeout(() => window.softRefresh(), 1000);
                     } else {
-                        setTimeout(() => window.location.reload(), 1000);
+                        setTimeout(() => window.location.reload(), 1500);
                     }
                 }
 

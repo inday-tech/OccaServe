@@ -877,7 +877,21 @@
     }
 
     function showToast(msg, type = 'success') {
+        const swalToast = window.Swal ? Swal.mixin({
+            toast: true,
+            position: 'bottom-end',
+            showConfirmButton: false,
+            timer: 3500,
+            timerProgressBar: true
+        }) : null;
+
+        if (swalToast) {
+            swalToast.fire({ icon: type === 'error' ? 'error' : 'success', title: msg });
+            return;
+        }
+
         const container = document.getElementById('toast-container');
+        if (!container) return;
         const toast = document.createElement('div');
         toast.className = 'toast-premium';
         toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}" style="color: ${type === 'success' ? '#10b981' : '#f43f5e'}; font-size: 1.2rem;"></i> ${msg}`;

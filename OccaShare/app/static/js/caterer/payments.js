@@ -975,15 +975,28 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             if (response.ok && data.status === 'success') {
-                alert("Proof of payment submitted successfully! OccaServe admin will verify it shortly.");
+                if (window.showToast) {
+                    window.showToast("Proof of payment submitted successfully! OccaServe admin will verify it shortly.", "success");
+                } else if (window.Swal) {
+                    Swal.fire({ icon: 'success', title: 'Submitted', text: 'Proof of payment submitted successfully! OccaServe admin will verify it shortly.' });
+                } else {
+                    alert("Proof of payment submitted successfully! OccaServe admin will verify it shortly.");
+                }
                 window.closeSettleModal();
-                setTimeout(() => window.location.reload(), 1000);
+                setTimeout(() => window.location.reload(), 1500);
             } else {
                 throw new Error(data.detail || "Unable to submit settlement at this time.");
             }
         } catch (err) {
             console.error("Submit settlement error:", err);
-            alert(err.message || "An error occurred while submitting settlement.");
+            const errText = err.message || "An error occurred while submitting settlement.";
+            if (window.showToast) {
+                window.showToast(errText, "error");
+            } else if (window.Swal) {
+                Swal.fire({ icon: 'error', title: 'Submission Error', text: errText });
+            } else {
+                alert(errText);
+            }
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalHtml;

@@ -1443,6 +1443,8 @@ function hydrateButtonDataset(btn, detail) {
         needsVerification: String(Boolean(detail.needs_verification || detail.is_under_review)),
         canStartPreparation: String(Boolean(detail.can_start_preparation)),
         canMarkCompleted: String(Boolean(detail.can_mark_completed)),
+        canComplete: String(Boolean(detail.can_complete)),
+        allowedTransitionsJson: JSON.stringify(detail.allowed_status_transitions || []),
         paymentMethod: detail.payment_method || btn.dataset.paymentMethod || 'Not specified',
         paymentPlan: detail.payment_plan || btn.dataset.paymentPlan || 'downpayment',
         paymentRef: detail.payment_reference || btn.dataset.paymentRef || '',
@@ -1910,9 +1912,10 @@ function showBookingDetails(btn) {
 
     currentBookingId = cleanId;
     if (previousBookingId !== cleanId) {
-        window._prepCache = { status: 'not_started', progress: 0, label: 'Not Started', statuses: [] };
+        window._prepCache = { status: 'not_started', progress: 0, label: 'Not Started', statuses: [], options: [] };
         window.selectedPrepStatusKey = null;
         window.currentBookingCanMarkCompleted = false;
+        window.currentBookingCanComplete = false;
         var prepLastUpdated = document.getElementById('prepLastUpdated');
         if (prepLastUpdated) prepLastUpdated.innerText = '—';
     }
@@ -1920,6 +1923,9 @@ function showBookingDetails(btn) {
     window.currentBookingStatus = data.status;
     window.currentBookingCanStartPreparation = String(data.canStartPreparation || '').toLowerCase() === 'true';
     window.currentBookingCanMarkCompleted = String(data.canMarkCompleted || '').toLowerCase() === 'true';
+    window.currentBookingCanComplete = String(data.canComplete || '').toLowerCase() === 'true';
+    try { window.currentBookingAllowedTransitions = JSON.parse(data.allowedTransitionsJson || '[]'); }
+    catch (e) { window.currentBookingAllowedTransitions = []; }
     window._prepCache = Object.assign({}, window._prepCache, {
         status: data.preparationStatus || window._prepCache?.status || 'not_started'
     });
@@ -4439,11 +4445,15 @@ function confirmCompleteBooking(bookingId) {
     const cleanId = String(bookingId || '').replace(/\D/g, '');
     const bookingButton = document.querySelector('.view-details[data-id="' + cleanId + '"]');
     const isCurrentBooking = String(currentBookingId || '') === cleanId;
+    // Prefer the backend-computed can_complete flag; fall back to the
+    // payment-only flag for rows hydrated before this field existed.
     const canComplete = isCurrentBooking
-        ? window.currentBookingCanMarkCompleted === true
-        : bookingButton?.dataset?.canMarkCompleted === 'true';
+        ? (window.currentBookingCanComplete === true || window.currentBookingCanMarkCompleted === true)
+        : (bookingButton?.dataset?.canComplete
+            ? bookingButton.dataset.canComplete === 'true'
+            : bookingButton?.dataset?.canMarkCompleted === 'true');
     if (!canComplete) {
-        window.showError('Verify the customer’s full payment before completing the event.');
+        window.showError('Verify the customer’s full payment and finish post-event cleanup before completing the event.');
         return;
     }
     const status = String(isCurrentBooking ? window.currentBookingStatus : bookingButton?.dataset?.status || '').toLowerCase();
@@ -4644,6 +4654,15 @@ function updateBookingStage(bookingId, status) {
         'setup_ongoing': 'Start Event Setup?',
         'in_progress': 'Start Event Service?'
     };
+
+    // Prefer backend-provided transitions when this is the hydrated booking.
+    if (String(bookingId) === String(currentBookingId)
+        && Array.isArray(window.currentBookingAllowedTransitions)
+        && window.currentBookingAllowedTransitions.length
+        && !window.currentBookingAllowedTransitions.includes(status)) {
+        window.showError('That status change is not available for this booking right now.');
+        return;
+    }
 
     window.showConfirm(labels[status] || 'Are you sure you want to proceed?',
         async function() {
@@ -4960,7 +4979,7 @@ function recalculateBookingTotal() {
 
 /* ─── PREPARATION STATUS TRACKER ─── */
 
-window._prepCache = { status: 'not_started', progress: 0, label: 'Not Started', statuses: [] };
+window._prepCache = { status: 'not_started', progress: 0, label: 'Not Started', statuses: [], options: [] };
 window.selectedPrepStatusKey = null;
 
 const PREP_STATUS_CHECKLISTS = {
@@ -5107,7 +5126,11 @@ window.openPrepStatusModal = function() {
     if (!modal || !list) return;
 
     const current = (window._prepCache && window._prepCache.status) || 'not_started';
-    const statuses = (window._prepCache && window._prepCache.statuses && window._prepCache.statuses.length)
+    const backendOptions = (window._prepCache && Array.isArray(window._prepCache.options))
+        ? window._prepCache.options : null;
+    const statuses = backendOptions && backendOptions.length
+        ? backendOptions
+        : (window._prepCache && window._prepCache.statuses && window._prepCache.statuses.length)
         ? window._prepCache.statuses
         : [
             { key: 'not_started', label: 'Not Started', progress: 0, emoji: '⚪' },
@@ -5118,6 +5141,7 @@ window.openPrepStatusModal = function() {
             { key: 'post_event_cleanup', label: 'Post-Event Cleanup', progress: 95, emoji: '🧹' },
             { key: 'completed', label: 'Event Completed', progress: 100, emoji: '🟢' }
         ];
+    const useBackendOptions = Boolean(backendOptions && backendOptions.length);
 
     const bookingStatus = String(window.currentBookingStatus || '').toLowerCase();
     const eligibleStatuses = ['confirmed', 'preparing', 'ready_for_delivery', 'ready_for_pickup', 'on_the_way', 'arrived', 'setup_ongoing', 'in_progress', 'ready_for_event'];
@@ -5135,20 +5159,26 @@ window.openPrepStatusModal = function() {
     window.selectedPrepStatusKey = null;
     list.innerHTML = statuses.map(function(s) {
         const active = s.key === current ? ' active' : '';
-        const stageIndex = statuses.findIndex(function(item) { return item.key === s.key; });
-        let lockReason = stageIndex !== currentIndex + 1
-            ? 'Complete the current preparation stage before moving to this stage.'
-            : '';
-        if (s.key === 'setup_in_progress' && bookingStatus !== 'arrived') {
-            lockReason = 'Mark the booking as arrived at the venue before starting setup.';
-        } else if (s.key === 'ready_for_event' && bookingStatus !== 'setup_ongoing') {
-            lockReason = 'Complete the venue setup stage before marking the event ready.';
-        } else if (s.key === 'post_event_cleanup' && !['setup_ongoing', 'in_progress', 'ready_for_event'].includes(bookingStatus)) {
-            lockReason = 'Mark the event ready and finish the service before starting post-event cleanup.';
-        } else if (s.key === 'completed' && current !== 'post_event_cleanup') {
-            lockReason = 'Complete post-event cleanup before completing the event.';
-        } else if (s.key === 'completed' && !window.currentBookingCanMarkCompleted) {
-            lockReason = 'Verify the customer’s full payment before completing the event.';
+        let lockReason = '';
+        if (useBackendOptions) {
+            // Backend-computed transitions are authoritative.
+            lockReason = s.allowed === false ? (s.reason || 'This stage is not available yet.') : '';
+        } else {
+            const stageIndex = statuses.findIndex(function(item) { return item.key === s.key; });
+            lockReason = stageIndex !== currentIndex + 1
+                ? 'Complete the current preparation stage before moving to this stage.'
+                : '';
+            if (s.key === 'setup_in_progress' && bookingStatus !== 'arrived') {
+                lockReason = 'Mark the booking as arrived at the venue before starting setup.';
+            } else if (s.key === 'ready_for_event' && bookingStatus !== 'setup_ongoing') {
+                lockReason = 'Complete the venue setup stage before marking the event ready.';
+            } else if (s.key === 'post_event_cleanup' && !['setup_ongoing', 'in_progress', 'ready_for_event'].includes(bookingStatus)) {
+                lockReason = 'Mark the event ready and finish the service before starting post-event cleanup.';
+            } else if (s.key === 'completed' && current !== 'post_event_cleanup') {
+                lockReason = 'Complete post-event cleanup before completing the event.';
+            } else if (s.key === 'completed' && !window.currentBookingCanMarkCompleted) {
+                lockReason = 'Verify the customer’s full payment before completing the event.';
+            }
         }
         const locked = Boolean(lockReason);
         const disabled = locked ? ' disabled aria-disabled="true" title="' + lockReason + '"' : '';

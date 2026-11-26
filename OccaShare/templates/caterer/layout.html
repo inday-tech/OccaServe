@@ -2632,8 +2632,10 @@
     <script>
         // Verification Success Toast
         window.addEventListener('load', function () {
+            if (window.__verificationToastShown) return;
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('verified') === 'success') {
+                window.__verificationToastShown = true;
                 if (window.showToast) {
                     window.showToast('Account Verified Successfully!', 'success');
                 } else {

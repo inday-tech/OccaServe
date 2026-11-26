@@ -607,6 +607,29 @@
             buttonsStyling: false
         });
 
+        // Global lower-right Toast Helper for Admin
+        window.showToast = function(message, type = 'success') {
+            if (typeof Swal !== 'undefined') {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: 'bottom-end',
+                    showConfirmButton: false,
+                    timer: 3500,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+                Toast.fire({
+                    icon: type === 'danger' ? 'error' : type,
+                    title: message
+                });
+            } else {
+                console.log(`[Toast ${type}]:`, message);
+            }
+        };
+
         // Consistent Logout Modal
         function confirmLogout() {
             openDiamondModal({

@@ -210,26 +210,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     let shouldClean = false;
 
-    // A. Login & Verification Success
-    if (loginStatus === 'success' || verifiedStatus === 'success') {
+    // A. Email Verification Success
+    if (verifiedStatus === 'success' || verifiedStatus === 'true') {
+        window.showToast('Account Verified Successfully! Welcome to OccaServe.', 'success');
+        window.__verificationToastShown = true;
+        shouldClean = true;
+    }
+    // B. Login Success
+    else if (loginStatus === 'success') {
         window.showToast('Login Successful! Welcome back.', 'success');
         shouldClean = true;
     } 
-    // B. Logout Success
+    // C. Logout Success
     else if (logoutStatus === 'success') {
         window.showToast('Logout Successful! See you soon.', 'success');
         shouldClean = true;
     }
 
+    const formatUrlMsg = (str) => {
+        if (!str) return '';
+        try {
+            return decodeURIComponent(str.replace(/\+/g, ' '));
+        } catch (_) {
+            return str.replace(/\+/g, ' ');
+        }
+    };
+
     // C. Generic Success Messages
     if (successMsg) {
-        window.showToast(decodeURIComponent(successMsg), 'success');
+        window.showToast(formatUrlMsg(successMsg), 'success');
         shouldClean = true;
     }
     
     // D. Generic Error Messages
     if (errorMsg) {
-        window.showToast(decodeURIComponent(errorMsg), 'error');
+        window.showToast(formatUrlMsg(errorMsg), 'error');
         shouldClean = true;
     }
 
@@ -237,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (alertMsg && window.showAlert) {
         window.showAlert({
             title: 'Message',
-            message: decodeURIComponent(alertMsg),
+            message: formatUrlMsg(alertMsg),
             type: 'info'
         });
         shouldClean = true;
