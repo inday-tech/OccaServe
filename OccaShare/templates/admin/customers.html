@@ -692,7 +692,11 @@
         const options = choices.map(value => `<option value="${value}">${value}</option>`).join('');
         openDiamondModal({title: action === 'approve' ? 'Approve identity?' : action === 'resubmit' ? 'Request new documents?' : 'Reject identity?',desc:prompts[action],html:`<label for="identityDecisionReason" style="display:block;margin-bottom:6px;font-size:.8rem;font-weight:700;">Review reason</label><select id="identityDecisionReason" style="width:100%;padding:11px;border:1px solid #e2e8f0;border-radius:8px;">${options}</select><textarea id="identityDecisionOther" style="display:none;width:100%;margin-top:8px;padding:11px;border:1px solid #e2e8f0;border-radius:8px;" placeholder="Add the reason"></textarea>`,variant:action==='reject'?'danger':action==='approve'?'success':'warning',confirmText:action==='approve'?'Approve':action==='resubmit'?'Request documents':'Reject',didOpen:()=>{const select=document.getElementById('identityDecisionReason');select.onchange=()=>document.getElementById('identityDecisionOther').style.display=select.value==='Other'?'block':'none';},preConfirm:()=>{const selected=document.getElementById('identityDecisionReason').value;const other=document.getElementById('identityDecisionOther').value.trim();return selected==='Other'?(other||false):selected;},onConfirm:reason=>{
             const fd=new FormData();fd.append('target_user_id',id);fd.append('action',action);fd.append('reason',reason);
-            fetch('/admin/verify/manual-action',{method:'POST',body:fd,headers:{'Accept':'application/json'}}).then(response=>response.json()).then(result=>{if(!result.success)throw new Error(result.message||'Could not save the review.');Swal.fire('Review saved',result.message||'Identity review completed.','success').then(()=>location.reload());}).catch(error=>Swal.fire('Error',error.message||'Could not save the review.','error'));
+            fetch('/admin/verify/manual-action',{method:'POST',body:fd,headers:{'Accept':'application/json'}}).then(response=>response.json()).then(result=>{
+                if(!result.success)throw new Error(result.message||'Could not save the review.');
+                window.showToast(result.message||'Identity review completed.','success');
+                setTimeout(()=>location.reload(), 1200);
+            }).catch(error=>window.showToast(error.message||'Could not save the review.','error'));
         }});
     }
 
@@ -719,10 +723,14 @@
                 fetch(`/admin/api/customers/${id}/suspend`, { method: 'POST', body: fd })
                     .then(res => res.json())
                     .then(data => {
-                        if (data.success) Swal.fire('Suspended', data.message, 'success').then(() => location.reload());
-                        else Swal.fire('Error', data.message, 'error');
+                        if (data.success) {
+                            window.showToast(data.message || 'Customer account suspended.', 'success');
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            window.showToast(data.message || 'Failed to suspend account.', 'error');
+                        }
                     })
-                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+                    .catch(() => window.showToast('Communication failure.', 'error'));
             }
         });
     }
@@ -738,10 +746,14 @@
                 fetch(`/admin/api/customers/${id}/reactivate`, { method: 'POST' })
                     .then(res => res.json())
                     .then(data => {
-                        if (data.success) Swal.fire('Reactivated', data.message, 'success').then(() => location.reload());
-                        else Swal.fire('Error', data.message, 'error');
+                        if (data.success) {
+                            window.showToast(data.message || 'Customer account reactivated.', 'success');
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            window.showToast(data.message || 'Failed to reactivate account.', 'error');
+                        }
                     })
-                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+                    .catch(() => window.showToast('Communication failure.', 'error'));
             }
         });
     }
@@ -769,10 +781,14 @@
                 fetch(`/admin/api/customers/${id}/flag`, { method: 'POST', body: fd })
                     .then(res => res.json())
                     .then(data => {
-                        if (data.success) Swal.fire('Flagged', data.message, 'success').then(() => location.reload());
-                        else Swal.fire('Error', data.message, 'error');
+                        if (data.success) {
+                            window.showToast(data.message || 'Customer account flagged for review.', 'warning');
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            window.showToast(data.message || 'Failed to flag account.', 'error');
+                        }
                     })
-                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+                    .catch(() => window.showToast('Communication failure.', 'error'));
             }
         });
     }
@@ -788,10 +804,14 @@
                 fetch(`/admin/api/customers/${id}/unflag`, { method: 'POST' })
                     .then(res => res.json())
                     .then(data => {
-                        if (data.success) Swal.fire('Cleared', data.message, 'success').then(() => location.reload());
-                        else Swal.fire('Error', data.message, 'error');
+                        if (data.success) {
+                            window.showToast(data.message || 'Review flag cleared.', 'success');
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            window.showToast(data.message || 'Failed to clear flag.', 'error');
+                        }
                     })
-                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+                    .catch(() => window.showToast('Communication failure.', 'error'));
             }
         });
     }
@@ -822,16 +842,16 @@
                 fetch(`/admin/api/customers/${id}/send-alert`, { method: 'POST', body: fd })
                     .then(res => res.json())
                     .then(data => {
-                        if (data.success) Swal.fire('Sent', data.message, 'success');
-                        else Swal.fire('Error', data.message, 'error');
+                        if (data.success) window.showToast(data.message || 'Notification sent successfully.', 'success');
+                        else window.showToast(data.message || 'Failed to send notification.', 'error');
                     })
-                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+                    .catch(() => window.showToast('Communication failure.', 'error'));
             }
         });
     }
 
     function viewLedger(id) {
-        Swal.fire('Booking History', 'Feature coming soon: Direct view of all booking entries and history for this customer.', 'info');
+        window.showToast('Feature coming soon: Direct view of all booking entries and history.', 'info');
     }
 
     function closeIntelligenceModal() {
@@ -851,10 +871,14 @@
                 fetch(`/admin/api/archives/${type}/${id}/archive`, { method: 'POST' })
                     .then(res => res.json())
                     .then(data => {
-                        if (data.success) Swal.fire('Archived', data.message, 'success').then(() => location.reload());
-                        else Swal.fire('Error', data.message, 'error');
+                        if (data.success) {
+                            window.showToast(data.message || 'Customer account archived.', 'success');
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            window.showToast(data.message || 'Failed to archive account.', 'error');
+                        }
                     })
-                    .catch(() => Swal.fire('Error', 'Communication failure.', 'error'));
+                    .catch(() => window.showToast('Communication failure.', 'error'));
             }
         });
     }
