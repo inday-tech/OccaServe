@@ -9,7 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root {
-            --primary: #4f46e5;
+            --primary: #f07835;
+            --primary-hover: #d96522;
             --surface: #ffffff;
             --background: #f8fafc;
             --text-main: #0f172a;
@@ -97,6 +98,33 @@
         
         .footer { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--border); }
         
+        .btn-print-invoice {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .btn-print-invoice:hover {
+            background: #ffffff;
+            color: var(--text-main);
+            border-color: #ffffff;
+        }
+
+        @media print {
+            body { background: #ffffff; padding: 0; }
+            .invoice-container { box-shadow: none; border-radius: 0; max-width: 100%; }
+            .btn-print-invoice, .payment-section, .btn-upload { display: none !important; }
+            .invoice-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+
         @media (max-width: 640px) {
             .invoice-header { flex-direction: column-reverse; align-items: flex-start; gap: 1.5rem; }
             .info-grid { grid-template-columns: 1fr; gap: 1.5rem; }
@@ -109,8 +137,11 @@
 <div class="invoice-container">
     <div class="invoice-header">
         <div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                <span style="font-weight: 800; font-size: 1.25rem; letter-spacing: -0.05em; color: rgba(255,255,255,0.7);"><i class="fas fa-shield-alt"></i> SECURE DOCUMENT</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 1rem;">
+                <span style="font-weight: 800; font-size: 1.1rem; letter-spacing: -0.05em; color: rgba(255,255,255,0.7);"><i class="fas fa-shield-alt"></i> SECURE DOCUMENT</span>
+                <button type="button" onclick="window.print()" class="btn-print-invoice" title="Print or Save as PDF">
+                    <i class="fas fa-print"></i> Print / PDF
+                </button>
             </div>
             <h1>Invoice #{{ booking.invoice_ref or booking.display_invoice_ref or booking.booking_ref or booking.display_booking_ref or booking.id }}</h1>
             <p>Issued on {{ booking.created_at.strftime('%B %d, %Y') if booking.created_at else 'Date TBD' }}</p>
@@ -497,7 +528,15 @@
         
         if (urlParams.has('success')) {
             if (typeof Swal !== 'undefined') {
-                Swal.fire('Success!', 'Your proof of payment has been successfully uploaded! The caterer will verify it shortly.', 'success');
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    icon: 'success',
+                    title: 'Your proof of payment has been uploaded! The caterer will verify it shortly.',
+                    showConfirmButton: false,
+                    timer: 4000,
+                    timerProgressBar: true
+                });
             } else {
                 alert('Your proof of payment has been successfully uploaded! The caterer will verify it shortly.');
             }
@@ -506,10 +545,13 @@
             const errorMsgStr = urlParams.get('error');
             if (typeof Swal !== 'undefined') {
                 Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
                     icon: 'error',
-                    title: 'Verification Failed',
-                    text: errorMsgStr,
-                    footer: 'Please ensure you upload a valid and correct payment receipt.'
+                    title: errorMsgStr || 'Verification failed. Please upload a valid receipt.',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true
                 });
             } else {
                 alert('PAYMENT VERIFICATION FAILED:\n\n' + errorMsgStr + '\n\nPlease check your receipt and try uploading again.');

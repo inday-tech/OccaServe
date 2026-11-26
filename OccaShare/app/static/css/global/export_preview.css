@@ -1,3 +1,37 @@
+/* ==========================================================================
+   OCCASERVE ENTERPRISE EXPORT & PREVIEW DESIGN SYSTEM
+   Modern, Executive-Ready Document Preview & Export Styling
+   ========================================================================== */
+
+:root {
+    --occa-exp-primary: #f07835;
+    --occa-exp-primary-hover: #d96522;
+    --occa-exp-primary-soft: rgba(240, 120, 53, 0.1);
+    --occa-exp-navy: #0f172a;
+    --occa-exp-navy-light: #1e293b;
+    --occa-exp-slate-50: #f8fafc;
+    --occa-exp-slate-100: #f1f5f9;
+    --occa-exp-slate-200: #e2e8f0;
+    --occa-exp-slate-300: #cbd5e1;
+    --occa-exp-slate-400: #94a3b8;
+    --occa-exp-slate-500: #64748b;
+    --occa-exp-slate-700: #334155;
+    --occa-exp-slate-900: #0f172a;
+    --occa-exp-success-bg: #ecfdf5;
+    --occa-exp-success-border: #a7f3d0;
+    --occa-exp-success-text: #065f46;
+    --occa-exp-warning-bg: #fffbeb;
+    --occa-exp-warning-border: #fde68a;
+    --occa-exp-warning-text: #92400e;
+    --occa-exp-danger-bg: #fef2f2;
+    --occa-exp-danger-border: #fecaca;
+    --occa-exp-danger-text: #991b1b;
+    --occa-exp-info-bg: #eff6ff;
+    --occa-exp-info-border: #bfdbfe;
+    --occa-exp-info-text: #1e40af;
+}
+
+/* Modal Overlay with Glassmorphism */
 .occa-export-overlay {
     position: fixed;
     inset: 0;
@@ -5,69 +39,88 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: clamp(8px, 2vw, 24px);
-    background: rgb(15 23 42 / 68%);
+    padding: clamp(10px, 2.5vw, 28px);
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: occaExpFadeIn 0.2s ease-out;
 }
 
+@keyframes occaExpFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Main Dialog Container */
 .occa-export-dialog {
     display: flex;
     flex-direction: column;
-    width: min(1120px, 100%);
-    height: min(900px, calc(100dvh - 48px));
+    width: min(1200px, 100%);
+    height: min(920px, calc(100dvh - 36px));
     min-height: 0;
     overflow: hidden;
-    border: 1px solid #e2e8f0;
-    border-radius: 18px;
-    background: #f3f5f8;
-    color: #0f172a;
-    box-shadow: 0 24px 80px rgb(2 6 23 / 34%);
-    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    background: #f8fafc;
+    color: var(--occa-exp-slate-900);
+    box-shadow: 0 28px 90px -15px rgba(2, 6, 23, 0.55), 0 0 0 1px rgba(15, 23, 42, 0.08);
+    font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+    animation: occaExpScaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+@keyframes occaExpScaleUp {
+    from { transform: scale(0.97) translateY(8px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Header Toolbar */
 .occa-export-toolbar {
-    z-index: 2;
+    z-index: 10;
     display: flex;
     flex: 0 0 auto;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 14px 22px;
-    border-bottom: 1px solid #e2e8f0;
-    background: #fff;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--occa-exp-slate-200);
+    background: #ffffff;
 }
 
 .occa-export-brand {
     display: flex;
     min-width: 0;
     align-items: center;
-    gap: 12px;
-    color: #0f172a;
+    gap: 14px;
 }
 
 .occa-export-brand img {
-    width: 50px;
-    height: 50px;
+    width: 44px;
+    height: 44px;
     flex: 0 0 auto;
     object-fit: contain;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(240, 120, 53, 0.15);
 }
 
 .occa-export-brand div {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     min-width: 0;
-    gap: 1px;
 }
 
 .occa-export-brand span {
-    color: #f07835;
+    color: var(--occa-exp-primary);
     font-size: 11px;
     font-weight: 800;
-    letter-spacing: .08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
 }
 
 .occa-export-brand strong {
     overflow: hidden;
-    font-size: 16px;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--occa-exp-navy);
     line-height: 1.3;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -75,118 +128,196 @@
 
 .occa-export-close {
     display: grid;
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     flex: 0 0 auto;
     place-items: center;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--occa-exp-slate-200);
     border-radius: 10px;
-    background: #fff;
-    color: #475569;
-    font: inherit;
-    font-size: 24px;
+    background: #ffffff;
+    color: var(--occa-exp-slate-500);
+    font-size: 20px;
     cursor: pointer;
+    transition: all 0.15s ease;
 }
 
 .occa-export-close:hover {
-    border-color: #f07835;
-    color: #c95116;
+    border-color: #ef4444;
+    background: #fef2f2;
+    color: #ef4444;
+    transform: rotate(90deg);
 }
 
+/* Main Content Area */
 .occa-export-content {
     display: flex;
     min-height: 0;
     flex: 1 1 auto;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     overflow: hidden;
-    padding: 16px clamp(12px, 2.5vw, 26px) 12px;
+    padding: 16px 24px 12px;
 }
 
+/* Segmented Format Selector */
 .occa-export-formats {
     display: grid;
     flex: 0 0 auto;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    background: #e2e8f0;
+    padding: 5px;
+    border-radius: 14px;
 }
 
 .occa-export-format {
-    display: grid;
-    min-width: 0;
-    min-height: 56px;
-    grid-template-columns: 22px 1fr auto;
+    display: flex;
     align-items: center;
-    gap: 9px;
-    padding: 8px 12px;
-    border: 1px solid #d9e0e9;
+    justify-content: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 8px 16px;
+    border: none;
     border-radius: 10px;
-    background: #fff;
-    color: #334155;
-    font: inherit;
-    text-align: left;
+    background: transparent;
+    color: var(--occa-exp-slate-700);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
-    transition: border-color .16s ease, background .16s ease, box-shadow .16s ease, color .16s ease;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .occa-export-format i {
-    color: #64748b;
     font-size: 16px;
-    text-align: center;
-}
-
-.occa-export-format span {
-    overflow: hidden;
-    font-size: 13px;
-    font-weight: 750;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    color: var(--occa-exp-slate-500);
+    transition: color 0.18s ease;
 }
 
 .occa-export-format small {
-    color: #64748b;
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(100, 116, 139, 0.12);
+    color: var(--occa-exp-slate-500);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.occa-export-format:hover {
+    background: rgba(255, 255, 255, 0.6);
+    color: var(--occa-exp-navy);
+}
+
+.occa-export-format.is-active {
+    background: #ffffff;
+    color: var(--occa-exp-primary);
+    font-weight: 700;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.occa-export-format.is-active i {
+    color: var(--occa-exp-primary);
+}
+
+.occa-export-format.is-active small {
+    background: var(--occa-exp-primary-soft);
+    color: var(--occa-exp-primary);
+}
+
+/* Canvas Toolbar (Controls & Indicators) */
+.occa-export-canvas-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 4px 2px;
+}
+
+.occa-export-canvas-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.occa-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: #ffffff;
+    border: 1px solid var(--occa-exp-slate-200);
     font-size: 11px;
     font-weight: 600;
+    color: var(--occa-exp-slate-700);
 }
 
-.occa-export-format:hover,
-.occa-export-format.is-active {
-    border-color: #f07835;
-    background: #fff7f1;
-    color: #bd4d14;
+.occa-meta-pill i {
+    font-size: 11px;
+    color: var(--occa-exp-primary);
 }
 
-.occa-export-format.is-active {
-    box-shadow: 0 0 0 2px rgb(240 120 53 / 16%);
+.occa-export-zoom-controls {
+    display: inline-flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--occa-exp-slate-200);
+    border-radius: 10px;
+    padding: 2px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 
-.occa-export-format.is-active i,
-.occa-export-format.is-active small {
-    color: #f07835;
+.occa-zoom-btn {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--occa-exp-slate-700);
+    cursor: pointer;
+    font-size: 11px;
+    transition: background 0.15s ease;
 }
 
-.occa-export-format:focus-visible,
-.occa-export-close:focus-visible,
-.occa-export-actions button:focus-visible {
-    outline: 3px solid rgb(240 120 53 / 35%);
-    outline-offset: 2px;
+.occa-zoom-btn:hover {
+    background: var(--occa-exp-slate-100);
+    color: var(--occa-exp-navy);
 }
 
-.occa-export-preview-label {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    color: #172033;
-    font-weight: 800;
+.occa-zoom-label {
+    min-width: 44px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--occa-exp-slate-700);
+    cursor: pointer;
+    user-select: none;
 }
 
-.occa-export-preview-label small {
-    color: #64748b;
-    font-size: 12px;
-    font-weight: 500;
+.occa-zoom-reset {
+    border-left: 1px solid var(--occa-exp-slate-200);
+    padding: 0 8px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--occa-exp-slate-500);
+    background: transparent;
+    border: none;
+    cursor: pointer;
 }
 
+.occa-zoom-reset:hover {
+    color: var(--occa-exp-primary);
+}
+
+/* Preview Host / Viewport */
 .occa-export-preview-host {
     display: flex;
     min-height: 0;
@@ -194,201 +325,314 @@
     align-items: flex-start;
     justify-content: center;
     overflow: auto;
-    padding: clamp(14px, 2.4vw, 28px);
-    border: 1px solid #dfe5ec;
-    border-radius: 13px;
-    background: #e8ecf1;
+    padding: clamp(16px, 3vw, 36px);
+    border: 1px solid var(--occa-exp-slate-300);
+    border-radius: 16px;
+    background: #e2e8f0;
+    background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+    background-size: 16px 16px;
     overscroll-behavior: contain;
 }
 
+/* Realistic A4 Paper Sheet */
 .occa-export-sheet {
     box-sizing: border-box;
-    width: min(100%, 1020px);
+    width: min(100%, 1060px);
     min-height: 100%;
-    height: auto;
     align-self: flex-start;
     flex: 0 0 auto;
     margin: 0 auto;
-    padding: clamp(22px, 3.2vw, 40px);
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    box-shadow: 0 4px 20px rgb(15 23 42 / 10%);
-    font-family: Arial, sans-serif;
+    padding: clamp(28px, 4vw, 48px);
+    border-radius: 6px;
+    border: 1px solid #ffffff;
+    background: #ffffff;
+    box-shadow: 0 16px 45px -8px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.05);
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--occa-exp-slate-900);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: top center;
 }
 
+/* Header inside Document */
 .occa-export-document-brand {
     display: flex;
     align-items: center;
-    gap: 11px;
-    margin-bottom: 14px;
-    color: #f07835;
-    font: 800 14px/1.2 Arial, sans-serif;
-    letter-spacing: .09em;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: var(--occa-exp-primary);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
 }
 
 .occa-export-document-brand img {
-    width: 72px;
-    height: 72px;
+    width: 48px;
+    height: 48px;
     flex: 0 0 auto;
     object-fit: contain;
 }
 
 .occa-export-sheet h1 {
-    margin: 0;
-    color: #0f172a;
-    font: 700 clamp(19px, 2.2vw, 24px)/1.25 Arial, sans-serif;
+    margin: 0 0 6px 0;
+    color: var(--occa-exp-navy);
+    font-size: clamp(20px, 2.4vw, 26px);
+    font-weight: 800;
+    line-height: 1.25;
 }
 
 .occa-export-caterer {
-    margin-top: 5px;
-    color: #334155;
-    font-size: 15px;
+    display: inline-block;
+    color: var(--occa-exp-slate-700);
+    font-size: 14px;
     font-weight: 700;
+    margin-bottom: 6px;
 }
 
 .occa-export-meta {
-    margin: 8px 0 18px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #f07835;
-    color: #64748b;
-    font: 10px/1.45 Arial, sans-serif;
-    overflow-wrap: anywhere;
+    margin: 8px 0 20px 0;
+    padding-bottom: 12px;
+    border-bottom: 2.5px solid var(--occa-exp-primary);
+    color: var(--occa-exp-slate-500);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
 }
 
-.occa-export-section h2,
-.occa-export-sheet > h2 {
-    margin: 0 0 10px;
-    color: #263449;
-    font-size: 14px;
+/* Executive KPI Summary Ribbon */
+.occa-export-kpi-ribbon {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
 }
 
+.occa-kpi-card {
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: var(--occa-exp-slate-50);
+    border: 1px solid var(--occa-exp-slate-200);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.occa-kpi-card-highlight {
+    background: #fff7ed;
+    border-color: #ffedd5;
+}
+
+.occa-kpi-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--occa-exp-slate-500);
+}
+
+.occa-kpi-card-highlight .occa-kpi-label {
+    color: #c2410c;
+}
+
+.occa-kpi-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--occa-exp-navy);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.occa-kpi-card-highlight .occa-kpi-val {
+    color: var(--occa-exp-primary);
+}
+
+.occa-kpi-sub {
+    font-size: 11px;
+    color: var(--occa-exp-slate-400);
+    font-weight: 500;
+}
+
+/* Sections & Tables */
 .occa-export-section {
-    margin: 20px 0 26px;
+    margin: 20px 0 28px 0;
+}
+
+.occa-export-section h2 {
+    margin: 0 0 12px 0;
+    color: var(--occa-exp-slate-900);
+    font-size: 15px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.occa-export-section h2::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 16px;
+    border-radius: 2px;
+    background: var(--occa-exp-primary);
 }
 
 .occa-export-table-wrap {
     max-width: 100%;
     overflow-x: auto;
-    overscroll-behavior-inline: contain;
+    border-radius: 10px;
+    border: 1px solid var(--occa-exp-slate-200);
 }
 
 .occa-export-table {
     width: 100%;
     border-collapse: collapse;
-    font: 10px/1.4 Arial, sans-serif;
+    font-size: 11px;
+    line-height: 1.45;
 }
 
 .occa-export-table th {
-    background: #0f172a;
-    color: #fff;
+    background: var(--occa-exp-navy);
+    color: #ffffff;
     text-align: left;
     font-weight: 700;
+    padding: 10px 12px;
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border: none;
+    white-space: nowrap;
 }
 
-.occa-export-table th,
 .occa-export-table td {
-    padding: 8px 9px;
-    border: 1px solid #dbe3ec;
-    vertical-align: top;
-    overflow-wrap: anywhere;
-    white-space: pre-wrap;
+    padding: 9px 12px;
+    border-top: 1px solid var(--occa-exp-slate-200);
+    vertical-align: middle;
+    color: var(--occa-exp-slate-700);
+}
+
+.occa-export-table tbody tr:nth-child(even) {
+    background: var(--occa-exp-slate-50);
+}
+
+.occa-export-table tbody tr:hover {
+    background: #f1f5f9;
 }
 
 .occa-export-table td.is-currency {
     text-align: right;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
+    color: var(--occa-exp-navy);
+}
+
+/* Total Row Footer */
+.occa-export-total-row td {
+    background: #f1f5f9;
+    border-top: 2px solid var(--occa-exp-navy);
+    border-bottom: 2px solid var(--occa-exp-navy);
+    font-weight: 800;
+    color: var(--occa-exp-navy);
+    font-size: 12px;
+}
+
+.occa-export-total-row td.is-currency {
+    color: var(--occa-exp-primary);
+    font-size: 13px;
+}
+
+/* Status Badges */
+.occa-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 14px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
     white-space: nowrap;
 }
 
-.occa-export-table tbody tr:nth-child(even) {
-    background: #f8fafc;
-}
-
-.occa-export-empty {
-    padding: 20px;
-    color: #64748b;
-    text-align: center;
-}
-
-.occa-export-sheet-xlsx .occa-export-table {
-    border: 1px solid #cbd5e1;
-    font-family: Arial, sans-serif;
-    font-size: 10px;
-}
-
-.occa-export-sheet-pdf {
-    width: min(100%, 1120px);
-    min-height: 100%;
-    padding: clamp(18px, 2.5vw, 32px);
-}
-
-.occa-export-sheet-pdf .occa-export-meta {
-    margin-bottom: 14px;
-}
-
-.occa-export-sheet-pdf .occa-export-section {
-    margin: 12px 0 16px;
-}
-
-.occa-export-sheet-pdf .occa-export-table {
+.occa-badge i {
     font-size: 9px;
 }
 
-.occa-export-sheet-pdf .occa-export-table th {
+.occa-badge-success {
+    background: var(--occa-exp-success-bg);
+    color: var(--occa-exp-success-text);
+    border: 1px solid var(--occa-exp-success-border);
+}
+
+.occa-badge-warning {
+    background: var(--occa-exp-warning-bg);
+    color: var(--occa-exp-warning-text);
+    border: 1px solid var(--occa-exp-warning-border);
+}
+
+.occa-badge-danger {
+    background: var(--occa-exp-danger-bg);
+    color: var(--occa-exp-danger-text);
+    border: 1px solid var(--occa-exp-danger-border);
+}
+
+.occa-badge-info {
+    background: var(--occa-exp-info-bg);
+    color: var(--occa-exp-info-text);
+    border: 1px solid var(--occa-exp-info-border);
+}
+
+.occa-export-empty {
+    padding: 32px 20px;
+    color: var(--occa-exp-slate-400);
+    text-align: center;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+/* Format Variations in Preview */
+.occa-export-sheet-xlsx .occa-export-table {
+    border: 1px solid #cbd5e1;
+}
+
+.occa-export-sheet-xlsx .occa-export-table th {
     background: #0f172a;
 }
 
-.occa-export-sheet-pdf .occa-export-table th,
-.occa-export-sheet-pdf .occa-export-table td {
-    padding: 5px 6px;
+.occa-export-sheet-pdf {
+    width: min(100%, 1060px);
 }
 
-.occa-export-sheet-word .occa-export-table {
-    font-size: 10px;
-}
-
-.occa-export-sheet-word {
-    max-width: 1020px;
-    padding: clamp(22px, 3.2vw, 40px);
-}
-
-.occa-export-sheet-csv {
-    max-width: 920px;
-}
-
-.occa-export-csv-preview {
-    box-sizing: border-box;
-    width: 100%;
-    max-width: 100%;
-    margin: 0 0 24px;
-    padding: 14px;
-    border: 1px solid #dbe3ec;
-    border-radius: 8px;
-    background: #f8fafc;
-    color: #334155;
-    font: 11px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
+/* Sticky Dialog Footer */
 .occa-export-footer {
-    z-index: 2;
+    z-index: 10;
     display: grid;
     flex: 0 0 auto;
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: 12px;
-    padding: 12px clamp(12px, 2.2vw, 24px);
-    border-top: 1px solid #e2e8f0;
-    background: #fff;
-    box-shadow: 0 -5px 16px rgb(15 23 42 / 4%);
+    gap: 16px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--occa-exp-slate-200);
+    background: #ffffff;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
 }
 
-.occa-export-footer-note,
+.occa-export-footer-note {
+    color: var(--occa-exp-slate-500);
+    font-size: 12px;
+    font-weight: 500;
+}
+
 .occa-export-status {
-    color: #64748b;
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--occa-exp-slate-500);
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .occa-export-status:empty {
@@ -396,94 +640,100 @@
 }
 
 .occa-export-status.is-success {
-    color: #15803d;
+    color: #16a34a;
 }
 
 .occa-export-status.is-error {
-    color: #b91c1c;
+    color: #dc2626;
 }
 
 .occa-export-actions {
     display: flex;
-    flex: 0 0 auto;
     align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
+    gap: 10px;
 }
 
 .occa-export-actions button {
     display: inline-flex;
-    min-height: 40px;
+    min-height: 42px;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 8px 13px;
-    border: 1px solid #d8e0e9;
-    border-radius: 9px;
-    background: #fff;
-    color: #334155;
-    font: 700 12px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 9px 18px;
+    border: 1px solid var(--occa-exp-slate-300);
+    border-radius: 10px;
+    background: #ffffff;
+    color: var(--occa-exp-slate-700);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
     cursor: pointer;
+    transition: all 0.15s ease;
 }
 
 .occa-export-actions button:hover {
-    border-color: #f07835;
-    background: #fff7f1;
-    color: #bd4d14;
+    border-color: var(--occa-exp-primary);
+    background: #fff7ed;
+    color: var(--occa-exp-primary);
 }
 
 .occa-export-actions .occa-export-download {
-    min-width: 148px;
-    border-color: #f07835;
-    background: #f07835;
-    color: #fff;
+    min-width: 160px;
+    border-color: var(--occa-exp-primary);
+    background: var(--occa-exp-primary);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(240, 120, 53, 0.28);
 }
 
 .occa-export-actions .occa-export-download:hover {
-    border-color: #d96522;
-    background: #d96522;
-    color: #fff;
+    border-color: var(--occa-exp-primary-hover);
+    background: var(--occa-exp-primary-hover);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(240, 120, 53, 0.35);
 }
 
 .occa-export-actions button:disabled {
     cursor: wait;
-    opacity: .7;
+    opacity: 0.7;
+    transform: none !important;
 }
 
-@media (max-width: 760px) {
+/* Responsive Overrides */
+@media (max-width: 768px) {
     .occa-export-overlay {
         padding: 8px;
     }
 
     .occa-export-dialog {
         height: calc(100dvh - 16px);
-        border-radius: 14px;
+        border-radius: 16px;
     }
 
     .occa-export-toolbar {
-        padding: 11px 14px;
+        padding: 12px 16px;
     }
 
     .occa-export-content {
-        padding: 12px;
+        padding: 12px 16px;
     }
 
     .occa-export-preview-host {
-        padding: 10px;
+        padding: 12px;
+    }
+
+    .occa-export-sheet {
+        padding: 20px 16px;
     }
 
     .occa-export-footer {
         grid-template-columns: 1fr;
-        gap: 7px;
-        padding: 10px 12px;
+        gap: 10px;
+        padding: 12px 16px;
     }
 
     .occa-export-footer-note {
         display: none;
-    }
-
-    .occa-export-status {
-        text-align: center;
     }
 
     .occa-export-actions {
@@ -493,60 +743,19 @@
     .occa-export-actions button {
         flex: 1 1 auto;
     }
-
-    .occa-export-table {
-        font-size: 10px;
-    }
-
-    .occa-export-table th,
-    .occa-export-table td {
-        padding: 7px;
-    }
 }
 
-@media (max-width: 480px) {
-    .occa-export-brand strong {
-        max-width: 245px;
-        font-size: 14px;
-    }
-
+@media (max-width: 540px) {
     .occa-export-formats {
-        gap: 5px;
+        grid-template-columns: 1fr;
     }
 
     .occa-export-format {
-        min-height: 50px;
-        grid-template-columns: 1fr;
-        justify-items: center;
-        gap: 2px;
-        padding: 5px 3px;
-    }
-
-    .occa-export-format span {
-        font-size: 11px;
-    }
-
-    .occa-export-format small {
-        font-size: 9px;
-    }
-
-    .occa-export-preview-label small {
-        max-width: 45%;
-        text-align: right;
-    }
-
-    .occa-export-actions button {
-        min-height: 38px;
-        padding: 7px;
-        font-size: 11px;
+        min-height: 40px;
     }
 }
 
-@page occa-report {
-    size: A4 landscape;
-    margin: 12mm;
-}
-
+/* Clean Print Media Styling */
 @media print {
     .occa-export-overlay {
         position: static;
@@ -558,76 +767,42 @@
     .occa-export-dialog {
         width: 100%;
         height: auto;
-        max-height: none;
         overflow: visible;
-        border: 0;
+        border: none;
         border-radius: 0;
         box-shadow: none;
+        background: #fff;
     }
 
     .occa-export-toolbar,
     .occa-export-formats,
-    .occa-export-preview-label,
+    .occa-export-canvas-bar,
     .occa-export-footer {
         display: none !important;
     }
 
-    .occa-export-content {
-        display: block;
-        overflow: visible;
-        padding: 0;
-    }
-
+    .occa-export-content,
     .occa-export-preview-host {
         display: block;
         overflow: visible;
         padding: 0;
-        border: 0;
+        border: none;
         background: #fff;
     }
 
     .occa-export-sheet {
-        font-family: Arial, sans-serif;
-        page: occa-report;
         width: 100%;
         max-width: none;
         padding: 0;
-        border: 0;
+        border: none;
         box-shadow: none;
-    }
-
-    .occa-export-section {
-        margin: 12px 0;
-    }
-
-    .occa-export-section h2 {
-        break-after: avoid;
-    }
-
-    .occa-export-table {
-        min-width: 0;
-        width: 100%;
-        font-size: 8px;
-    }
-
-    .occa-export-table thead {
-        display: table-header-group;
-    }
-
-    .occa-export-table tr {
-        break-inside: avoid;
+        transform: none !important;
     }
 
     .occa-export-table th {
-        padding: 5px;
-        background: #172033 !important;
-        color: #fff !important;
+        background: #0f172a !important;
+        color: #ffffff !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-    }
-
-    .occa-export-table td {
-        padding: 4px 5px;
-        overflow-wrap: anywhere;
     }
 }
